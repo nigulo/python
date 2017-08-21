@@ -15,6 +15,7 @@ import numpy as np
 import pylab as plt
 import mw_utils
 import GPR_QP
+from prewhitener import Prewhitener
 
 import os
 import os.path
@@ -84,53 +85,92 @@ for i in np.arange(0, len(files)):
 
     n_orig = len(t_orig)
     
-    if down_sample_factor >= 2:
-        #indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
-        #indices = np.sort(indices)
+    if (rot_periods.has_key(star)):
+        rot_period = rot_periods[star]
     
-        #t = t[indices]
-        #y = y[indices]
-
-        t = t_orig[0::down_sample_factor] 
-        y = y_orig[0::down_sample_factor] 
-    else:
-        t = t_orig
-        y = y_orig
+        if down_sample_factor >= 2:
+            #indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
+            #indices = np.sort(indices)
         
-    #(t, y, noise_var_prop) = mw_utils.daily_averages(t, y, mw_utils.get_seasonal_noise_var(t/365.25, y))
-    #noise_var_prop = mw_utils.get_seasonal_noise_var(t/365.25, y)
-    #np.savetxt("GPR_stan/" + star + ".dat", np.column_stack((t_daily, y_daily)), fmt='%f')
-
-    t /= 365.25
-    t += offset
-
-    noise_var_prop = mw_utils.get_seasonal_noise_var(t, y)
-    seasonal_means_var = np.var(mw_utils.get_seasonal_means(t, y)[:,1])
-
-    n = len(t)
+            #t = t[indices]
+            #y = y[indices]
     
+            t = t_orig[0::down_sample_factor] 
+            y = y_orig[0::down_sample_factor] 
+        else:
+            t = t_orig
+            y = y_orig
+            
+        #(t, y, noise_var_prop) = mw_utils.daily_averages(t, y, mw_utils.get_seasonal_noise_var(t/365.25, y))
+        #noise_var_prop = mw_utils.get_seasonal_noise_var(t/365.25, y)
+        #np.savetxt("GPR_stan/" + star + ".dat", np.column_stack((t_daily, y_daily)), fmt='%f')
     
-    m = np.mean(y)
-    noise_var = np.var(y) - seasonal_means_var
-    gpr_gp = GPR_QP.GPR_QP(sig_var = seasonal_means_var, length_scale=1.0, freq=0, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=0, c=0.0)
-    t_test = np.linspace(min(t), max(t), 500)
-    (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
-    (f_t, _, _) = gpr_gp.fit(t, y-m, t)
-    f_mean += m
-
-    fig, (ax1) = plt.subplots(nrows=1, ncols=1)
-    fig.set_size_inches(18, 12)
-
-    ax1.plot(t, y, 'b+')
-    #ax2.plot(t, y_wo_rot, 'r+')
-    ax1.plot(t_test, f_mean, 'k-')
-    ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
-   
-    fig.savefig("results/"+star + '_fit.png')
-    plt.close()
+        t /= 365.25
+        t += offset
+    
+        noise_var_prop = mw_utils.get_seasonal_noise_var(t, y)
+        seasonal_means_var = np.var(mw_utils.get_seasonal_means(t, y)[:,1])
+    
+        n = len(t)
+        
+        # Fit GP
+        
+        m = np.mean(y)
+        noise_var = np.var(y) - seasonal_means_var
+        gpr_gp = GPR_QP.GPR_QP(sig_var = seasonal_means_var, length_scale=1.0, freq=0, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=0, c=0.0)
+        t_test = np.linspace(min(t), max(t), 500)
+        (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
+        (f_t, _, _) = gpr_gp.fit(t, y-m, t)
+        f_mean += m
     
 
-#        with FileLock("GPRLock"):
-#            with open("results/results.txt", "a") as output:
-#                #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
-#                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period >= 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    
+        # Remove rotational period
+        y1 = y - f_t
+        rot_freq = 365.25/rot_period
+
+        rot_freqs = np.linspace(rot_freq-rot_freq/5.0, rot_freq+rot_freq/5.0, 10000)
+        prewhitener = Prewhitener(star, "LS", t, y1, rot_freqs, num_resamples=1000, num_bootstrap = 0, spectra_path = None, max_iters=100, max_peaks=1, num_indep = 0, white_noise=True)
+        res = prewhitener.prewhiten_with_higher_harmonics(p_value=0.01, num_higher_harmonics=0)
+        harmonic_index = 0
+        assert(len(res) == 1) # There is a for loop, but we currently assume only one result
+        for (rot_powers, found_lines_r, y_res, _) in res:
+            if len(found_lines_r) > 0:
+                r_line_freqs, r_line_powers, _, _, _ = zip(*found_lines_r)
+            else:
+                r_line_freqs = np.array([])
+                r_line_powers = np.array([])
+            
+            
+            y2 = y_res + f_t
+            harmonic_index += 1
+            var_reduction = abs(np.var(y) - np.var(y2))/np.var(y)
+            print "Variance reduction after rot. period removal: ", var_reduction
+        y = y2
+        fig, (period_plot, ts_plot) = plt.subplots(2, 1, figsize=(20, 8))
+        period_plot.set_title(str(rot_period))
+        period_plot.plot(t, y1, 'r+', t, y_res+0.2, 'k+')
+        ts_plot.scatter(t, y, c='r', marker='o', )
+        ts_plot.scatter(t, f_t, c='b', marker='x')
+        fig.savefig("temp/" + star + '_rot_period.png')
+        plt.close()
+    
+        fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1)
+        fig.set_size_inches(18, 12)
+    
+        ax1.plot(t, y, 'b+')
+        #ax2.plot(t, y_wo_rot, 'r+')
+        ax1.plot(t_test, f_mean, 'k-')
+        ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
+
+        ax2.set_title(str(rot_period))
+        ax2.plot(t, y1, 'r+', t, y_res+0.2, 'k+')
+        ax3.scatter(t, y, c='r', marker='o', )
+        ax3.scatter(t, f_t, c='b', marker='x')
+       
+        fig.savefig("results/"+star + '_fit.png')
+        plt.close()
+    else:
+        y = y_orig
+
+    dat = np.column_stack((t_orig, y))
+    np.savetxt("results/" + star + ".dat", dat, fmt='%f')
