@@ -1,0 +1,136 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Sep 29 09:35:12 2016
+
+@author: nigul
+"""
+
+import sys
+sys.path.append('../')
+import matplotlib as mpl
+
+mpl.use('Agg')
+mpl.rcParams['figure.figsize'] = (20, 30)
+import numpy as np
+import pylab as plt
+import mw_utils
+import GPR_QP
+
+import os
+import os.path
+#import pandas as pd
+
+down_sample_factor = 4
+
+num_groups = 1
+group_no = 0
+if len(sys.argv) > 1:
+    num_groups = int(sys.argv[1])
+if len(sys.argv) > 2:
+    group_no = int(sys.argv[2])
+
+#data_dir = "../downsampling/results"
+data_dir = "../cleaned"
+skiprows = 1
+
+files = []
+
+for root, dirs, dir_files in os.walk(data_dir):
+    for file in dir_files:
+        if file[-4:] == ".dat":
+            star = file[:-4]
+            star = star.upper()
+            if (star[-3:] == '.CL'):
+                star = star[0:-3]
+            if (star[0:2] == 'HD'):
+                star = star[2:]
+            while star[0] == '0': # remove leading zeros
+                star = star[1:]
+            if not os.path.isfile("results/" + star + ".dat"):
+                files.append(file)
+
+modulo = len(files) % num_groups
+group_size = len(files) / num_groups
+if modulo > 0:
+    group_size +=1
+
+#output = open("GPR_stan/results.txt", 'w')
+#output.close()
+#output = open("GPR_stan/all_results.txt", 'w')
+#output.close()
+
+offset = 1979.3452
+
+rot_periods = mw_utils.load_rot_periods("../")
+
+for i in np.arange(0, len(files)):
+    if i < group_no * group_size or i >= (group_no + 1) * group_size:
+        continue
+    file = files[i]
+    star = file[:-4]
+    star = star.upper()
+    if (star[-3:] == '.CL'):
+        star = star[0:-3]
+    if (star[0:2] == 'HD'):
+        star = star[2:]
+    while star[0] == '0': # remove leading zeros
+        star = star[1:]
+    if star != "201091":
+        continue
+    print star
+    dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
+    t_orig = dat[:,0]
+    y_orig = dat[:,1]
+
+    n_orig = len(t_orig)
+    
+    if down_sample_factor >= 2:
+        #indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
+        #indices = np.sort(indices)
+    
+        #t = t[indices]
+        #y = y[indices]
+
+        t = t_orig[0::down_sample_factor] 
+        y = y_orig[0::down_sample_factor] 
+    else:
+        t = t_orig
+        y = y_orig
+        
+    #(t, y, noise_var_prop) = mw_utils.daily_averages(t, y, mw_utils.get_seasonal_noise_var(t/365.25, y))
+    #noise_var_prop = mw_utils.get_seasonal_noise_var(t/365.25, y)
+    #np.savetxt("GPR_stan/" + star + ".dat", np.column_stack((t_daily, y_daily)), fmt='%f')
+
+    t /= 365.25
+    t += offset
+
+    noise_var_prop = mw_utils.get_seasonal_noise_var(t, y)
+    seasonal_means_var = np.var(mw_utils.get_seasonal_means(t, y)[:,1])
+
+    n = len(t)
+    
+    
+    m = np.mean(y)
+    noise_var = np.var(y) - seasonal_means_var
+    gpr_gp = GPR_QP.GPR_QP(sig_var = seasonal_means_var, length_scale=1.0, freq=0, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=0, c=0.0)
+    t_test = np.linspace(min(t), max(t), 500)
+    (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
+    (f_t, _, _) = gpr_gp.fit(t, y-m, t)
+    f_mean += m
+
+    fig, (ax1) = plt.subplots(nrows=1, ncols=1)
+    fig.set_size_inches(18, 12)
+
+    ax1.plot(t, y, 'b+')
+    #ax2.plot(t, y_wo_rot, 'r+')
+    ax1.plot(t_test, f_mean, 'k-')
+    ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
+   
+    fig.savefig("results/"+star + '_fit.png')
+    plt.close()
+    
+
+#        with FileLock("GPRLock"):
+#            with open("results/results.txt", "a") as output:
+#                #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
+#                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period >= 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    
