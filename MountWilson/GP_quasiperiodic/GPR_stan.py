@@ -25,10 +25,10 @@ from scipy.stats import gaussian_kde
 from sklearn.cluster import KMeans
 #import pandas as pd
 
-num_iters = 200
+num_iters = 50
 num_chains = 4
 dynamic_downsample = False
-down_sample_factor = 1
+down_sample_factor = 8
 n_jobs = 4
 n_tries = 1
 downsample_iters = 1
@@ -197,12 +197,13 @@ for i in np.arange(0, len(files)):
         
         initial_param_values = []
         for i in np.arange(0, num_chains):                    
-            initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
+            #initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
+            initial_freq = np.random.normal(prior_freq_mean, prior_freq_std)
             initial_m = orig_mean
             initial_trend_var = var / duration
             initial_noise_var = 1.0
-            #initial_inv_length_scale = np.random.uniform(0.0, 1.0)
-            initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var))
+            initial_inv_length_scale = np.random.normal(0, prior_freq_mean)
+            initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var, inv_lengh_scale=initial_inv_length_scale))
 
         if rot_freq > 0: 
             fit = model_rot.sampling(data=dict(x=t,N=n,y=y,noise_var_prop=noise_var_prop, var_y=var, 
@@ -263,7 +264,7 @@ for i in np.arange(0, len(files)):
         local_maxima_inds = mw_utils.find_local_maxima(freq_freqs(freqs))
         
         freq_kmeans = KMeans(n_clusters=len(local_maxima_inds)).fit(freq_samples.reshape((-1, 1)))
-        opt_freq_label = freq_kmeans.predict([freq])
+        opt_freq_label = freq_kmeans.predict(np.array([freq]).reshape((-1, 1)))
         freq1_samples = np.sort(freq_samples[np.where(freq_kmeans.labels_ == opt_freq_label)])
         
         inds = np.searchsorted(freqs, freq1_samples)

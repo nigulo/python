@@ -16,12 +16,13 @@ import pylab as plt
 import mw_utils
 import GPR_QP
 from prewhitener import Prewhitener
+from filelock import FileLock
 
 import os
 import os.path
 #import pandas as pd
 
-down_sample_factor = 4
+down_sample_factor = 1
 
 num_groups = 1
 group_no = 0
@@ -76,8 +77,8 @@ for i in np.arange(0, len(files)):
         star = star[2:]
     while star[0] == '0': # remove leading zeros
         star = star[1:]
-    if star != "201091":
-        continue
+    #if star != "201091":
+    #    continue
     print star
     dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
     t_orig = dat[:,0]
@@ -105,6 +106,7 @@ for i in np.arange(0, len(files)):
         #noise_var_prop = mw_utils.get_seasonal_noise_var(t/365.25, y)
         #np.savetxt("GPR_stan/" + star + ".dat", np.column_stack((t_daily, y_daily)), fmt='%f')
     
+        t_jd = t
         t /= 365.25
         t += offset
     
@@ -119,10 +121,10 @@ for i in np.arange(0, len(files)):
         noise_var = np.var(y) - seasonal_means_var
         gpr_gp = GPR_QP.GPR_QP(sig_var = seasonal_means_var, length_scale=1.0, freq=0, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=0, c=0.0)
         t_test = np.linspace(min(t), max(t), 500)
-        (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
+        #(f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
+        #f_mean += m
         (f_t, _, _) = gpr_gp.fit(t, y-m, t)
-        f_mean += m
-    
+        f_t += m
 
         # Remove rotational period
         y1 = y - f_t
@@ -154,23 +156,21 @@ for i in np.arange(0, len(files)):
         fig.savefig("temp/" + star + '_rot_period.png')
         plt.close()
     
-        fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1)
-        fig.set_size_inches(18, 12)
-    
-        ax1.plot(t, y, 'b+')
-        #ax2.plot(t, y_wo_rot, 'r+')
-        ax1.plot(t_test, f_mean, 'k-')
-        ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
-
-        ax2.set_title(str(rot_period))
-        ax2.plot(t, y1, 'r+', t, y_res+0.2, 'k+')
-        ax3.scatter(t, y, c='r', marker='o', )
-        ax3.scatter(t, f_t, c='b', marker='x')
-       
-        fig.savefig("results/"+star + '_fit.png')
-        plt.close()
     else:
         y = y_orig
+        t_jd = t_orig
 
-    dat = np.column_stack((t_orig, y))
+    dat = np.column_stack((t_jd, y))
     np.savetxt("results/" + star + ".dat", dat, fmt='%f')
+    with FileLock("GPRLock"):
+        with open("results/rot_var_reduction.txt", "a") as output:
+            output.write(star + " " + str(var_reduction) + "\n")
+
+    if os.path.isfile("../cleaned_wo_rot/" + star + ".dat"):
+        dat1 = np.loadtxt("../cleaned_wo_rot/" + star + ".dat", usecols=(0,1), skiprows=0)
+        t_orig1 = dat1[:,0]
+        y_orig1 = dat1[:,1]
+        if len(t_orig1 == len(t_jd)):
+            with FileLock("GPRLock"):
+                with open("results/comparison.txt", "a") as output:
+                    output.write(star + " " + str(np.std(y_orig1 - y)/np.std(y)) + "\n")
