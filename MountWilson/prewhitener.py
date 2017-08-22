@@ -101,7 +101,7 @@ class Prewhitener:
             sigma = 0
             z0_or_bic = z0
         elif self.type == "BGLST":
-            (best_freq, max_power, power, residue, y_fit, bic, sigma) = bglst(self.t, y, self.freqs, p_value, peak_index)
+            (best_freq, max_power, power, residue, y_fit, bic, sigma) = self.bglst(self.t, y, self.freqs, p_value, peak_index, iter_index)
             total_bic += bic
             z0_or_bic = bic
         else:
@@ -184,6 +184,108 @@ class Prewhitener:
             res.append(best_res_data)
         return res
 
+    def bglst(self, t, y, freqs_in, p_value, peak_index, iter_index):
+        noise_var = mw_utils.get_seasonal_noise_var(t, y)
+        w = np.ones(len(t))/noise_var
+        slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
+        duration = max(t) - min(t)
+        bglst = BGLST(t, y, w, 
+                        w_A = 2.0/np.var(y), A_hat = 0.0,
+                        w_B = 2.0/np.var(y), B_hat = 0.0,
+                        w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                        w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+        
+        (freqs, power) = bglst.calc_all(freqs_in[0], freqs_in[-1], len(freqs_in))
+        max_power_ind = get_max_power_ind(power, peak_index)
+        if max_power_ind >= 0:
+            max_power = power[max_power_ind]
+            best_freq = freqs[max_power_ind]
+            tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq)
+    
+            condition = False
+            if seasonal_significance:
+                seasonal_means = mw_utils.get_seasonal_means(t, y)
+                seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
+                seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
+                bglst = BGLST(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                _, loglik_seasons = bglst.fit(tau, best_freq, A, B, alpha, beta)
+                #seasonal_weights_null = np.ones(len(seasonal_noise_var))/(seasonal_noise_var + np.var(seasonal_means[:,1]))
+                _, _, _, loglik_seasons_null = bayes_lin_reg(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                log_n = np.log(np.shape(seasonal_means)[0])
+                bic = log_n * 5 - 2.0*loglik_seasons
+                bic_null = log_n * 2 - 2.0*loglik_seasons_null
+                
+                print bic_null, bic
+                delta_bic = bic_null - bic
+                condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
+            else:
+                t_left_inds = np.where(t<1980.0)
+                t_right_inds = np.where(t>=1980.0)
+                t_left = t[t_left_inds]
+                y_left = y[t_left_inds]
+                t_right = t[t_right_inds]
+                y_right = y[t_right_inds]
+    
+                #print "Num left, right", min(t_left), max(t_left), min(t_right), max(t_right), len(t_left), len(t_right)
+                if len(t_left) > 0: 
+                    seasonal_noise_var = mw_utils.get_seasonal_noise_var(t_left, y_left)
+                    seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
+                    bglst = BGLST(t_left, y_left, seasonal_weights)
+                    _, loglik_left = bglst.fit(tau, best_freq, A, B, alpha, beta)
+                    #seasonal_weights_null = np.ones(len(seasonal_noise_var))/(seasonal_noise_var + np.var(seasonal_means[:,1]))
+                    _, _, _, loglik_left_null = bayes_lin_reg(t_left, y_left, seasonal_weights)
+    
+                    log_n = np.log(len(t_left))
+                    bic = log_n * 5 - 2.0*loglik_left
+                    bic_null = log_n * 2 - 2.0*loglik_left_null
+                    delta_bic = bic_null - bic
+                    left_condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
+                else:
+                    left_condition = True
+    
+                if len(t_right) > 0: 
+                    seasonal_noise_var = mw_utils.get_seasonal_noise_var(t_right, y_right)
+                    seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
+                    bglst = BGLST(t_right, y_right, seasonal_weights)
+                    _, loglik_right = bglst.fit(tau, best_freq, A, B, alpha, beta)
+                    #seasonal_weights_null = np.ones(len(seasonal_noise_var))/(seasonal_noise_var + np.var(seasonal_means[:,1]))
+                    _, _, _, loglik_right_null = bayes_lin_reg(t_right, y_right, seasonal_weights)
+    
+                    log_n = np.log(len(t_right))
+                    bic = log_n * 5 - 2.0*loglik_right
+                    bic_null = log_n * 2 - 2.0*loglik_right_null
+                    delta_bic = bic_null - bic
+                    right_condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
+                else:
+                    right_condition = True
+                
+                condition = left_condition and right_condition
+    
+            if condition:
+                bglst_m = BGLST(t, y_model, np.ones(len(t))/np.var(y))
+                (freqs_m, log_probs_m) = bglst_m.calc_all(freqs_in[0], freqs_in[-1], len(freqs_in))
+                log_probs_m -= scipy.misc.logsumexp(log_probs_m)
+                probs_m = np.exp(log_probs_m)
+                probs_m /= sum(probs_m)
+                #mean = np.exp(scipy.misc.logsumexp(np.log(freqs_m)+probs_m))
+                #sigma = np.sqrt(np.exp(scipy.misc.logsumexp(2*np.log(freqs_m-best_freq) + probs_m)))
+                mean = sum(freqs_m*probs_m)
+                sigma = np.sqrt(sum((freqs_m-best_freq)**2 * probs_m))
+                
+                fig, (model_plot) = plt.subplots(1, 1, figsize=(20, 8))
+                model_plot.plot(freqs_m, log_probs_m)
+                fig.savefig("temp/" + self.name + '_' +  str(iter_index) + '_model.png')
+                plt.close()
+                
+                #mean = sum(freqs_m*probs_m)/sum(probs_m)
+                print "Maximum:", peak_index, best_freq, max_power, delta_bic, sigma, mean
+                return (best_freq, max_power, power, y - y_model, y_model, delta_bic, sigma)
+            else:
+                print "Insignificant maximum:", peak_index, best_freq, max_power, delta_bic
+                return (0, 0, power, y, np.array([]), 0, 0)
+        else:
+            return (0, 0, power, y, np.array([]), 0, 0)
+
 def get_max_power_ind(power, peak_index):
     local_maxima_inds = mw_utils.find_local_maxima(power)
     #if peak_index == 0:
@@ -213,98 +315,3 @@ def ls(t, y, freqs, z0, peak_index):
     else:
         return (0, 0, power, y, np.array([]))
 
-def bglst(t, y, freqs_in, p_value, peak_index):
-    noise_var = mw_utils.get_seasonal_noise_var(t, y)
-    w = np.ones(len(t))/noise_var
-    slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
-    duration = max(t) - min(t)
-    bglst = BGLST(t, y, w, 
-                    w_A = 2.0/np.var(y), A_hat = 0.0,
-                    w_B = 2.0/np.var(y), B_hat = 0.0,
-                    w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
-                    w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
-    
-    (freqs, power) = bglst.calc_all(freqs_in[0], freqs_in[-1], len(freqs_in))
-    max_power_ind = get_max_power_ind(power, peak_index)
-    if max_power_ind >= 0:
-        max_power = power[max_power_ind]
-        best_freq = freqs[max_power_ind]
-        tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq)
-
-        condition = False
-        if seasonal_significance:
-            seasonal_means = mw_utils.get_seasonal_means(t, y)
-            seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
-            seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
-            bglst = BGLST(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
-            _, loglik_seasons = bglst.fit(tau, best_freq, A, B, alpha, beta)
-            #seasonal_weights_null = np.ones(len(seasonal_noise_var))/(seasonal_noise_var + np.var(seasonal_means[:,1]))
-            _, _, _, loglik_seasons_null = bayes_lin_reg(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
-            log_n = np.log(np.shape(seasonal_means)[0])
-            bic = log_n * 5 - 2.0*loglik_seasons
-            bic_null = log_n * 2 - 2.0*loglik_seasons_null
-            
-            print bic_null, bic
-            delta_bic = bic_null - bic
-            condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
-        else:
-            t_left_inds = np.where(t<1980.0)
-            t_right_inds = np.where(t>=1980.0)
-            t_left = t[t_left_inds]
-            y_left = y[t_left_inds]
-            t_right = t[t_right_inds]
-            y_right = y[t_right_inds]
-
-            #print "Num left, right", min(t_left), max(t_left), min(t_right), max(t_right), len(t_left), len(t_right)
-            if len(t_left) > 0: 
-                seasonal_noise_var = mw_utils.get_seasonal_noise_var(t_left, y_left)
-                seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
-                bglst = BGLST(t_left, y_left, seasonal_weights)
-                _, loglik_left = bglst.fit(tau, best_freq, A, B, alpha, beta)
-                #seasonal_weights_null = np.ones(len(seasonal_noise_var))/(seasonal_noise_var + np.var(seasonal_means[:,1]))
-                _, _, _, loglik_left_null = bayes_lin_reg(t_left, y_left, seasonal_weights)
-
-                log_n = np.log(len(t_left))
-                bic = log_n * 5 - 2.0*loglik_left
-                bic_null = log_n * 2 - 2.0*loglik_left_null
-                delta_bic = bic_null - bic
-                left_condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
-            else:
-                left_condition = True
-
-            if len(t_right) > 0: 
-                seasonal_noise_var = mw_utils.get_seasonal_noise_var(t_right, y_right)
-                seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
-                bglst = BGLST(t_right, y_right, seasonal_weights)
-                _, loglik_right = bglst.fit(tau, best_freq, A, B, alpha, beta)
-                #seasonal_weights_null = np.ones(len(seasonal_noise_var))/(seasonal_noise_var + np.var(seasonal_means[:,1]))
-                _, _, _, loglik_right_null = bayes_lin_reg(t_right, y_right, seasonal_weights)
-
-                log_n = np.log(len(t_right))
-                bic = log_n * 5 - 2.0*loglik_right
-                bic_null = log_n * 2 - 2.0*loglik_right_null
-                delta_bic = bic_null - bic
-                right_condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
-            else:
-                right_condition = True
-            
-            condition = left_condition and right_condition
-
-        if condition:
-            bglst_m = BGLST(t, y_model, np.ones(len(t))/np.var(y))
-            (freqs_m, log_probs_m) = bglst_m.calc_all(freqs_in[0], freqs_in[-1], len(freqs_in))
-            log_probs_m -= scipy.misc.logsumexp(log_probs_m)
-            probs_m = np.exp(log_probs_m)
-            #mean = np.exp(scipy.misc.logsumexp(np.log(freqs_m)+probs_m))
-            #sigma = np.sqrt(np.exp(scipy.misc.logsumexp(2*np.log(freqs_m-best_freq) + probs_m)))
-            mean = sum(freqs_m*probs_m)
-            sigma = np.sqrt(sum((freqs_m-best_freq)**2 * probs_m))
-            
-            #mean = sum(freqs_m*probs_m)/sum(probs_m)
-            print "Maximum:", peak_index, best_freq, max_power, delta_bic, sigma, mean
-            return (best_freq, max_power, power, y - y_model, y_model, delta_bic, sigma)
-        else:
-            print "Insignificant maximum:", peak_index, best_freq, max_power, delta_bic
-            return (0, 0, power, y, np.array([]), 0, 0)
-    else:
-        return (0, 0, power, y, np.array([]), 0, 0)
