@@ -17,6 +17,7 @@ import pylab as plt
 from filelock import FileLock
 import mw_utils
 import GPR_per
+import pandas as pd
 
 import os
 import os.path
@@ -39,13 +40,29 @@ if len(sys.argv) > 1:
 if len(sys.argv) > 2:
     group_no = int(sys.argv[2])
 
-data_dir = "../downsampling/results"
+data_dir = "../cleaned_wo_rot"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
     skiprows = 0
 
 files = []
+
+def load_BGLST_results():
+    data = pd.read_csv("BGLST_results.txt", names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+    bglst_cycles = dict()
+    for [star, cyc, std, normality, bic] in data:
+        if not bglst_cycles.has_key(star):
+            bglst_cycles[star] = list()
+        all_cycles = bglst_cycles[star]
+        cycles = list()
+        if not np.isnan(cyc):
+            cycles.append(cyc)
+            cycles.append(std)
+        all_cycles.append(np.asarray(cycles))
+    return bglst_cycles
+
+bglst_cycles = load_BGLST_results()
 
 stars = np.array([])
 if os.path.isfile("stars.txt"):
@@ -168,24 +185,34 @@ for i in np.arange(0, len(files)):
         #if rot_periods.has_key(star):
         #    rot_freq = 365.25/rot_periods[star]
     
+        prior_freq_mean = 0.0
+        prior_freq_std = 0.167
+        if bglst_cycles.has_key(star):
+            cycles = bglst_cycles[star]
+            prior_freq_mean = cycles[0][0]
+            prior_freq_std= cycles[0][1]
+            
+        print "prior_freq_mean, prior_freq_std: ", prior_freq_mean, prior_freq_std
         
         initial_param_values = []
         for i in np.arange(0, num_chains):                    
-            initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
+            #initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
+            initial_freq = np.random.normal(prior_freq_mean, prior_freq_std)
             initial_m = orig_mean
             initial_trend_var = var / duration
             initial_noise_var = 1.0
             #initial_inv_length_scale = np.random.uniform(0.0, 1.0)
-            initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var))
+            initial_inv_length_scale = np.random.normal(0, prior_freq_mean)
+            initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var, inv_lengh_scale=initial_inv_length_scale))
 
         if rot_freq > 0: 
             fit = model_rot.sampling(data=dict(x=t,N=n,y=y,noise_var_prop=noise_var_prop, var_y=var, 
-               var_seasonal_means=seasonal_means_var, rot_freq=rot_freq), 
+               var_seasonal_means=seasonal_means_var, rot_freq=rot_freq, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
                init=initial_param_values,
                iter=num_iters, chains=num_chains, n_jobs=n_jobs)
         else:
             fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
-        	var_seasonal_means=seasonal_means_var), 
+        	var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
         	init=initial_param_values,
         	iter=num_iters, chains=num_chains, n_jobs=n_jobs)
         
