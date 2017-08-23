@@ -24,6 +24,7 @@ from scipy.stats import gaussian_kde
 from sklearn.cluster import KMeans
 import mw_utils
 from scipy import stats
+from scipy.misc import logsumexp
 
 offset = 1979.3452
 down_sample_factor = 8
@@ -152,6 +153,17 @@ for experiment_index in np.arange(0, num_experiments):
     ax3.plot(freqs, probs)
     ax3.plot([f_opt_bglst, f_opt_bglst], [min(probs), probs[bglst_local_maxima_inds][f_opt_bglst_ind]], 'k--')
     
+    #############################################
+    # Calculate empirical sigma for f_opt_bglst
+    tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(f_opt_bglst)
+    bglst_m = BGLST.BGLST(t, y_model, np.ones(len(t))/np.var(y))
+    (freqs_m, log_probs_m) = bglst_m.calc_all(min(freqs), max(freqs), len(freqs))
+    log_probs_m -= logsumexp(log_probs_m)
+    probs_m = np.exp(log_probs_m)
+    f_bglst_sigma = np.sqrt(sum((freqs_m-f_opt_bglst)**2 * probs_m))
+    #############################################
+    
+    
     seasonal_means = mw_utils.get_seasonal_means(t, y)
     #op = model.optimizing(data=dict(x=t,N=n,y=y,noise_var=noise_var, var_y=np.var(y), harmonicity=1.0))
     #freq_gp_opt = op['freq'];
@@ -160,7 +172,7 @@ for experiment_index in np.arange(0, num_experiments):
     for i in np.arange(0, num_chains):                    
         initial_freq = np.random.uniform(0, 0.5)
         initial_param_values.append(dict(freq=initial_freq))
-    fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=np.var(y), var_seasonal_means=np.var(seasonal_means)), 
+    fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=np.var(y), var_seasonal_means=np.var(seasonal_means), freq_mu=f_opt_bglst, freq_sigma=f_bglst_sigma), 
                          init=initial_param_values,
                          iter=num_iters, chains=num_chains, n_jobs=n_jobs)
 

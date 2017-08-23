@@ -31,7 +31,6 @@ if len(sys.argv) > 1:
 if len(sys.argv) > 2:
     group_no = int(sys.argv[2])
 
-#data_dir = "../downsampling/results"
 data_dir = "../cleaned"
 skiprows = 1
 
@@ -77,7 +76,7 @@ for i in np.arange(0, len(files)):
         star = star[2:]
     while star[0] == '0': # remove leading zeros
         star = star[1:]
-    #if star != "201091":
+    #if star != "SUN.COMB":
     #    continue
     print star
     dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
@@ -106,7 +105,7 @@ for i in np.arange(0, len(files)):
         #noise_var_prop = mw_utils.get_seasonal_noise_var(t/365.25, y)
         #np.savetxt("GPR_stan/" + star + ".dat", np.column_stack((t_daily, y_daily)), fmt='%f')
     
-        t_jd = t
+        t_jd = np.array(t)
         t /= 365.25
         t += offset
     
@@ -118,8 +117,9 @@ for i in np.arange(0, len(files)):
         # Fit GP
         
         m = np.mean(y)
-        noise_var = np.var(y) - seasonal_means_var
-        gpr_gp = GPR_QP.GPR_QP(sig_var = seasonal_means_var, length_scale=1.0, freq=0, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=0, c=0.0)
+        #noise_var = np.var(y) - seasonal_means_var
+        #print noise_var
+        gpr_gp = GPR_QP.GPR_QP(sig_var = seasonal_means_var, length_scale=1.0, freq=0, noise_var=noise_var_prop, rot_freq=0, rot_amplitude=0, trend_var=0, c=0.0)
         t_test = np.linspace(min(t), max(t), 500)
         #(f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
         #f_mean += m

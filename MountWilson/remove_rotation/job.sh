@@ -13,13 +13,13 @@
 ## example: 1 GB is 1000
 #SBATCH --mem-per-cpu=1000
 ## how long a job takes, wallclock time hh:mm:ss
-#SBATCH -t 3:00:00
+#SBATCH -t 30:00
 ##the number of processes (number of cores)
 ##SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 ## queue name
-#SBATCH -p parallel
+#SBATCH -p test
 ## run my MPI executable
 export KMP_AFFINITY=compact
 export KMP_DETERMINISTIC_REDUCTION=yes    #(if necessary and intel compiler version is 13 or later)

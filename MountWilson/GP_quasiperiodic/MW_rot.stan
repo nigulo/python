@@ -68,8 +68,8 @@ model {
     sig_var ~ normal(0, var_seasonal_means);
     noise_var ~ normal(1, 1.0/6);
     #length_scale ~ inv_gamma(3, 4.0/(freq+ 1.0/duration));
-    inv_length_scale ~ normal(0, freq/3.0);
-    #inv_length_scale ~ beta(1.0, 1.0);
+    #inv_length_scale ~ normal(0, freq/3.0);
+    inv_length_scale ~ beta(1.0, 1.0);
     rot_amplitude ~ normal(0, mean(noise_var_prop)/6);
     trend_var ~ normal(0, var_y/duration/duration);
     m ~ normal(mean_y, sqrt(var_y));

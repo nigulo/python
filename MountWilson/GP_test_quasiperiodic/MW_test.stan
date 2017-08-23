@@ -5,6 +5,8 @@ data {
     vector[N] noise_var;
     real var_y;
     real var_seasonal_means;
+    real freq_mu;
+    real freq_sigma;
 }
 
 transformed data {
@@ -51,11 +53,12 @@ model {
     
     #freq ~ student_t(4, 0, 0.5);
     #freq ~ cauchy(0, 0.5);
-    freq ~ normal(0, 0.167);
+    #freq ~ normal(0, 0.167);
+    freq ~ normal(freq_mu, freq_sigma);
     sig_var ~ normal(0, var_seasonal_means);
     #length_scale ~ cauchy(1.0/(freq+ 1.0/duration), duration);
-    #inv_length_scale ~ normal(0, freq/3.0);
-    inv_length_scale ~ beta(1, 3);
+    inv_length_scale ~ normal(0, freq);
+    #inv_length_scale ~ beta(1, 3);
     trend_var ~ normal(0, var_y/duration/duration);
     m ~ normal(mean_y, sqrt(var_y));
     y ~ multi_normal_cholesky(mu, L);

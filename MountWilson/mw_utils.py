@@ -45,6 +45,7 @@ def load_rot_periods(path=""):
             fields = parse(line)
             star = fields[0].strip()
             star = star.replace(' ', '')
+            star = star.upper()
             try:
                 p_rot = float(fields[7].strip())
             except ValueError:

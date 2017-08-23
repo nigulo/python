@@ -41,7 +41,8 @@ if len(sys.argv) > 2:
     group_no = int(sys.argv[2])
 
 #data_dir = "../downsampling/results"
-data_dir = "../cleaned_wo_rot"
+#data_dir = "../cleaned_wo_rot"
+data_dir = "../remove_rotation/results"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
@@ -191,7 +192,7 @@ for i in np.arange(0, len(files)):
         if bglst_cycles.has_key(star):
             cycles = bglst_cycles[star]
             prior_freq_mean = cycles[0][0]
-            prior_freq_std= cycles[0][1]
+            prior_freq_std = cycles[0][1]
             
         print "prior_freq_mean, prior_freq_std: ", prior_freq_mean, prior_freq_std
         
