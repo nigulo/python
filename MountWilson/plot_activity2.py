@@ -54,7 +54,7 @@ def read_cycles(file):
     #data = np.genfromtxt(file, dtype=None, skip_header=1)
     for [star, cyc, std, normality, bic] in data:
         if star == 'SUNALL':
-            star = 'Sun'
+            star = 'SUN'
         #print star, cyc, std_2
         if not np.isnan(cyc):
             if not all_cycles.has_key(star):
@@ -84,6 +84,7 @@ with open("mwo-rhk.dat", "r") as ins:
         fields = parse(line)
         star = fields[0].strip()
         star = star.replace(' ', '')
+        star = star.upper()
         try:
             bmv = float(fields[4].strip())
         except ValueError:
@@ -108,7 +109,7 @@ with open("mwo-rhk.dat", "r") as ins:
             dark_color =  "black"
             light_color =  "gray"
             sym = "o"
-            if star == "Sun":
+            if star == "SUN":
                 sym = "*"
                 #dark_color = "gold"
                 #light_color = "lemonchiffon"

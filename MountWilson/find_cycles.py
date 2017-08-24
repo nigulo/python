@@ -21,7 +21,7 @@ from BGLST import BGLST
 num_resamples = 1000
 num_bootstrap = 0
 #input_path = "downsampling/results"
-input_path = "cleaned"
+input_path = "cleaned_wo_rot2"
 if input_path == "cleaned":
     skiprows = 1
     remove_rotation = True
@@ -62,8 +62,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 rot_period = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            if star != "201091":
-                continue
+            #if star != "201091":
+            #    continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]
@@ -211,7 +211,10 @@ for root, dirs, files in os.walk(input_path):
     
                 fig.savefig(spectra_path+str(p_value)+"/" + star + '.png')
                 plt.close(fig)
-                f1.write(star + " " + ('\n'.join(['%s %s %s %s' % (f, std, normality, z0) for f, p, std, normality, z0 in found_lines])) + "\n")
+                for f, p, std, normality, z0 in found_lines:
+                    f1.write(star + ' %s %s %s %s' % (f, std, normality, z0) + "\n")
+                    
+                #f1.write(star + " " + ('\n'.join(['%s %s %s %s' % (f, std, normality, z0) for f, p, std, normality, z0 in found_lines])) + "\n")
                 #f1.write(star + " " + (' '.join(['%s %s %s %s' % (1.0/f, std/f/f, normality, z0) for f, p, std, normality, z0 in found_lines])) + "\n")
                 f1.flush()
                 f2.write(star + " " + str(var_reduction) + "\n")

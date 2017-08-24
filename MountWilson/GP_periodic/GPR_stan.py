@@ -25,11 +25,11 @@ from scipy.stats import gaussian_kde
 from sklearn.cluster import KMeans
 #import pandas as pd
 
-num_iters = 100
-num_chains = 4
+num_iters = 200
+num_chains = 8
 dynamic_downsample = False
 down_sample_factor = 1
-n_jobs = 4
+n_jobs = 8
 n_tries = 1
 downsample_iters = 1
 
@@ -40,7 +40,8 @@ if len(sys.argv) > 1:
 if len(sys.argv) > 2:
     group_no = int(sys.argv[2])
 
-data_dir = "../remove_rotation/results"
+#data_dir = "../remove_rotation/results"
+data_dir = "../cleaned_wo_rot2"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
@@ -123,8 +124,8 @@ for i in np.arange(0, len(files)):
         star = star[2:]
     while star[0] == '0': # remove leading zeros
         star = star[1:]
-    if star != "103095":
-        continue
+    #if star != "76151":
+    #    continue
     print star
     dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
     t_orig = dat[:,0]
@@ -264,7 +265,7 @@ for i in np.arange(0, len(files)):
         local_maxima_inds = mw_utils.find_local_maxima(freq_freqs(freqs))
         
         freq_kmeans = KMeans(n_clusters=len(local_maxima_inds)).fit(freq_samples.reshape((-1, 1)))
-        opt_freq_label = freq_kmeans.predict([freq])
+        opt_freq_label = freq_kmeans.predict(np.array([freq]).reshape((-1, 1)))
         freq1_samples = np.sort(freq_samples[np.where(freq_kmeans.labels_ == opt_freq_label)])
         
         inds = np.searchsorted(freqs, freq1_samples)
@@ -377,4 +378,4 @@ for i in np.arange(0, len(files)):
         with FileLock("GPRLock"):
             with open("results/results.txt", "a") as output:
                 #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
-                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    
+                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    

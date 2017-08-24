@@ -41,8 +41,7 @@ if len(sys.argv) > 2:
     group_no = int(sys.argv[2])
 
 #data_dir = "../downsampling/results"
-#data_dir = "../cleaned_wo_rot"
-data_dir = "../remove_rotation/results"
+data_dir = "../cleaned_wo_rot2"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
@@ -125,7 +124,7 @@ for i in np.arange(0, len(files)):
         star = star[2:]
     while star[0] == '0': # remove leading zeros
         star = star[1:]
-    if star != "201091":
+    if star != "155886":
         continue
     print star
     dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
@@ -199,11 +198,11 @@ for i in np.arange(0, len(files)):
         initial_param_values = []
         for i in np.arange(0, num_chains):                    
             #initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
-            initial_freq = np.random.normal(prior_freq_mean, prior_freq_std)
+            initial_freq = max(0, np.random.normal(prior_freq_mean, prior_freq_std))
             initial_m = orig_mean
             initial_trend_var = var / duration
             initial_noise_var = 1.0
-            initial_inv_length_scale = np.random.normal(0, prior_freq_mean)
+            initial_inv_length_scale = 0.0001#abs(np.random.normal(0, prior_freq_mean))
             initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var, inv_lengh_scale=initial_inv_length_scale))
 
         if rot_freq > 0: 
@@ -383,4 +382,4 @@ for i in np.arange(0, len(files)):
         with FileLock("GPRLock"):
             with open("results/results.txt", "a") as output:
                 #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
-                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period >= 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    
+                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    

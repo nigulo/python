@@ -58,8 +58,8 @@ model {
     sig_var ~ normal(0, var_seasonal_means);
     #length_scale ~ cauchy(1.0/(freq+ 1.0/duration), duration);
     #inv_length_scale ~ normal(0, freq/3.0);
-    inv_length_scale ~ normal(0, freq);
-    #inv_length_scale ~ beta(1, 3);
+    #inv_length_scale ~ normal(0, freq);
+    inv_length_scale ~ beta(1, 3);
     trend_var ~ normal(0, var_y/duration/duration);
     m ~ normal(mean_y, sqrt(var_y));
     y ~ multi_normal_cholesky(mu, L);

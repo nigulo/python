@@ -18,7 +18,7 @@ from bayes_lin_reg import bayes_lin_reg
 from scipy.signal import argrelextrema
 import scipy
 
-bic_threshold = 2.0
+bic_threshold = 6.0
 seasonal_significance = True
 
 class Prewhitener:
