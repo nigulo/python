@@ -54,7 +54,7 @@ downsample_iters = 1
 
 print star, peak_no, num_iters, num_chains, down_sample_factor
 
-data_dir = "../cleaned_wo_rot2"
+data_dir = "../GP_input"
 if data_dir == "../cleaned":
     skiprows = 1
 else:

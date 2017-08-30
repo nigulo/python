@@ -223,7 +223,7 @@ class BGLST():
         
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * mu_B + self.t * mu_alpha + mu_beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
-        if t == None:
+        if t is None:
             t = self.t
         if np.any(t != self.t):
             y_model = np.cos(t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(t * 2.0 * np.pi * freq - tau) * mu_B + t * mu_alpha + mu_beta
@@ -232,7 +232,7 @@ class BGLST():
     def fit(self, tau, freq, A, B, alpha, beta, t = None):
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * B + self.t * alpha + beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
-        if t == None:
+        if t is None:
             t = self.t
         if np.any(t != self.t):
             y_model = np.cos(t * 2.0 * np.pi * freq - tau) * A  + np.sin(t * 2.0 * np.pi * freq - tau) * B + t * alpha + beta

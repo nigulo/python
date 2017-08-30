@@ -21,7 +21,7 @@ from BGLST import BGLST
 num_resamples = 1000
 num_bootstrap = 0
 #input_path = "downsampling/results"
-input_path = "cleaned_wo_rot2"
+input_path = "BGLST_input"
 if input_path == "cleaned":
     skiprows = 1
     remove_rotation = True
