@@ -1,46 +1,41 @@
-sbatch job.sh 46 0
-sbatch job.sh 46 1
-sbatch job.sh 46 2
-sbatch job.sh 46 3
-sbatch job.sh 46 4
-sbatch job.sh 46 5
-sbatch job.sh 46 6
-sbatch job.sh 46 7
-sbatch job.sh 46 8
-sbatch job.sh 46 9
-sbatch job.sh 46 10
-sbatch job.sh 46 11
-sbatch job.sh 46 12
-sbatch job.sh 46 13
-sbatch job.sh 46 14
-sbatch job.sh 46 15
-sbatch job.sh 46 16
-sbatch job.sh 46 17
-sbatch job.sh 46 18
-sbatch job.sh 46 19
-sbatch job.sh 46 20
-sbatch job.sh 46 21
-sbatch job.sh 46 22
-sbatch job.sh 46 23
-sbatch job.sh 46 24
-sbatch job.sh 46 25
-sbatch job.sh 46 26
-sbatch job.sh 46 27
-sbatch job.sh 46 28
-sbatch job.sh 46 29
-sbatch job.sh 46 30
-sbatch job.sh 46 31
-sbatch job.sh 46 32
-sbatch job.sh 46 33
-sbatch job.sh 46 34
-sbatch job.sh 46 35
-sbatch job.sh 46 36
-sbatch job.sh 46 37
-sbatch job.sh 46 38
-sbatch job.sh 46 39
-sbatch job.sh 46 40
-sbatch job.sh 46 41
-sbatch job.sh 46 42
-sbatch job.sh 46 43
-sbatch job.sh 46 44
-sbatch job.sh 46 45
+sbatch job.sh 3651 0 200 8 1
+sbatch job.sh 1835 0 200 8 1
+sbatch job.sh 16160 0 200 8 1
+sbatch job.sh 81809 0 200 8 1
+sbatch job.sh 165341A 0 200 8 1
+sbatch job.sh 146233 0 200 8 1
+sbatch job.sh 157856 0 200 8 1
+sbatch job.sh 20630 0 200 8 1
+sbatch job.sh 152391 0 200 8 1
+sbatch job.sh 201091 0 200 8 1
+sbatch job.sh 201092 0 200 8 1
+sbatch job.sh 219834A 0 200 8 1
+sbatch job.sh 219834B 0 200 8 1
+sbatch job.sh 10780 0 200 8 1
+sbatch job.sh 82635 0 200 8 1
+sbatch job.sh 26965 0 200 8 1
+sbatch job.sh 166620 0 200 8 1
+sbatch job.sh 156026 0 200 8 1
+sbatch job.sh 88737 0 200 8 1
+sbatch job.sh 60522 0 200 8 1
+sbatch job.sh 37394 0 200 8 1
+sbatch job.sh 190406 0 200 8 1
+sbatch job.sh 4628 0 200 8 1
+sbatch job.sh 29317 0 200 8 1
+sbatch job.sh 185144 0 200 8 1
+sbatch job.sh 82885 0 200 8 1
+sbatch job.sh SUN 0 200 8 1
+sbatch job.sh 78366 0 200 8 1
+sbatch job.sh 68290 0 200 8 1
+sbatch job.sh 10476 0 200 8 1
+sbatch job.sh 27022 0 200 8 1
+sbatch job.sh 101501 0 200 8 1
+sbatch job.sh 85444 0 200 8 1
+sbatch job.sh 10072 0 200 8 1
+sbatch job.sh 160346 0 200 8 1
+sbatch job.sh 88373 0 200 8 1
+sbatch job.sh 155886 0 200 8 1
+sbatch job.sh 114710 0 200 8 1
+sbatch job.sh 76151 0 200 8 1
+sbatch job.sh 149661 0 200 8 1
+sbatch job.sh 103095 0 200 8 1

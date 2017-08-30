@@ -54,7 +54,6 @@ downsample_iters = 1
 
 print star, peak_no, num_iters, num_chains, down_sample_factor
 
-#data_dir = "../downsampling/results"
 data_dir = "../cleaned_wo_rot2"
 if data_dir == "../cleaned":
     skiprows = 1
