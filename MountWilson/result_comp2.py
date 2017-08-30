@@ -8,7 +8,6 @@ Created on Wed Feb  8 16:13:12 2017
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
 data = np.genfromtxt("Goettingen.csv", dtype=None, delimiter=';')
 goet_cycles = dict()
 for [star, per, cyc1, cyc2, cyc3] in data:
@@ -50,29 +49,31 @@ for [star, cyc1, cyc2] in data:
 time_ranges_data = np.genfromtxt("time_ranges.dat", usecols=(0,1), dtype=None)
 time_ranges = dict()
 for [star, time_range] in time_ranges_data:
-    if star == 'SUNALL':
+    if star == 'SUN':
         star = 'Sun'
     time_ranges[star] = time_range
 
-data = pd.read_csv("BGLST/results.txt", names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("BGLST_BIC_6/results.txt", names=['star', 'f', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
 bglst_cycles = dict()
-for [star, cyc, std, normality, bic] in data:
-    if star == 'SUNALL':
+for [star, f, std, normality, bic] in data:
+    if star == 'SUN':
         star = 'Sun'
     if not bglst_cycles.has_key(star):
         bglst_cycles[star] = list()
     all_cycles = bglst_cycles[star]
     cycles = list()
+    cyc = 1.0/f
     if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
         cycles.append(cyc)
-        cycles.append(std)
+        cycles.append(std/f/f)
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GPR_stan/processed_with_cycles.txt", names=['star', 'count', 'count_used', 'validity', 'cyc', 'sigma', 'normality', 'bic', 'bic_diff'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("GP_quasiperiodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
 gp_cycles = dict()
-for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
-    if star == 'SUNALL':
+#for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
+for [star, validity, cyc, std, bic] in data:
+    if star == 'SUN':
         star = 'Sun'
     if not gp_cycles.has_key(star):
         gp_cycles[star] = list()
@@ -85,25 +86,27 @@ for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in d
     all_cycles.append(np.asarray(cycles))
 
 
-keys = np.asarray(bglst_cycles.keys())
+keys = np.asarray(time_ranges.keys())
 keys = np.sort(keys)
 
 for star in keys:
     output = "HD" + star + " & "
-    i = 0
-    for cycles in bglst_cycles[star]:
-        if len(cycles) > 0:
-            output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
-            if i < np.shape(bglst_cycles[star])[0] - 1:        
-                output += ", "
-        i += 1        
-    output += " & "
-
-    if gp_cycles.has_key(star):
-        for cycles in gp_cycles[star]:
+    if bglst_cycles.has_key(star):
+        i = 0
+        for cycles in bglst_cycles[star]:
             if len(cycles) > 0:
                 output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
                 if i < np.shape(bglst_cycles[star])[0] - 1:        
+                    output += ", "
+            i += 1        
+    output += " & "
+
+    if gp_cycles.has_key(star):
+        i = 0
+        for cycles in gp_cycles[star]:
+            if len(cycles) > 0:
+                output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                if i < np.shape(gp_cycles[star])[0] - 1:        
                     output += ", "
             i += 1        
     output += " & "

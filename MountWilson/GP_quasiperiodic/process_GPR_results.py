@@ -49,10 +49,10 @@ def make_parser(fieldwidths):
     return parse
 
 
-fieldwidths_rot = (13, 7, 8, 7, 7, 7, 7, 7, 7, 7, 7)  # negative widths represent ignored padding fields
-parse_rot = make_parser(fieldwidths_rot)
+#fieldwidths_rot = (13, 7, 8, 7, 7, 7, 7, 7, 7, 7, 7)  # negative widths represent ignored padding fields
+#parse_rot = make_parser(fieldwidths_rot)
 
-fieldwidths = (9, 7, 8, 7, 7, 7, 7, 7, 7, 7, 7)  # negative widths represent ignored padding fields
+fieldwidths = (16, 7, 8, 7, 7, 7, 7, 7, 7, 7, 7)  # negative widths represent ignored padding fields
 parse = make_parser(fieldwidths)
 
 rot_periods = mw_utils.load_rot_periods("../")
@@ -65,6 +65,8 @@ def read_cycles():
     #data = np.genfromtxt(file, dtype=None, skip_header=1)
     for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic] in data:
 
+        if delta_bic < 6:
+            continue
         print type(index)
         file_name = "results/" + star + "_" + str(index) + "_results.txt"
         if not os.path.isfile(file_name) and index == 0:
@@ -90,7 +92,8 @@ def read_cycles():
         if not counts.has_key(star):
             counts[star] = 0
         counts[star] = counts[star] + 1
-        if n_eff >= float(num_iters) / 10:
+        print n_eff
+        if n_eff >= 5:#float(num_iters) / 10:
         #details = np.genfromtxt(file_name, usecols=(n_eff_col), skip_header=5, skip_footer=5)
         #freq_row = -1
         #for row in np.arange(0, np.shape(details)[0]):
