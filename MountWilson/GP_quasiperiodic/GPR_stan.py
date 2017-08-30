@@ -34,7 +34,7 @@ from sklearn.cluster import KMeans
 #    group_no = int(sys.argv[2])
 
 star = sys.argv[1]
-peak_no = sys.argv[2]
+peak_no = int(sys.argv[2])
 
 num_iters = 50
 num_chains = 4
@@ -52,6 +52,7 @@ n_jobs = num_chains
 n_tries = 1
 downsample_iters = 1
 
+print star, peak_no, num_iters, num_chains, down_sample_factor
 
 #data_dir = "../downsampling/results"
 data_dir = "../cleaned_wo_rot2"
@@ -89,7 +90,7 @@ if os.path.isfile("GPR_stan_stars.txt"):
     #stars_to_recalculate = pd.read_csv("GPR_stan_stars.txt", names=['star'], dtype=None, sep='\s+', engine='python').as_matrix()
     stars_to_recalculate = np.genfromtxt("stars_to_recalculate.txt", dtype=None, delimiter=' ')
 
-dat = None
+data_found = False
 for root, dirs, dir_files in os.walk(data_dir):
     for file in dir_files:
         if file[-4:] == ".dat":
@@ -103,11 +104,12 @@ for root, dirs, dir_files in os.walk(data_dir):
                 file_star = file_star[1:]
             if star == file_star:
                 dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
+                data_found = True
                 break
 
-if dat == None:
+if not data_found:
     print "Cannot find data for " + star
-    exit
+    sys.exit(1)
 
 
 offset = 1979.3452
