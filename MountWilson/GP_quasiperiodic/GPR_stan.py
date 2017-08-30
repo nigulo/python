@@ -40,11 +40,11 @@ num_iters = 50
 num_chains = 4
 down_sample_factor = 8
 
-if len(sys.argv) > 2:
-    num_iters = int(sys.argv[3])
 if len(sys.argv) > 3:
-    num_chains = int(sys.argv[4])
+    num_iters = int(sys.argv[3])
 if len(sys.argv) > 4:
+    num_chains = int(sys.argv[4])
+if len(sys.argv) > 5:
     down_sample_factor = int(sys.argv[5])
 
 dynamic_downsample = False
