@@ -78,7 +78,10 @@ for i in np.arange(0, len(files)):
         star = star[1:]
     #if star != "SUN.COMB":
     #    continue
-    print star
+    if rot_periods.has_key(star):
+        print star, rot_periods[star]
+    else:
+        print star
     dat = np.loadtxt(data_dir+"/"+file, usecols=(0,1), skiprows=skiprows)
     t_orig = dat[:,0]
     y_orig = dat[:,1]

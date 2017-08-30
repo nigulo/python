@@ -33,11 +33,13 @@ def make_parser(fieldwidths):
 
 
 def load_rot_periods(path=""):
-    fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
+    #fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
+    fieldwidths = (10, 12, 18, 6, 12, 6)  # negative widths represent ignored padding fields
     parse = make_parser(fieldwidths)
     rot_periods = dict()
     line_no = 0
-    with open(path+"mwo-rhk.dat", "r") as ins:
+    #with open(path+"mwo-rhk.dat", "r") as ins:
+    with open(path+"mwo-gpresults.dat", "r") as ins:
         for line in ins:
             if line_no < 5:
                 line_no += 1
@@ -47,7 +49,8 @@ def load_rot_periods(path=""):
             star = star.replace(' ', '')
             star = star.upper()
             try:
-                p_rot = float(fields[7].strip())
+                #p_rot = float(fields[7].strip())
+                p_rot = float(fields[3].strip())
             except ValueError:
                 p_rot = None
             if p_rot != None:

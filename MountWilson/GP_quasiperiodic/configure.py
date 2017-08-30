@@ -37,6 +37,8 @@ if os.path.isfile("stars.txt"):
 
 
 output = open("run.sh", "w")
+output.write("module load python-env/2.7.13\n")
+output.write("module load openblas\n")
 for star in bglst_cycles.keys():
     if len(stars) > 0:
         star_indices, = np.where(stars == star)
@@ -56,7 +58,7 @@ output.write(
 ### parallel job script example
 ###
 ## name of your job
-#SBATCH -J GPR_stan
+#SBATCH -J GP_quasi
 ## system error message output file
 #SBATCH -e output_err_%j
 ## system message output file

@@ -1,3 +1,5 @@
+module load python-env/2.7.13
+module load openblas
 sbatch job.sh 20 0
 sbatch job.sh 20 1
 sbatch job.sh 20 2
