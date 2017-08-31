@@ -69,15 +69,31 @@ for [star, f, std, normality, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_quasiperiodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
-gp_cycles = dict()
+data = []#pd.read_csv("GP_periodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+gp_p_cycles = dict()
 #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
 for [star, validity, cyc, std, bic] in data:
     if star == 'SUN':
         star = 'Sun'
-    if not gp_cycles.has_key(star):
-        gp_cycles[star] = list()
-    all_cycles = gp_cycles[star]
+    if not gp_p_cycles.has_key(star):
+        gp_p_cycles[star] = list()
+    all_cycles = gp_p_cycles[star]
+    cycles = list()
+    if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
+        cycles.append(cyc)
+        cycles.append(std)
+        cycles.append(bic)
+    all_cycles.append(np.asarray(cycles))
+
+data = pd.read_csv("GP_quasiperiodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+gp_qp_cycles = dict()
+#for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
+for [star, validity, cyc, std, bic] in data:
+    if star == 'SUN':
+        star = 'Sun'
+    if not gp_qp_cycles.has_key(star):
+        gp_qp_cycles[star] = list()
+    all_cycles = gp_qp_cycles[star]
     cycles = list()
     if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
         cycles.append(cyc)
@@ -90,7 +106,7 @@ keys = np.asarray(time_ranges.keys())
 keys = np.sort(keys)
 
 for star in keys:
-    output = "HD" + star + " & "
+    output = "HD" + star + " & " + str(round(time_ranges[star],1)) +  " & "
     if bglst_cycles.has_key(star):
         i = 0
         for cycles in bglst_cycles[star]:
@@ -101,22 +117,33 @@ for star in keys:
             i += 1        
     output += " & "
 
-    if gp_cycles.has_key(star):
+    if gp_p_cycles.has_key(star):
         i = 0
-        for cycles in gp_cycles[star]:
+        for cycles in gp_p_cycles[star]:
             if len(cycles) > 0:
                 output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
-                if i < np.shape(gp_cycles[star])[0] - 1:        
+                if i < np.shape(gp_p_cycles[star])[0] - 1:        
                     output += ", "
             i += 1        
     output += " & "
 
-    if goet_cycles.has_key(star):
-        for cycle in goet_cycles[star]:
-            output += " " + str(round(cycle,2))
-    else:
-        output += "NA"
+    if gp_qp_cycles.has_key(star):
+        i = 0
+        for cycles in gp_qp_cycles[star]:
+            if len(cycles) > 0:
+                output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                if i < np.shape(gp_qp_cycles[star])[0] - 1:        
+                    output += ", "
+            i += 1        
     output += " & "
+
+    ##### Commenting Goettingen out for now
+    #if goet_cycles.has_key(star):
+    #    for cycle in goet_cycles[star]:
+    #        output += " " + str(round(cycle,2))
+    #else:
+    #    output += "NA"
+    #output += " & "
 
     if olah_cycles.has_key(star):
         for cycle in olah_cycles[star]:

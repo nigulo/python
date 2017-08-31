@@ -3,7 +3,7 @@
 ### parallel job script example
 ###
 ## name of your job
-#SBATCH -J GPR_stan
+#SBATCH -J GP_per
 ## system error message output file
 #SBATCH -e output_err_%j
 ## system message output file

@@ -49,28 +49,29 @@ def read_cycles(file):
     max_bic = None
     min_bic = None
     all_cycles = dict()
-    data = pd.read_csv(file, names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv(file, names=['star', 'f', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
     
     #data = np.genfromtxt(file, dtype=None, skip_header=1)
-    for [star, cyc, std, normality, bic] in data:
-        if star == 'SUNALL':
-            star = 'SUN'
+    for [star, f, std, normality, bic] in data:
+        #if star == 'SUNALL':
+        #    star = 'SUN'
         #print star, cyc, std_2
-        if not np.isnan(cyc):
+        if not np.isnan(f):
             if not all_cycles.has_key(star):
                 all_cycles[star] = []
             cycles = all_cycles[star]
             log_bic = np.log(bic)
-            if max_bic == None or log_bic > max_bic:
+            if max_bic is None or log_bic > max_bic:
                 max_bic = log_bic
-            if min_bic == None or log_bic < min_bic:
+            if min_bic is None or log_bic < min_bic:
                 min_bic = log_bic
                 
-            cycles.append((cyc*365.25, std*3*365.25, log_bic)) # three sigma
+            cyc = 1.0/f
+            cycles.append((cyc*365.25, std/f/f*3*365.25, log_bic)) # three sigma
             all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
-min_bic, max_bic, cycles = read_cycles("BGLST/results.txt")
+min_bic, max_bic, cycles = read_cycles("BGLST_BIC_6/results.txt")
 
 i = 0
 data = []

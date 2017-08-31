@@ -23,6 +23,7 @@ for root, dirs, files in os.walk("cleaned"):
             data = np.loadtxt("cleaned/"+file, usecols=(0,1), skiprows=1)
             t = data[:,0]
             y = data[:,1]
+            t /= 365.25
             time_range = max(t) - min(t)
             time_ranges.append([star, time_range])
 np.savetxt("time_ranges.dat", time_ranges, fmt='%s')
