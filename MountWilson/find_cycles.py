@@ -131,7 +131,7 @@ for root, dirs, files in os.walk(input_path):
 
             ###################################################################
             # Data
-            res = Prewhitener(star, "BGLST", t, y, freqs, max_iters=100, num_resamples=0, num_bootstrap=0, num_indep = 0, white_noise=False, max_peaks=2).prewhiten(p_values=p_values)
+            res = Prewhitener(star, "BGLST", t, y, freqs, max_iters=100, num_resamples=0, num_bootstrap=0, num_indep = 0, white_noise=False, max_peaks=1).prewhiten(p_values=p_values)
             #spec = np.column_stack((freqs, power))
             #np.savetxt("spectra/" + star + ".dat", spec, fmt='%f')
             ###################################################################

@@ -67,8 +67,12 @@ def read_cycles(file):
                 min_bic = log_bic
                 
             cyc = 1.0/f
-            cycles.append((cyc*365.25, std/f/f*3*365.25, log_bic)) # three sigma
-            all_cycles[star] = cycles
+            
+            f_samples = np.random.normal(loc=f, scale=std, size=1000)
+            cyc_std = np.std(np.ones(len(f_samples))/f_samples)
+            if cyc_std < cyc:
+                cycles.append((cyc*365.25, cyc_std*3*365.25, log_bic)) # three sigma
+                all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
 min_bic, max_bic, cycles = read_cycles("BGLST_BIC_6/results.txt")
@@ -106,7 +110,7 @@ with open("mwo-rhk.dat", "r") as ins:
                 tau = np.power(10.0, -3.33 + 15.382*bmv - 20.063*bmv**2 + 12.540*bmv**3 - 3.1466*bmv**4)
                 #ro = np.log10(4*np.pi*tau/p_rot)
                 ro = np.log10(4*np.pi*tau/p_rot)
-            print star, tau, bmv
+            #print star, tau, bmv
             dark_color =  "black"
             light_color =  "gray"
             sym = "o"

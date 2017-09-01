@@ -36,7 +36,7 @@ from sklearn.cluster import KMeans
 star = sys.argv[1]
 peak_no = int(sys.argv[2])
 
-num_iters = 50
+num_iters = 100
 num_chains = 4
 down_sample_factor = 8
 

@@ -18,7 +18,7 @@ from bayes_lin_reg import bayes_lin_reg
 from scipy.signal import argrelextrema
 import scipy
 
-bic_threshold = 6.0
+bic_threshold = 2.0
 seasonal_significance = True
 
 class Prewhitener:
@@ -163,6 +163,7 @@ class Prewhitener:
         for z0, p_value in zip(z0s, p_values):
             min_mse = -1.0
             max_bic = None
+            max_bic = None
             for peak_index in np.arange(0, self.max_peaks):
                 for (key, (specs, significant_lines, residue, total_bic)) in self.prewhiten_step(self.y, z0, p_value, -1.0, peak_index).items():
                     mse = sum(residue**2)/len(residue)
@@ -178,7 +179,7 @@ class Prewhitener:
                         #    max_bic = total_bic/num_lines_found
                         if (max_bic is None or total_bic - bic_threshold * num_lines_found > max_bic):
                             best_res = (key, (specs, significant_lines, residue, total_bic))
-                            max_bic = total_bic - bic_threshold * num_lines_found
+                            max_bic = (num_lines_found, total_bic)
                     else:
                         raise Exception("Unsupported type")
             key, best_res_data = best_res
