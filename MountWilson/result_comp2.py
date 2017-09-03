@@ -8,6 +8,8 @@ Created on Wed Feb  8 16:13:12 2017
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import mw_utils
+
 data = np.genfromtxt("Goettingen.csv", dtype=None, delimiter=';')
 goet_cycles = dict()
 for [star, per, cyc1, cyc2, cyc3] in data:
@@ -120,8 +122,10 @@ for [star, validity, cyc, std, bic] in data:
 keys = np.asarray(time_ranges.keys())
 keys = np.sort(keys)
 
+spec_types = mw_utils.load_spec_types()
+
 for star in keys:
-    output = "HD" + star + " & " + str(round(time_ranges[star],1)) +  " & "
+    output = "HD" + star + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star] + " & "
     if bglst_cycles.has_key(star):
         i = 0
         for cycles in bglst_cycles[star]:

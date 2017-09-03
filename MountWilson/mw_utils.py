@@ -56,6 +56,24 @@ def load_rot_periods(path=""):
             if p_rot != None:
                 rot_periods[star] = p_rot
     return rot_periods
+
+def load_spec_types(path=""):
+    fieldwidths = (10, 8, 10, 6, 8, 4)  # negative widths represent ignored padding fields
+    parse = make_parser(fieldwidths)
+    spec_types = dict()
+    line_no = 0
+    with open(path+"mwo-hr.dat", "r") as ins:
+        for line in ins:
+            if line_no < 19:
+                line_no += 1
+                continue
+            fields = parse(line)
+            star = fields[0].strip()
+            star = star.replace(' ', '')
+            star = star.upper()
+            spec_type = fields[2].strip()
+            spec_types[star] = spec_type
+    return spec_types
 ###############################################################################
 
 #rot_period_data = np.genfromtxt("periods.txt", usecols=(0,1), dtype=None)
