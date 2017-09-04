@@ -95,4 +95,4 @@ bmvs_dense = np.linspace(min(msbv), max(msbv), 1000)
 plt.plot(bmvs, ms, 'o', bmvs_dense, msf(bmvs_dense), '-')
 plt.show()
 
-
+np.savetxt("MS.dat", stars, fmt='%s')

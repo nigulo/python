@@ -68,6 +68,8 @@ for [star, time_range] in time_ranges_data:
             print star
         assert baliunas_cycles.has_key(star)
 
+ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
+
 data = pd.read_csv("BGLST_BIC_6/results.txt", names=['star', 'f', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
 bglst_cycles = dict()
 for [star, f, std, normality, bic] in data:
@@ -125,7 +127,10 @@ keys = np.sort(keys)
 spec_types = mw_utils.load_spec_types()
 
 for star in keys:
-    output = "HD" + star + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star] + " & "
+    is_ms = ""
+    if len(np.where(ms_stars == star.upper())[0] > 0):
+        is_ms = "\checkmark"
+    output = "HD" + star + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & "
     if bglst_cycles.has_key(star):
         i = 0
         for cycles in bglst_cycles[star]:
