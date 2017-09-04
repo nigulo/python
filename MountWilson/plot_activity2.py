@@ -14,6 +14,7 @@ import os
 import os.path
 from numpy import linalg as LA
 from matplotlib.patches import Ellipse
+import mw_utils
 
 try:
     from itertools import izip_longest  # added in Py 2.6
@@ -44,6 +45,8 @@ def make_parser(fieldwidths):
 
 fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
 parse = make_parser(fieldwidths)
+
+ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
 
 def read_cycles(file):
     max_bic = None
@@ -76,6 +79,8 @@ def read_cycles(file):
     return min_bic, max_bic, all_cycles
 
 min_bic, max_bic, cycles = read_cycles("BGLST_BIC_6/results.txt")
+
+
 
 i = 0
 data = []
@@ -114,6 +119,11 @@ with open("mwo-rhk.dat", "r") as ins:
             dark_color =  "black"
             light_color =  "gray"
             sym = "o"
+            is_ms = False
+            if len(np.where(ms_stars == star.upper())[0] > 0):
+                is_ms = True
+            if is_ms:
+                sym = "+"
             if star == "SUN":
                 sym = "*"
                 #dark_color = "gold"
@@ -121,9 +131,19 @@ with open("mwo-rhk.dat", "r") as ins:
             #if star == "10780" or star == "155886":
             #    dark_color = "red"
             #    light_color = "lightsalmon"
-            if cycles.has_key(star):
+            if cycles.has_key(star):# and is_ms:
                 data_star = []
                 for (p_cyc, std, bic) in cycles[star]:
+                    exclude = False
+                    for (p_cyc_2, std_2, bic_2) in cycles[star]:
+                        if p_cyc != p_cyc_2:
+                            for i in [2.0, 3.0]:
+                                if p_cyc_2 + std_2 > (p_cyc - std) * i and p_cyc_2 - std_2 < (p_cyc + std) * i:
+                                    print p_cyc, p_cyc_2
+                                    exclude = True
+                                    break
+                    if exclude:
+                        continue
                     #r_hks_ls.append(r_hk)
                     val = np.log10(p_rot/p_cyc)
                     err = std/p_cyc/np.log(10)
