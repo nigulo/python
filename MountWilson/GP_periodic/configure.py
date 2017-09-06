@@ -3,8 +3,8 @@ import sys
 import numpy as np
 import os.path
 
-num_iters = 200
-num_chains = 8
+num_iters = 100
+num_chains = 16
 down_sample_factor = 1
 queue = "longrun"
 time_limit = "336:00:00"
@@ -15,7 +15,7 @@ if len(sys.argv) > 1:
 
 
 def load_BGLST_results():
-    data = pd.read_csv("BGLST_results.txt", names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv("BGLST_results.txt", names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
     bglst_cycles = dict()
     for [star, cyc, std, normality, bic] in data:
         if not bglst_cycles.has_key(star):
@@ -33,8 +33,7 @@ bglst_cycles = load_BGLST_results()
 stars = np.array([])
 if os.path.isfile("stars.txt"):
     #stars_to_recalculate = pd.read_csv("GPR_stan_stars.txt", names=['star'], dtype=None, sep='\s+', engine='python').as_matrix()
-    stars = np.genfromtxt("stars.txt", dtype='str', delimiter=' ')
-
+    stars = np.atleast_1d(np.genfromtxt("stars.txt", dtype='str', delimiter=' '))
 
 output = open("run.sh", "w")
 output.write("module load python-env/2.7.13\n")
