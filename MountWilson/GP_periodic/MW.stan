@@ -31,7 +31,7 @@ parameters {
 transformed parameters {
     real<lower=0> length_scale;
     vector[N] mu;
-    length_scale = inv(inv_length_scale * freq);
+    length_scale = inv(inv_length_scale);
     for (i in 1:(N)) mu[i] = m;
 }
 
@@ -57,7 +57,7 @@ model {
     freq ~ normal(prior_freq_mean, prior_freq_std);
     sig_var ~ normal(0, var_seasonal_means);
     #length_scale ~ cauchy(1.0/(freq+ 1.0/duration), duration);
-    #inv_length_scale ~ normal(0, 0.5/3.0);
+    inv_length_scale ~ normal(0, 0.5/3.0);
     #inv_length_scale ~ beta(1, 3);
     trend_var ~ normal(0, var_y/duration/duration);
     m ~ normal(mean_y, sqrt(var_y));

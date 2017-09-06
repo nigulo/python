@@ -88,7 +88,7 @@ for [star, f, std, normality, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = []#pd.read_csv("GP_periodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("GP_periodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
 gp_p_cycles = dict()
 #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
 for [star, validity, cyc, std, bic] in data:
