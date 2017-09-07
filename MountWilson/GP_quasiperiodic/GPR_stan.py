@@ -36,6 +36,11 @@ from sklearn.cluster import KMeans
 star = sys.argv[1]
 peak_no = int(sys.argv[2])
 
+peak_no_str = ""
+if peak_no > 0:
+    peak_no_str = str(peak_no) + "/"
+    
+
 num_iters = 50
 num_chains = 4
 down_sample_factor = 8
@@ -206,12 +211,12 @@ for downsample_iter in np.arange(0, downsample_iters):
             init=initial_param_values,
             iter=num_iters, chains=num_chains, n_jobs=n_jobs)
     
-    with open("results/"+star + downsample_iter_str + "_results.txt", "w") as output:
+    with open("results/"+peak_no_str+star + downsample_iter_str + "_results.txt", "w") as output:
         output.write(str(fit))    
 
 
     fit.plot()
-    plt.savefig("results/"+star + downsample_iter_str + "_results.png")
+    plt.savefig("results/"+peak_no_str+star + downsample_iter_str + "_results.png")
     plt.close()
 
     results = fit.extract()
@@ -343,7 +348,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
 
 
-    fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')
+    fig.savefig("results/"+peak_no_str+star + downsample_iter_str +  '_fit.png')
     plt.close()
 
     log_n_seasons = np.log(n_seasons)
@@ -370,6 +375,6 @@ for downsample_iter in np.arange(0, downsample_iters):
     period_samples = np.ones(len(freq1_samples)) / freq1_samples;
     period_se = freq_se/freq/freq
     with FileLock("GPRLock"):
-        with open("results/results.txt", "a") as output:
+        with open("results/"+peak_no_str+"results.txt", "a") as output:
             #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
             output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(rot_amplitude/np.var(y)) + " " + str(fvu) + " " + str(bic_seasons_null - bic_seasons) + "\n")    
