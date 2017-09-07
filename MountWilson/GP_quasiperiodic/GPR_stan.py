@@ -190,6 +190,8 @@ for downsample_iter in np.arange(0, downsample_iters):
         
     print "prior_freq_mean, prior_freq_std: ", prior_freq_mean, prior_freq_std
     
+    if prior_freq_std > 0.167:
+        prior_freq_std = 0.167
     initial_param_values = []
     for i in np.arange(0, num_chains):                    
         #initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
