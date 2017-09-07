@@ -70,7 +70,7 @@ for [star, time_range] in time_ranges_data:
 
 ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
 
-data = pd.read_csv("BGLST_BIC_6/results.txt", names=['star', 'f', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("BGLST_BIC_6/results.txt", names=['star', 'f', 'sigma', 'normality', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
 bglst_cycles = dict()
 for [star, f, std, normality, bic] in data:
     if star == 'SUN':
@@ -88,7 +88,7 @@ for [star, f, std, normality, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_periodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("GP_periodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
 gp_p_cycles = dict()
 #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
 for [star, validity, cyc, std, bic] in data:
@@ -104,7 +104,7 @@ for [star, validity, cyc, std, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_quasiperiodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("GP_quasiperiodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
 gp_qp_cycles = dict()
 #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
 for [star, validity, cyc, std, bic] in data:

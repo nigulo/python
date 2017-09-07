@@ -16,6 +16,24 @@ from numpy import linalg as LA
 from matplotlib.patches import Ellipse
 import mw_utils
 
+include_non_ms = True
+
+type = "BGLST"
+#type = "GP_P"
+#type = "GP_QP"
+
+if type == "BGLST":
+    input_path = "BGLST_BIC_6/results.txt"
+    bglst_or_gp = True
+elif type == "GP_P":
+    input_path = "GP_periodic/processed_with_cycles.txt"
+    bglst_or_gp = False
+elif type == "GP_quasiperiodic/processed_with_cycles.txt":
+    input_path = "BGLST_BIC_6/results.txt"
+    bglst_or_gp = False
+else:
+    assert(False)    
+
 try:
     from itertools import izip_longest  # added in Py 2.6
 except ImportError:
@@ -48,11 +66,11 @@ parse = make_parser(fieldwidths)
 
 ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
 
-def read_cycles(file):
+def read_bglst_cycles(file):
     max_bic = None
     min_bic = None
     all_cycles = dict()
-    data = pd.read_csv(file, names=['star', 'f', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv(file, names=['star', 'f', 'sigma', 'normality', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
     
     #data = np.genfromtxt(file, dtype=None, skip_header=1)
     for [star, f, std, normality, bic] in data:
@@ -78,8 +96,36 @@ def read_cycles(file):
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
-min_bic, max_bic, cycles = read_cycles("BGLST_BIC_6/results.txt")
+def read_gp_cycles(file):
+    max_bic = None
+    min_bic = None
+    all_cycles = dict()
+    data = pd.read_csv(file, names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+    
+    #data = np.genfromtxt(file, dtype=None, skip_header=1)
+    for [star, validity, cyc, std, bic] in data:
+        #if star == 'SUNALL':
+        #    star = 'SUN'
+        #print star, cyc, std_2
+        if not np.isnan(cyc):
+            if not all_cycles.has_key(star):
+                all_cycles[star] = []
+            cycles = all_cycles[star]
+            log_bic = np.log(bic)
+            if max_bic is None or log_bic > max_bic:
+                max_bic = log_bic
+            if min_bic is None or log_bic < min_bic:
+                min_bic = log_bic
+                
+            if std < cyc:
+                cycles.append((cyc*365.25, std*3*365.25, log_bic)) # three sigma
+                all_cycles[star] = cycles
+    return min_bic, max_bic, all_cycles
 
+if bglst_or_gp:
+    min_bic, max_bic, cycles = read_bglst_cycles(input_path)
+else:
+    min_bic, max_bic, cycles = read_gp_cycles(input_path)
 
 
 i = 0
@@ -131,7 +177,7 @@ with open("mwo-rhk.dat", "r") as ins:
             #if star == "10780" or star == "155886":
             #    dark_color = "red"
             #    light_color = "lightsalmon"
-            if cycles.has_key(star):# and is_ms:
+            if cycles.has_key(star) and (is_ms or include_non_ms):
                 data_star = []
                 for (p_cyc, std, bic) in cycles[star]:
                     exclude = False
