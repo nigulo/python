@@ -64,7 +64,7 @@ files = []
 
 
 def load_BGLST_results():
-    data = pd.read_csv("BGLST_results.txt", names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=0, dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv("BGLST_results.txt", names=['star', 'cyc', 'sigma', 'normality', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
     bglst_cycles = dict()
     for [star, cyc, std, normality, bic] in data:
         if not bglst_cycles.has_key(star):
