@@ -264,14 +264,13 @@ if os.path.isfile("clusters.txt"):
     m2 = dat[1,:]
     s1 = dat[2:4,:]
     s2 = dat[4:6,:]
-    print m1
     w1, v1 = LA.eig(s1)
     w2, v2 = LA.eig(s2)
     
-    print w1
-    print v1
-    print w2
-    print v2
+    #print w1
+    #print v1
+    #print w2
+    #print v2
     cos1= v1[0,0]
     sin1= v1[1,0]
     angle1 = np.arccos(cos1)
@@ -283,6 +282,7 @@ if os.path.isfile("clusters.txt"):
     #e1.set_clip_box(ax1.bbox)
     e1.set_alpha(0.25)
     e1.set_facecolor('blue')
+    #ax1.plot([m1[0], m1[0]+np.cos(angle1)], [m1[1], m1[1]+np.sin(angle1)], color='k', linestyle='-', linewidth=1)
 
     cos2= v2[0,0]
     sin2= v2[1,0]
@@ -295,6 +295,14 @@ if os.path.isfile("clusters.txt"):
     #e2.set_clip_box(ax1.bbox)
     e2.set_alpha(0.25)
     e2.set_facecolor('red')
+    #ax1.plot([m2[0], m2[0]+np.cos(angle2)], [m2[1], m2[1]+np.sin(angle2)], color='k', linestyle='-', linewidth=1)
+
+    if angle1 > np.pi/2:
+        angle1 -= np.pi/2
+    if angle2 > np.pi/2:
+        angle2 -= np.pi/2
+    print "y1=" + str(np.tan(angle1)) + "x+" + str(m1[1] - np.tan(angle1) * m1[0])
+    print "y2=" + str(np.tan(angle2)) + "x+" + str(m2[1] - np.tan(angle2) * m2[0])
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
