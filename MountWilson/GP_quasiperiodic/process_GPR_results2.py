@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 import os
+import os.path
 import mw_utils
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
@@ -21,11 +22,20 @@ num_iters = 300
 freq_row = 2
 n_eff_col = 9
 
+peak_no = 1
+use_residue_as_data = False
+use_residue_from = 0
+
+peak_no_str = ""
+if peak_no > 0:
+    peak_no_str = str(peak_no) + "/"
+
 data_dir = "../GP_input"
-if data_dir == "../cleaned":
-    skiprows = 1
-else:
-    skiprows = 0
+if use_residue_as_data:
+    use_residue_from_str = ""
+    if use_residue_from > 0:
+        use_residue_from_str = str(use_residue_from) + "/"
+    data_dir = "residues/" + use_residue_from_str
 
 
 try:
@@ -66,16 +76,16 @@ rot_periods = mw_utils.load_rot_periods("../")
 
 output_cycles = open("processed_with_cycles.txt", "w")
 
-data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'rot_amplitude', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("results/"+peak_no_str+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'rot_amplitude', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
 
 #data = np.genfromtxt(file, dtype=None, skip_header=1)
 for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic] in data:
 
     if delta_bic < 6:
         continue
-    file_name = "results/" + star + "_" + str(index) + "_results.txt"
+    file_name = "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
     if not os.path.isfile(file_name) and index == 0:
-        file_name = "results/" + star + "_results.txt"
+        file_name = "results/"+ peak_no_str + star + "_results.txt"
     print "Loading " + star + " " + str(index)
     n_eff = -1
     sig_var = -1
@@ -115,39 +125,40 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         #cycles.append((cyc*365.25, std_2/2*365.25)) # one sigma
         output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")    
     
-        dat = np.loadtxt(data_dir+"/"+star + ".dat", usecols=(0,1), skiprows=skiprows)
+        if not os.path.isfile("residues/" + peak_no_str + star + ".dat"):
+            dat = np.loadtxt(data_dir+"/"+star + ".dat", usecols=(0,1), skiprows=0)
+            
+            offset = 1979.3452
+            
+            t_orig = dat[:,0]
+            y = dat[:,1]
+            
+            t = t_orig/365.25
+            t += offset
+            noise_var = mw_utils.get_seasonal_noise_var(t, y)
+            n = len(t)
+            
+            gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
+            t_test = np.linspace(min(t), max(t), 500)
+            (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
+            (f_t, _, _) = gpr_gp.fit(t, y-m, t)
+            f_mean += m
+            residue = y - (f_t + m)
+            
+            dat = np.column_stack((t_orig, residue))
+            np.savetxt("residues/" + peak_no_str + star + ".dat", dat, fmt='%f')
+            fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+            fig.set_size_inches(18, 12)
         
-        offset = 1979.3452
+            ax1.plot(t, y, 'b+')
+            #ax2.plot(t, y_wo_rot, 'r+')
+            ax1.plot(t_test, f_mean, 'k-')
+            ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
         
-        t_orig = dat[:,0]
-        y = dat[:,1]
-        
-        t = t_orig/365.25
-        t += offset
-        noise_var = mw_utils.get_seasonal_noise_var(t, y)
-        n = len(t)
-        
-        gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
-        t_test = np.linspace(min(t), max(t), 500)
-        (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
-        (f_t, _, _) = gpr_gp.fit(t, y-m, t)
-        f_mean += m
-        residue = y - (f_t + m)
-        
-        dat = np.column_stack((t_orig, residue))
-        np.savetxt("residues/" + star + ".dat", dat, fmt='%f')
-        fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
-        fig.set_size_inches(18, 12)
-    
-        ax1.plot(t, y, 'b+')
-        #ax2.plot(t, y_wo_rot, 'r+')
-        ax1.plot(t_test, f_mean, 'k-')
-        ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
-    
-        ax2.plot(t, residue, 'b+')
-  
-        fig.savefig("fits/"+star + '.png')
-        plt.close()
+            ax2.plot(t, residue, 'b+')
+      
+            fig.savefig("fits/"+peak_no_str+star + '.png')
+            plt.close()
     
     else:
         print "Omitting " + star + " " + str(index) + " due to too low n_eff"
