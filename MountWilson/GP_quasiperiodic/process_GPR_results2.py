@@ -147,17 +147,20 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
             dat = np.column_stack((t_orig, residue))
             np.savetxt("residues/" + peak_no_str + star + ".dat", dat, fmt='%f')
-            fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
-            fig.set_size_inches(18, 12)
+            fig, ax1 = plt.subplots(nrows=1, ncols=1)
+            #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+            fig.set_size_inches(9, 5)
         
             ax1.plot(t, y, 'b+')
             #ax2.plot(t, y_wo_rot, 'r+')
             ax1.plot(t_test, f_mean, 'k-')
-            ax1.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
+            ax1.fill_between(t_test, f_mean + 3.0 * np.sqrt(pred_var), f_mean - 3.0 * np.sqrt(pred_var), alpha=0.1, facecolor='gray', interpolate=True)
         
-            ax2.plot(t, residue, 'b+')
+            ax1.set_ylabel(r'S-index')
+            ax1.set_xlabel(r'Time [yr]')
+            #ax2.plot(t, residue, 'b+')
       
-            fig.savefig("fits/"+peak_no_str+star + '.png')
+            fig.savefig("fits/" + peak_no_str+star + '.pdf')
             plt.close()
     
     else:
