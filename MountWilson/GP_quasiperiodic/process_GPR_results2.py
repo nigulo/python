@@ -22,7 +22,7 @@ num_iters = 300
 freq_row = 2
 n_eff_col = 9
 
-peak_no = 1
+peak_no = 0
 use_residue_as_data = False
 use_residue_from = 0
 

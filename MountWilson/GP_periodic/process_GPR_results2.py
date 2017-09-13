@@ -22,7 +22,7 @@ num_iters = 300
 freq_row = 2
 n_eff_col = 9
 
-peak_no = 1
+peak_no = 0
 use_residue_as_data = False
 use_residue_from = 0
 
@@ -83,6 +83,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
 
     if delta_bic < 6:
         continue
+    star = str(star)
     file_name = "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
     if not os.path.isfile(file_name) and index == 0:
         file_name = "results/"+ peak_no_str + star + "_results.txt"

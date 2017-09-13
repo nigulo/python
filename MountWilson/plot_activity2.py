@@ -19,17 +19,17 @@ import mw_utils
 include_non_ms = True
 
 #type = "BGLST"
-#type = "GP_P"
-type = "GP_QP"
+type = "GP_P"
+#type = "GP_QP"
 
 if type == "BGLST":
     input_path = "BGLST_BIC_6/results.txt"
     bglst_or_gp = True
 elif type == "GP_P":
-    input_path = "GP_periodic/processed_with_cycles.txt"
+    input_path = "GP_periodic/results_combined.txt"
     bglst_or_gp = False
 elif type == "GP_QP":
-    input_path = "GP_quasiperiodic/processed_with_cycles.txt"
+    input_path = "GP_quasiperiodic/results_combined.txt"
     bglst_or_gp = False
 else:
     assert(False)    
