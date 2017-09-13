@@ -18,21 +18,7 @@ import mw_utils
 
 include_non_ms = True
 
-#type = "BGLST"
-type = "GP_P"
-#type = "GP_QP"
-
-if type == "BGLST":
-    input_path = "BGLST_BIC_6/results.txt"
-    bglst_or_gp = True
-elif type == "GP_P":
-    input_path = "GP_periodic/results_combined.txt"
-    bglst_or_gp = False
-elif type == "GP_QP":
-    input_path = "GP_quasiperiodic/results_combined.txt"
-    bglst_or_gp = False
-else:
-    assert(False)    
+plot_ro = False
 
 try:
     from itertools import izip_longest  # added in Py 2.6
@@ -122,187 +108,240 @@ def read_gp_cycles(file):
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
-if bglst_or_gp:
-    min_bic, max_bic, cycles = read_bglst_cycles(input_path)
-else:
-    min_bic, max_bic, cycles = read_gp_cycles(input_path)
-
-
-i = 0
-data = []
-plot_ro = False
-
-with open("mwo-rhk.dat", "r") as ins:
-    for line in ins:
-        if i < 5:
-            i += 1
-            continue
-        fields = parse(line)
-        star = fields[0].strip()
-        star = star.replace(' ', '')
-        star = star.upper()
-        try:
-            bmv = float(fields[4].strip())
-        except ValueError:
-            bmv = 0.0
-        try:
-            r_hk = float(fields[6].strip())
-        except ValueError:
-            r_hk = None
-        try:
-            p_rot = float(fields[7].strip())
-        except ValueError:
-            p_rot = None
-        if p_rot != None and r_hk != None and bmv != None:
-            data_star = None
-            if bmv >= 1.0:
-                tau = 25.0
-            else:
-                tau = np.power(10.0, -3.33 + 15.382*bmv - 20.063*bmv**2 + 12.540*bmv**3 - 3.1466*bmv**4)
-                #ro = np.log10(4*np.pi*tau/p_rot)
-                ro = np.log10(4*np.pi*tau/p_rot)
-            #print star, tau, bmv
-            dark_color =  "black"
-            light_color =  "gray"
-            sym = "o"
-            is_ms = False
-            if len(np.where(ms_stars == star.upper())[0] > 0):
-                is_ms = True
-            if is_ms:
-                sym = "+"
-            if star == "SUN":
-                sym = "*"
-                #dark_color = "gold"
-                #light_color = "lemonchiffon"
-            #if star == "10780" or star == "155886":
-            #    dark_color = "red"
-            #    light_color = "lightsalmon"
-            if cycles.has_key(star) and (is_ms or include_non_ms):
-                data_star = []
-                for (p_cyc, std, bic) in cycles[star]:
-                    exclude = False
-                    for (p_cyc_2, std_2, bic_2) in cycles[star]:
-                        if p_cyc != p_cyc_2:
-                            for i in [2.0, 3.0]:
-                                if p_cyc_2 + std_2 > (p_cyc - std) * i and p_cyc_2 - std_2 < (p_cyc + std) * i:
-                                    print p_cyc, p_cyc_2
-                                    exclude = True
-                                    break
-                    if exclude:
-                        continue
-                    #r_hks_ls.append(r_hk)
-                    val = np.log10(p_rot/p_cyc)
-                    err = std/p_cyc/np.log(10)
-                    if err < 0.02:
-                        err = 0.0
-                    #val1 = np.log10(p_rot/(p_cyc + std))
-                    #val2 = np.log10(p_rot/(p_cyc - std))
-                    #print val - val1, val2 - val, err
-                    if bic > 100:
-                        r = 0.0
-                        g = 0.0
-                        b = 0.0
-                    else:
-                        c = 0.5*(1.0 - (bic - min_bic)/(max_bic - min_bic))
-                        r = c
-                        g = c
-                        b = c
-                    data_star.append([r_hk, val, err, err, r, g, b, ro, sym])
-                data.append(data_star)
-        #print star, bmv, r_hk, p_rot
-
-
-
 ###############################################################################
 if plot_ro:
-    fig1, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
-    fig1.set_size_inches(6, 8)
+    fig1, ((ax111, ax112), (ax121, ax122), (ax131, ax132)) = plt.subplots(nrows=3, ncols=2, sharex=True)
+    fig1.set_size_inches(12, 18)
+    ax131.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$')
+    ax132.set_xlabel(r'${\rm log}{\rm Ro}^{-1}$')
+    ax111.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax111.transAxes)
+    ax112.text(0.9, 0.9,'(d)', horizontalalignment='center', transform=ax112.transAxes)
+    ax121.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax121.transAxes)
+    ax122.text(0.9, 0.9,'(e)', horizontalalignment='center', transform=ax122.transAxes)
+    ax131.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax131.transAxes)
+    ax132.text(0.9, 0.9,'(f)', horizontalalignment='center', transform=ax132.transAxes)
 else:
-    fig1, ax1 = plt.subplots(nrows=1, ncols=1, sharex=False)
-    fig1.set_size_inches(6, 5)
+    fig1, (ax11, ax12, ax13) = plt.subplots(nrows=3, ncols=1, sharex=False)
+    fig1.set_size_inches(6, 18)
+    ax13.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$')
+    ax11.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax11.transAxes)
+    ax12.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax12.transAxes)
+    ax13.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax13.transAxes)
 
-###############################################################################
-if plot_ro:
-    ax1.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes)
-    ax2.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes)
+fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
+fig2.set_size_inches(6, 18)
+ax21.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes)
+ax22.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes)
+ax23.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes)
+ax23.set_xlabel(r'$P_{\rm rot}$ [d]')
 
-activity_ls_1 = []
-activity_ls_2 = []
-for data_star in data:
-    data_star_arr = np.asarray(data_star)
-    #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
-    ax1.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color='gray', lw=1.0)
-    if plot_ro:
-        ax2.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color='gray', lw=1.0)
-    for [r_hk, y, err1, err2, r, g, b, ro, sym] in data_star:
-        activity_ls_1.append([r_hk, y])
-        activity_ls_2.append([ro, y])
-        if err1 == 0 and err2 == 0:
-            ax1.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle='full'), lw=1, color=[r, g, b], s=36, edgecolors=[r, g, b])
-            if plot_ro:
-                ax2.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle='full'), lw=1, color=[r, g, b], size=36, edgecolors=[r, g, b])
+for type in ["BGLST", "GP_P", "GP_QP"]:
+
+    if type == "BGLST":
+        if plot_ro:
+            ax11 = ax111
+            ax12 = ax112
         else:
-            ax1.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
-            if plot_ro:
-                ax2.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
-            
-np.savetxt("activity_1.txt", activity_ls_1, fmt='%f')
-np.savetxt("activity_2.txt", activity_ls_2, fmt='%f')
+            ax11 = ax11            
+        ax2 = ax21
+        input_path = "BGLST_BIC_6/results.txt"
+        bglst_or_gp = True
+    elif type == "GP_P":
+        if plot_ro:
+            ax11 = ax121
+            ax12 = ax122
+        else:
+            ax11 = ax12            
+        ax2 = ax22
+        input_path = "GP_periodic/results_combined.txt"
+        bglst_or_gp = False
+    elif type == "GP_QP":
+        if plot_ro:
+            ax11 = ax131
+            ax12 = ax132
+        else:
+            ax11 = ax13            
+        ax2 = ax23
+        input_path = "GP_quasiperiodic/results_combined.txt"
+        bglst_or_gp = False
+    else:
+        assert(False)    
 
-ax1.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$')
-ax1.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$')
-if plot_ro:
-    ax2.set_xlabel(r'${\rm log}{\rm Ro}^{-1}$')
-    ax2.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$')
-#fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
 
-###############################################################################
-if os.path.isfile("clusters.txt"):
-    dat = np.loadtxt("clusters.txt", usecols=(0,1), skiprows=0)
-
-    m1 = dat[0,:]
-    m2 = dat[1,:]
-    s1 = dat[2:4,:]
-    s2 = dat[4:6,:]
-    w1, v1 = LA.eig(s1)
-    w2, v2 = LA.eig(s2)
+    if bglst_or_gp:
+        min_bic, max_bic, cycles = read_bglst_cycles(input_path)
+    else:
+        min_bic, max_bic, cycles = read_gp_cycles(input_path)
     
-    #print w1
-    #print v1
-    #print w2
-    #print v2
-    cos1= v1[0,0]
-    sin1= v1[1,0]
-    angle1 = np.arccos(cos1)
-    if sin1 < 0:
-        angle1 = -angle1
     
-    e1 = Ellipse(xy=m1, width=2*np.sqrt(w1[0]), height=2*np.sqrt(w1[1]), angle=angle1*180/np.pi, linestyle=None, linewidth=0)
-    ax1.add_artist(e1)
-    #e1.set_clip_box(ax1.bbox)
-    e1.set_alpha(0.25)
-    e1.set_facecolor('blue')
-    #ax1.plot([m1[0], m1[0]+np.cos(angle1)], [m1[1], m1[1]+np.sin(angle1)], color='k', linestyle='-', linewidth=1)
-
-    cos2= v2[0,0]
-    sin2= v2[1,0]
-    angle2 = np.arccos(cos2)
-    if sin2 < 0:
-        angle2 = -angle2
+    i = 0
+    data = []
+    plot_ro = False
     
-    e2 = Ellipse(xy=m2, width=2*np.sqrt(w2[0]), height=2*np.sqrt(w2[1]), angle=angle2*180/np.pi, linestyle=None, linewidth=0)
-    ax1.add_artist(e2)
-    #e2.set_clip_box(ax1.bbox)
-    e2.set_alpha(0.25)
-    e2.set_facecolor('red')
-    #ax1.plot([m2[0], m2[0]+np.cos(angle2)], [m2[1], m2[1]+np.sin(angle2)], color='k', linestyle='-', linewidth=1)
-
-    if angle1 > np.pi/2:
-        angle1 -= np.pi/2
-    if angle2 > np.pi/2:
-        angle2 -= np.pi/2
-    print "y1=" + str(np.tan(angle1)) + "x+" + str(m1[1] - np.tan(angle1) * m1[0])
-    print "y2=" + str(np.tan(angle2)) + "x+" + str(m2[1] - np.tan(angle2) * m2[0])
+    with open("mwo-rhk.dat", "r") as ins:
+        for line in ins:
+            if i < 5:
+                i += 1
+                continue
+            fields = parse(line)
+            star = fields[0].strip()
+            star = star.replace(' ', '')
+            star = star.upper()
+            try:
+                bmv = float(fields[4].strip())
+            except ValueError:
+                bmv = 0.0
+            try:
+                r_hk = float(fields[6].strip())
+            except ValueError:
+                r_hk = None
+            try:
+                p_rot = float(fields[7].strip())
+            except ValueError:
+                p_rot = None
+            if p_rot != None and r_hk != None and bmv != None:
+                data_star = None
+                if bmv >= 1.0:
+                    tau = 25.0
+                else:
+                    tau = np.power(10.0, -3.33 + 15.382*bmv - 20.063*bmv**2 + 12.540*bmv**3 - 3.1466*bmv**4)
+                    #ro = np.log10(4*np.pi*tau/p_rot)
+                    ro = np.log10(4*np.pi*tau/p_rot)
+                #print star, tau, bmv
+                dark_color =  "black"
+                light_color =  "gray"
+                sym = "o"
+                is_ms = False
+                if len(np.where(ms_stars == star.upper())[0] > 0):
+                    is_ms = True
+                if is_ms:
+                    sym = "+"
+                if star == "SUN":
+                    sym = "*"
+                    #dark_color = "gold"
+                    #light_color = "lemonchiffon"
+                #if star == "10780" or star == "155886":
+                #    dark_color = "red"
+                #    light_color = "lightsalmon"
+                if cycles.has_key(star) and (is_ms or include_non_ms):
+                    data_star = []
+                    for (p_cyc, std, bic) in cycles[star]:
+                        exclude = False
+                        for (p_cyc_2, std_2, bic_2) in cycles[star]:
+                            if p_cyc != p_cyc_2:
+                                for i in [2.0, 3.0]:
+                                    if p_cyc_2 + std_2 > (p_cyc - std) * i and p_cyc_2 - std_2 < (p_cyc + std) * i:
+                                        print p_cyc, p_cyc_2
+                                        exclude = True
+                                        break
+                        if exclude:
+                            continue
+                        #r_hks_ls.append(r_hk)
+                        val = np.log10(p_rot/p_cyc)
+                        err = std/p_cyc/np.log(10)
+                        if err < 0.02:
+                            err = 0.0
+                        #val1 = np.log10(p_rot/(p_cyc + std))
+                        #val2 = np.log10(p_rot/(p_cyc - std))
+                        #print val - val1, val2 - val, err
+                        if bic > 100:
+                            r = 0.0
+                            g = 0.0
+                            b = 0.0
+                        else:
+                            c = 0.5*(1.0 - (bic - min_bic)/(max_bic - min_bic))
+                            r = c
+                            g = c
+                            b = c
+                        data_star.append([r_hk, val, err, err, r, g, b, ro, sym, p_rot, p_cyc/365.25])
+                    data.append(data_star)
+            #print star, bmv, r_hk, p_rot
+    
+    
+    activity_ls_1 = []
+    activity_ls_2 = []
+    for data_star in data:
+        data_star_arr = np.asarray(data_star)
+        #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
+        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color='gray', lw=1.0)
+        ax2.plot(data_star_arr[:,9], data_star_arr[:,10], linestyle=':', color='gray', lw=1.0)
+        if plot_ro:
+            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color='gray', lw=1.0)
+        for [r_hk, y, err1, err2, r, g, b, ro, sym, p_rot, p_cyc] in data_star:
+            activity_ls_1.append([r_hk, y])
+            activity_ls_2.append([ro, y])
+            if err1 == 0 and err2 == 0:
+                ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle='full'), lw=1, color=[r, g, b], s=36, edgecolors=[r, g, b])
+                ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle='full'), lw=1, color=[r, g, b], s=36, edgecolors=[r, g, b])
+                if plot_ro:
+                    ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle='full'), lw=1, color=[r, g, b], size=36, edgecolors=[r, g, b])
+            else:
+                ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
+                ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
+                if plot_ro:
+                    ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
+                
+    np.savetxt("activity_" + type + "_rhk.txt", activity_ls_1, fmt='%f')
+    if plot_ro:
+        np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
+    
+    ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$')
+    if plot_ro:
+        ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$')
+    
+    ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]')
+    #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
+    
+    ###############################################################################
+    if os.path.isfile("clusters_" + type + ".txt"):
+        dat = np.loadtxt("clusters_" + type + ".txt", usecols=(0,1), skiprows=0)
+    
+        m1 = dat[0,:]
+        m2 = dat[1,:]
+        s1 = dat[2:4,:]
+        s2 = dat[4:6,:]
+        w1, v1 = LA.eig(s1)
+        w2, v2 = LA.eig(s2)
+        
+        #print w1
+        #print v1
+        #print w2
+        #print v2
+        cos1= v1[0,0]
+        sin1= v1[1,0]
+        angle1 = np.arccos(cos1)
+        if sin1 < 0:
+            angle1 = -angle1
+        
+        e1 = Ellipse(xy=m1, width=2*np.sqrt(w1[0]), height=2*np.sqrt(w1[1]), angle=angle1*180/np.pi, linestyle=None, linewidth=0)
+        ax11.add_artist(e1)
+        #e1.set_clip_box(ax1.bbox)
+        e1.set_alpha(0.25)
+        e1.set_facecolor('blue')
+        #ax1.plot([m1[0], m1[0]+np.cos(angle1)], [m1[1], m1[1]+np.sin(angle1)], color='k', linestyle='-', linewidth=1)
+    
+        cos2= v2[0,0]
+        sin2= v2[1,0]
+        angle2 = np.arccos(cos2)
+        if sin2 < 0:
+            angle2 = -angle2
+        
+        e2 = Ellipse(xy=m2, width=2*np.sqrt(w2[0]), height=2*np.sqrt(w2[1]), angle=angle2*180/np.pi, linestyle=None, linewidth=0)
+        ax11.add_artist(e2)
+        #e2.set_clip_box(ax1.bbox)
+        e2.set_alpha(0.25)
+        e2.set_facecolor('red')
+        #ax1.plot([m2[0], m2[0]+np.cos(angle2)], [m2[1], m2[1]+np.sin(angle2)], color='k', linestyle='-', linewidth=1)
+    
+        if angle1 > np.pi/2:
+            angle1 -= np.pi/2
+        if angle2 > np.pi/2:
+            angle2 -= np.pi/2
+        print "y1=" + str(np.tan(angle1)) + "x+" + str(m1[1] - np.tan(angle1) * m1[0])
+        print "y2=" + str(np.tan(angle2)) + "x+" + str(m2[1] - np.tan(angle2) * m2[0])
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
+
+fig2.savefig("activity_diagram_2.pdf")
+plt.close(fig2)
