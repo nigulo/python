@@ -62,8 +62,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 rot_period = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            #if star != "76151":
-            #    continue
+            if star != "SUN":
+                continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]
@@ -163,6 +163,12 @@ for root, dirs, files in os.walk(input_path):
 
                 fig, plots = plt.subplots(max(2 * len(line_freqs), 2), 1, figsize=(6, 2*(max(2 * len(line_freqs), 2))))
     
+                fig_pdf, ax_pdf = plt.subplots(1, 1)
+                fig_pdf.set_size_inches(9, 5)
+                ax_pdf.set_ylabel(r'S-index')
+                ax_pdf.set_xlabel(r'Time [yr]')
+            
+    
                 #(plot1) = plots[0]
                 #plot1.plot(freqs[1:], powers[0][1:], 'r-')
 
@@ -200,17 +206,21 @@ for root, dirs, files in os.walk(input_path):
                         w1 = np.ones(len(t))/noise_var
                         (plot2) = plots[freq_index + plot_index]
                         plot2.plot(t, y1, 'b+')
+                        ax_pdf.plot(t, y1, 'b+') 
                         line_freq = line_freqs[freq_index]
                         if line_freq > 0:
                             t_fit = np.linspace(min(t), max(t), 1000)
                             _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq, t_fit)
                             plot2.plot(t_fit, y_fit, '-')
+                            ax_pdf.plot(t_fit, y_fit, 'k-')
                             _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq)
                             y1 = y1 - y_fit
                         
     
                 fig.savefig(spectra_path+str(p_value)+"/" + star + '.png')
                 plt.close(fig)
+                fig_pdf.savefig(spectra_path+str(p_value)+"/" + star + '.pdf')
+                plt.close(fig_pdf)
                 for f, p, std, normality, z0 in found_lines:
                     f1.write(star + ' %s %s %s %s' % (f, std, normality, z0) + "\n")
                     
