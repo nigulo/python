@@ -172,6 +172,57 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         min_bic, max_bic, cycles = read_bglst_cycles(input_path)
     else:
         min_bic, max_bic, cycles = read_gp_cycles(input_path)
+
+    clustered = False
+    ###############################################################################
+    if os.path.isfile("clusters_" + type + ".txt"):
+        clustered = True
+        dat = np.loadtxt("clusters_" + type + ".txt", usecols=(0,1), skiprows=0)
+    
+        m1 = dat[0,:]
+        m2 = dat[1,:]
+        s1 = dat[2:4,:]
+        s2 = dat[4:6,:]
+        w1, v1 = LA.eig(s1)
+        w2, v2 = LA.eig(s2)
+        
+        #print w1
+        #print v1
+        #print w2
+        #print v2
+        cos1= v1[0,0]
+        sin1= v1[1,0]
+        angle1 = np.arccos(cos1)
+        if sin1 < 0:
+            angle1 = -angle1
+        
+        e1 = Ellipse(xy=m1, width=2*np.sqrt(w1[0]), height=2*np.sqrt(w1[1]), angle=angle1*180/np.pi, linestyle=None, linewidth=0)
+        ax11.add_artist(e1)
+        #e1.set_clip_box(ax1.bbox)
+        e1.set_alpha(0.25)
+        e1.set_facecolor('blue')
+        #ax1.plot([m1[0], m1[0]+np.cos(angle1)], [m1[1], m1[1]+np.sin(angle1)], color='k', linestyle='-', linewidth=1)
+    
+        cos2= v2[0,0]
+        sin2= v2[1,0]
+        angle2 = np.arccos(cos2)
+        if sin2 < 0:
+            angle2 = -angle2
+        
+        e2 = Ellipse(xy=m2, width=2*np.sqrt(w2[0]), height=2*np.sqrt(w2[1]), angle=angle2*180/np.pi, linestyle=None, linewidth=0)
+        ax11.add_artist(e2)
+        #e2.set_clip_box(ax1.bbox)
+        e2.set_alpha(0.25)
+        e2.set_facecolor('red')
+        #ax1.plot([m2[0], m2[0]+np.cos(angle2)], [m2[1], m2[1]+np.sin(angle2)], color='k', linestyle='-', linewidth=1)
+    
+        if angle1 > np.pi/2:
+            angle1 -= np.pi/2
+        if angle2 > np.pi/2:
+            angle2 -= np.pi/2
+        print "y1=" + str(np.tan(angle1)) + "x+" + str(m1[1] - np.tan(angle1) * m1[0])
+        print "y2=" + str(np.tan(angle2)) + "x+" + str(m2[1] - np.tan(angle2) * m2[0])
+    ###############################################################################
     
     
     i = 0
@@ -231,8 +282,8 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             if p_cyc != p_cyc_2:
                                 for i in [2.0, 3.0]:
                                     if p_cyc_2 + std_2 > (p_cyc - std) * i and p_cyc_2 - std_2 < (p_cyc + std) * i:
-                                        print p_cyc, p_cyc_2
-                                        exclude = True
+                                        #print p_cyc, p_cyc_2
+                                        #exclude = True
                                         break
                         if exclude:
                             continue
@@ -244,20 +295,36 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         #val1 = np.log10(p_rot/(p_cyc + std))
                         #val2 = np.log10(p_rot/(p_cyc - std))
                         #print val - val1, val2 - val, err
-                        if bic > 100:
-                            r = 0.0
-                            g = 0.0
-                            b = 0.0
-                        else:
-                            c = 0.5*(1.0 - (bic - min_bic)/(max_bic - min_bic))
-                            r = c
-                            g = c
-                            b = c
+                        if clustered and is_ms:
+                            point = np.array([r_hk, val])
+                            dist1 = np.dot(point - m1, np.dot(LA.inv(s1), point - m1))
+                            dist2 = np.dot(point - m2, np.dot(LA.inv(s2), point - m2))
+                            if bic > 100:
+                                c = 0.0
+                            else:
+                                c = (1.0 - (bic - min_bic)/(max_bic - min_bic))
+                            if dist1 < dist2:
+                                r = 0.0
+                                g = 0.0
+                                b = c
+                            else:
+                                r = c
+                                g = 0.0
+                                b = 0.0
+                        else:                            
+                            if bic > 100:
+                                r = 0.0
+                                g = 0.0
+                                b = 0.0
+                            else:
+                                c = 0.5*(1.0 - (bic - min_bic)/(max_bic - min_bic))
+                                r = c
+                                g = c
+                                b = c
                         data_star.append([r_hk, val, err, err, r, g, b, ro, sym, p_rot, p_cyc/365.25])
                     data.append(data_star)
             #print star, bmv, r_hk, p_rot
-    
-    
+
     activity_ls_1 = []
     activity_ls_2 = []
     for data_star in data:
@@ -292,53 +359,6 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]')
     #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
     
-    ###############################################################################
-    if os.path.isfile("clusters_" + type + ".txt"):
-        dat = np.loadtxt("clusters_" + type + ".txt", usecols=(0,1), skiprows=0)
-    
-        m1 = dat[0,:]
-        m2 = dat[1,:]
-        s1 = dat[2:4,:]
-        s2 = dat[4:6,:]
-        w1, v1 = LA.eig(s1)
-        w2, v2 = LA.eig(s2)
-        
-        #print w1
-        #print v1
-        #print w2
-        #print v2
-        cos1= v1[0,0]
-        sin1= v1[1,0]
-        angle1 = np.arccos(cos1)
-        if sin1 < 0:
-            angle1 = -angle1
-        
-        e1 = Ellipse(xy=m1, width=2*np.sqrt(w1[0]), height=2*np.sqrt(w1[1]), angle=angle1*180/np.pi, linestyle=None, linewidth=0)
-        ax11.add_artist(e1)
-        #e1.set_clip_box(ax1.bbox)
-        e1.set_alpha(0.25)
-        e1.set_facecolor('blue')
-        #ax1.plot([m1[0], m1[0]+np.cos(angle1)], [m1[1], m1[1]+np.sin(angle1)], color='k', linestyle='-', linewidth=1)
-    
-        cos2= v2[0,0]
-        sin2= v2[1,0]
-        angle2 = np.arccos(cos2)
-        if sin2 < 0:
-            angle2 = -angle2
-        
-        e2 = Ellipse(xy=m2, width=2*np.sqrt(w2[0]), height=2*np.sqrt(w2[1]), angle=angle2*180/np.pi, linestyle=None, linewidth=0)
-        ax11.add_artist(e2)
-        #e2.set_clip_box(ax1.bbox)
-        e2.set_alpha(0.25)
-        e2.set_facecolor('red')
-        #ax1.plot([m2[0], m2[0]+np.cos(angle2)], [m2[1], m2[1]+np.sin(angle2)], color='k', linestyle='-', linewidth=1)
-    
-        if angle1 > np.pi/2:
-            angle1 -= np.pi/2
-        if angle2 > np.pi/2:
-            angle2 -= np.pi/2
-        print "y1=" + str(np.tan(angle1)) + "x+" + str(m1[1] - np.tan(angle1) * m1[0])
-        print "y2=" + str(np.tan(angle2)) + "x+" + str(m2[1] - np.tan(angle2) * m2[0])
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
