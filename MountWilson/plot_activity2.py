@@ -186,6 +186,20 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w1, v1 = LA.eig(s1)
         w2, v2 = LA.eig(s2)
         
+        if type == "GP_P":
+            m_temp = m2
+            s_temp = s2
+            w_temp = w2
+            v_temp = v2
+            m2 = m1
+            s2 = s1
+            w2 = w1
+            v2 = v1
+            m1 = m_temp
+            s1 = s_temp
+            w1 = w_temp
+            v1 = v_temp            
+            
         #print w1
         #print v1
         #print w2
@@ -300,17 +314,17 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             dist1 = np.dot(point - m1, np.dot(LA.inv(s1), point - m1))
                             dist2 = np.dot(point - m2, np.dot(LA.inv(s2), point - m2))
                             if bic > 100:
-                                c = 0.0
+                                c = 1.0
                             else:
-                                c = (1.0 - (bic - min_bic)/(max_bic - min_bic))
+                                c = (bic - min_bic)/(max_bic - min_bic)
                             if dist1 < dist2:
-                                r = 0.0
-                                g = 0.0
-                                b = c
-                            else:
                                 r = c
-                                g = 0.0
-                                b = 0.0
+                                g = c
+                                b = 1.0
+                            else:
+                                r = 1.0
+                                g = c
+                                b = c
                         else:                            
                             if bic > 100:
                                 r = 0.0
@@ -343,10 +357,10 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                 if plot_ro:
                     ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle='full'), lw=1, color=[r, g, b], size=36, edgecolors=[r, g, b])
             else:
-                ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
-                ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
+                ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', mec=[r, g, b])
+                ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', mec=[r, g, b])
                 if plot_ro:
-                    ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', markeredgecolor=[r, g, b])
+                    ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle='full', mec=[r, g, b])
                 
     np.savetxt("activity_" + type + "_rhk.txt", activity_ls_1, fmt='%f')
     if plot_ro:
