@@ -12,6 +12,7 @@ import sys
 import random
 from matplotlib import colors as mcolors
 import matplotlib.markers as markers
+from scipy.stats import gaussian_kde
 
 import os
 import os.path
@@ -24,7 +25,7 @@ input_path = "BGLST_input"
     
 output_path = "no_cycles"
 offset = 1979.3452
-num_r_hk_bins = 7
+num_r_hk_bins = 1000
 
 rot_periods = mw_utils.load_rot_periods()
 
@@ -50,9 +51,15 @@ print num_stars
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 12)
+ax1.set_ylabel(r'$\sigma^2_{\rm s}/\sigma^2$')
+ax2.set_ylabel(r'$N_{\rm cyc}/N$')
+
 ax2.set_xlabel(r'$\langle R\prime_{\rm HK}\rangle$')
 ax1.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes)
 ax2.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes)
+
+r_hks_na = []
+var_ratios = []
 
 for root, dirs, files in os.walk(input_path):
     for file in files:
@@ -90,18 +97,31 @@ for root, dirs, files in os.walk(input_path):
                 else:
                     r_hk_counts_na.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
                     r_hk_bin_counts_na[min(num_r_hk_bins - 1, int((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins))] += 1
-                    
-                ax1.scatter(r_hk, mean_seasonal_var/total_var, marker=markers.MarkerStyle("o", fillstyle=None), lw=1, facecolors="blue", color="blue", s=10, edgecolors="blue")
+                
+                if not all_cycles.has_key(star):
+                    r_hks_na.append(r_hk)
+                    var_ratios.append(mean_seasonal_var/total_var)
                 #ax2.scatter(r_hk_bins_values, r_hk_bins_counts/num_stars, marker=markers.MarkerStyle("o", fillstyle=None), lw=1, facecolors="blue", color="blue", s=10, edgecolors="blue")
                 #y = mlab.normpdf(bins, np.mean(star_cycle_samples), np.std(star_cycle_samples))
                 #l = plt.plot(bins, y, 'r--', linewidth=1)
 
 #n, bins, patches = ax2.hist(r_hk_counts_na, 10, normed=1, facecolor='green', alpha=0.75)
 #n, bins, patches = ax2.hist(r_hk_counts_a, 10, normed=1, facecolor='blue', alpha=0.75)
-print r_hk_bin_counts_na
-print r_hk_bin_counts_a
-print r_hk_bins_values
-ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
+
+
+ax1.scatter(r_hks_na, var_ratios, marker=markers.MarkerStyle("o", fillstyle=None), lw=1, facecolors="blue", color="blue", s=10, edgecolors="blue")
+slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na, var_ratios)
+ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "k-")
+
+
+density_a = gaussian_kde(r_hk_counts_a)
+density_na = gaussian_kde(r_hk_counts_na)
+#density.covariance_factor = lambda : .25
+#density._compute_covariance()
+d_a = density_a(r_hk_bins_values)
+d_na = density_na(r_hk_bins_values)
+#ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
+ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
 
 fig.savefig("non_active_stars.pdf")
 plt.close(fig)
