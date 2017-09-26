@@ -55,36 +55,6 @@ ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
 def star_is_ms(star):
     return len(np.where(ms_stars == star.upper())[0] > 0)
 
-def read_bglst_cycles(file):
-    max_bic = None
-    min_bic = None
-    all_cycles = dict()
-    data = pd.read_csv(file, names=['star', 'f', 'sigma', 'normality', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
-    
-    #data = np.genfromtxt(file, dtype=None, skip_header=1)
-    for [star, f, std, normality, bic] in data:
-        #if star == 'SUNALL':
-        #    star = 'SUN'
-        #print star, cyc, std_2
-        if not np.isnan(f):
-            if not all_cycles.has_key(star):
-                all_cycles[star] = []
-            cycles = all_cycles[star]
-            log_bic = np.log(bic)
-            if max_bic is None or log_bic > max_bic:
-                max_bic = log_bic
-            if min_bic is None or log_bic < min_bic:
-                min_bic = log_bic
-                
-            cyc = 1.0/f
-            
-            f_samples = np.random.normal(loc=f, scale=std, size=1000)
-            cyc_std = np.std(np.ones(len(f_samples))/f_samples)
-            if cyc_std < cyc:
-                cycles.append((cyc*365.25, cyc_std*3*365.25, log_bic)) # three sigma
-                all_cycles[star] = cycles
-    return min_bic, max_bic, all_cycles
-
 def read_gp_cycles(file):
     max_bic = None
     min_bic = None
@@ -199,7 +169,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
 
 
     if bglst_or_gp:
-        min_bic, max_bic, cycles = read_bglst_cycles(input_path)
+        min_bic, max_bic, cycles = mw_utils.read_bglst_cycles(input_path)
     else:
         min_bic, max_bic, cycles = read_gp_cycles(input_path)
 
@@ -315,7 +285,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                 else:
                     tau = np.power(10.0, -3.33 + 15.382*bmv - 20.063*bmv**2 + 12.540*bmv**3 - 3.1466*bmv**4)
                     #ro = np.log10(4*np.pi*tau/p_rot)
-                    ro = np.log10(4*np.pi*tau/p_rot)
+                ro = np.log10(4*np.pi*tau/p_rot)
                 #print star, tau, bmv
                 dark_color =  "black"
                 light_color =  "gray"

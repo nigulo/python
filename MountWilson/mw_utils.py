@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal import argrelextrema
 from scipy.stats import gaussian_kde
+import pandas as pd
 
 ###############################################################################
 # Load rotational periods
@@ -57,6 +58,64 @@ def load_rot_periods(path=""):
                 rot_periods[star] = p_rot
     return rot_periods
 
+def load_r_hk(path=""):
+    i = 0
+    data = dict()
+    #fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
+    fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
+    parse = make_parser(fieldwidths)
+    #with open(path+"mwo-rhk.dat", "r") as ins:
+    with open("mwo-rhk.dat", "r") as ins:
+        for line in ins:
+            if i < 5:
+                i += 1
+                continue
+            fields = parse(line)
+            star = fields[0].strip()
+            star = star.replace(' ', '')
+            star = star.upper()
+            try:
+                r_hk = float(fields[6].strip())
+            except ValueError:
+                r_hk = None
+            if r_hk != None:
+                data[star] = r_hk
+    return data
+
+def load_ro(path=""):
+    i = 0
+    data = dict()
+    #fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
+    fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
+    parse = make_parser(fieldwidths)
+    #with open(path+"mwo-rhk.dat", "r") as ins:
+    with open("mwo-rhk.dat", "r") as ins:
+        for line in ins:
+            if i < 5:
+                i += 1
+                continue
+            fields = parse(line)
+            star = fields[0].strip()
+            star = star.replace(' ', '')
+            star = star.upper()
+            try:
+                bmv = float(fields[4].strip())
+            except ValueError:
+                bmv = 0.0
+            try:
+                p_rot = float(fields[7].strip())
+            except ValueError:
+                p_rot = None
+            ro = None
+            if p_rot != None and bmv != None:
+                if bmv >= 1.0:
+                    tau = 25.0
+                else:
+                    tau = np.power(10.0, -3.33 + 15.382*bmv - 20.063*bmv**2 + 12.540*bmv**3 - 3.1466*bmv**4)
+                ro = np.log10(4*np.pi*tau/p_rot)
+                data[star] = ro
+    return data
+    
 def load_spec_types(path=""):
     fieldwidths = (10, 8, 10, 6, 8, 4)  # negative widths represent ignored padding fields
     parse = make_parser(fieldwidths)
@@ -231,3 +290,32 @@ def mode_with_se(samples, num_bootstrap=1000):
         bs_modes[j] = x_bs[np.argmax(x_bs_freqs(x_bs))]
     return (mode, np.std(bs_modes))
    
+def read_bglst_cycles(file):
+    max_bic = None
+    min_bic = None
+    all_cycles = dict()
+    data = pd.read_csv(file, names=['star', 'f', 'sigma', 'normality', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+    
+    #data = np.genfromtxt(file, dtype=None, skip_header=1)
+    for [star, f, std, normality, bic] in data:
+        #if star == 'SUNALL':
+        #    star = 'SUN'
+        #print star, cyc, std_2
+        if not np.isnan(f):
+            if not all_cycles.has_key(star):
+                all_cycles[star] = []
+            cycles = all_cycles[star]
+            log_bic = np.log(bic)
+            if max_bic is None or log_bic > max_bic:
+                max_bic = log_bic
+            if min_bic is None or log_bic < min_bic:
+                min_bic = log_bic
+                
+            cyc = 1.0/f
+            
+            f_samples = np.random.normal(loc=f, scale=std, size=1000)
+            cyc_std = np.std(np.ones(len(f_samples))/f_samples)
+            if cyc_std < cyc:
+                cycles.append((cyc*365.25, cyc_std*3*365.25, log_bic)) # three sigma
+                all_cycles[star] = cycles
+    return min_bic, max_bic, all_cycles
