@@ -25,6 +25,9 @@ output_path = "no_cycles"
 offset = 1979.3452
 num_r_hk_bins = 1000
 num_bootstrap = 1000
+kde_cov_start = 0.01
+kde_cov_end = 1.0
+kde_num_covs = 100
 
 rot_periods = mw_utils.load_rot_periods()
 
@@ -93,10 +96,12 @@ for root, dirs, files in os.walk(input_path):
             if (r_hks.has_key(star)):
                 r_hk = r_hks[star]
                 if all_cycles.has_key(star):
-                    r_hk_counts_a.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
+                    r_hk_counts_a.append(r_hk)
+                    #r_hk_counts_a.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
                     #r_hk_bin_counts_a[min(num_r_hk_bins - 1, int((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins))] += 1
                 else:
-                    r_hk_counts_na.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
+                    r_hk_counts_na.append(r_hk)
+                    #r_hk_counts_na.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
                     #r_hk_bin_counts_na[min(num_r_hk_bins - 1, int((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins))] += 1
                 
                 if all_cycles.has_key(star):
@@ -120,17 +125,42 @@ slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_a, var_rati
 ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "r-")
 
 
-density_a = gaussian_kde(r_hk_counts_a)
-density_na = gaussian_kde(r_hk_counts_na)
-
-density_all = gaussian_kde(r_hk_counts_a + r_hk_counts_na)
+def calc_kde(data):
+    max_lik = None
+    opt_kde = None
+    num_sets = 10
+    set_len = len(data) / num_sets
+    for kde_cov in np.linspace(kde_cov_start, kde_cov_end, num=kde_num_covs):
+        log_lik = 0
+        for i in np.arange(0, num_sets):
+            train_data = np.concatenate((data[:i*set_len], data[(i+1)*set_len:]))
+            if i == num_sets - 1:
+                valid_data = data[i*set_len:]
+            else:
+                valid_data = data[i*set_len:(i+1)*set_len]
+            density = gaussian_kde(train_data, bw_method = kde_cov)
+            d = density(valid_data)
+            log_lik += np.sum(np.log(d))
+        if max_lik is None or log_lik > max_lik:
+            max_lik = log_lik
+            opt_kde = kde_cov
+    print opt_kde
+    return gaussian_kde(data, bw_method = opt_kde), opt_kde
+        
+density_a, cov_a = calc_kde(r_hk_counts_a)#gaussian_kde(r_hk_counts_a, bw_method = kde_cov)
 d_a = density_a(r_hk_bins_values)
+
+density_na, cov_na = calc_kde(r_hk_counts_na)#gaussian_kde(r_hk_counts_na, bw_method = kde_cov)
 d_na = density_na(r_hk_bins_values)
+
+density_all, cov_all = calc_kde(r_hk_counts_a + r_hk_counts_na)#gaussian_kde(r_hk_counts_a + r_hk_counts_na, bw_method = kde_cov)
 d_all = density_all(r_hk_bins_values)
 #ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
 ax2.plot(r_hk_bins_values, d_all, "k--")
 
+r_hk_counts_a = np.asarray(r_hk_counts_a)
+r_hk_counts_na = np.asarray(r_hk_counts_na)
 
 rel_d_a_bs = []
 
@@ -151,11 +181,38 @@ def get_conf_ints(data, percent=0.95, num_bins=1000):
             upper = value
     return lower, upper
 
+
+def get_cdf(xs, pdf):
+    dx = (max(xs) - min(xs))/len(xs)
+    cdf = np.zeros(len(pdf)+1)
+    for i in np.arange(1, len(pdf) + 1):
+       cdf[i] = pdf[i-1]*dx + cdf[i-1]
+    print cdf
+    return cdf
+    
+def draw_points(xs, cdf):
+    ys = np.random.uniform(size=1000)
+    vals = np.zeros_as(ys)
+    j = 0
+    for y in ys:
+        for i in np.arange(0, len(cdf)):
+            if cdf[i] >= y:
+                vals[j] = xs[i]
+                break
+        j += 1
+    return vals
+    
 for i in np.arange(0, num_bootstrap):
-    r_hk_counts_a_bs = np.random.choice(r_hk_counts_a, len(r_hk_counts_a))
-    r_hk_counts_na_bs = np.random.choice(r_hk_counts_na, len(r_hk_counts_na))
-    density_a_bs = gaussian_kde(r_hk_counts_a_bs)
-    density_na_bs = gaussian_kde(r_hk_counts_na_bs)
+    indices = np.random.randint(0, len(r_hk_counts_a) + len(r_hk_counts_na), size=(len(r_hk_counts_a) + len(r_hk_counts_na)))
+    indices_a = indices[np.where(indices < len(r_hk_counts_a))[0]]
+    indices_na = indices[np.where(indices >= len(r_hk_counts_a))[0]]
+    indices_na -= len(r_hk_counts_a)
+    #r_hk_counts_a_bs = np.random.choice(r_hk_counts_a, len(r_hk_counts_a))
+    #r_hk_counts_na_bs = np.random.choice(r_hk_counts_na, len(r_hk_counts_na))
+    r_hk_counts_a_bs = r_hk_counts_a[indices_a]
+    r_hk_counts_na_bs = r_hk_counts_na[indices_na]
+    density_a_bs = gaussian_kde(r_hk_counts_a_bs, bw_method = cov_a)#calc_kde(r_hk_counts_a_bs, r_hk_bins_values)#gaussian_kde(r_hk_counts_a_bs, bw_method = kde_cov)
+    density_na_bs = gaussian_kde(r_hk_counts_na_bs, bw_method = cov_na)#calc_kde(r_hk_counts_na_bs, r_hk_bins_values)#gaussian_kde(r_hk_counts_na_bs, bw_method = kde_cov)
     d_a_bs = density_a_bs(r_hk_bins_values)
     d_na_bs = density_na_bs(r_hk_bins_values)
     rel_d_a_bs.append(d_a_bs/(d_a_bs + d_na_bs))
@@ -165,6 +222,8 @@ rel_d_a_bs = np.asarray(rel_d_a_bs)
 rel_d_a_bs_mean = np.mean(rel_d_a_bs, axis=0)
 rel_d_a_bs_std = np.std(rel_d_a_bs, axis=0)
 ax2.plot(r_hk_bins_values, rel_d_a_bs_mean, "k-")
+ax2.plot(r_hk_bins_values, d_a*len(r_hk_counts_a)/(len(r_hk_counts_a) + len(r_hk_counts_na)), "r-")
+ax2.plot(r_hk_bins_values, d_na*len(r_hk_counts_na)/(len(r_hk_counts_a) + len(r_hk_counts_na)), "b-")
 
 lowers = np.zeros(np.shape(rel_d_a_bs)[1])
 uppers = np.zeros(np.shape(rel_d_a_bs)[1])
@@ -176,5 +235,5 @@ for i in np.arange(0, np.shape(rel_d_a_bs)[1]):
 #ax2.fill_between(r_hk_bins_values, rel_d_a_bs_mean + 2.0 * rel_d_a_bs_std, rel_d_a_bs_mean - 2.0 * rel_d_a_bs_std, alpha=0.1, facecolor='gray', interpolate=True)
 ax2.fill_between(r_hk_bins_values, uppers, lowers, alpha=0.1, facecolor='gray', interpolate=True)
 
-fig.savefig("non_active_stars.pdf")
+fig.savefig("no_cycles.pdf")
 plt.close(fig)
