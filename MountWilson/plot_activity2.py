@@ -20,6 +20,8 @@ include_non_ms = True
 
 plot_ro = False
 
+axis_label_fs = 15
+panel_label_fs = 15
 try:
     from itertools import izip_longest  # added in Py 2.6
 except ImportError:
@@ -96,14 +98,14 @@ star_FeH_dR = read_FeH_dR("brandenburg2017table.csv")
 if plot_ro:
     fig1, ((ax111, ax112), (ax121, ax122), (ax131, ax132)) = plt.subplots(nrows=3, ncols=2, sharex=True)
     fig1.set_size_inches(12, 18)
-    ax131.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$')
-    ax132.set_xlabel(r'${\rm log}{\rm Ro}^{-1}$')
-    ax111.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax111.transAxes)
-    ax112.text(0.9, 0.9,'(d)', horizontalalignment='center', transform=ax112.transAxes)
-    ax121.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax121.transAxes)
-    ax122.text(0.9, 0.9,'(e)', horizontalalignment='center', transform=ax122.transAxes)
-    ax131.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax131.transAxes)
-    ax132.text(0.9, 0.9,'(f)', horizontalalignment='center', transform=ax132.transAxes)
+    ax131.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+    ax132.set_xlabel(r'${\rm log}{\rm Ro}^{-1}$', fontsize=axis_label_fs)
+    ax111.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax111.transAxes, fontsize=panel_label_fs)
+    ax112.text(0.9, 0.9,'(d)', horizontalalignment='center', transform=ax112.transAxes, fontsize=panel_label_fs)
+    ax121.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax121.transAxes, fontsize=panel_label_fs)
+    ax122.text(0.9, 0.9,'(e)', horizontalalignment='center', transform=ax122.transAxes, fontsize=panel_label_fs)
+    ax131.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax131.transAxes, fontsize=panel_label_fs)
+    ax132.text(0.9, 0.9,'(f)', horizontalalignment='center', transform=ax132.transAxes, fontsize=panel_label_fs)
     #ax111.set_aspect('equal', 'datalim')
     #ax112.set_aspect('equal', 'datalim')
     #ax121.set_aspect('equal', 'datalim')
@@ -113,27 +115,27 @@ if plot_ro:
 else:
     fig1, (ax11, ax12, ax13) = plt.subplots(nrows=3, ncols=1, sharex=False)
     fig1.set_size_inches(6, 18)
-    ax13.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$')
-    ax11.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax11.transAxes)
-    ax12.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax12.transAxes)
-    ax13.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax13.transAxes)
+    ax13.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+    ax11.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax11.transAxes, fontsize=panel_label_fs)
+    ax12.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax12.transAxes, fontsize=panel_label_fs)
+    ax13.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax13.transAxes, fontsize=panel_label_fs)
     #ax11.set_aspect('equal', 'datalim')
     #ax12.set_aspect('equal', 'datalim')
     #ax13.set_aspect('equal', 'datalim')
 
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
 fig2.set_size_inches(6, 18)
-ax21.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes)
-ax22.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes)
-ax23.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes)
-ax23.set_xlabel(r'$P_{\rm rot}$ [d]')
+ax21.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes, fontsize=panel_label_fs)
+ax22.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes, fontsize=panel_label_fs)
+ax23.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes, fontsize=panel_label_fs)
+ax23.set_xlabel(r'$P_{\rm rot}$ [d]', fontsize=axis_label_fs)
 
 fig3, (ax31, ax32) = plt.subplots(nrows=1, ncols=2, sharex=False, sharey=False)
 fig3.set_size_inches(12, 4)
-ax31.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax31.transAxes)
-ax32.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax32.transAxes)
-ax31.set_xlabel(r'$d/R$')
-ax32.set_xlabel(r'[Fe/H] (dex)')
+ax31.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax31.transAxes, fontsize=panel_label_fs)
+ax32.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax32.transAxes, fontsize=panel_label_fs)
+ax31.set_xlabel(r'$d/R$', fontsize=axis_label_fs)
+ax32.set_xlabel(r'[Fe/H] (dex)', fontsize=axis_label_fs)
 
 for type in ["BGLST", "GP_P", "GP_QP"]:
 
@@ -289,7 +291,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                 #print star, tau, bmv
                 dark_color =  "black"
                 light_color =  "gray"
-                sym = "o"
+                sym = "d"
                 is_ms = star_is_ms(star)
                 if is_ms:
                     sym = "+"
@@ -329,13 +331,15 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             if bic > 100:
                                 c = 0.0
                             else:
-                                c = 0.9 - 0.9 * (bic - min_bic)/(max_bic - min_bic)
+                                c = 0.5 - 0.5 * (bic - min_bic)/(max_bic - min_bic)
                             if dist1 < dist2:
+                                sym = "+"
                                 delta_i = val - (a1 * r_hk + b1)
                                 r = c
                                 g = c
                                 b = 1.0
                             else:
+                                sym = "x"
                                 delta_i = val - (a2 * r_hk + b2)
                                 r = 1.0
                                 g = c
@@ -361,40 +365,46 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         data_star = data[star]
         data_star_arr = np.asarray(data_star)
         #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
-        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color='gray', lw=1.0)
+        r0 = float(data_star_arr[0,4])
+        g0 = float(data_star_arr[0,5])
+        b0 = float(data_star_arr[0,6])
+        print "Color", r0, g0, b0
+        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
         if is_ms:
-            ax2.plot(data_star_arr[:,9], data_star_arr[:,10], linestyle=':', color='gray', lw=1.0)
+            ax2.plot(data_star_arr[:,9], data_star_arr[:,10], linestyle=':', color=(r0, g0, b0), lw=1.5)
         if plot_ro:
-            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color='gray', lw=1.0)
+            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
         for [r_hk, y, err1, err2, r, g, b, ro, sym, p_rot, p_cyc, delta_i] in data_star:
             activity_ls_1.append([r_hk, y])
             activity_ls_2.append([ro, y])
-            fillstyles = ['full']
+            fillstyles = [None]
             syms = [sym]
             facecolors = [[r, g, b]]
-            sizes = [36]
-            if star == "SUN":
+            sizes = [50]
+            if sym == 'd':
+                facecolors = ['none']
+            elif star == "SUN":
                 fillstyles = [None, 'full']
                 facecolors = ['none', [r, g, b]]
                 syms = ['o', 'o']
-                sizes = [36, 1]
+                sizes = [50, 1]
             first_time = True
             for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
                 if star == "SUN":
                     print fillstyle
                 if not first_time or err1 == 0 and err2 == 0:
-                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
                     if is_ms: # omit non MS
-                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
                     if plot_ro:
-                        ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], size=size, edgecolors=[r, g, b])
+                        ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], size=size, edgecolors=[r, g, b])
                 else:
-                    ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle=fillstyle, mec=[r, g, b])
+                    ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
                     if is_ms: # omit non MS
-                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle=fillstyle, mec=[r, g, b])
+                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
                     if plot_ro:
-                        ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1, capsize=3, capthick=1, color=[r, g, b], markersize=6, fillstyle=fillstyle, mec=[r, g, b])
+                        ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
                 if type == "BGLST" and star_FeH_dR.has_key(star):
                     ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
                     ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
@@ -403,30 +413,30 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     if plot_ro:
         np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
     
-    ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$')
+    ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     if plot_ro:
-        ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$')
+        ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     
-    ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]')
+    ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
 
     if type == "BGLST" and star_FeH_dR.has_key(star):
-        ax31.set_ylabel(r'$\Delta_i$')
-        ax32.set_ylabel(r'$\Delta_i$')
+        ax31.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
+        ax32.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
         
         std1 = np.sqrt((1.0 - s1[0, 1]*s1[0, 1]/s1[0, 0]/s1[1, 1])*s1[1, 1])
         std2 = np.sqrt((1.0 - s2[0, 1]*s2[0, 1]/s2[0, 0]/s2[1, 1])*s2[1, 1])
         xmin, xmax = ax31.get_xlim()
         ax31.plot([xmin, xmax], [std1, std1], color='blue', linestyle='--', linewidth=1)
         ax31.plot([xmin, xmax], [-std1, -std1], color='blue', linestyle='--', linewidth=1)
-        ax31.plot([xmin, xmax], [std2, std2], color='red', linestyle='--', linewidth=1)
-        ax31.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='--', linewidth=1)
+        ax31.plot([xmin, xmax], [std2, std2], color='red', linestyle='-.', linewidth=1)
+        ax31.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
         ax31.set_xlim(xmin, xmax)
 
         xmin, xmax = ax32.get_xlim()
         ax32.plot([xmin, xmax], [std1, std1], color='blue', linestyle='--', linewidth=1)
         ax32.plot([xmin, xmax], [-std1, -std1], color='blue', linestyle='--', linewidth=1)
-        ax32.plot([xmin, xmax], [std2, std2], color='red', linestyle='--', linewidth=1)
-        ax32.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='--', linewidth=1)
+        ax32.plot([xmin, xmax], [std2, std2], color='red', linestyle='-.', linewidth=1)
+        ax32.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
         ax32.set_xlim(xmin, xmax)
     
     #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
