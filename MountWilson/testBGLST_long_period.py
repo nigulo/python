@@ -109,7 +109,7 @@ ax1.plot(t_model, y_model, 'r-')
 min_prob = min(probs)
 norm_probs = (probs - min_prob) / (max_prob - min_prob)
 ax2.plot(freqs, norm_probs, 'r-')
-ax2.plot([best_freq, best_freq], [0, norm_probs[max_prob_index]], 'r--')
+ax2.plot([best_freq, best_freq], [0, norm_probs[max_prob_index]], 'r-')
 
 bglst_m = BGLST.BGLST(t, y_model_1, np.ones(n)/np.var(y),
                     w_A = 2.0/np.var(y), A_hat = 0.0,
@@ -148,14 +148,14 @@ max_power_ind = np.argmax(power)
 max_power = power[max_power_ind]
 best_freq = freqs[max_power_ind]
 y_model = ls.model(t_model, best_freq)
-ax1.plot(t_model, y_model, 'g--')
+ax1.plot(t_model, y_model, 'g-.')
 print "LS: ", freq, best_freq, max_power
 
 min_power = min(power)
 norm_powers = (power - min_power) / (max_power - min_power)
 
-ax2.plot(freqs, norm_powers, 'g-')
-ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'g--')
+ax2.plot(freqs, norm_powers, 'g-.')
+ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'g-.')
 
 ###############################################################################
 # LS detrended
@@ -169,14 +169,14 @@ max_power_ind = np.argmax(power)
 max_power = power[max_power_ind]
 best_freq = freqs[max_power_ind]
 y_model = ls.model(t_model, best_freq)
-ax1.plot(t_model, y_model+t_model * slope + intercept, 'b-')
-ax1.plot(t_model, t_model * slope + intercept, 'b-.')
+ax1.plot(t_model, y_model+t_model * slope + intercept, 'b--')
+ax1.plot(t_model, t_model * slope + intercept, 'b--')
 print "LS detrended: ", freq, best_freq, max_power
 
 min_power = min(power)
 norm_powers = (power - min_power) / (max_power - min_power)
 
-ax2.plot(freqs, norm_powers, 'b-')
+ax2.plot(freqs, norm_powers, 'b--')
 ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'b--')
 
 ax1.set_xlabel(r'Time')#,fontsize=20)
