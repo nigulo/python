@@ -98,7 +98,7 @@ star_FeH_dR = read_FeH_dR("brandenburg2017table.csv")
 if plot_ro:
     fig1, ((ax111, ax112), (ax121, ax122), (ax131, ax132)) = plt.subplots(nrows=3, ncols=2, sharex=True)
     fig1.set_size_inches(12, 18)
-    ax131.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+    ax131.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
     ax132.set_xlabel(r'${\rm log}{\rm Ro}^{-1}$', fontsize=axis_label_fs)
     ax111.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax111.transAxes, fontsize=panel_label_fs)
     ax112.text(0.9, 0.9,'(d)', horizontalalignment='center', transform=ax112.transAxes, fontsize=panel_label_fs)
@@ -115,7 +115,7 @@ if plot_ro:
 else:
     fig1, (ax11, ax12, ax13) = plt.subplots(nrows=3, ncols=1, sharex=False)
     fig1.set_size_inches(6, 18)
-    ax13.set_xlabel(r'${\rm log} \langle R\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+    ax13.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
     ax11.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax11.transAxes, fontsize=panel_label_fs)
     ax12.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax12.transAxes, fontsize=panel_label_fs)
     ax13.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax13.transAxes, fontsize=panel_label_fs)
