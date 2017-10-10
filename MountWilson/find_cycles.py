@@ -166,7 +166,7 @@ for root, dirs, files in os.walk(input_path):
                 fig_pdf, ax_pdf = plt.subplots(1, 1)
                 fig_pdf.set_size_inches(9, 5)
                 ax_pdf.set_ylabel(r'S-index', fontsize=15)
-                ax_pdf.set_xlabel(r'$t$ [yr]', fontsize=15)
+                #ax_pdf.set_xlabel(r'$t$ [yr]', fontsize=15)
                 ax_pdf.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax_pdf.transAxes, fontsize=15)
             
     
