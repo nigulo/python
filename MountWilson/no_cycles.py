@@ -52,9 +52,9 @@ print num_stars
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 12)
-ax1.set_ylabel(r'$\sigma^2/\sigma^2_{\rm s}$', fontsize=15)
+ax1.set_ylabel(r'$\sigma^2/\overline{\sigma}^2_{\rm s}$', fontsize=15)
 ax2.set_ylabel(r'$p_{\rm cyc}/p$', fontsize=15)
-ax2.set_xlabel(r'$\langle R^\prime_{\rm HK}\rangle$', fontsize=15)
+ax2.set_xlabel(r'$\log \langle R^\prime_{\rm HK}\rangle$', fontsize=15)
 ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
 ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=15)
 
