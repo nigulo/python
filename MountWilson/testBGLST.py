@@ -7,6 +7,9 @@ from scipy import stats
 from astropy.stats import LombScargle
 from scipy.stats import norm
 
+axis_label_fs = 15
+panel_label_fs = 15
+
 def calc_BGLS(t, y, w, freq):
     tau = 0.5 * np.arctan(sum(w * np.sin(4 * np.pi * t * freq))/sum(w * np.cos(4 * np.pi * t * freq)))
     c = sum(w * np.cos(2.0 * np.pi * t * freq - tau))
@@ -94,11 +97,11 @@ best_freq = freqs[max_prob_index]
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 7)
 
-ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes)
-ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes)
+ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=panel_label_fs)
+ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=panel_label_fs)
 
 
-ax1.scatter(t, y, marker='+', color ='k')
+ax1.scatter(t, y, marker='+', color ='k', lw=0.5)
 tau, (A, B, alpha, beta), _, y_model_1, loglik = bglst.model(best_freq)
 bic = 2 * loglik - np.log(n) * 5
 print A, B, alpha, beta
@@ -183,12 +186,12 @@ norm_powers = (power - min_power) / (max_power - min_power)
 ax2.plot(freqs, norm_powers, 'b--')
 ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'b--')
 
-ax1.set_xlabel(r'Time')#,fontsize=20)
-ax1.set_ylabel(r'Signal')#,fontsize=20)
+ax1.set_xlabel(r'$t$', fontsize=axis_label_fs)#,fontsize=20)
+ax1.set_ylabel(r'$y$', fontsize=axis_label_fs)#,fontsize=20)
 ax1.set_xlim([0, 180])
 
-ax2.set_xlabel(r'Frequency')#,fontsize=20)
-ax2.set_ylabel(r'Normalized log probability/power')#,fontsize=20)
+ax2.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
+ax2.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
 ax2.set_xlim([0.001, 0.04])
 
-fig.savefig("testBGLST.eps")
+fig.savefig("model_comp.eps")
