@@ -17,6 +17,7 @@ from scipy.stats import gaussian_kde
 import os
 import os.path
 import mw_utils
+from bayes_lin_reg import bayes_lin_reg
 
 #input_path = "downsampling/results"
 input_path = "BGLST_input"
@@ -41,8 +42,6 @@ for star in r_hks.keys():
         min_r_hk = r_hk
     if max_r_hk is None or r_hk > max_r_hk:
         max_r_hk = r_hk
-r_hk_counts_na = []
-r_hk_counts_a = []
 print min_r_hk, max_r_hk
 r_hk_bins_values = np.linspace(min_r_hk, max_r_hk, num=num_r_hk_bins)
 #r_hk_bin_counts_a = np.zeros(num_r_hk_bins)
@@ -53,17 +52,39 @@ print num_stars
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 12)
-ax1.set_ylabel(r'$\sigma^2_{\rm s}/\sigma^2$')
-ax2.set_ylabel(r'$N_{\rm cyc}/N$')
+ax1.set_ylabel(r'$\sigma^2/\sigma^2_{\rm s}$', fontsize=15)
+ax2.set_ylabel(r'$N_{\rm cyc}/N$', fontsize=15)
 
 ax2.set_xlabel(r'$\langle R\prime_{\rm HK}\rangle$')
-ax1.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes)
-ax2.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes)
+ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
+ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=15)
 
 r_hks_a = []
 r_hks_na = []
+r_hks_na_t = []
+r_hks_na_wot = []
 var_ratios_a = []
 var_ratios_na = []
+var_ratios_na_t = []
+var_ratios_na_wot = []
+
+
+def constant_model(t, y, w):
+    W = sum(w)
+    wy_arr = w * y
+
+    Y = sum(wy_arr)
+
+    sigma_beta = 1.0 / W
+    mu_beta = Y * sigma_beta
+
+    norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
+
+    y_model = mu_beta
+    loglik = norm_term - 0.5 * sum(w * (y - y_model)**2)
+
+    return (mu_beta, sigma_beta, y_model, loglik)
+
 
 for root, dirs, files in os.walk(input_path):
     for file in files:
@@ -92,37 +113,54 @@ for root, dirs, files in os.walk(input_path):
             time_range = max(t) - min(t)
             mean_seasonal_var = np.mean(mw_utils.get_seasonal_noise_var(t, y, False))
             total_var = np.var(y)
-            print mean_seasonal_var/total_var
+            print total_var/mean_seasonal_var
             if (r_hks.has_key(star)):
                 r_hk = r_hks[star]
                 if all_cycles.has_key(star):
-                    r_hk_counts_a.append(r_hk)
-                    #r_hk_counts_a.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
-                    #r_hk_bin_counts_a[min(num_r_hk_bins - 1, int((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins))] += 1
-                else:
-                    r_hk_counts_na.append(r_hk)
-                    #r_hk_counts_na.append(round((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins)*(max_r_hk - min_r_hk)/num_r_hk_bins+min_r_hk)
-                    #r_hk_bin_counts_na[min(num_r_hk_bins - 1, int((r_hk - min_r_hk)/(max_r_hk - min_r_hk)*num_r_hk_bins))] += 1
-                
-                if all_cycles.has_key(star):
                     r_hks_a.append(r_hk)
-                    var_ratios_a.append(mean_seasonal_var/total_var)
+                    var_ratios_a.append(total_var/mean_seasonal_var)
                 else:
                     r_hks_na.append(r_hk)
-                    var_ratios_na.append(mean_seasonal_var/total_var)
-                #ax2.scatter(r_hk_bins_values, r_hk_bins_counts/num_stars, marker=markers.MarkerStyle("o", fillstyle=None), lw=1, facecolors="blue", color="blue", s=10, edgecolors="blue")
-                #y = mlab.normpdf(bins, np.mean(star_cycle_samples), np.std(star_cycle_samples))
-                #l = plt.plot(bins, y, 'r--', linewidth=1)
+                    var_ratios_na.append(total_var/mean_seasonal_var)
+                    ############################
+                    # Fit the model to get trend
+                    ############################
+                    data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=1)
+                    t_orig = data[:,0]
+                    y_orig = data[:,1]
+                    indices = np.argsort(t_orig)
+                    t_orig = t_orig[indices]            
+                    y_orig = y_orig[indices]            
+                    t = t_orig/365.25 + offset
+                    y = y_orig
+                    time_range = max(t) - min(t)
+                    seasonal_means = mw_utils.get_seasonal_means(t, y)
+                    seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
+                    seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
+                    _, _, _, loglik_seasons = bayes_lin_reg(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                    _, _, _, loglik_seasons_null = constant_model(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                    log_n = np.log(np.shape(seasonal_means)[0])
+                    bic = log_n * 2 - 2.0*loglik_seasons
+                    bic_null = log_n  - 2.0*loglik_seasons_null
+                    
+                    print bic_null, bic
+                    delta_bic = bic_null - bic
+                    if delta_bic >= 6.0:
+                        # Significant trend
+                        r_hks_na_t.append(r_hk)
+                        var_ratios_na_t.append(total_var/mean_seasonal_var)
+                    else:
+                        r_hks_na_wot.append(r_hk)
+                        var_ratios_na_wot.append(total_var/mean_seasonal_var)
+                    ############################
 
-#n, bins, patches = ax2.hist(r_hk_counts_na, 10, normed=1, facecolor='green', alpha=0.75)
-#n, bins, patches = ax2.hist(r_hk_counts_a, 10, normed=1, facecolor='blue', alpha=0.75)
-
-ax1.scatter(r_hks_na, var_ratios_na, marker=markers.MarkerStyle("o", fillstyle=None), lw=1, facecolors="blue", color="blue", s=10, edgecolors="blue")
-ax1.scatter(r_hks_a, var_ratios_a, marker=markers.MarkerStyle("+", fillstyle=None), lw=1, facecolors="red", color="red", s=10, edgecolors="red")
+ax1.scatter(r_hks_na_t, var_ratios_na_t, marker=markers.MarkerStyle("x", fillstyle=None), lw=1.5, facecolors="green", color="green", s=50, edgecolors="green")
+ax1.scatter(r_hks_na_wot, var_ratios_na_wot, marker=markers.MarkerStyle('d', fillstyle=None), lw=1.5, facecolors="none", color="blue", s=50, edgecolors="blue")
+ax1.scatter(r_hks_a, var_ratios_a, marker=markers.MarkerStyle("+", fillstyle=None), lw=1.5, facecolors="red", color="red", s=50, edgecolors="red")
 slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na, var_ratios_na)
-ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "b-")
-slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_a, var_ratios_a)
-ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "r-")
+ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "k--")
+#slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_a, var_ratios_a)
+#ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "r-")
 
 
 def calc_kde(data):
@@ -147,20 +185,20 @@ def calc_kde(data):
     print opt_kde
     return gaussian_kde(data, bw_method = opt_kde), opt_kde
         
-density_a, cov_a = calc_kde(r_hk_counts_a)#gaussian_kde(r_hk_counts_a, bw_method = kde_cov)
+density_a, cov_a = calc_kde(r_hks_a)#gaussian_kde(r_hks_a, bw_method = kde_cov)
 d_a = density_a(r_hk_bins_values)
 
-density_na, cov_na = calc_kde(r_hk_counts_na)#gaussian_kde(r_hk_counts_na, bw_method = kde_cov)
+density_na, cov_na = calc_kde(r_hks_na)#gaussian_kde(r_hks_na, bw_method = kde_cov)
 d_na = density_na(r_hk_bins_values)
 
-density_all, cov_all = calc_kde(r_hk_counts_a + r_hk_counts_na)#gaussian_kde(r_hk_counts_a + r_hk_counts_na, bw_method = kde_cov)
+density_all, cov_all = calc_kde(r_hks_a + r_hks_na)#gaussian_kde(r_hks_a + r_hks_na, bw_method = kde_cov)
 d_all = density_all(r_hk_bins_values)
 #ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
 ax2.plot(r_hk_bins_values, d_all, "k--")
 
-r_hk_counts_a = np.asarray(r_hk_counts_a)
-r_hk_counts_na = np.asarray(r_hk_counts_na)
+r_hks_a = np.asarray(r_hks_a)
+r_hks_na = np.asarray(r_hks_na)
 
 rel_d_a_bs = []
 
@@ -203,16 +241,16 @@ def draw_points(xs, cdf):
     return vals
     
 for i in np.arange(0, num_bootstrap):
-    indices = np.random.randint(0, len(r_hk_counts_a) + len(r_hk_counts_na), size=(len(r_hk_counts_a) + len(r_hk_counts_na)))
-    indices_a = indices[np.where(indices < len(r_hk_counts_a))[0]]
-    indices_na = indices[np.where(indices >= len(r_hk_counts_a))[0]]
-    indices_na -= len(r_hk_counts_a)
-    #r_hk_counts_a_bs = np.random.choice(r_hk_counts_a, len(r_hk_counts_a))
-    #r_hk_counts_na_bs = np.random.choice(r_hk_counts_na, len(r_hk_counts_na))
-    r_hk_counts_a_bs = r_hk_counts_a[indices_a]
-    r_hk_counts_na_bs = r_hk_counts_na[indices_na]
-    density_a_bs = gaussian_kde(r_hk_counts_a_bs, bw_method = cov_a)#calc_kde(r_hk_counts_a_bs, r_hk_bins_values)#gaussian_kde(r_hk_counts_a_bs, bw_method = kde_cov)
-    density_na_bs = gaussian_kde(r_hk_counts_na_bs, bw_method = cov_na)#calc_kde(r_hk_counts_na_bs, r_hk_bins_values)#gaussian_kde(r_hk_counts_na_bs, bw_method = kde_cov)
+    indices = np.random.randint(0, len(r_hks_a) + len(r_hks_na), size=(len(r_hks_a) + len(r_hks_na)))
+    indices_a = indices[np.where(indices < len(r_hks_a))[0]]
+    indices_na = indices[np.where(indices >= len(r_hks_a))[0]]
+    indices_na -= len(r_hks_a)
+    #r_hks_a_bs = np.random.choice(r_hks_a, len(r_hks_a))
+    #r_hks_na_bs = np.random.choice(r_hks_na, len(r_hks_na))
+    r_hks_a_bs = r_hks_a[indices_a]
+    r_hks_na_bs = r_hks_na[indices_na]
+    density_a_bs = gaussian_kde(r_hks_a_bs, bw_method = cov_a)#calc_kde(r_hks_a_bs, r_hk_bins_values)#gaussian_kde(r_hks_a_bs, bw_method = kde_cov)
+    density_na_bs = gaussian_kde(r_hks_na_bs, bw_method = cov_na)#calc_kde(r_hks_na_bs, r_hk_bins_values)#gaussian_kde(r_hks_na_bs, bw_method = kde_cov)
     d_a_bs = density_a_bs(r_hk_bins_values)
     d_na_bs = density_na_bs(r_hk_bins_values)
     rel_d_a_bs.append(d_a_bs/(d_a_bs + d_na_bs))
@@ -222,8 +260,8 @@ rel_d_a_bs = np.asarray(rel_d_a_bs)
 rel_d_a_bs_mean = np.mean(rel_d_a_bs, axis=0)
 rel_d_a_bs_std = np.std(rel_d_a_bs, axis=0)
 ax2.plot(r_hk_bins_values, rel_d_a_bs_mean, "k-")
-ax2.plot(r_hk_bins_values, d_a*len(r_hk_counts_a)/(len(r_hk_counts_a) + len(r_hk_counts_na)), "r-")
-ax2.plot(r_hk_bins_values, d_na*len(r_hk_counts_na)/(len(r_hk_counts_a) + len(r_hk_counts_na)), "b-")
+ax2.plot(r_hk_bins_values, d_a*len(r_hks_a)/(len(r_hks_a) + len(r_hks_na)), "r-")
+ax2.plot(r_hk_bins_values, d_na*len(r_hks_na)/(len(r_hks_a) + len(r_hks_na)), "b-")
 
 lowers = np.zeros(np.shape(rel_d_a_bs)[1])
 uppers = np.zeros(np.shape(rel_d_a_bs)[1])
