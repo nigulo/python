@@ -276,5 +276,5 @@ ax1.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
 ax2.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
 
 
-fig.savefig("no_cycles.pdf")
+fig.savefig("cyc_vs_act.pdf")
 plt.close(fig)
