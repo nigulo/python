@@ -168,6 +168,7 @@ for root, dirs, files in os.walk(input_path):
                 ax_pdf.set_ylabel(r'S-index', fontsize=15)
                 #ax_pdf.set_xlabel(r'$t$ [yr]', fontsize=15)
                 ax_pdf.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax_pdf.transAxes, fontsize=15)
+                ax_pdf.set_xlim([min(t), max(t)])
             
     
                 #(plot1) = plots[0]

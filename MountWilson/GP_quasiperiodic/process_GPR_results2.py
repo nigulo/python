@@ -151,7 +151,8 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
             fig.set_size_inches(9, 5)
             ax1.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
-        
+            ax1.set_xlim([min(t), max(t)])
+
             ax1.plot(t, y, 'k+', lw=0.5)
             #ax2.plot(t, y_wo_rot, 'r+')
             ax1.plot(t_test, f_mean, 'r-',lw=2)
