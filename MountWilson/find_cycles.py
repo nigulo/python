@@ -165,8 +165,9 @@ for root, dirs, files in os.walk(input_path):
     
                 fig_pdf, ax_pdf = plt.subplots(1, 1)
                 fig_pdf.set_size_inches(9, 5)
-                ax_pdf.set_ylabel(r'S-index')
-                ax_pdf.set_xlabel(r'Time [yr]')
+                ax_pdf.set_ylabel(r'S-index', fontsize=15)
+                ax_pdf.set_xlabel(r'$t$ [yr]', fontsize=15)
+                ax_pdf.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax_pdf.transAxes, fontsize=15)
             
     
                 #(plot1) = plots[0]
@@ -206,13 +207,13 @@ for root, dirs, files in os.walk(input_path):
                         w1 = np.ones(len(t))/noise_var
                         (plot2) = plots[freq_index + plot_index]
                         plot2.plot(t, y1, 'b+')
-                        ax_pdf.plot(t, y1, 'b+') 
+                        ax_pdf.plot(t, y1, 'k+',lw=0.5) 
                         line_freq = line_freqs[freq_index]
                         if line_freq > 0:
                             t_fit = np.linspace(min(t), max(t), 1000)
                             _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq, t_fit)
                             plot2.plot(t_fit, y_fit, '-')
-                            ax_pdf.plot(t_fit, y_fit, 'k-')
+                            ax_pdf.plot(t_fit, y_fit, 'r-', lw=2)
                             _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq)
                             y1 = y1 - y_fit
                         
