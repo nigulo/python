@@ -53,9 +53,8 @@ print num_stars
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 12)
 ax1.set_ylabel(r'$\sigma^2/\sigma^2_{\rm s}$', fontsize=15)
-ax2.set_ylabel(r'$N_{\rm cyc}/N$', fontsize=15)
-
-ax2.set_xlabel(r'$\langle R\prime_{\rm HK}\rangle$')
+ax2.set_ylabel(r'$p_{\rm cyc}/p$', fontsize=15)
+ax2.set_xlabel(r'$\langle R^\prime_{\rm HK}\rangle$', fontsize=15)
 ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
 ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=15)
 
@@ -260,8 +259,8 @@ rel_d_a_bs = np.asarray(rel_d_a_bs)
 rel_d_a_bs_mean = np.mean(rel_d_a_bs, axis=0)
 rel_d_a_bs_std = np.std(rel_d_a_bs, axis=0)
 ax2.plot(r_hk_bins_values, rel_d_a_bs_mean, "k-")
-ax2.plot(r_hk_bins_values, d_a*len(r_hks_a)/(len(r_hks_a) + len(r_hks_na)), "r-")
-ax2.plot(r_hk_bins_values, d_na*len(r_hks_na)/(len(r_hks_a) + len(r_hks_na)), "b-")
+#ax2.plot(r_hk_bins_values, d_a*len(r_hks_a)/(len(r_hks_a) + len(r_hks_na)), "r-")
+#ax2.plot(r_hk_bins_values, d_na*len(r_hks_na)/(len(r_hks_a) + len(r_hks_na)), "b-")
 
 lowers = np.zeros(np.shape(rel_d_a_bs)[1])
 uppers = np.zeros(np.shape(rel_d_a_bs)[1])
@@ -272,6 +271,10 @@ for i in np.arange(0, np.shape(rel_d_a_bs)[1]):
 
 #ax2.fill_between(r_hk_bins_values, rel_d_a_bs_mean + 2.0 * rel_d_a_bs_std, rel_d_a_bs_mean - 2.0 * rel_d_a_bs_std, alpha=0.1, facecolor='gray', interpolate=True)
 ax2.fill_between(r_hk_bins_values, uppers, lowers, alpha=0.1, facecolor='gray', interpolate=True)
+
+ax1.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
+ax2.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
+
 
 fig.savefig("no_cycles.pdf")
 plt.close(fig)
