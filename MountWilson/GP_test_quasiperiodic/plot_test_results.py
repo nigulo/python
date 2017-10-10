@@ -12,6 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mw_utils
 
+axis_label_fs = 15
+panel_label_fs = 15
+
 dat = np.loadtxt("test/results.txt")
 
 ids = dat[:, 0].astype(int)
@@ -21,10 +24,14 @@ freq_row = 2
 n_eff_col = 9
 
 indices = list()
+i = 0
 for id in ids:
     details = np.genfromtxt("test/detailed_results_"+str(id)+".txt", usecols=(n_eff_col), skip_header=5, skip_footer=5)
     if (details[freq_row]) >= float(num_iters) / 10:
-        indices.append(np.where(ids == id)[0][0])
+        #print np.where(ids == id)[0][0]
+        #indices.append(np.where(ids == id)[0][0])
+        indices.append(i)
+    i += 1
 
 indices = np.asarray(indices)
 print float(len(indices)) / len(ids)
@@ -106,28 +113,28 @@ for coh_len in coh_lens:
     
 
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
-fig.set_size_inches(6, 8)
+fig.set_size_inches(6, 10)
 #fig.tight_layout(pad=2.5)
 
-ax1.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes)
-ax1.set_ylabel(r'$\overline{\Delta}_{\rm H}/\overline{\Delta}_{\rm GP}$')#,fontsize=20)
-ax2.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes)
-ax2.set_ylabel(r'# $\Delta_{\rm GP} < \Delta_{\rm H}$')#,fontsize=20)
-ax3.text(0.9, 0.9,'(c)', horizontalalignment='center', transform=ax3.transAxes)
+ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=panel_label_fs)
+ax1.set_ylabel(r'$\overline{\Delta}_{\rm H}/\overline{\Delta}_{\rm GP}$', fontsize=axis_label_fs)#,fontsize=20)
+ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=panel_label_fs)
+ax2.set_ylabel(r'# $\Delta_{\rm GP} < \Delta_{\rm H}$', fontsize=axis_label_fs)#,fontsize=20)
+ax3.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax3.transAxes, fontsize=panel_label_fs)
 
-ax1.plot(coh_lens, quality1, 'b-')
-ax1.fill_between(coh_lens, quality1 + std1, quality1 - std1, alpha=0.1, facecolor='lightblue', interpolate=True)
-ax2.plot(coh_lens, quality2, 'b-')
-ax2.fill_between(coh_lens, quality2 + std2, quality2 - std2, alpha=0.1, facecolor='lightblue', interpolate=True)
-ax3.plot(coh_lens, quality31, 'b-', alpha=0.9)
+ax1.plot(coh_lens, quality1, 'k-')
+ax1.fill_between(coh_lens, quality1 + std1, quality1 - std1, alpha=0.1, facecolor='gray', interpolate=True)
+ax2.plot(coh_lens, quality2, 'k-')
+ax2.fill_between(coh_lens, quality2 + std2, quality2 - std2, alpha=0.1, facecolor='gray', interpolate=True)
+ax3.plot(coh_lens, quality31, 'b--', alpha=0.9)
 ax3.plot(coh_lens, quality32, 'r-', alpha=0.9)
 ax3.fill_between(coh_lens, quality31 + std31, quality31 - std31, alpha=0.1, facecolor='lightblue', interpolate=True)
 ax3.fill_between(coh_lens, quality32 + std32, quality32 - std32, alpha=0.1, facecolor='lightsalmon', interpolate=True)
 
-ax3.set_ylabel(r'$\overline{\Delta}$')#,fontsize=20)
-ax3.set_xlabel(r'$\ell/P_{\rm true}$')#,fontsize=20)
+ax3.set_ylabel(r'$\overline{\Delta}$', fontsize=axis_label_fs)#,fontsize=20)
+ax3.set_xlabel(r'$\ell/P_{\rm true}$', fontsize=axis_label_fs)#,fontsize=20)
 
-fig.savefig("diagnostics1.png")
+fig.savefig("exp_diag.pdf")
 
 
 #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
