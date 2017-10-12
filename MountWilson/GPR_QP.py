@@ -40,7 +40,7 @@ class GPR_QP:
                 K += np.diag(self.noise_var)
         return K
     
-    def fit(self, t, y, t_test, y_test=None):
+    def fit(self, t, y, t_test):
         n = len(t)
         K = self.calc_cov(t, t, True)
         L = la.cholesky(K)
@@ -52,3 +52,19 @@ class GPR_QP:
         var = np.diag(covar)
         loglik = -0.5 * np.dot(y.T, alpha) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
         return (f_mean, var, loglik)
+        
+    def cv(self, t, y, t_test, y_test):
+        n_test = len(t_test)
+        K = self.calc_cov(t, t, True)
+        L = la.cholesky(K)
+        alpha = la.solve(L.T, la.solve(L, y))
+        K_test = self.calc_cov(t_test, t, False)
+        f_mean = np.dot(K_test, alpha)
+        v = la.solve(L, K_test.T)
+        covar = self.calc_cov(t_test, t_test, False) - np.dot(v.T, v)
+        var = np.diag(covar)
+        L_test_covar = la.cholesky(covar)
+        alpha_test_covar = la.solve(L_test_covar.T, la.solve(L_test_covar, (y_test-f_mean)))
+        loglik = -0.5 * np.dot((y_test-f_mean).T, alpha_test_covar) - sum(np.log(np.diag(L_test_covar))) - 0.5 * n_test * np.log(2.0 * np.pi)
+        return (f_mean, var, loglik)
+        
