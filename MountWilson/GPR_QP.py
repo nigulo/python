@@ -67,4 +67,3 @@ class GPR_QP:
         alpha_test_covar = la.solve(L_test_covar.T, la.solve(L_test_covar, (y_test-f_mean)))
         loglik = -0.5 * np.dot((y_test-f_mean).T, alpha_test_covar) - sum(np.log(np.diag(L_test_covar))) - 0.5 * n_test * np.log(2.0 * np.pi)
         return (f_mean, var, loglik)
-        

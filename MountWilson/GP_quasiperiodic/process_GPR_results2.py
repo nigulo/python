@@ -135,7 +135,49 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
             t = t_orig/365.25
             t += offset
+
+            ###################################################################
+            # Cross-validation
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
+
+            seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
+            dat = np.column_stack((t, y))
+            
+            season_index = 0
+            l_loo = 0.0
+            l_loo_null = 0.0
+            for season in seasons:
+                season_start = min(season[:,0])
+                season_end = max(season[:,0])
+                print "cv for season: ", season_index, season_start, season_end
+                if season_index == len(seasons) - 1:
+                    indices = np.where(dat[:,0] < season_start)[0]
+                    dat_train = dat[indices,:]
+                    noise_train = noise_var[indices]
+                    dat_test = dat[np.where(dat[:,0] >= season_start)[0],:]
+                else:
+                    dat_season = dat[np.where(dat[:,0] < season_end)[0],:]
+                    indices_after = np.where(dat[:,0] >= season_end)[0]
+                    dat_after = dat[indices_after,:]
+                    indices_before = np.where(dat_season[:,0] < season_start)[0]
+                    dat_before = dat_season[indices_before,:]
+                    dat_test = dat_season[np.where(dat_season[:,0] >= season_start)[0],:]
+                    dat_train = np.concatenate((dat_before, dat_after), axis=0)
+                    noise_before = noise_var[indices_before]
+                    noise_after = noise_var[indices_after]
+                    noise_train = np.concatenate((noise_before, noise_after), axis=0)
+                season_index += 1
+                print indices_before, indices_after, noise_train
+                gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
+                gpr_gp_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var, c=0.0)
+                (_, _, loglik_test) = gpr_gp.cv(dat_train[:,0], dat_train[:,1]-m, dat_test[:,0], dat_test[:,1])
+                l_loo += loglik_test
+                (_, _, loglik_test_null) = gpr_gp_null.cv(dat_train[:,0], dat_train[:,1]-m, dat_test[:,0], dat_test[:,1])
+                l_loo_null += loglik_test_null
+            print "l_loo, l_loo_null", l_loo, l_loo_null
+            ###################################################################
+
+            # Full fit
             n = len(t)
             
             gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
