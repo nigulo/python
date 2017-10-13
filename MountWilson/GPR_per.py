@@ -31,31 +31,50 @@ class GPR_per:
                 K += np.diag(self.noise_var)
         return K
     
-    def fit(self, t, y, t_test, y_test=None):
-        n = len(t)
-        K = self.calc_cov(t, t, True)
-        L = la.cholesky(K)
-        alpha = la.solve(L.T, la.solve(L, y))
-        K_test = self.calc_cov(t_test, t, False)
-        f_mean = np.dot(K_test, alpha)
-        v = la.solve(L, K_test.T)
+    def init(self, t, y):
+        self.n = len(t)
+        self.t = t
+        self.y = y
+        self.K = self.calc_cov(t, t, True)
+        self.L = la.cholesky(self.K)
+        self.alpha = la.solve(self.L.T, la.solve(self.L, y))
+
+    def fit(self, t_test):
+        K_test = self.calc_cov(t_test, self.t, False)
+        f_mean = np.dot(K_test, self.alpha)
+        v = la.solve(self.L, K_test.T)
         covar = self.calc_cov(t_test, t_test, False) - np.dot(v.T, v)
         var = np.diag(covar)
-        loglik = -0.5 * np.dot(y.T, alpha) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+        loglik = -0.5 * np.dot(self.y.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         return (f_mean, var, loglik)
-        
-    def cv(self, t, y, t_test, y_test):
+    
+    def cv(self, t_test, y_test, noise_test):
+        if np.isscalar(t_test):
+            t_test = np.array([t_test])
+            y_test = np.array([y_test])
+            noise_test = np.array([noise_test])
         n_test = len(t_test)
-        K = self.calc_cov(t, t, True)
-        L = la.cholesky(K)
-        alpha = la.solve(L.T, la.solve(L, y))
-        K_test = self.calc_cov(t_test, t, False)
-        f_mean = np.dot(K_test, alpha)
-        v = la.solve(L, K_test.T)
+        K_test = self.calc_cov(t_test, self.t, False)
+        f_mean = np.dot(K_test, self.alpha)
+        v = la.solve(self.L, K_test.T)
         covar = self.calc_cov(t_test, t_test, False) - np.dot(v.T, v)
+        covar += np.diag(noise_test)
+        #covar = np.diag(np.diag(covar))
+        #print self.noise_var[0:3]
+        #print self.calc_cov(t_test, t_test, False)[0:3,0:3]
+        #print np.dot(v.T, v)[0:3,0:3]
+        #print covar
+        #print np.linalg.eigvalsh(covar)
+        #inv_covar = la.inv(covar)
+        #print np.dot(inv_covar.T, covar)
+        #print inv_covar
         var = np.diag(covar)
         L_test_covar = la.cholesky(covar)
         alpha_test_covar = la.solve(L_test_covar.T, la.solve(L_test_covar, (y_test-f_mean)))
         loglik = -0.5 * np.dot((y_test-f_mean).T, alpha_test_covar) - sum(np.log(np.diag(L_test_covar))) - 0.5 * n_test * np.log(2.0 * np.pi)
+        #det_covar = la.det(covar)
+        #print det_covar
+        #loglik = -0.5 * np.dot((y_test-f_mean).T, np.dot(inv_covar, y_test-f_mean)) - 0.5 * np.log(det_covar) - 0.5 * n_test * np.log(2.0 * np.pi)
+        print loglik
         return (f_mean, var, loglik)
-        
+

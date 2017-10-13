@@ -81,8 +81,8 @@ data = pd.read_csv("results/"+peak_no_str+"results.txt", names=['star', 'index',
 #data = np.genfromtxt(file, dtype=None, skip_header=1)
 for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic] in data:
 
-    if delta_bic < 6:
-        continue
+    #if delta_bic < 6:
+    #    continue
     star = str(star)
     file_name = "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
     if not os.path.isfile(file_name) and index == 0:
@@ -124,7 +124,6 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     #assert(freq_row >= 0)
     #if (details[freq_row]) >= float(num_iters) / 10:
         #cycles.append((cyc*365.25, std_2/2*365.25)) # one sigma
-        output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")    
     
         if not os.path.isfile("residues/" + peak_no_str + star + ".dat"):
             dat = np.loadtxt(data_dir+"/"+star + ".dat", usecols=(0,1), skiprows=0)
@@ -136,13 +135,82 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
             t = t_orig/365.25
             t += offset
+            t -= np.mean(t)
+
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
-            n = len(t)
+
+            ###################################################################
+            # Cross-validation
+
+
+            #gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
+            #gpr_gp_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var, c=0.0)
+            #gpr_gp.init(t, y-m)
+            #gpr_gp_null.init(t, y-m)
+            #seasonal_means = mw_utils.get_seasonal_means(t, y-m)
+            #seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
+            #l_loo = 0.0
+            #l_loo_null = 0.0
+            #season_index = 0
+            #print seasonal_means[:,0]
+            #print seasonal_means[:,1]
+            #(_, _, loglik_test) = gpr_gp.cv(seasonal_means[:,0], seasonal_means[:,1], seasonal_noise)
+            #(_, _, loglik_test_null) = gpr_gp_null.cv(seasonal_means[:,0], seasonal_means[:,1], seasonal_noise)
+            
+            
+            seasonal_means = mw_utils.get_seasonal_means(t, y-m)
+            seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
+            seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
+            l_loo = 0.0
+            l_loo_null = 0.0
+            dat = np.column_stack((t, y))
+            season_index = 0
+            for season in seasons:
+                season_start = min(season[:,0])
+                season_end = max(season[:,0])
+                print "cv for season: ", season_index, season_start, season_end
+                dat_test = seasonal_means[season_index]
+                if season_index == len(seasons) - 1:
+                    indices = np.where(dat[:,0] < season_start)[0]
+                    dat_train = dat[indices,:]
+                    noise_train = noise_var[indices]
+                    #dat_test = dat[np.where(dat[:,0] >= season_start)[0],:]
+                else:
+                    dat_season = dat[np.where(dat[:,0] < season_end)[0],:]
+                    indices_after = np.where(dat[:,0] >= season_end)[0]
+                    dat_after = dat[indices_after,:]
+                    indices_before = np.where(dat_season[:,0] < season_start)[0]
+                    dat_before = dat_season[indices_before,:]
+                    #dat_test = seasonal_means[season_index]# dat_season[np.where(dat_season[:,0] >= season_start)[0],:]
+                    dat_train = np.concatenate((dat_before, dat_after), axis=0)
+                    noise_before = noise_var[indices_before]
+                    noise_after = noise_var[indices_after]
+                    noise_train = np.concatenate((noise_before, noise_after), axis=0)
+                #test_mat = np.array([[1.16490151e-08, 1.16493677e-08], [1.16493677e-08, 1.16497061e-08]])
+                #test_mat = np.array([[1.16490151e-08, 1.16e-08], [1.16e-08, 1.16497061e-08]])
+                #test_mat *= 1e8
+                #print test_mat
+                #L_test_covar = la.cholesky(test_mat)
+                
+                #print indices_before, indices_after, noise_train
+                gpr_gp = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
+                gpr_gp_null = GPR_per.GPR_per(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var, c=0.0)
+                gpr_gp.init(dat_train[:,0], dat_train[:,1]-m)
+                (_, _, loglik_test) = gpr_gp.cv(dat_test[0], dat_test[1], seasonal_noise[season_index])
+                l_loo += loglik_test
+                gpr_gp_null.init(dat_train[:,0], dat_train[:,1]-m)
+                (_, _, loglik_test_null) = gpr_gp_null.cv(dat_test[0], dat_test[1], seasonal_noise[season_index])
+                l_loo_null += loglik_test_null
+                season_index += 1
+
+            print "l_loo, l_loo_null", l_loo, l_loo_null
+            ###################################################################
             
             gpr_gp = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
-            t_test = np.linspace(min(t), max(t), 500)
-            (f_mean, pred_var, loglik) = gpr_gp.fit(t, y-m, t_test)
-            (f_t, _, _) = gpr_gp.fit(t, y-m, t)
+            t_test = np.linspace(min(t), max(t), 200)
+            gpr_gp.init(t, y-m)
+            (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
+            (f_t, _, _) = gpr_gp.fit(t)
             f_mean += m
             residue = y - (f_t + m)
             
@@ -166,6 +234,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             fig.savefig("fits/" + peak_no_str+star + '.pdf')
             plt.close()
     
+            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(l_loo - l_loo_null) + "\n")    
     else:
         print "Omitting " + star + " " + str(index) + " due to too low n_eff"
 

@@ -82,9 +82,8 @@ data = pd.read_csv("results/"+peak_no_str+"results.txt", names=['star', 'index',
 #data = np.genfromtxt(file, dtype=None, skip_header=1)
 for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic] in data:
 
-    print star
-    if delta_bic < 6:# and star != "101501":
-        continue
+    #if delta_bic < 6:# and star != "101501":
+    #    continue
     file_name = "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
     if not os.path.isfile(file_name) and index == 0:
         file_name = "results/"+ peak_no_str + star + "_results.txt"
@@ -237,7 +236,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             fig.savefig("fits/" + peak_no_str+star + '.pdf')
             plt.close()
          
-            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(l_loo) + " " + str(l_loo_null) + "\n")    
+            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(l_loo - l_loo_null) + "\n")    
 
     else:
         print "Omitting " + star + " " + str(index) + " due to too low n_eff"
