@@ -23,20 +23,22 @@ num_iters = 300
 freq_row = 2
 n_eff_col = 9
 
-peak_no = 0
-use_residue_as_data = False
+peak_no = 1
+use_residue_as_data = True
 use_residue_from = 0
 
 peak_no_str = ""
+prefix = ""
 if peak_no > 0:
     peak_no_str = str(peak_no) + "/"
 
 data_dir = "../GP_input"
+use_residue_from_str = ""
 if use_residue_as_data:
-    use_residue_from_str = ""
     if use_residue_from > 0:
         use_residue_from_str = str(use_residue_from) + "/"
     data_dir = "residues/" + use_residue_from_str
+    prefix = str(use_residue_from) + "_" + str(peak_no) + "/"
 
 
 try:
@@ -75,15 +77,16 @@ parse = make_parser(fieldwidths)
 
 rot_periods = mw_utils.load_rot_periods("../")
 
-output_cycles = open("processed_with_cycles.txt", "w")
+output_cycles = open("processed/"+prefix+peak_no_str+"processed_with_cycles.txt", "w")
 
-data = pd.read_csv("results/"+peak_no_str+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'rot_amplitude', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv(prefix+"results/"+peak_no_str+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'rot_amplitude', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
 
 #data = np.genfromtxt(file, dtype=None, skip_header=1)
 for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic] in data:
 
     #if delta_bic < 6:# and star != "101501":
     #    continue
+    star = str(star)
     file_name = "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
     if not os.path.isfile(file_name) and index == 0:
         file_name = "results/"+ peak_no_str + star + "_results.txt"
@@ -126,7 +129,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     #if (details[freq_row]) >= float(num_iters) / 10:
         #cycles.append((cyc*365.25, std_2/2*365.25)) # one sigma
     
-        if not os.path.isfile("residues/" + peak_no_str + star + ".dat"):
+        if not os.path.isfile("residues/" + prefix+ peak_no_str + star + ".dat"):
             dat = np.loadtxt(data_dir+"/"+star + ".dat", usecols=(0,1), skiprows=0)
             
             offset = 1979.3452
@@ -217,25 +220,25 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             residue = y - (f_t + m)
             
             dat = np.column_stack((t_orig, residue))
-            np.savetxt("residues/" + peak_no_str + star + ".dat", dat, fmt='%f')
+            np.savetxt("residues/" + prefix + peak_no_str + star + ".dat", dat, fmt='%f')
             fig, ax1 = plt.subplots(nrows=1, ncols=1)
             #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
             fig.set_size_inches(9, 5)
-            ax1.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
+            ax1.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
             ax1.set_xlim([min(t), max(t)])
-
+        
             ax1.plot(t, y, 'k+', lw=0.5)
             #ax2.plot(t, y_wo_rot, 'r+')
-            ax1.plot(t_test, f_mean, 'r-',lw=2)
+            ax1.plot(t_test, f_mean, 'r-', lw=2)
             ax1.fill_between(t_test, f_mean + 3.0 * np.sqrt(pred_var), f_mean - 3.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightsalmon', interpolate=True)
         
             ax1.set_ylabel(r'S-index', fontsize=15)
             ax1.set_xlabel(r'$t$ [yr]', fontsize=15)
             #ax2.plot(t, residue, 'b+')
       
-            fig.savefig("fits/" + peak_no_str+star + '.pdf')
+            fig.savefig("fits/" + prefix + peak_no_str+star + '.pdf')
             plt.close()
-         
+    
             output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(l_loo - l_loo_null) + "\n")    
 
     else:
