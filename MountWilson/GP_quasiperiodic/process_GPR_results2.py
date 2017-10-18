@@ -32,7 +32,7 @@ prefix = ""
 if peak_no > 0:
     peak_no_str = str(peak_no) + "/"
 
-data_dir = "../GP_input"
+data_dir = "../GP_input/"
 use_residue_from_str = ""
 if use_residue_as_data:
     if use_residue_from > 0:
@@ -77,7 +77,7 @@ parse = make_parser(fieldwidths)
 
 rot_periods = mw_utils.load_rot_periods("../")
 
-output_cycles = open("processed/"+prefix+peak_no_str+"processed_with_cycles.txt", "w")
+output_cycles = open("processed/"+prefix+peak_no_str+"processed_with_cycles.txt", "a")
 
 data = pd.read_csv(prefix+"results/"+peak_no_str+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'rot_amplitude', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
 
@@ -87,9 +87,9 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     #if delta_bic < 6:# and star != "101501":
     #    continue
     star = str(star)
-    file_name = "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
+    file_name = prefix + "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
     if not os.path.isfile(file_name) and index == 0:
-        file_name = "results/"+ peak_no_str + star + "_results.txt"
+        file_name = prefix + "results/"+ peak_no_str + star + "_results.txt"
     print "Loading " + star + " " + str(index)
     n_eff = -1
     sig_var = -1
@@ -115,7 +115,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
     assert(n_eff >= 0)
     assert(sig_var >= 0)
-    assert(m >= 0)
+    #assert(m >= 0)
     print n_eff
     if n_eff >= 5:#float(num_iters) / 10:
         print cyc, length_scale, sig_var, trend_var, m
@@ -129,8 +129,8 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     #if (details[freq_row]) >= float(num_iters) / 10:
         #cycles.append((cyc*365.25, std_2/2*365.25)) # one sigma
     
-        if not os.path.isfile("residues/" + prefix+ peak_no_str + star + ".dat"):
-            dat = np.loadtxt(data_dir+"/"+star + ".dat", usecols=(0,1), skiprows=0)
+        if not os.path.isfile("residues/" + prefix + peak_no_str + star + ".dat"):
+            dat = np.loadtxt(data_dir+star + ".dat", usecols=(0,1), skiprows=0)
             
             offset = 1979.3452
             

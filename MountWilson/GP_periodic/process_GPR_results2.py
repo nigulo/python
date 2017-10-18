@@ -22,7 +22,7 @@ num_iters = 300
 freq_row = 2
 n_eff_col = 9
 
-peak_no = 1
+peak_no = 2
 use_residue_as_data = True
 use_residue_from = 0
 
@@ -114,7 +114,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
     assert(n_eff >= 0)
     assert(sig_var >= 0)
-    assert(m >= 0)
+    #assert(m >= 0)
     print n_eff
     if n_eff >= 5:#float(num_iters) / 10:
         print cyc, length_scale, sig_var, trend_var, m
