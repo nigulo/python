@@ -22,9 +22,9 @@ num_iters = 300
 freq_row = 2
 n_eff_col = 9
 
-peak_no = 2
+peak_no = 1
 use_residue_as_data = True
-use_residue_from = 0
+use_residue_from = 2
 
 peak_no_str = ""
 prefix = ""

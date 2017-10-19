@@ -88,7 +88,7 @@ for [star, f, std, normality, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_periodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("GP_periodic/results_combined.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
 gp_p_cycles = dict()
 #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
 for [star, validity, cyc, std, bic] in data:
@@ -104,7 +104,7 @@ for [star, validity, cyc, std, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_quasiperiodic/processed_with_cycles.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv("GP_quasiperiodic/results_combined.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
 gp_qp_cycles = dict()
 #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
 for [star, validity, cyc, std, bic] in data:
@@ -127,9 +127,9 @@ keys = np.sort(keys)
 spec_types = mw_utils.load_spec_types()
 
 for star in keys:
-    is_ms = ""
+    is_ms = "\\xmark"
     if len(np.where(ms_stars == star.upper())[0] > 0):
-        is_ms = "\checkmark"
+        is_ms = "\\cmark"
     output = "HD" + star + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & "
     if bglst_cycles.has_key(star):
         i = 0
@@ -139,6 +139,8 @@ for star in keys:
                 if i < np.shape(bglst_cycles[star])[0] - 1:        
                     output += ", "
             i += 1        
+    else:
+        output += "--"
     output += " & "
 
     if gp_p_cycles.has_key(star):
@@ -148,7 +150,9 @@ for star in keys:
                 output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
                 if i < np.shape(gp_p_cycles[star])[0] - 1:        
                     output += ", "
-            i += 1        
+            i += 1
+    else:
+        output += "--"
     output += " & "
 
     if gp_qp_cycles.has_key(star):
@@ -159,6 +163,8 @@ for star in keys:
                 if i < np.shape(gp_qp_cycles[star])[0] - 1:        
                     output += ", "
             i += 1        
+    else:
+        output += "--"
     output += " & "
 
     ##### Commenting Goettingen out for now
@@ -170,17 +176,23 @@ for star in keys:
     #output += " & "
 
     if olah_cycles.has_key(star):
-        for cycle in olah_cycles[star]:
-            output += " " + str(round(cycle,2))
+        if len(olah_cycles[star]) == 0:
+            output += "--"
+        else:
+            for cycle in olah_cycles[star]:
+                output += " " + str(round(cycle,2))
     else:
-        output += "NA"
+        output += "$\dots$"
     output += " & "
 
     if baliunas_cycles.has_key(star):
-        for cycle in baliunas_cycles[star]:
-            output += " " + cycle#str(round(cycle,2))
+        if len(baliunas_cycles[star]) == 0:
+            output += "--"
+        else:
+            for cycle in baliunas_cycles[star]:
+                output += " " + cycle#str(round(cycle,2))
     else:
-        output += "NA"
+        output += "$\dots$"
     output += " \\\\ "
 
     print output    
