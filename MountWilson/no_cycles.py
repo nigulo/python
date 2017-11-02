@@ -156,7 +156,7 @@ for root, dirs, files in os.walk(input_path):
 ax1.scatter(r_hks_na_t, var_ratios_na_t, marker=markers.MarkerStyle("x", fillstyle=None), lw=1.5, facecolors="green", color="green", s=50, edgecolors="green")
 ax1.scatter(r_hks_na_wot, var_ratios_na_wot, marker=markers.MarkerStyle('d', fillstyle=None), lw=1.5, facecolors="none", color="blue", s=50, edgecolors="blue")
 ax1.scatter(r_hks_a, var_ratios_a, marker=markers.MarkerStyle("+", fillstyle=None), lw=1.5, facecolors="red", color="red", s=50, edgecolors="red")
-slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na, var_ratios_na)
+slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na_t, var_ratios_na_t)
 ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "k--")
 #slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_a, var_ratios_a)
 #ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "r-")

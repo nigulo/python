@@ -189,7 +189,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        if type == "GP_P":
+        if type == "GP_P" or type == "GP_QP":
             m_temp = m2
             s_temp = s2
             w_temp = w2
