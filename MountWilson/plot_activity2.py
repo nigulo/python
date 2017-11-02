@@ -83,6 +83,24 @@ def read_gp_cycles(file):
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
+data = np.genfromtxt("Baliunas.csv", dtype='str', delimiter=';')
+baliunas_cycles = dict()
+for [star, cyc1, cyc2] in data:
+    cycles = list()
+    if len(cyc1) > 0:
+        try:
+            cyc1 = float(cyc1)
+            cycles.append((cyc1*365.25, 0, 0))
+        except ValueError:
+            print "Omitting cycle"
+    if len(cyc2) > 0:
+        try:
+            cyc2 = float(cyc2)
+            cycles.append((cyc2*365.25, 0, 0)) 
+        except ValueError:
+            print "Omitting cycle"
+    if len(cycles) > 0:
+        baliunas_cycles[star] = cycles
 
 def read_FeH_dR(file):
     star_FeH_dR = dict()
@@ -136,6 +154,92 @@ ax31.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax31.transAxe
 ax32.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax32.transAxes, fontsize=panel_label_fs)
 ax31.set_xlabel(r'$d/R$', fontsize=axis_label_fs)
 ax32.set_xlabel(r'[Fe/H] (dex)', fontsize=axis_label_fs)
+
+def plot_data(data, save):
+    activity_ls_1 = []
+    activity_ls_2 = []
+    for star in data.keys():
+        is_ms = star_is_ms(star)
+        data_star = data[star]
+        data_star_arr = np.asarray(data_star)
+        #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
+        print np.shape(data_star_arr)
+        r0 = float(data_star_arr[0,4])
+        g0 = float(data_star_arr[0,5])
+        b0 = float(data_star_arr[0,6])
+        print "Color", r0, g0, b0
+        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
+        #inds = np.where(data_star_arr[:,11])[0] # is_ms
+        if is_ms:
+            ax2.plot(data_star_arr[:,9], data_star_arr[:,10], linestyle=':', color=(r0, g0, b0), lw=1.5)
+        if plot_ro:
+            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
+        for [r_hk, y, err1, err2, r, g, b, ro, sym, p_rot, p_cyc, delta_i] in data_star:
+            if save:
+                activity_ls_1.append([r_hk, y])
+                activity_ls_2.append([ro, y])
+            fillstyles = [None]
+            syms = [sym]
+            facecolors = [[r, g, b]]
+            sizes = [50]
+            if sym == 'd':
+                facecolors = ['none']
+            elif star == "SUN":
+                fillstyles = [None, 'full']
+                facecolors = ['none', [r, g, b]]
+                syms = ['o', 'o']
+                sizes = [50, 1]
+            first_time = True
+            for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
+                if star == "SUN":
+                    print fillstyle
+                if not first_time or err1 == 0 and err2 == 0:
+                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                    if is_ms: # omit non MS
+                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                    if plot_ro:
+                        ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], size=size, edgecolors=[r, g, b])
+                else:
+                    ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
+                    if is_ms: # omit non MS
+                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
+                    if plot_ro:
+                        ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
+                if type == "BGLST" and star_FeH_dR.has_key(star):
+                    ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                    ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                first_time = False
+    np.savetxt("activity_" + type + "_rhk.txt", activity_ls_1, fmt='%f')
+    if plot_ro:
+        np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
+    
+    ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+    if plot_ro:
+        ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+    
+    ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
+
+    if type == "BGLST" and star_FeH_dR.has_key(star):
+        ax31.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
+        ax32.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
+        
+        std1 = np.sqrt((1.0 - s1[0, 1]*s1[0, 1]/s1[0, 0]/s1[1, 1])*s1[1, 1])
+        std2 = np.sqrt((1.0 - s2[0, 1]*s2[0, 1]/s2[0, 0]/s2[1, 1])*s2[1, 1])
+        xmin, xmax = ax31.get_xlim()
+        ax31.plot([xmin, xmax], [std1, std1], color='blue', linestyle='--', linewidth=1)
+        ax31.plot([xmin, xmax], [-std1, -std1], color='blue', linestyle='--', linewidth=1)
+        ax31.plot([xmin, xmax], [std2, std2], color='red', linestyle='-.', linewidth=1)
+        ax31.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
+        ax31.set_xlim(xmin, xmax)
+
+        xmin, xmax = ax32.get_xlim()
+        ax32.plot([xmin, xmax], [std1, std1], color='blue', linestyle='--', linewidth=1)
+        ax32.plot([xmin, xmax], [-std1, -std1], color='blue', linestyle='--', linewidth=1)
+        ax32.plot([xmin, xmax], [std2, std2], color='red', linestyle='-.', linewidth=1)
+        ax32.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
+        ax32.set_xlim(xmin, xmax)
+    
+    #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
 
 for type in ["BGLST", "GP_P", "GP_QP"]:
 
@@ -254,9 +358,9 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         print "y2=" + str(a2) + "x+" + str(b2)
     ###############################################################################
     
-    
     i = 0
     data = dict()
+    data_baliunas = dict()
     plot_ro = False
     
     with open("mwo-rhk.dat", "r") as ins:
@@ -281,7 +385,6 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
             except ValueError:
                 p_rot = None
             if p_rot != None and r_hk != None and bmv != None:
-                data_star = None
                 if bmv >= 1.0:
                     tau = 25.0
                 else:
@@ -291,156 +394,80 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                 #print star, tau, bmv
                 dark_color =  "black"
                 light_color =  "gray"
-                sym = "d"
                 is_ms = star_is_ms(star)
-                if is_ms:
-                    sym = "+"
-                if star == "SUN":
-                    sym = "*"
-                    #dark_color = "gold"
-                    #light_color = "lemonchiffon"
-                #if star == "10780" or star == "155886":
-                #    dark_color = "red"
-                #    light_color = "lightsalmon"
-                if cycles.has_key(star) and (is_ms or include_non_ms):
-                    data_star = []
-                    for (p_cyc, std, bic) in cycles[star]:
-                        exclude = False
-                        for (p_cyc_2, std_2, bic_2) in cycles[star]:
-                            if p_cyc != p_cyc_2:
-                                for i in [2.0, 3.0]:
-                                    if p_cyc_2 + std_2 > (p_cyc - std) * i and p_cyc_2 - std_2 < (p_cyc + std) * i:
-                                        #print p_cyc, p_cyc_2
-                                        #exclude = True
-                                        break
-                        if exclude:
-                            continue
-                        #r_hks_ls.append(r_hk)
-                        val = np.log10(p_rot/p_cyc)
-                        err = std/p_cyc/np.log(10)
-                        if err < 0.02:
-                            err = 0.0
-                        #val1 = np.log10(p_rot/(p_cyc + std))
-                        #val2 = np.log10(p_rot/(p_cyc - std))
-                        #print val - val1, val2 - val, err
-                        delta_i = None
-                        if clustered and is_ms:
-                            point = np.array([r_hk, val])
-                            dist1 = np.dot(point - m1, np.dot(LA.inv(s1), point - m1))
-                            dist2 = np.dot(point - m2, np.dot(LA.inv(s2), point - m2))
-                            if bic > 100:
-                                c = 0.0
+                    
+                for (cycs, baliunas) in [(baliunas_cycles, True), (cycles, False)]:
+                    sym = "d"
+                    if is_ms:
+                        sym = "+"
+                    if star == "SUN":
+                        sym = "*"
+                    if cycs.has_key(star) and (is_ms or include_non_ms):
+                        data_star = []
+                        for (p_cyc, std, bic) in cycs[star]:
+                            exclude = False
+                            for (p_cyc_2, std_2, bic_2) in cycs[star]:
+                                if p_cyc != p_cyc_2:
+                                    for ii in [2.0, 3.0]:
+                                        if p_cyc_2 + std_2 > (p_cyc - std) * ii and p_cyc_2 - std_2 < (p_cyc + std) * ii:
+                                            #print p_cyc, p_cyc_2
+                                            #exclude = True
+                                            break
+                            if exclude:
+                                continue
+                            #r_hks_ls.append(r_hk)
+                            val = np.log10(p_rot/p_cyc)
+                            err = std/p_cyc/np.log(10)
+                            if err < 0.02:
+                                err = 0.0
+                            #val1 = np.log10(p_rot/(p_cyc + std))
+                            #val2 = np.log10(p_rot/(p_cyc - std))
+                            #print val - val1, val2 - val, err
+                            delta_i = None
+                            if baliunas:
+                                r = 0.5
+                                g = 0.5
+                                b = 0.5
+                                sym = "."
                             else:
-                                c = 0.5 - 0.5 * (bic - min_bic)/(max_bic - min_bic)
-                            if dist1 < dist2:
-                                sym = "+"
-                                delta_i = val - (a1 * r_hk + b1)
-                                r = c
-                                g = c
-                                b = 1.0
-                            else:
-                                sym = "x"
-                                delta_i = val - (a2 * r_hk + b2)
-                                r = 1.0
-                                g = c
-                                b = c
-                        else:                            
-                            if bic > 100:
-                                r = 0.0
-                                g = 0.0
-                                b = 0.0
-                            else:
-                                c = 0.5*(1.0 - (bic - min_bic)/(max_bic - min_bic))
-                                r = c
-                                g = c
-                                b = c
-                        data_star.append([r_hk, val, err, err, r, g, b, ro, sym, p_rot, p_cyc/365.25, delta_i])
-                    data[star] = data_star
+                                if clustered and is_ms:
+                                    point = np.array([r_hk, val])
+                                    dist1 = np.dot(point - m1, np.dot(LA.inv(s1), point - m1))
+                                    dist2 = np.dot(point - m2, np.dot(LA.inv(s2), point - m2))
+                                    if bic > 100:
+                                        c = 0.0
+                                    else:
+                                        c = 0.5 - 0.5 * (bic - min_bic)/(max_bic - min_bic)
+                                    if dist1 < dist2:
+                                        sym = "+"
+                                        delta_i = val - (a1 * r_hk + b1)
+                                        r = c
+                                        g = c
+                                        b = 1.0
+                                    else:
+                                        sym = "x"
+                                        delta_i = val - (a2 * r_hk + b2)
+                                        r = 1.0
+                                        g = c
+                                        b = c
+                                else:                            
+                                    if bic > 100:
+                                        r = 0.0
+                                        g = 0.0
+                                        b = 0.0
+                                    else:
+                                        c = 0.5*(1.0 - (bic - min_bic)/(max_bic - min_bic))
+                                        r = c
+                                        g = c
+                                        b = c
+                            data_star.append([r_hk, val, err, err, r, g, b, ro, sym, p_rot, p_cyc/365.25, delta_i])
+                        if baliunas:
+                            data_baliunas[star] = data_star
+                        else:
+                            data[star] = data_star                            
             #print star, bmv, r_hk, p_rot
-
-    activity_ls_1 = []
-    activity_ls_2 = []
-    for star in data.keys():
-        is_ms = star_is_ms(star)
-        data_star = data[star]
-        data_star_arr = np.asarray(data_star)
-        #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
-        r0 = float(data_star_arr[0,4])
-        g0 = float(data_star_arr[0,5])
-        b0 = float(data_star_arr[0,6])
-        print "Color", r0, g0, b0
-        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
-        #inds = np.where(data_star_arr[:,11])[0] # is_ms
-        if is_ms:
-            ax2.plot(data_star_arr[:,9], data_star_arr[:,10], linestyle=':', color=(r0, g0, b0), lw=1.5)
-        if plot_ro:
-            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
-        for [r_hk, y, err1, err2, r, g, b, ro, sym, p_rot, p_cyc, delta_i] in data_star:
-            activity_ls_1.append([r_hk, y])
-            activity_ls_2.append([ro, y])
-            fillstyles = [None]
-            syms = [sym]
-            facecolors = [[r, g, b]]
-            sizes = [50]
-            if sym == 'd':
-                facecolors = ['none']
-            elif star == "SUN":
-                fillstyles = [None, 'full']
-                facecolors = ['none', [r, g, b]]
-                syms = ['o', 'o']
-                sizes = [50, 1]
-            first_time = True
-            for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
-                if star == "SUN":
-                    print fillstyle
-                if not first_time or err1 == 0 and err2 == 0:
-                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
-                    if is_ms: # omit non MS
-                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
-                    if plot_ro:
-                        ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], size=size, edgecolors=[r, g, b])
-                else:
-                    ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
-                    if is_ms: # omit non MS
-                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
-                    if plot_ro:
-                        ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
-                if type == "BGLST" and star_FeH_dR.has_key(star):
-                    ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
-                    ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
-                first_time = False
-    np.savetxt("activity_" + type + "_rhk.txt", activity_ls_1, fmt='%f')
-    if plot_ro:
-        np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
-    
-    ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
-    if plot_ro:
-        ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
-    
-    ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
-
-    if type == "BGLST" and star_FeH_dR.has_key(star):
-        ax31.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
-        ax32.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
-        
-        std1 = np.sqrt((1.0 - s1[0, 1]*s1[0, 1]/s1[0, 0]/s1[1, 1])*s1[1, 1])
-        std2 = np.sqrt((1.0 - s2[0, 1]*s2[0, 1]/s2[0, 0]/s2[1, 1])*s2[1, 1])
-        xmin, xmax = ax31.get_xlim()
-        ax31.plot([xmin, xmax], [std1, std1], color='blue', linestyle='--', linewidth=1)
-        ax31.plot([xmin, xmax], [-std1, -std1], color='blue', linestyle='--', linewidth=1)
-        ax31.plot([xmin, xmax], [std2, std2], color='red', linestyle='-.', linewidth=1)
-        ax31.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
-        ax31.set_xlim(xmin, xmax)
-
-        xmin, xmax = ax32.get_xlim()
-        ax32.plot([xmin, xmax], [std1, std1], color='blue', linestyle='--', linewidth=1)
-        ax32.plot([xmin, xmax], [-std1, -std1], color='blue', linestyle='--', linewidth=1)
-        ax32.plot([xmin, xmax], [std2, std2], color='red', linestyle='-.', linewidth=1)
-        ax32.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
-        ax32.set_xlim(xmin, xmax)
-    
-    #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
-    
+    plot_data(data, True)
+    plot_data(data_baliunas, False)
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
