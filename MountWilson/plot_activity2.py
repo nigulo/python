@@ -18,6 +18,7 @@ import mw_utils
 
 include_non_ms = True
 
+use_secondary_clusters = False
 plot_ro = False
 
 axis_label_fs = 15
@@ -83,20 +84,37 @@ def read_gp_cycles(file):
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
+min_baliunas_grade = 1.0
+max_baliunas_grade = 3.0
+def get_baliunas_grade(grade_string):
+    if grade_string == 'E':
+        return 3.0
+    elif grade_string == 'G':
+        return 2.0
+    elif grade_string == 'F':
+        return 1.0
+    else:
+        return 0.0
+        
 data = np.genfromtxt("Baliunas.csv", dtype='str', delimiter=';')
 baliunas_cycles = dict()
-for [star, cyc1, cyc2] in data:
+for [star, cyc1, grade1, cyc2, grade2] in data:
     cycles = list()
     if len(cyc1) > 0:
         try:
+            grade = 0
             cyc1 = float(cyc1)
-            cycles.append((cyc1*365.25, 0, 0))
+            grade = get_baliunas_grade(grade1)
+            if grade >= min_baliunas_grade:
+                cycles.append((cyc1*365.25, 0, grade))
         except ValueError:
             print "Omitting cycle"
     if len(cyc2) > 0:
         try:
             cyc2 = float(cyc2)
-            cycles.append((cyc2*365.25, 0, 0)) 
+            grade = get_baliunas_grade(grade2)
+            if grade >= min_baliunas_grade:
+                cycles.append((cyc2*365.25, 0, grade))
         except ValueError:
             print "Omitting cycle"
     if len(cycles) > 0:
@@ -167,26 +185,26 @@ def plot_data(data, save):
         r0 = float(data_star_arr[0,4])
         g0 = float(data_star_arr[0,5])
         b0 = float(data_star_arr[0,6])
+        alpha0 = float(data_star_arr[0,7])
         print "Color", r0, g0, b0
-        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
+        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
         if is_ms:
-            ax2.plot(data_star_arr[:,9], data_star_arr[:,10], linestyle=':', color=(r0, g0, b0), lw=1.5)
+            ax2.plot(data_star_arr[:,10], data_star_arr[:,11], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         if plot_ro:
-            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0), lw=1.5)
-        for [r_hk, y, err1, err2, r, g, b, ro, sym, p_rot, p_cyc, delta_i] in data_star:
-            if save:
-                activity_ls_1.append([r_hk, y])
-                activity_ls_2.append([ro, y])
+            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i] in data_star:
+            activity_ls_1.append([r_hk, y])
+            activity_ls_2.append([ro, y])
             fillstyles = [None]
             syms = [sym]
-            facecolors = [[r, g, b]]
+            facecolors = [[r, g, b, alpha]]
             sizes = [50]
-            if sym == 'd':
+            if sym == 'd' or sym == ".":
                 facecolors = ['none']
             elif star == "SUN":
                 fillstyles = [None, 'full']
-                facecolors = ['none', [r, g, b]]
+                facecolors = ['none', [r, g, b, alpha]]
                 syms = ['o', 'o']
                 sizes = [50, 1]
             first_time = True
@@ -194,24 +212,25 @@ def plot_data(data, save):
                 if star == "SUN":
                     print fillstyle
                 if not first_time or err1 == 0 and err2 == 0:
-                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms: # omit non MS
-                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if plot_ro:
-                        ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b], size=size, edgecolors=[r, g, b])
+                        ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], size=size, edgecolors=[r, g, b, alpha])
                 else:
-                    ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
+                    ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if is_ms: # omit non MS
-                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
+                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro:
-                        ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b])
+                        ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                 if type == "BGLST" and star_FeH_dR.has_key(star):
-                    ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
-                    ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b], s=size, edgecolors=[r, g, b])
+                    ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                    ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                 first_time = False
-    np.savetxt("activity_" + type + "_rhk.txt", activity_ls_1, fmt='%f')
-    if plot_ro:
-        np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
+    if save:
+        np.savetxt("activity_" + type + "_rhk.txt", activity_ls_1, fmt='%f')
+        if plot_ro:
+            np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
     
     ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     if plot_ro:
@@ -281,9 +300,12 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
 
     clustered = False
     ###############################################################################
-    if os.path.isfile("clusters_" + type + ".txt"):
+    suffix = ""
+    if use_secondary_clusters:
+        suffix = "_secondary"
+    if os.path.isfile("clusters_" + type + suffix + ".txt"):
         clustered = True
-        dat = np.loadtxt("clusters_" + type + ".txt", usecols=(0,1), skiprows=0)
+        dat = np.loadtxt("clusters_" + type + suffix + ".txt", usecols=(0,1), skiprows=0)
     
         m1 = dat[0,:]
         m2 = dat[1,:]
@@ -396,7 +418,8 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                 light_color =  "gray"
                 is_ms = star_is_ms(star)
                     
-                for (cycs, baliunas) in [(baliunas_cycles, True), (cycles, False)]:
+                for (cycs, baliunas) in [(cycles, False), (baliunas_cycles, True)]:
+                    alpha = 0.9
                     sym = "d"
                     if is_ms:
                         sym = "+"
@@ -425,9 +448,16 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             #print val - val1, val2 - val, err
                             delta_i = None
                             if baliunas:
-                                r = 0.5
-                                g = 0.5
-                                b = 0.5
+                                alpha = 0.7
+                                c = 0.5*(1.0 - (bic - min_baliunas_grade)/(max_baliunas_grade - min_baliunas_grade))
+                                #if bic > 1.0:
+                                #    r = c
+                                #    g = 1.0
+                                #    b = c
+                                #else:                                    
+                                r = c
+                                g = c
+                                b = c
                                 sym = "."
                             else:
                                 if clustered and is_ms:
@@ -460,7 +490,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         r = c
                                         g = c
                                         b = c
-                            data_star.append([r_hk, val, err, err, r, g, b, ro, sym, p_rot, p_cyc/365.25, delta_i])
+                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i])
                         if baliunas:
                             data_baliunas[star] = data_star
                         else:
@@ -475,5 +505,5 @@ plt.close(fig1)
 fig2.savefig("activity_diagram_2.pdf")
 plt.close(fig2)
 
-fig3.savefig("residues.pdf")
-plt.close(fig2)
+#fig3.savefig("residues.pdf")
+#plt.close(fig3)

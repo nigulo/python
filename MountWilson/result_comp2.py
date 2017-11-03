@@ -40,15 +40,13 @@ for [star, cyc1, cyc2, cyc3, cyc4, cyc5] in data:
 
 data = np.genfromtxt("Baliunas.csv", dtype='str', delimiter=';')
 baliunas_cycles = dict()
-for [star, cyc1, cyc2] in data:
+for [star, cyc1, grade1, cyc2, grade2] in data:
     cycles = list()
     if len(cyc1) > 0:
-    #if not np.isnan(cyc1):
-        cycles.append(cyc1)
+        cycles.append((cyc1, grade1))
     if len(cyc2) > 0:
-    #if not np.isnan(cyc2):
-        cycles.append(cyc2)
-    baliunas_cycles[star] = np.asarray(cycles)
+        cycles.append((cyc2, grade2))
+    baliunas_cycles[star] = cycles
 
 baliunas_stars = np.genfromtxt("baliunas_stars.txt", dtype=None)
 
@@ -127,6 +125,10 @@ keys = np.sort(keys)
 spec_types = mw_utils.load_spec_types()
 
 for star in keys:
+    
+    if not bglst_cycles.has_key(star) and not gp_p_cycles.has_key(star) and not gp_qp_cycles.has_key(star) and (not baliunas_cycles.has_key(star) or len(baliunas_cycles[star]) == 0):
+        continue
+    
     is_ms = "\\xmark"
     if len(np.where(ms_stars == star.upper())[0] > 0):
         is_ms = "\\cmark"
@@ -175,22 +177,24 @@ for star in keys:
     #    output += "NA"
     #output += " & "
 
-    if olah_cycles.has_key(star):
-        if len(olah_cycles[star]) == 0:
-            output += "--"
-        else:
-            for cycle in olah_cycles[star]:
-                output += " " + str(round(cycle,2))
-    else:
-        output += "$\dots$"
-    output += " & "
+    #if olah_cycles.has_key(star):
+    #    if len(olah_cycles[star]) == 0:
+    #        output += "--"
+    #    else:
+    #        for cycle in olah_cycles[star]:
+    #            output += " " + str(round(cycle,2))
+    #else:
+    #    output += "$\dots$"
+    #output += " & "
 
     if baliunas_cycles.has_key(star):
         if len(baliunas_cycles[star]) == 0:
             output += "--"
         else:
-            for cycle in baliunas_cycles[star]:
-                output += " " + cycle#str(round(cycle,2))
+            for (cycle, grade) in baliunas_cycles[star]:
+                if len(grade) > 0:
+                    grade = ' (' + grade + ')'
+                output += " " + cycle + grade#str(round(cycle,2))
     else:
         output += "$\dots$"
     output += " \\\\ "
