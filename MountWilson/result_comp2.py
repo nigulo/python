@@ -50,12 +50,14 @@ for [star, cyc1, grade1, cyc2, grade2] in data:
 
 baliunas_stars = np.genfromtxt("baliunas_stars.txt", dtype=None)
 
-time_ranges_data = np.genfromtxt("time_ranges.dat", usecols=(0,1), dtype=None)
+time_ranges_data = np.genfromtxt("time_ranges.dat", usecols=(0,1,2), dtype=None)
 time_ranges = dict()
-for [star, time_range] in time_ranges_data:
+end_times = dict()
+for [star, time_range, end_time] in time_ranges_data:
     if star == 'SUN':
         star = 'Sun'
     time_ranges[star] = time_range
+    end_times[star] = end_time
     found = False
     for baliunas_star in baliunas_stars:
         if baliunas_star == star:
@@ -132,7 +134,12 @@ for star in keys:
     is_ms = "\\xmark"
     if len(np.where(ms_stars == star.upper())[0] > 0):
         is_ms = "\\cmark"
-    output = "HD" + star + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & "
+    if end_times[star] >= 2000:
+        hd_str = "{\\bf HD" + star +"}"
+    else:
+        hd_str = "HD" + star
+        
+    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & "
     if bglst_cycles.has_key(star):
         i = 0
         for cycles in bglst_cycles[star]:

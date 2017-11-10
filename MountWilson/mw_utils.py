@@ -200,6 +200,27 @@ def get_seasonal_noise_var(t, y, per_point=True):
     assert(i == len(noise_var))
     return noise_var
 
+def get_test_point_noise_var(t, y, t_test):
+    seasons = get_seasons(zip(t, y), 1.0, True)
+    seasonal_noise_var = get_seasonal_noise_var(t, y, False)    
+    seasons_with_noise = zip(seasons, seasonal_noise_var)
+    noise_var = np.zeros(len(t_test))
+    i = 0
+    for ti in t_test:
+        for j in np.arange(0, len(seasons_with_noise)):
+            season0, var = seasons_with_noise[j]
+            if j < len(seasons_with_noise) - 1:
+                season1, _ = seasons_with_noise[j+1]
+                if min(season0[:,0]) <= ti and min(season1[:,0]) >= ti:
+                    noise_var[i] = var
+                    break
+            else:
+                noise_var[i] = var
+                
+        i += 1
+    assert(i == len(noise_var))
+    return noise_var
+
 '''
     Gets the seasonal means (one per each season)
 '''

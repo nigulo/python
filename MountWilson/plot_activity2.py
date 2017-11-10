@@ -159,6 +159,10 @@ else:
     #ax12.set_aspect('equal', 'datalim')
     #ax13.set_aspect('equal', 'datalim')
 
+fig1a, ax1a = plt.subplots(nrows=1, ncols=1, sharex=False)
+fig1a.set_size_inches(6, 6)
+ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
 fig2.set_size_inches(6, 18)
 ax21.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes, fontsize=panel_label_fs)
@@ -173,7 +177,7 @@ ax32.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax32.transAxe
 ax31.set_xlabel(r'$d/R$', fontsize=axis_label_fs)
 ax32.set_xlabel(r'[Fe/H] (dex)', fontsize=axis_label_fs)
 
-def plot_data(data, save):
+def plot_data(data, save, ax11, ax12, ax2, ax31, ax32):
     activity_ls_1 = []
     activity_ls_2 = []
     for star in data.keys():
@@ -186,12 +190,11 @@ def plot_data(data, save):
         g0 = float(data_star_arr[0,5])
         b0 = float(data_star_arr[0,6])
         alpha0 = float(data_star_arr[0,7])
-        print "Color", r0, g0, b0
         ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
-        if is_ms:
+        if is_ms and not ax2 is None:
             ax2.plot(data_star_arr[:,10], data_star_arr[:,11], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
-        if plot_ro:
+        if plot_ro and not ax12 is None:
             ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i] in data_star:
             activity_ls_1.append([r_hk, y])
@@ -213,17 +216,17 @@ def plot_data(data, save):
                     print fillstyle
                 if not first_time or err1 == 0 and err2 == 0:
                     ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
-                    if is_ms: # omit non MS
+                    if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
-                    if plot_ro:
+                    if plot_ro and not ax12 is None:
                         ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], size=size, edgecolors=[r, g, b, alpha])
                 else:
                     ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-                    if is_ms: # omit non MS
+                    if is_ms and not ax2 is None: # omit non MS
                         ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-                    if plot_ro:
+                    if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-                if type == "BGLST" and star_FeH_dR.has_key(star):
+                if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
                     ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                 first_time = False
@@ -236,9 +239,10 @@ def plot_data(data, save):
     if plot_ro:
         ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     
-    ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
+    if not ax2 is None:
+        ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
 
-    if type == "BGLST" and star_FeH_dR.has_key(star):
+    if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
         ax31.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
         ax32.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
         
@@ -315,7 +319,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        if type == "GP_P" or type == "GP_QP":
+        if type == "BGLST" or type == "GP_QP":
             m_temp = m2
             s_temp = s2
             w_temp = w2
@@ -496,11 +500,20 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         else:
                             data[star] = data_star                            
             #print star, bmv, r_hk, p_rot
-    plot_data(data, True)
-    plot_data(data_baliunas, False)
+    if type == "BGLST":
+        plot_data(data, True, ax11, ax12, ax2, ax31, ax32)
+        plot_data(data, False, ax1a, None, None, None, None)
+        plot_data(data_baliunas, False, ax1a, None, None, None, None)
+    else:
+        # don't plot the resudue plot
+        plot_data(data, True, ax11, ax12, ax2, None, None)
+        
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
+
+fig1a.savefig("activity_diagram_cmp.pdf")
+plt.close(fig1a)
 
 fig2.savefig("activity_diagram_2.pdf")
 plt.close(fig2)
