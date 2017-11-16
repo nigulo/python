@@ -211,6 +211,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
                 output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(l_loo - l_loo_null) + "\n")    
             ###################################################################
             
+            # Full fit
             gpr_gp = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
             t_test = np.linspace(min(t), max(t), 200)
             gpr_gp.init(t, y-m)
