@@ -84,7 +84,7 @@ data = pd.read_csv(prefix+"results/"+peak_no_str+"results.txt", names=['star', '
 #data = np.genfromtxt(file, dtype=None, skip_header=1)
 for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic] in data:
 
-    #if delta_bic < 6:# and star != "101501":
+    #if delta_bic < 6:
     #    continue
     star = str(star)
     file_name = prefix + "results/"+peak_no_str + star + "_" + str(index) + "_results.txt"
@@ -139,7 +139,8 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
             t = t_orig/365.25
             t += offset
-            t -= np.mean(t)
+            t_mean = np.mean(t)
+            t -= t_mean
 
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
@@ -216,13 +217,17 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             t_test = np.linspace(min(t), max(t), 200)
             gpr_gp.init(t, y-m)
             (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
-            pred_var = pred_var + mw_utils.get_test_point_noise_var(t, y, t_test)
+            pred_var = pred_var + mw_utils.get_test_point_noise_var(t, y, t_test, sliding=True)
             (f_t, _, _) = gpr_gp.fit(t)
             f_mean += m
             residue = y - (f_t + m)
             
             dat = np.column_stack((t_orig, residue))
             np.savetxt("residues/" + prefix + peak_no_str + star + ".dat", dat, fmt='%f')
+            
+            t += t_mean
+            t_test += t_mean
+            
             fig, ax1 = plt.subplots(nrows=1, ncols=1)
             #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
             fig.set_size_inches(9, 5)

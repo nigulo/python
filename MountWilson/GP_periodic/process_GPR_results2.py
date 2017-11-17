@@ -139,7 +139,8 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             
             t = t_orig/365.25
             t += offset
-            t -= np.mean(t)
+            t_mean = np.mean(t)
+            t -= t_mean
 
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
@@ -210,19 +211,23 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
                 print "l_loo, l_loo_null", l_loo, l_loo_null
                 output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(l_loo - l_loo_null) + "\n")    
             ###################################################################
-            
+
             # Full fit
             gpr_gp = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
             t_test = np.linspace(min(t), max(t), 200)
             gpr_gp.init(t, y-m)
             (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
-            pred_var = pred_var + mw_utils.get_test_point_noise_var(t, y, t_test)
+            pred_var = pred_var + mw_utils.get_test_point_noise_var(t, y, t_test, sliding=True)
             (f_t, _, _) = gpr_gp.fit(t)
             f_mean += m
             residue = y - (f_t + m)
             
             dat = np.column_stack((t_orig, residue))
             np.savetxt("residues/" + prefix + peak_no_str + star + ".dat", dat, fmt='%f')
+            
+            t += t_mean
+            t_test += t_mean
+            
             fig, ax1 = plt.subplots(nrows=1, ncols=1)
             #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
             fig.set_size_inches(9, 5)

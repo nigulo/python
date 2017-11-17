@@ -200,25 +200,44 @@ def get_seasonal_noise_var(t, y, per_point=True):
     assert(i == len(noise_var))
     return noise_var
 
-def get_test_point_noise_var(t, y, t_test):
-    seasons = get_seasons(zip(t, y), 1.0, True)
-    seasonal_noise_var = get_seasonal_noise_var(t, y, False)    
-    seasons_with_noise = zip(seasons, seasonal_noise_var)
+def get_test_point_noise_var(t, y, t_test, sliding=False, season_length = 1.0):
     noise_var = np.zeros(len(t_test))
-    i = 0
-    for ti in t_test:
-        for j in np.arange(0, len(seasons_with_noise)):
-            season0, var = seasons_with_noise[j]
-            if j < len(seasons_with_noise) - 1:
-                season1, _ = seasons_with_noise[j+1]
-                if min(season0[:,0]) <= ti and min(season1[:,0]) >= ti:
+    if sliding:
+        i = 0
+        for t1 in t_test:
+            indices1 = np.where(t >= t1 - season_length)[0]
+            y_window = y[indices1]
+            t_window = t[indices1]
+            indices2 = np.where(t_window <= t1 + season_length)[0]
+            y_window = y_window[indices2]
+            while np.shape(y_window)[0] < 10:
+                season_length *= 1.5
+                indices1 = np.where(t >= t1 - season_length)[0]
+                y_window = y[indices1]
+                t_window = t[indices1]
+                indices2 = np.where(t_window <= t1 + season_length)[0]
+                y_window = y_window[indices2]
+            noise_var[i] = np.var(y_window)
+            i += 1
+        assert(i == len(noise_var))
+    else:
+        seasons = get_seasons(zip(t, y), season_length, True)
+        seasonal_noise_var = get_seasonal_noise_var(t, y, False)    
+        seasons_with_noise = zip(seasons, seasonal_noise_var)
+        i = 0
+        for ti in t_test:
+            for j in np.arange(0, len(seasons_with_noise)):
+                season0, var = seasons_with_noise[j]
+                if j < len(seasons_with_noise) - 1:
+                    season1, _ = seasons_with_noise[j+1]
+                    if min(season0[:,0]) <= ti and min(season1[:,0]) >= ti:
+                        noise_var[i] = var
+                        break
+                else:
                     noise_var[i] = var
-                    break
-            else:
-                noise_var[i] = var
-                
-        i += 1
-    assert(i == len(noise_var))
+                    
+            i += 1
+        assert(i == len(noise_var))
     return noise_var
 
 '''
