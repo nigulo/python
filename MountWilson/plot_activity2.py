@@ -168,7 +168,8 @@ fig2.set_size_inches(6, 18)
 ax21.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes, fontsize=panel_label_fs)
 ax22.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes, fontsize=panel_label_fs)
 ax23.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes, fontsize=panel_label_fs)
-ax23.set_xlabel(r'$P_{\rm rot}$ [d]', fontsize=axis_label_fs)
+#ax23.set_xlabel(r'$P_{\rm rot}$ [d]', fontsize=axis_label_fs)
+ax23.set_xlabel(r'$\log P_{\rm rot}$ [d]', fontsize=axis_label_fs)
 
 fig3, (ax31, ax32) = plt.subplots(nrows=1, ncols=2, sharex=False, sharey=False)
 fig3.set_size_inches(12, 4)
@@ -177,7 +178,14 @@ ax32.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax32.transAxe
 ax31.set_xlabel(r'$d/R$', fontsize=axis_label_fs)
 ax32.set_xlabel(r'[Fe/H] (dex)', fontsize=axis_label_fs)
 
-def plot_data(data, save, ax11, ax12, ax2, ax31, ax32):
+fig4, (ax41, ax42, ax43) = plt.subplots(nrows=3, ncols=1, sharex=False)
+fig4.set_size_inches(6, 18)
+ax41.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes, fontsize=panel_label_fs)
+ax42.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes, fontsize=panel_label_fs)
+ax43.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes, fontsize=panel_label_fs)
+ax43.set_xlabel(r'$\log \Omega $' + ' [' + r'$d^{-1}$]', fontsize=axis_label_fs)
+
+def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     activity_ls_1 = []
     activity_ls_2 = []
     for star in data.keys():
@@ -193,10 +201,13 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32):
         ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
         if is_ms and not ax2 is None:
-            ax2.plot(data_star_arr[:,10], data_star_arr[:,11], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+            p = data_star_arr[:,10]
+            c = data_star_arr[:,11]
+            print "BLAAAAAAA", np.shape(np.array([1])), np.shape(p), np.shape(c)
+            #ax2.plot(np.log(p), np.log(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         if plot_ro and not ax12 is None:
             ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
-        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i] in data_star:
+        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err] in data_star:
             activity_ls_1.append([r_hk, y])
             activity_ls_2.append([ro, y])
             fillstyles = [None]
@@ -217,13 +228,17 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32):
                 if not first_time or err1 == 0 and err2 == 0:
                     ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.scatter(p_rot, p_cyc, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                        ax2.scatter(np.log(p_rot), np.log(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                    if is_ms and not ax4 is None: # omit non MS
+                        ax4.scatter(np.log(1.0/p_rot), y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.scatter(ro, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], size=size, edgecolors=[r, g, b, alpha])
                 else:
                     ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.errorbar(p_rot, p_cyc, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+                        ax2.errorbar(np.log(p_rot), np.log(p_cyc), yerr=[[cyc_err/p_cyc], [cyc_err/p_cyc]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+                    if is_ms and not ax2 is None: # omit non MS
+                        ax4.errorbar(np.log(1.0/p_rot), y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                 if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
@@ -240,7 +255,14 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32):
         ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     
     if not ax2 is None:
-        ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
+        #ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
+        ax2.set_ylabel(r'$\log P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
+        #ax2.set_xlim(8, 60)
+        #ax2.set_ylim(3, 30)
+        #ax2.loglog()
+
+    if not ax4 is None:
+        ax4.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
 
     if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
         ax31.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
@@ -273,6 +295,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         else:
             ax11 = ax11            
         ax2 = ax21
+        ax4 = ax41
         input_path = "BGLST_BIC_6/results.txt"
         bglst_or_gp = True
     elif type == "GP_P":
@@ -282,6 +305,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         else:
             ax11 = ax12            
         ax2 = ax22
+        ax4 = ax42
         input_path = "GP_periodic/results_combined.txt"
         bglst_or_gp = False
     elif type == "GP_QP":
@@ -291,6 +315,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         else:
             ax11 = ax13            
         ax2 = ax23
+        ax4 = ax43
         input_path = "GP_quasiperiodic/results_combined.txt"
         bglst_or_gp = False
     else:
@@ -494,19 +519,19 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         r = c
                                         g = c
                                         b = c
-                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i])
+                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25])
                         if baliunas:
                             data_baliunas[star] = data_star
                         else:
                             data[star] = data_star                            
             #print star, bmv, r_hk, p_rot
     if type == "BGLST":
-        plot_data(data, True, ax11, ax12, ax2, ax31, ax32)
-        plot_data(data, False, ax1a, None, None, None, None)
-        plot_data(data_baliunas, False, ax1a, None, None, None, None)
+        plot_data(data, True, ax11, ax12, ax2, ax31, ax32, ax4)
+        plot_data(data, False, ax1a, None, None, None, None, None)
+        plot_data(data_baliunas, False, ax1a, None, None, None, None, None)
     else:
         # don't plot the resudue plot
-        plot_data(data, True, ax11, ax12, ax2, None, None)
+        plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
         
 
 fig1.savefig("activity_diagram.pdf")
@@ -520,3 +545,6 @@ plt.close(fig2)
 
 #fig3.savefig("residues.pdf")
 #plt.close(fig3)
+
+fig4.savefig("activity_diagram_3.pdf")
+plt.close(fig4)
