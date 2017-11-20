@@ -16,7 +16,7 @@ from numpy import linalg as LA
 from matplotlib.patches import Ellipse
 import mw_utils
 
-include_non_ms = True
+include_non_ms = False
 
 use_secondary_clusters = False
 plot_ro = False
@@ -169,7 +169,7 @@ ax21.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxe
 ax22.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes, fontsize=panel_label_fs)
 ax23.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes, fontsize=panel_label_fs)
 #ax23.set_xlabel(r'$P_{\rm rot}$ [d]', fontsize=axis_label_fs)
-ax23.set_xlabel(r'$\log P_{\rm rot}$ [d]', fontsize=axis_label_fs)
+ax23.set_xlabel(r'$\log P_{\rm rot}$ [$\log$ d]', fontsize=axis_label_fs)
 
 fig3, (ax31, ax32) = plt.subplots(nrows=1, ncols=2, sharex=False, sharey=False)
 fig3.set_size_inches(12, 4)
@@ -193,7 +193,6 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
         data_star = data[star]
         data_star_arr = np.asarray(data_star)
         #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
-        print np.shape(data_star_arr)
         r0 = float(data_star_arr[0,4])
         g0 = float(data_star_arr[0,5])
         b0 = float(data_star_arr[0,6])
@@ -201,31 +200,30 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
         ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
         if is_ms and not ax2 is None:
-            p = data_star_arr[:,10]
-            c = data_star_arr[:,11]
-            print "BLAAAAAAA", np.shape(np.array([1])), np.shape(p), np.shape(c)
-            #ax2.plot(np.log(p), np.log(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+            p = data_star_arr[:,10].astype(float)
+            c = data_star_arr[:,11].astype(float)
+            ax2.plot(np.log(p), np.log(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         if plot_ro and not ax12 is None:
             ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
-        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err] in data_star:
+        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size] in data_star:
             activity_ls_1.append([r_hk, y])
             activity_ls_2.append([ro, y])
             fillstyles = [None]
             syms = [sym]
             facecolors = [[r, g, b, alpha]]
-            sizes = [50]
+            sizes = [size]
             if sym == 'd' or sym == ".":
                 facecolors = ['none']
             elif star == "SUN":
                 fillstyles = [None, 'full']
                 facecolors = ['none', [r, g, b, alpha]]
                 syms = ['o', 'o']
-                sizes = [50, 1]
+                sizes = [size, 1]
             first_time = True
             for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
                 if star == "SUN":
                     print fillstyle
-                if not first_time or err1 == 0 and err2 == 0:
+                if not first_time or err1 < 0.02 and err2 < 0.02:
                     ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(np.log(p_rot), np.log(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
@@ -241,6 +239,15 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                         ax4.errorbar(np.log(1.0/p_rot), y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+
+                if not first_time or cyc_err/p_cyc < 0.02:
+                    if is_ms and not ax2 is None: # omit non MS
+                        ax2.scatter(np.log(p_rot), np.log(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                else:
+                    if is_ms and not ax2 is None: # omit non MS
+                        ax2.errorbar(np.log(p_rot), np.log(p_cyc), yerr=[[cyc_err/p_cyc], [cyc_err/p_cyc]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+
+
                 if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
                     ax31.scatter(star_FeH_dR[star][1], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     ax32.scatter(star_FeH_dR[star][0], delta_i, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1, facecolors=facecolors, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
@@ -251,13 +258,19 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
     
     ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+    if include_non_ms:
+        ax11.set_ylim(-3.0, -0.75)
+        ax11.set_xlim(-5.15, -4.4)
+    else:
+        ax11.set_ylim(-2.9, -1.7)
+        ax11.set_xlim(-5.1, -4.4)        
     if plot_ro:
         ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     
     if not ax2 is None:
         #ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
-        ax2.set_ylabel(r'$\log P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
-        #ax2.set_xlim(8, 60)
+        ax2.set_ylabel(r'$\log P_{\rm cyc}$ [$\log$ yr]', fontsize=axis_label_fs)
+        ax2.set_xlim(2.0, 4.0)
         #ax2.set_ylim(3, 30)
         #ax2.loglog()
 
@@ -414,6 +427,10 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     data_baliunas = dict()
     plot_ro = False
     
+    active_cyc_mean = 0.0
+    num_active = 0.0
+    inactive_cyc_mean = 0.0
+    num_inactive = 0.0
     with open("mwo-rhk.dat", "r") as ins:
         for line in ins:
             if i < 5:
@@ -456,6 +473,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         sym = "*"
                     if cycs.has_key(star) and (is_ms or include_non_ms):
                         data_star = []
+                        primary_cycle = True
                         for (p_cyc, std, bic) in cycs[star]:
                             exclude = False
                             for (p_cyc_2, std_2, bic_2) in cycs[star]:
@@ -470,12 +488,15 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             #r_hks_ls.append(r_hk)
                             val = np.log10(p_rot/p_cyc)
                             err = std/p_cyc/np.log(10)
-                            if err < 0.02:
-                                err = 0.0
                             #val1 = np.log10(p_rot/(p_cyc + std))
                             #val2 = np.log10(p_rot/(p_cyc - std))
                             #print val - val1, val2 - val, err
                             delta_i = None
+                            if primary_cycle:
+                                size = 100
+                            else:
+                                size = 50
+                            primary_cycle = False
                             if baliunas:
                                 alpha = 0.7
                                 c = 0.5*(1.0 - (bic - min_baliunas_grade)/(max_baliunas_grade - min_baliunas_grade))
@@ -503,12 +524,16 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         r = c
                                         g = c
                                         b = 1.0
+                                        active_cyc_mean += p_cyc/365.25
+                                        num_active += 1
                                     else:
                                         sym = "x"
                                         delta_i = val - (a2 * r_hk + b2)
                                         r = 1.0
                                         g = c
                                         b = c
+                                        inactive_cyc_mean += p_cyc/365.25
+                                        num_inactive += 1
                                 else:                            
                                     if bic > 100:
                                         r = 0.0
@@ -519,11 +544,12 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         r = c
                                         g = c
                                         b = c
-                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25])
+                                #size *= 1.0 - c
+                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25, size])
                         if baliunas:
                             data_baliunas[star] = data_star
                         else:
-                            data[star] = data_star                            
+                            data[star] = data_star
             #print star, bmv, r_hk, p_rot
     if type == "BGLST":
         plot_data(data, True, ax11, ax12, ax2, ax31, ax32, ax4)
@@ -533,6 +559,8 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         # don't plot the resudue plot
         plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
         
+    print "active_cyc_mean: ", active_cyc_mean/num_active
+    print "inactive_cyc_mean: ", inactive_cyc_mean/num_inactive
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
