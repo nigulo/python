@@ -125,6 +125,8 @@ keys = np.asarray(time_ranges.keys())
 keys = np.sort(keys)
 
 spec_types = mw_utils.load_spec_types()
+rot_periods = mw_utils.load_rot_periods()
+r_hks = mw_utils.load_r_hk()
 
 for star in keys:
     
@@ -138,40 +140,59 @@ for star in keys:
         hd_str = "{\\bf HD" + star +"}"
     else:
         hd_str = "HD" + star
+
+    rot_period = r"$\dots$"
+    if rot_periods.has_key(star):
+        rot_period = rot_periods[star]
+    r_hk = r"$\dots$"
+    if r_hks.has_key(star):
+        r_hk = r_hks[star]
         
-    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & "
+    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & " + str(rot_period) + " & " + str(r_hk) + " & "
     if bglst_cycles.has_key(star):
         i = 0
+        cycle_output = ""
         for cycles in bglst_cycles[star]:
             if len(cycles) > 0:
-                output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
                 if i < np.shape(bglst_cycles[star])[0] - 1:        
-                    output += ", "
-            i += 1        
+                    cycle_output += r"\\ "
+            i += 1
+        if i > 1:
+            cycle_output = r"\begin{tabular}{@{}l@{}}" + cycle_output + "\end{tabular}"
+        output += cycle_output
     else:
         output += "--"
     output += " & "
 
     if gp_p_cycles.has_key(star):
         i = 0
+        cycle_output = ""
         for cycles in gp_p_cycles[star]:
             if len(cycles) > 0:
-                output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
                 if i < np.shape(gp_p_cycles[star])[0] - 1:        
-                    output += ", "
+                    cycle_output += r"\\ "
             i += 1
+        if i > 1:
+            cycle_output = r"\begin{tabular}{@{}l@{}}" + cycle_output + "\end{tabular}"
+        output += cycle_output
     else:
         output += "--"
     output += " & "
 
     if gp_qp_cycles.has_key(star):
         i = 0
+        cycle_output = ""
         for cycles in gp_qp_cycles[star]:
             if len(cycles) > 0:
-                output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
                 if i < np.shape(gp_qp_cycles[star])[0] - 1:        
-                    output += ", "
+                    cycle_output += r"\\ "
             i += 1        
+        if i > 1:
+            cycle_output = r"\begin{tabular}{@{}l@{}}" + cycle_output + "\end{tabular}"
+        output += cycle_output
     else:
         output += "--"
     output += " & "
@@ -203,7 +224,7 @@ for star in keys:
                     grade = ' (' + grade + ')'
                 output += " " + cycle + grade#str(round(cycle,2))
     else:
-        output += "$\dots$"
+        output += r"$\dots$"
     output += " \\\\ "
 
     print output    
