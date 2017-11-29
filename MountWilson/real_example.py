@@ -142,7 +142,7 @@ print bic - bic_null
 # LS
 
 sigma = np.sqrt(noise_var)
-ls = LombScargle(t, y, sigma)
+ls = LombScargle(t, y)#, sigma)
 power = ls.power(freqs, normalization='psd')#/np.var(y)
 
 max_power_ind = np.argmax(power)
