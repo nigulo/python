@@ -284,21 +284,24 @@ for exp_no in np.arange(0, num_exp):
         
         fig.savefig("seasonal_vs_global_noise.eps")
 
-print np.shape(np.where(np.abs(bglst_freqs-true_freqs) < np.abs(ls_freqs-true_freqs)))
 bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
 ls_errs = np.abs(ls_freqs-true_freqs)/true_freqs
-print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
-print "BGLST_ERR_STD:", np.std(bglst_errs)
-print "LS_ERR_MEAN:", np.mean(ls_errs)
-print "LS_ERR_STD:", np.std(ls_errs)
 bglst_errs = bglst_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
 ls_errs = ls_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
 bglst_errs = bglst_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
 ls_errs = ls_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
 
+not_equal = len(np.where(bglst_errs != ls_errs)[0])
+print "bglst_errs != ls_errs", not_equal
+print "bglst_errs < ls_errs", float(len(np.where(bglst_errs < ls_errs)[0]))/not_equal
+print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
+print "BGLST_ERR_STD:", np.std(bglst_errs)
+print "LS_ERR_MEAN:", np.mean(ls_errs)
+print "LS_ERR_STD:", np.std(ls_errs)
+
 plt.close()
-n, bins, patches = plt.hist(np.abs(bglst_freqs-true_freqs)/true_freqs, 50, normed=1, facecolor='g', alpha=0.75)
-plt.savefig("bglst_hist.eps")
+
+n, bins, patches = plt.hist([bglst_errs, ls_errs], bins=50, normed=True, histtype='step', color=['red', 'blue'], alpha=0.5)
+plt.xlabel(r'$\left< \Delta f/f \right>$', fontsize=axis_label_fs)
+plt.savefig("bglst_ls_hist.eps")
 plt.close()
-n, bins, patches = plt.hist(np.abs(ls_freqs-true_freqs)/true_freqs, 50, normed=1, facecolor='g', alpha=0.75)
-plt.savefig("ls_hist.eps")

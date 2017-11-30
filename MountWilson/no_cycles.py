@@ -184,17 +184,23 @@ def calc_kde(data):
     print opt_kde
     return gaussian_kde(data, bw_method = opt_kde), opt_kde
         
-density_a, cov_a = calc_kde(r_hks_a)#gaussian_kde(r_hks_a, bw_method = kde_cov)
+density_a, cov_a = calc_kde(r_hks_a)
 d_a = density_a(r_hk_bins_values)
 
-density_na, cov_na = calc_kde(r_hks_na)#gaussian_kde(r_hks_na, bw_method = kde_cov)
+density_na, cov_na = calc_kde(r_hks_na)
 d_na = density_na(r_hk_bins_values)
 
-density_all, cov_all = calc_kde(r_hks_a + r_hks_na)#gaussian_kde(r_hks_a + r_hks_na, bw_method = kde_cov)
+density_all, cov_all = calc_kde(r_hks_a + r_hks_na)
 d_all = density_all(r_hk_bins_values)
+
+density_na_t, cov_na_t = calc_kde(r_hks_na_t)
+d_na_t = density_na_t(r_hk_bins_values)
+
+
 #ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
 ax2.plot(r_hk_bins_values, d_all, "k--")
+ax2.plot(r_hk_bins_values, d_na_t, "k-.")
 
 r_hks_a = np.asarray(r_hks_a)
 r_hks_na = np.asarray(r_hks_na)
