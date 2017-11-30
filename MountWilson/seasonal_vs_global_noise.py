@@ -10,12 +10,49 @@ import matplotlib.pyplot as plt
 import time
 import BGLST
 import bayes_lin_reg
+import os
 from scipy import stats
 from astropy.stats import LombScargle
 import mw_utils
 
+
+real_sampling = False
+down_sample_factor = 16
+
+uniform_sampling = True
+
+
 axis_label_fs = 15
 panel_label_fs = 15
+
+offset = 1979.3452
+dats = []
+
+for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
+    for file in dir_files:
+        if file[-4:] == ".dat":
+            star = file[:-4]
+            star = star.upper()
+            if (star[-3:] == '.CL'):
+                star = star[0:-3]
+            if (star[0:2] == 'HD'):
+                star = star[2:]
+            
+            dat = np.loadtxt("cleaned_wo_rot/"+file, usecols=(0,1), skiprows=0)
+            t = dat[:,0]
+            y = dat[:,1]
+            t /= 365.25
+            t += offset
+            noise_var = mw_utils.get_seasonal_noise_var(t, y)
+            if down_sample_factor >= 2:
+                indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
+                indices = np.sort(indices)
+                t = t[indices]
+                y = y[indices]
+                noise_var = noise_var[indices]
+    
+            if max(t) - min(t) >= 30:
+                dats.append((t, y, noise_var))
 
 def get_local_noise_var(t, y, window_size=1.0):
     total_var = np.var(y)
@@ -54,7 +91,6 @@ def calc_BGLS(t, y, w, freq):
     log_prob = np.log(1.0 / np.sqrt(abs(K) * cc * ss)) + (M - L**2/4.0/K)
     return log_prob
 
-offset = 1979.3452
 
     
 #dat = np.loadtxt("cleaned/37394.cl.dat", usecols=(0,1), skiprows=1)
@@ -65,30 +101,42 @@ offset = 1979.3452
 #y = dat[:,1]
 #noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-num_exp = 100
+num_exp = 2000
 true_freqs = np.zeros(num_exp)
 bglst_freqs = np.zeros(num_exp)
 ls_freqs = np.zeros(num_exp)
 for exp_no in np.arange(0, num_exp):
     print exp_no
-    time_range = 30.0
-    t = np.zeros(100)
-    n = len(t)
-    for i in np.arange(0, n):
-        t[i] = np.random.uniform(time_range * float(i)/n, time_range)
     
-    total_var = 1.0
-    initial_sn_ratio = 1.0
-    final_sn_ratio = 3.0
-    
-    noise_var = np.linspace(total_var/initial_sn_ratio, total_var/final_sn_ratio, n)
+    sig_var = 1.0
+    initial_sn_ratio = 2.0
+    final_sn_ratio = 0.5
+
+    if real_sampling:
+        t, y, noise_var = dats[np.random.choice(len(dats))]
+        n = len(t)
+        noise_var -= min(noise_var)
+        noise_var /= max(noise_var)
+        noise_var *= sig_var/(final_sn_ratio - initial_sn_ratio)
+        noise_var += sig_var/final_sn_ratio
+    else:
+        time_range = 30.0
+        n = 100
+        if uniform_sampling:
+            t = np.random.uniform(0, time_range, n)
+        else:
+            t = np.zeros(100)
+            n = len(t)
+            for i in np.arange(0, n):
+                t[i] = np.random.uniform(time_range * float(i)/n, time_range)
+        noise_var = np.linspace(sig_var/initial_sn_ratio, sig_var/final_sn_ratio, n)
     # Read real data to get some meaningful noise variance
-    
-    sig_var = np.ones(n) - noise_var
+
+    #sig_var = total_var - noise_var
     
     # Now generate synthetic data
-    real_period = np.random.uniform(3.0)#, 6.0)
-    y = np.sqrt(sig_var) * np.cos(2 * np.pi * t / real_period + np.pi) + np.random.normal(np.zeros(n), np.sqrt(noise_var), n)#np.random.normal(0.0, np.sqrt(np.mean(noise_var)), n)
+    real_period = np.random.uniform(5.0, 15.0)
+    y = np.sqrt(sig_var) * np.cos(2 * np.pi * t / real_period + np.random.uniform() * 2.0 * np.pi) + np.random.normal(np.zeros(n), np.sqrt(noise_var), n)#np.random.normal(0.0, np.sqrt(np.mean(noise_var)), n)
     #print "real freq:", 1.0/real_period
     true_freqs[exp_no] = 1.0/real_period
     #t -= np.mean(t)
@@ -100,17 +148,19 @@ for exp_no in np.arange(0, num_exp):
     freq_count = 1000
     
     #now produce empirical noise_var from sample variance
-    #noise_var = get_local_noise_var(t, y, 2.0)
+    noise_var = get_local_noise_var(t, y, 2.0)
     w = np.ones(n)/noise_var
     
     start = time.time()
-    slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
+    #slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
     #print "slope, intercept", slope, intercept
     bglst = BGLST.BGLST(t, y, w, 
                         w_A = 2.0/np.var(y), A_hat = 0.0,
                         w_B = 2.0/np.var(y), B_hat = 0.0,
-                        w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
-                        w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                        #w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                        #w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                        w_alpha = 1e10, alpha_hat = 0.0, 
+                        w_beta = 1e10, beta_hat = 0.0)
     
     (freqs, probs) = bglst.calc_all(freq_start, freq_end, freq_count)
     end = time.time()
@@ -235,7 +285,20 @@ for exp_no in np.arange(0, num_exp):
         fig.savefig("seasonal_vs_global_noise.eps")
 
 print np.shape(np.where(np.abs(bglst_freqs-true_freqs) < np.abs(ls_freqs-true_freqs)))
-print "BGLST_ERR_MEAN:", np.mean(np.abs(bglst_freqs-true_freqs)/true_freqs)
-print "BGLST_ERR_STD:", np.std(np.abs(bglst_freqs-true_freqs)/true_freqs)
-print "LS_ERR_MEAN:", np.mean(np.abs(ls_freqs-true_freqs)/true_freqs)
-print "LS_ERR_STD:", np.std(np.abs(ls_freqs-true_freqs)/true_freqs)
+bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
+ls_errs = np.abs(ls_freqs-true_freqs)/true_freqs
+print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
+print "BGLST_ERR_STD:", np.std(bglst_errs)
+print "LS_ERR_MEAN:", np.mean(ls_errs)
+print "LS_ERR_STD:", np.std(ls_errs)
+bglst_errs = bglst_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
+ls_errs = ls_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
+bglst_errs = bglst_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
+ls_errs = ls_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
+
+plt.close()
+n, bins, patches = plt.hist(np.abs(bglst_freqs-true_freqs)/true_freqs, 50, normed=1, facecolor='g', alpha=0.75)
+plt.savefig("bglst_hist.eps")
+plt.close()
+n, bins, patches = plt.hist(np.abs(ls_freqs-true_freqs)/true_freqs, 50, normed=1, facecolor='g', alpha=0.75)
+plt.savefig("ls_hist.eps")

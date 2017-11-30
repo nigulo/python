@@ -202,7 +202,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
         if is_ms and not ax2 is None:
             p = data_star_arr[:,10].astype(float)
             c = data_star_arr[:,11].astype(float)
-            ax2.plot(np.log(p), np.log(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+            ax2.plot(np.log10(p), np.log10(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         if plot_ro and not ax12 is None:
             ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size] in data_star:
@@ -226,7 +226,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                 if not first_time or err1 < 0.02 and err2 < 0.02:
                     ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.scatter(np.log(p_rot), np.log(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                        ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax4 is None: # omit non MS
                         ax4.scatter(np.log(1.0/p_rot), y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
@@ -234,18 +234,18 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                 else:
                     ax11.errorbar(r_hk, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.errorbar(np.log(p_rot), np.log(p_cyc), yerr=[[cyc_err/p_cyc], [cyc_err/p_cyc]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-                    if is_ms and not ax2 is None: # omit non MS
+                        ax2.errorbar(np.log10(p_rot), np.log10(p_cyc), yerr=[[cyc_err/p_cyc/np.log(10.0)], [cyc_err/p_cyc/np.log(10.0)]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+                    if is_ms and not ax4 is None: # omit non MS
                         ax4.errorbar(np.log(1.0/p_rot), y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
 
                 if not first_time or cyc_err/p_cyc < 0.02:
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.scatter(np.log(p_rot), np.log(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                        ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                 else:
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.errorbar(np.log(p_rot), np.log(p_cyc), yerr=[[cyc_err/p_cyc], [cyc_err/p_cyc]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+                        ax2.errorbar(np.log10(p_rot), np.log10(p_cyc), yerr=[[cyc_err/p_cyc/np.log(10.0)], [cyc_err/p_cyc/np.log(10.0)]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
 
 
                 if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
@@ -270,7 +270,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     if not ax2 is None:
         #ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
         ax2.set_ylabel(r'$\log P_{\rm cyc}$ [$\log$ yr]', fontsize=axis_label_fs)
-        ax2.set_xlim(2.0, 4.0)
+        #ax2.set_xlim(2.0, 4.0)
         #ax2.set_ylim(3, 30)
         #ax2.loglog()
 
