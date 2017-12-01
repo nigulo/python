@@ -101,16 +101,20 @@ def calc_BGLS(t, y, w, freq):
 #y = dat[:,1]
 #noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-num_exp = 2000
+num_exp = 10000
 true_freqs = np.zeros(num_exp)
 bglst_freqs = np.zeros(num_exp)
 ls_freqs = np.zeros(num_exp)
+
+extreme_data_1 = (0, None, None, None)
+extreme_data_2 = (0, None, None, None)
+
 for exp_no in np.arange(0, num_exp):
     print exp_no
-    
+
     sig_var = 1.0
-    initial_sn_ratio = 2.0
-    final_sn_ratio = 0.5
+    initial_sn_ratio = np.random.uniform(0.1, 0.5)
+    final_sn_ratio = np.random.uniform(2.0*initial_sn_ratio, 10.0*initial_sn_ratio)
 
     if real_sampling:
         t, y, noise_var = dats[np.random.choice(len(dats))]
@@ -129,7 +133,8 @@ for exp_no in np.arange(0, num_exp):
             n = len(t)
             for i in np.arange(0, n):
                 t[i] = np.random.uniform(time_range * float(i)/n, time_range)
-        noise_var = np.linspace(sig_var/initial_sn_ratio, sig_var/final_sn_ratio, n)
+        #noise_var = np.linspace(sig_var/initial_sn_ratio, sig_var/final_sn_ratio, n)
+        noise_var = np.concatenate((np.ones(n/2)*initial_sn_ratio, np.ones(n/2)*final_sn_ratio))#np.linspace(sig_var/initial_sn_ratio, sig_var/final_sn_ratio, n)
     # Read real data to get some meaningful noise variance
 
     #sig_var = total_var - noise_var
@@ -138,13 +143,14 @@ for exp_no in np.arange(0, num_exp):
     real_period = np.random.uniform(5.0, 15.0)
     y = np.sqrt(sig_var) * np.cos(2 * np.pi * t / real_period + np.random.uniform() * 2.0 * np.pi) + np.random.normal(np.zeros(n), np.sqrt(noise_var), n)#np.random.normal(0.0, np.sqrt(np.mean(noise_var)), n)
     #print "real freq:", 1.0/real_period
-    true_freqs[exp_no] = 1.0/real_period
+    true_freq = 1.0/real_period
+    true_freqs[exp_no] = true_freq
     #t -= np.mean(t)
     
-    duration = max(t) - min(t)
+    #duration = max(t) - min(t)
     
     freq_start = 0.001
-    freq_end = 0.5
+    freq_end = 2.0*true_freq
     freq_count = 1000
     
     #now produce empirical noise_var from sample variance
@@ -165,67 +171,11 @@ for exp_no in np.arange(0, num_exp):
     (freqs, probs) = bglst.calc_all(freq_start, freq_end, freq_count)
     end = time.time()
     
-    #probs = np.zeros(freq_count)
-    #bglst = BGLST.BGLST(t, y, w)
-    #start = time.time()
-    #i = 0
-    #for f in freqs:
-    #    probs[i] = bglst.calc(f)
-    #    i += 1
-    #    #probs.append(calc_BGLS(t, y, w, f))
-    #end = time.time()
-    #print(end - start)
-    
-    
-    #print probs - probs1
-    
     max_prob = max(probs)
     max_prob_index = np.argmax(probs)
-    best_freq = freqs[max_prob_index]
+    best_freq_bglst = freqs[max_prob_index]
     
-    if exp_no == 0:
-        fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
-        fig.set_size_inches(6, 7)
-        
-        ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=panel_label_fs)
-        ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=panel_label_fs)
-    
-        ax1.scatter(t, y, marker='+', color ='k', lw=0.5)
-    tau, (A, B, alpha, beta), _, y_model_1, loglik = bglst.model(best_freq)
-
-    t_model = np.linspace(min(t), max(t), 1000)
-    y_model = np.cos(t_model * 2.0 * np.pi * best_freq - tau) * A  + np.sin(t_model * 2.0 * np.pi * best_freq - tau) * B + t_model * alpha + beta
-
-    if exp_no == 0:
-        ax1.plot(t_model, y_model, 'r-')
-        ax1.plot(t_model, t_model * alpha + beta, 'r-')
-    
-        min_prob = min(probs)
-        norm_probs = (probs - min_prob) / (max_prob - min_prob)
-        ax2.plot(freqs, norm_probs, 'r-')
-        ax2.plot([best_freq, best_freq], [0, norm_probs[max_prob_index]], 'r-')
-    
-    #bglst_m = BGLST.BGLST(t, y_model_1, np.ones(n)/np.var(y),
-    #                    w_A = 2.0/np.var(y), A_hat = 0.0,
-    #                    w_B = 2.0/np.var(y), B_hat = 0.0,
-    #                    w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
-    #                    w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
-    
-    #(freqs, probs_m) = bglst_m.calc_all(freq_start, freq_end, freq_count)
-    #max_prob_m = max(probs_m)
-    #max_prob_index_m = np.argmax(probs_m)
-    #best_freq_m = freqs[max_prob_index_m]
-    #min_prob_m = min(probs_m)
-    #norm_probs_m = (probs_m- min_prob_m) / (max_prob_m - min_prob_m)
-    #max_prob_m = max(probs_m)
-    #max_prob_index_m = np.argmax(probs_m)
-    #best_freq_m = freqs[max_prob_index_m]
-    #min_prob_m = min(probs_m)
-    #norm_probs_m = (probs_m- min_prob_m) / (max_prob_m - min_prob_m)
-    
-    
-    #print "BGLST: ", best_freq, max_prob
-    bglst_freqs[exp_no] = best_freq
+    bglst_freqs[exp_no] = best_freq_bglst
     
     ###############################################################################
     # LS
@@ -236,68 +186,125 @@ for exp_no in np.arange(0, num_exp):
     
     max_power_ind = np.argmax(power)
     max_power = power[max_power_ind]
-    best_freq = freqs[max_power_ind]
-    y_model = ls.model(t_model, best_freq)
-    #print "LS: ", best_freq, max_power
-    ls_freqs[exp_no] = best_freq
-    
-    if exp_no == 0:    
-        ax1.plot(t_model, y_model, 'g-.')
-        
-        min_power = min(power)
-        norm_powers = (power - min_power) / (max_power - min_power)
-        
-        ax2.plot(freqs, norm_powers, 'g-.')
-        ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'g-.')
-    
-    ###############################################################################
-    # LS detrended
-    
-    #y_fit = t * slope + intercept
-    #y -= y_fit
-    #ls = LombScargle(t, y, sigma)
-    #power = ls.power(freqs, normalization='psd')#/np.var(y)
-    
-    #max_power_ind = np.argmax(power)
-    #max_power = power[max_power_ind]
-    #best_freq = freqs[max_power_ind]
-    #y_model = ls.model(t_model, best_freq)
-    #print "LS detrended: ", best_freq, max_power
+    best_freq_ls = freqs[max_power_ind]
 
-    if exp_no == 0:    
-        #ax1.plot(t_model, y_model+t_model * slope + intercept, 'b--')
-        #ax1.plot(t_model, t_model * slope + intercept, 'b--')
-        
-        #min_power = min(power)
-        #norm_powers = (power - min_power) / (max_power - min_power)
-        
-        #ax2.plot(freqs, norm_powers, 'b--')
-        #ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'b--')
-        
-        ax1.set_xlabel(r'$t$ [yr]', fontsize=axis_label_fs)#,fontsize=20)
-        ax1.set_ylabel(r'S-index', fontsize=axis_label_fs)#,fontsize=20)
-        ax1.set_xlim([min(t), max(t)])
-        
-        ax2.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
-        ax2.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
-        ax2.set_xlim([0.001, 0.5])
-        
-        fig.savefig("seasonal_vs_global_noise.eps")
+    #print "LS: ", best_freq, max_power
+    ls_freqs[exp_no] = best_freq_ls
+    
+    #print exp_no, initial_sn_ratio, final_sn_ratio, true_freq, bglst_freqs[exp_no], ls_freqs[exp_no]
+    bglst_err = np.abs(best_freq_bglst-true_freq)
+    ls_err = np.abs(best_freq_ls-true_freq)
+    
+    if bglst_err < ls_err:
+        (max_diff, _, _, _) = extreme_data_1
+        if ls_err - bglst_err > max_diff:
+            extreme_data_1 = (ls_err - bglst_err, t, y, true_freq)
+    if ls_err < bglst_err:
+        (max_diff, _, _, _) = extreme_data_2
+        if bglst_err - ls_err > max_diff:
+            extreme_data_2 = (bglst_err - ls_err, t, y, true_freq)
+
 
 bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
 ls_errs = np.abs(ls_freqs-true_freqs)/true_freqs
+err_ratios = bglst_errs/ls_errs
+
+positive = float(len(np.where(err_ratios < 0.95)[0]))
+negative = float(len(np.where(err_ratios > 1.05)[0]))
+
+print "----------Before 3sigma----------"
+print positive + negative
+print "bglst_errs < ls_errs", positive/(positive + negative)
+print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
+print "BGLST_ERR_STD:", np.std(bglst_errs)
+print "LS_ERR_MEAN:", np.mean(ls_errs)
+print "LS_ERR_STD:", np.std(ls_errs)
+
 bglst_errs = bglst_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
 ls_errs = ls_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
 bglst_errs = bglst_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
 ls_errs = ls_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
 
-not_equal = len(np.where(bglst_errs != ls_errs)[0])
-print "bglst_errs != ls_errs", not_equal
-print "bglst_errs < ls_errs", float(len(np.where(bglst_errs < ls_errs)[0]))/not_equal
+err_ratios = bglst_errs/ls_errs
+positive = float(len(np.where(err_ratios < 0.95)[0]))
+negative = float(len(np.where(err_ratios > 1.05)[0]))
+
+print "----------After 3sigma----------"
+print positive + negative
+print "bglst_errs < ls_errs", positive/(positive + negative)
 print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
 print "BGLST_ERR_STD:", np.std(bglst_errs)
 print "LS_ERR_MEAN:", np.mean(ls_errs)
 print "LS_ERR_STD:", np.std(ls_errs)
+
+fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(nrows=2, ncols=2, sharex=False, sharey=False)
+fig.set_size_inches(12, 7)
+
+ax_a.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax_a.transAxes, fontsize=panel_label_fs)
+ax_b.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax_b.transAxes, fontsize=panel_label_fs)
+ax_c.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax_c.transAxes, fontsize=panel_label_fs)
+ax_d.text(0.95, 0.9,'(d)', horizontalalignment='center', transform=ax_d.transAxes, fontsize=panel_label_fs)
+
+for (ax_a, ax_b), (_, t, y, true_freq) in [((ax_a, ax_c), extreme_data_1), ((ax_b, ax_d), extreme_data_2)]:
+    freq_start = 0.001
+    freq_end = 2.0*true_freq
+    freq_count = 1000
+
+    ax_a.scatter(t, y, marker='+', color ='k', lw=0.5)
+    bglst = BGLST.BGLST(t, y, w, 
+                        w_A = 2.0/np.var(y), A_hat = 0.0,
+                        w_B = 2.0/np.var(y), B_hat = 0.0,
+                        #w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                        #w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                        w_alpha = 1e10, alpha_hat = 0.0, 
+                        w_beta = 1e10, beta_hat = 0.0)
+    (freqs, probs) = bglst.calc_all(freq_start, freq_end, freq_count)
+
+    max_prob = max(probs)
+    min_prob = min(probs)
+    max_prob_index = np.argmax(probs)
+    best_freq_bglst = freqs[max_prob_index]
+
+    tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq_bglst)
+    
+    t_model = np.linspace(min(t), max(t), 1000)
+    y_model = np.cos(t_model * 2.0 * np.pi * best_freq_bglst - tau) * A  + np.sin(t_model * 2.0 * np.pi * best_freq_bglst - tau) * B + t_model * alpha + beta
+    
+    ax_a.plot(t_model, y_model, 'r-')
+    
+    norm_probs = (probs - min_prob) / (max_prob - min_prob)
+    ax_b.plot(freqs, norm_probs, 'r-')
+    ax_b.plot([best_freq_bglst, best_freq_bglst], [0, norm_probs[max_prob_index]], 'r-')
+    
+    ls = LombScargle(t, y)#, sigma)
+    power = ls.power(freqs, normalization='psd')#/np.var(y)
+
+    min_power = min(power)
+    max_power_ind = np.argmax(power)
+    max_power = power[max_power_ind]
+    best_freq_ls = freqs[max_power_ind]
+
+
+    y_model = ls.model(t_model, best_freq_ls)   
+    ax_a.plot(t_model, y_model, 'b--')
+    
+    norm_powers = (power - min_power) / (max_power - min_power)
+    
+    ax_b.plot(freqs, norm_powers, 'b--')
+    ax_b.plot([best_freq_ls, best_freq_ls], [0, norm_powers[max_power_ind]], 'b--')
+    
+    ax_b.plot([true_freq, true_freq], [0, norm_powers[max_power_ind]], 'k-.')
+    
+    ax_a.set_xlabel(r'$t$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_a.set_ylabel(r'y', fontsize=axis_label_fs)#,fontsize=20)
+    ax_a.set_xlim([min(t), max(t)])
+    
+    ax_b.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_b.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
+    ax_b.set_xlim([0.001, 2.0*true_freq])
+
+#print exp_no, initial_sn_ratio, final_sn_ratio, true_freq, bglst_freqs[exp_no], ls_freqs[exp_no]
+fig.savefig("seasonal_vs_global_noise.eps")
 
 plt.close()
 
