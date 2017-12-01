@@ -220,10 +220,12 @@ print "BGLST_ERR_STD:", np.std(bglst_errs)
 print "LS_ERR_MEAN:", np.mean(ls_errs)
 print "LS_ERR_STD:", np.std(ls_errs)
 
-bglst_errs = bglst_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
-ls_errs = ls_errs[np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]]
-bglst_errs = bglst_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
-ls_errs = ls_errs[np.where(ls_errs < 3.0*np.std(ls_errs))[0]]
+indices1 = np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]
+bglst_errs = bglst_errs[indices1]
+ls_errs = ls_errs[indices1]
+indices2 = np.where(ls_errs < 3.0*np.std(ls_errs))[0]
+bglst_errs = bglst_errs[indices2]
+ls_errs = ls_errs[indices2]
 
 err_ratios = bglst_errs/ls_errs
 positive = float(len(np.where(err_ratios < 0.95)[0]))
