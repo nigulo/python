@@ -26,7 +26,7 @@ axis_label_fs = 15
 panel_label_fs = 15
 
 offset = 1979.3452
-dats = []
+real_dats = []
 
 for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
     for file in dir_files:
@@ -52,7 +52,7 @@ for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
                 noise_var = noise_var[indices]
     
             if max(t) - min(t) >= 30:
-                dats.append((t, y, noise_var))
+                real_dats.append((t, y, noise_var))
 
 def get_local_noise_var(t, y, window_size=1.0):
     total_var = np.var(y)
@@ -101,13 +101,12 @@ def calc_BGLS(t, y, w, freq):
 #y = dat[:,1]
 #noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-num_exp = 1000
+num_exp = 10000
 true_freqs = np.zeros(num_exp)
 bglst_freqs = np.zeros(num_exp)
 ls_freqs = np.zeros(num_exp)
 
-extreme_data_1 = (0, None, None, None)
-extreme_data_2 = (0, None, None, None)
+dats = []
 
 for exp_no in np.arange(0, num_exp):
     print exp_no
@@ -117,7 +116,7 @@ for exp_no in np.arange(0, num_exp):
     final_sn_ratio = np.random.uniform(2.0*initial_sn_ratio, 10.0*initial_sn_ratio)
 
     if real_sampling:
-        t, y, noise_var = dats[np.random.choice(len(dats))]
+        t, y, noise_var = real_dats[np.random.choice(len(real_dats))]
         n = len(t)
         noise_var -= min(noise_var)
         noise_var /= max(noise_var)
@@ -194,16 +193,10 @@ for exp_no in np.arange(0, num_exp):
     #print exp_no, initial_sn_ratio, final_sn_ratio, true_freq, bglst_freqs[exp_no], ls_freqs[exp_no]
     bglst_err = np.abs(best_freq_bglst-true_freq)
     ls_err = np.abs(best_freq_ls-true_freq)
-    
-    if bglst_err < ls_err:
-        (max_diff, _, _, _) = extreme_data_1
-        if ls_err - bglst_err > max_diff:
-            extreme_data_1 = (ls_err - bglst_err, t, y, true_freq)
-    if ls_err < bglst_err:
-        (max_diff, _, _, _) = extreme_data_2
-        if bglst_err - ls_err > max_diff:
-            extreme_data_2 = (bglst_err - ls_err, t, y, true_freq)
 
+    dats.append((t, y))
+    
+dats = np.asarray(dats)
 
 bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
 ls_errs = np.abs(ls_freqs-true_freqs)/true_freqs
@@ -214,7 +207,7 @@ negative_indices = np.where(err_ratios > 1.05)[0]
 num_positive = float(len(positive_indices))
 num_negative = float(len(negative_indices))
 
-print "----------Before 3sigma----------"
+#print "----------Before 3sigma----------"
 print num_positive + num_negative
 print "bglst_errs < ls_errs", num_positive/(num_positive + num_negative)
 print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
@@ -222,26 +215,65 @@ print "BGLST_ERR_STD:", np.std(bglst_errs)
 print "LS_ERR_MEAN:", np.mean(ls_errs)
 print "LS_ERR_STD:", np.std(ls_errs)
 
-indices1 = np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]
-bglst_errs = bglst_errs[indices1]
-ls_errs = ls_errs[indices1]
-indices2 = np.where(ls_errs < 3.0*np.std(ls_errs))[0]
-bglst_errs = bglst_errs[indices2]
-ls_errs = ls_errs[indices2]
+#indices1 = np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]
+#bglst_errs = bglst_errs[indices1]
+#ls_errs = ls_errs[indices1]
+#dats = dats[indices1]
+#true_freqs = true_freqs[indices1]
+#indices2 = np.where(ls_errs < 3.0*np.std(ls_errs))[0]
+#bglst_errs = bglst_errs[indices2]
+#ls_errs = ls_errs[indices2]
+#dats = dats[indices2]
+#true_freqs = true_freqs[indices2]
 
-err_ratios = bglst_errs/ls_errs
-positive_indices = np.where(err_ratios < 0.95)[0]
-negative_indices = np.where(err_ratios > 1.05)[0]
-num_positive = float(len(positive_indices))
-num_negative = float(len(negative_indices))
+#err_ratios = bglst_errs/ls_errs
+#positive_indices = np.where(err_ratios < 0.95)[0]
+#negative_indices = np.where(err_ratios > 1.05)[0]
+#num_positive = float(len(positive_indices))
+#num_negative = float(len(negative_indices))
 
-print "----------After 3sigma----------"
-print num_positive + num_negative
-print "bglst_errs < ls_errs", num_positive/(num_positive + num_negative)
-print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
-print "BGLST_ERR_STD:", np.std(bglst_errs)
-print "LS_ERR_MEAN:", np.mean(ls_errs)
-print "LS_ERR_STD:", np.std(ls_errs)
+#print "----------After 3sigma----------"
+#print num_positive + num_negative
+#print "bglst_errs < ls_errs", num_positive/(num_positive + num_negative)
+#print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
+#print "BGLST_ERR_STD:", np.std(bglst_errs)
+#print "LS_ERR_MEAN:", np.mean(ls_errs)
+#print "LS_ERR_STD:", np.std(ls_errs)
+
+diffs = ls_errs - bglst_errs
+# Remove outliers
+diffs = diffs[np.where(np.abs(diffs) < 5.0*np.std(diffs))[0]]
+
+diff_sort_indices = np.argsort(diffs)
+extreme_index1 = diff_sort_indices[-1]
+extreme_index2 = diff_sort_indices[0]
+
+diff = diffs[extreme_index1]
+true_freq = true_freqs[extreme_index1]
+(t, y) = dats[extreme_index1]
+extreme_data_1 = (diff, t, y, true_freq)
+
+diff = diffs[extreme_index2]
+true_freq = true_freqs[extreme_index2]
+(t, y) = dats[extreme_index2]
+extreme_data_2 = (diff, t, y, true_freq)
+
+#extreme_data_1 = (0, None, None, None)
+#extreme_data_2 = (0, None, None, None)
+
+#for i in np.arange(0, len(bglst_errs)):
+#    bglst_err = bglst_errs[i]
+#    ls_err = ls_errs[i]
+#    true_freq = true_freqs[i]
+#    (t, y) = dats[i]
+#    if bglst_err < ls_err:
+#        (max_diff, _, _, _) = extreme_data_1
+#        if ls_err - bglst_err > max_diff:
+#            extreme_data_1 = (ls_err - bglst_err, t, y, true_freq)
+#    if ls_err < bglst_err:
+#        (max_diff, _, _, _) = extreme_data_2
+#        if bglst_err - ls_err > max_diff:
+#            extreme_data_2 = (bglst_err - ls_err, t, y, true_freq)
 
 fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(nrows=2, ncols=2, sharex=False, sharey=False)
 fig.set_size_inches(12, 7)
@@ -314,7 +346,8 @@ fig.savefig("seasonal_vs_global_noise.eps")
 
 plt.close()
 
-n, bins, patches = plt.hist([bglst_errs[positive_indices], ls_errs[negative_indices]], bins=50, normed=True, histtype='step', color=['red', 'blue'], alpha=0.5)
+#n, bins, patches = plt.hist([bglst_errs[positive_indices], ls_errs[negative_indices]], bins=50, normed=True, histtype='step', color=['red', 'blue'], alpha=0.5)
+n, bins, patches = plt.hist(diffs, bins=50, normed=True)
 plt.xlabel(r'$\left< \Delta f/f \right>$', fontsize=axis_label_fs)
 plt.savefig("bglst_ls_hist.eps")
 plt.close()
