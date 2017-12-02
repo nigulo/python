@@ -101,7 +101,7 @@ def calc_BGLS(t, y, w, freq):
 #y = dat[:,1]
 #noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-num_exp = 10000
+num_exp = 1000
 true_freqs = np.zeros(num_exp)
 bglst_freqs = np.zeros(num_exp)
 ls_freqs = np.zeros(num_exp)
@@ -209,12 +209,14 @@ bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
 ls_errs = np.abs(ls_freqs-true_freqs)/true_freqs
 err_ratios = bglst_errs/ls_errs
 
-positive = float(len(np.where(err_ratios < 0.95)[0]))
-negative = float(len(np.where(err_ratios > 1.05)[0]))
+positive_indices = np.where(err_ratios < 0.95)[0]
+negative_indices = np.where(err_ratios > 1.05)[0]
+num_positive = float(len(positive_indices))
+num_negative = float(len(negative_indices))
 
 print "----------Before 3sigma----------"
-print positive + negative
-print "bglst_errs < ls_errs", positive/(positive + negative)
+print num_positive + num_negative
+print "bglst_errs < ls_errs", num_positive/(num_positive + num_negative)
 print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
 print "BGLST_ERR_STD:", np.std(bglst_errs)
 print "LS_ERR_MEAN:", np.mean(ls_errs)
@@ -228,12 +230,14 @@ bglst_errs = bglst_errs[indices2]
 ls_errs = ls_errs[indices2]
 
 err_ratios = bglst_errs/ls_errs
-positive = float(len(np.where(err_ratios < 0.95)[0]))
-negative = float(len(np.where(err_ratios > 1.05)[0]))
+positive_indices = np.where(err_ratios < 0.95)[0]
+negative_indices = np.where(err_ratios > 1.05)[0]
+num_positive = float(len(positive_indices))
+num_negative = float(len(negative_indices))
 
 print "----------After 3sigma----------"
-print positive + negative
-print "bglst_errs < ls_errs", positive/(positive + negative)
+print num_positive + num_negative
+print "bglst_errs < ls_errs", num_positive/(num_positive + num_negative)
 print "BGLST_ERR_MEAN:", np.mean(bglst_errs)
 print "BGLST_ERR_STD:", np.std(bglst_errs)
 print "LS_ERR_MEAN:", np.mean(ls_errs)
@@ -310,7 +314,7 @@ fig.savefig("seasonal_vs_global_noise.eps")
 
 plt.close()
 
-n, bins, patches = plt.hist([bglst_errs, ls_errs], bins=50, normed=True, histtype='step', color=['red', 'blue'], alpha=0.5)
+n, bins, patches = plt.hist([bglst_errs[positive_indices], ls_errs[negative_indices]], bins=50, normed=True, histtype='step', color=['red', 'blue'], alpha=0.5)
 plt.xlabel(r'$\left< \Delta f/f \right>$', fontsize=axis_label_fs)
 plt.savefig("bglst_ls_hist.eps")
 plt.close()
