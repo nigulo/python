@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import BGLST
-import bayes_lin_reg
+import scipy.stats
 import os
 from scipy import stats
 from astropy.stats import LombScargle
@@ -101,7 +101,7 @@ def calc_BGLS(t, y, w, freq):
 #y = dat[:,1]
 #noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-num_exp = 10000
+num_exp = 1000
 true_freqs = np.zeros(num_exp)
 bglst_freqs = np.zeros(num_exp)
 ls_freqs = np.zeros(num_exp)
@@ -194,7 +194,7 @@ for exp_no in np.arange(0, num_exp):
     bglst_err = np.abs(best_freq_bglst-true_freq)
     ls_err = np.abs(best_freq_ls-true_freq)
 
-    dats.append((t, y))
+    dats.append((t, y, w))
     
 dats = np.asarray(dats)
 
@@ -215,16 +215,17 @@ print "BGLST_ERR_STD:", np.std(bglst_errs)
 print "LS_ERR_MEAN:", np.mean(ls_errs)
 print "LS_ERR_STD:", np.std(ls_errs)
 
-#indices1 = np.where(bglst_errs < 3.0*np.std(bglst_errs))[0]
-#bglst_errs = bglst_errs[indices1]
-#ls_errs = ls_errs[indices1]
-#dats = dats[indices1]
-#true_freqs = true_freqs[indices1]
-#indices2 = np.where(ls_errs < 3.0*np.std(ls_errs))[0]
-#bglst_errs = bglst_errs[indices2]
-#ls_errs = ls_errs[indices2]
-#dats = dats[indices2]
-#true_freqs = true_freqs[indices2]
+# remove outliers
+indices1 = np.where(bglst_errs < 5.0*np.std(bglst_errs))[0]
+bglst_errs = bglst_errs[indices1]
+ls_errs = ls_errs[indices1]
+dats = dats[indices1]
+true_freqs = true_freqs[indices1]
+indices2 = np.where(ls_errs < 5.0*np.std(ls_errs))[0]
+bglst_errs = bglst_errs[indices2]
+ls_errs = ls_errs[indices2]
+dats = dats[indices2]
+true_freqs = true_freqs[indices2]
 
 #err_ratios = bglst_errs/ls_errs
 #positive_indices = np.where(err_ratios < 0.95)[0]
@@ -241,22 +242,27 @@ print "LS_ERR_STD:", np.std(ls_errs)
 #print "LS_ERR_STD:", np.std(ls_errs)
 
 diffs = ls_errs - bglst_errs
+print "<Diffs>", np.mean(diffs)
+print "Diffs skew", scipy.stats.skew(diffs)
 # Remove outliers
-diffs = diffs[np.where(np.abs(diffs) < 5.0*np.std(diffs))[0]]
+#diff_indices = np.where(np.abs(diffs) < 3.0*np.std(diffs))[0]
+#diffs = diffs[diff_indices]
+#true_freqs = true_freqs[diff_indices]
+#dats = dats[diff_indices]
 
 diff_sort_indices = np.argsort(diffs)
 extreme_index1 = diff_sort_indices[-1]
 extreme_index2 = diff_sort_indices[0]
 
-diff = diffs[extreme_index1]
+#diff = diffs[extreme_index1]
 true_freq = true_freqs[extreme_index1]
-(t, y) = dats[extreme_index1]
-extreme_data_1 = (diff, t, y, true_freq)
+(t, y, w) = dats[extreme_index1]
+extreme_data_1 = (t, y, w, true_freq)
 
-diff = diffs[extreme_index2]
+#diff = diffs[extreme_index2]
 true_freq = true_freqs[extreme_index2]
-(t, y) = dats[extreme_index2]
-extreme_data_2 = (diff, t, y, true_freq)
+(t, y, w) = dats[extreme_index2]
+extreme_data_2 = (t, y, w, true_freq)
 
 #extreme_data_1 = (0, None, None, None)
 #extreme_data_2 = (0, None, None, None)
@@ -283,7 +289,7 @@ ax_b.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax_b.transAxe
 ax_c.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax_c.transAxes, fontsize=panel_label_fs)
 ax_d.text(0.95, 0.9,'(d)', horizontalalignment='center', transform=ax_d.transAxes, fontsize=panel_label_fs)
 
-for (ax_a, ax_b), (_, t, y, true_freq) in [((ax_a, ax_c), extreme_data_1), ((ax_b, ax_d), extreme_data_2)]:
+for (ax_a, ax_b), (t, y, w, true_freq) in [((ax_a, ax_c), extreme_data_1), ((ax_b, ax_d), extreme_data_2)]:
     freq_start = 0.001
     freq_end = 2.0*true_freq
     freq_count = 1000
