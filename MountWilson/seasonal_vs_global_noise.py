@@ -66,19 +66,25 @@ for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
                 real_dats.append((t, y, noise_var, star))
 
 def get_local_noise_var(t, y, window_size=1.0):
-    total_var = np.var(y)
+    #total_var = np.var(y)
     seasons = mw_utils.get_seasons(zip(t, y), window_size, False)
     noise_var = np.zeros(len(t))
     i = 0
+    max_var = 0
     for season in seasons:
-        if np.shape(season[:,1])[0] < 10:
-            var = total_var # Is it good idea?
+        if np.shape(season[:,1])[0] < 2:
+            #print "OOOPS"
+            var = -1#total_var # Is it good idea?
         else:
             var = np.var(season[:,1])
+        max_var=max(max_var, var)
         season_len = np.shape(season)[0]
         for j in np.arange(i, i + season_len):
             noise_var[j] = var
         i += season_len
+    for j in np.arange(0, len(t)):
+        if noise_var[j] < 0:
+            noise_var[j] = max_var
     assert(i == len(noise_var))
     return noise_var
 
@@ -129,7 +135,7 @@ lines2 = [None, None, None]
 
 
 num_exp = len(sns)
-num_rep = 2000
+num_rep = 200
 
 for setup_no in [0, 1, 2]:
     if setup_selected is not None and setup_selected != setup_no:
@@ -219,8 +225,8 @@ for setup_no in [0, 1, 2]:
                 
                 real_noise_var = noise_var
                 #now produce empirical noise_var from sample variance
-                #if not real_sampling:
-                #    noise_var = get_local_noise_var(t, y, 2.0)
+                if not real_sampling:
+                    noise_var = get_local_noise_var(t, y, 2.0)
                 
                 #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
                 w = np.ones(n)/noise_var

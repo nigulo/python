@@ -196,11 +196,15 @@ d_all = density_all(r_hk_bins_values)
 density_na_t, cov_na_t = calc_kde(r_hks_na_t)
 d_na_t = density_na_t(r_hk_bins_values)
 
+density_a_and_na_t, cov_a_and_na_t = calc_kde(r_hks_a + r_hks_na_t)
+d_a_and_na_t = density_a_and_na_t(r_hk_bins_values)
+
 
 #ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
-ax2.plot(r_hk_bins_values, d_all, "k--")
-ax2.plot(r_hk_bins_values, d_na_t, "k-.")
+ax2.plot(r_hk_bins_values, d_all, "r--")
+ax2.plot(r_hk_bins_values, d_na_t, "g-.")
+ax2.plot(r_hk_bins_values, d_a_and_na_t, "b:")
 
 r_hks_a = np.asarray(r_hks_a)
 r_hks_na = np.asarray(r_hks_na)
