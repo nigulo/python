@@ -28,8 +28,8 @@ panel_label_fs = 15
 offset = 1979.3452
 real_dats = []
 
-linestyles = ['-', '--', '-.', ':']
-linecolors = ['r', 'b', 'g', 'k']
+linestyles = ['-', '--', '-.']
+linecolors = ['r', 'b', 'g']
 
 for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
     for file in dir_files:
@@ -118,7 +118,9 @@ fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True
 fig_stats.set_size_inches(6, 7)
 
 ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#,fontsize=20)
+ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
+ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
 
 ax_stats_2.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
 ax_stats_2.set_xlim([np.sqrt(min(sns)), np.sqrt(max(sns))])
@@ -217,8 +219,8 @@ for setup_no in [0, 1, 2]:
                 
                 real_noise_var = noise_var
                 #now produce empirical noise_var from sample variance
-                if not real_sampling:
-                    noise_var = get_local_noise_var(t, y, 2.0)
+                #if not real_sampling:
+                #    noise_var = get_local_noise_var(t, y, 2.0)
                 
                 #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
                 w = np.ones(n)/noise_var
@@ -333,6 +335,7 @@ for setup_no in [0, 1, 2]:
             freq_end = 2.0*true_freq
             freq_count = 1000
         
+            t = t - min(t)
             ax_a.scatter(t, y, marker='+', color ='k', lw=0.5)
             bglst = BGLST.BGLST(t, y, w, 
                                 w_A = 2.0/np.var(y), A_hat = 0.0,
@@ -408,6 +411,8 @@ for setup_no in [0, 1, 2]:
     lines2[setup_no] = line2
     
 ax_stats_1.legend(handles=lines1, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
+ax_stats_1.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.5, 0.5], 'k:')
+ax_stats_2.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.0, 0.0], 'k:')
 #ax_stats_2.legend(handles=lines2, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=1, mode="expand", borderaxespad=0.)
 fig_stats.savefig("noise_tests/noise_stats.eps")
 plt.close()

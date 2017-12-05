@@ -15,19 +15,15 @@ from astropy.stats import LombScargle
 import os
 import os.path
 import BGLST
-import sys
-from filelock import FileLock
 import mw_utils
 from scipy import stats
+import pickle
 
 offset = 1979.3452
 down_sample_factor = 8
 
-group_no = 0
-if len(sys.argv) > 1:
-    group_no = int(sys.argv[1])
-
-num_experiments = 2000
+linestyles = ['-', '--', '-.']
+linecolors = ['r', 'b', 'g']
 
 def calc_cov(t, f, sig_var, trend_var, c):
     k = np.zeros((len(t), len(t)))
@@ -37,6 +33,37 @@ def calc_cov(t, f, sig_var, trend_var, c):
             k[j, i] = k[i, j]
     return k
 
+
+
+real_dats = []
+
+for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
+    for file in dir_files:
+        if file[-4:] == ".dat":
+            star = file[:-4]
+            star = star.upper()
+            if (star[-3:] == '.CL'):
+                star = star[0:-3]
+            if (star[0:2] == 'HD'):
+                star = star[2:]
+            if star == "SUNALL":
+                continue
+            dat = np.loadtxt("cleaned_wo_rot/"+file, usecols=(0,1), skiprows=0)
+            t = dat[:,0]
+            y = dat[:,1]
+            t /= 365.25
+            t += offset
+            noise_var = mw_utils.get_seasonal_noise_var(t, y)
+
+            if down_sample_factor >= 2:
+                indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
+                indices = np.sort(indices)
+                t = t[indices]
+                y = y[indices]
+                noise_var = noise_var[indices]
+    
+            if max(t) - min(t) >= 30:
+                real_dats.append(t)
 
 files = []
 
@@ -71,92 +98,126 @@ def select_dataset():
 
     return t
 
-for experiment_index in np.arange(0, num_experiments):
-    print experiment_index
-    duration = 0
-    while duration < 30:
-        t = select_dataset()
-        min_t = min(t)
-        duration = max(t) - min_t
+trend_var_coefs = [0.0, 0.1, 0.2, 0.4, 0.8, 1.6]
 
+axis_label_fs = 15
+panel_label_fs = 15
+
+fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
+fig_stats.set_size_inches(6, 7)
+
+ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
+ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
+ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
+
+ax_stats_2.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
+
+ax_stats_2.set_xlim([np.sqrt(min(trend_var_coefs)), np.sqrt(max(trend_var_coefs))])
+lines1 = [None, None, None]
+lines2 = [None, None, None]
+
+
+setup_no = 0
+for real_sampling in [False, True]:
+    
+    num_exp = len(trend_var_coefs)
+    outperforms = np.zeros(num_exp)
+    bglst_err_means = np.zeros(num_exp)
+    bglst_err_stds = np.zeros(num_exp)
+    ls_err_means = np.zeros(num_exp)
+    ls_err_stds = np.zeros(num_exp)
+    
+    exp_no = 0
+    for trend_var_coef in [0.0, 0.1, 0.2, 0.4, 0.8, 1.6]:
+        print "Experiment with trend_var_coef", trend_var_coef
+
+        if os.path.exists('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl'):
+            (true_freqs, bglst_freqs, ls_freqs, dats) = pickle.load(open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'rb'))
+        else:
+
+            dats = []
+            num_rep = 2000
+            true_freqs = np.zeros(num_rep)
+            bglst_freqs = np.zeros(num_rep)
+            ls_freqs = np.zeros(num_rep)
+            ls_freqs_t = np.zeros(num_rep)
+            
+            for rep_index in np.arange(0, num_rep):
+                if real_sampling:
+                    t = real_dats[np.random.choice(len(real_dats))]
+                    n = len(t)
+                else:
+                    time_range = 30.0
+                    n = 200
+                    t = np.random.uniform(0, time_range, n)
+                    t = np.sort(t)
+                min_t = min(t)
+                duration = max(t) - min_t
+                            
+                var = 1.0
+                sig_var = np.random.uniform(0.2, 0.8)
+                noise_var = np.ones(n) * (var - sig_var)
+                trend_var = trend_var_coef * var / duration
+                mean = np.random.uniform(-1.0, 1.0)
+                
+                p = np.random.uniform(2.0, duration/1.5)
+                f = 1.0/p
+                true_freqs[rep_index] = f
+            
+                k = calc_cov(t, f, sig_var, trend_var, 0.0) + np.diag(noise_var)
+                l = la.cholesky(k)
+                s = np.random.normal(0, 1, n)
+                
+                y = np.repeat(mean, n) + np.dot(l, s)
+                y += mean
+                
+                #data = np.column_stack((t, y))
+                #print data
+                #np.savetxt("cyclic.txt", data, fmt='%f')
+                #noise_var_prop = mw_utils.get_seasonal_noise_var(t, y)
+                freqs = np.linspace(0.001, 0.5, 1000)
+    
+                power = LombScargle(t, y, np.sqrt(noise_var)).power(freqs, normalization='psd')
+                
+                ls_local_maxima_inds = mw_utils.find_local_maxima(power)
+                f_opt_ls_ind = np.argmax(power[ls_local_maxima_inds])
+                f_opt_ls = freqs[ls_local_maxima_inds][f_opt_ls_ind]
+                ls_freqs[rep_index] = f_opt_ls
+                
+                slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
+                #print "slope, intercept", slope, intercept
+                fit_trend = t * slope + intercept
+                y_detrended = y - fit_trend
+                
+                power_t = LombScargle(t, y_detrended, np.sqrt(noise_var)).power(freqs, normalization='psd')
+                
+                ls_t_local_maxima_inds = mw_utils.find_local_maxima(power_t)
+                f_opt_ls_t_ind = np.argmax(power[ls_t_local_maxima_inds])
+                f_opt_ls_t = freqs[ls_local_maxima_inds][f_opt_ls_ind]
+                ls_freqs_t[rep_index] = f_opt_ls_t
+    
+                w = np.ones(n) / noise_var
+            
+                bglst = BGLST.BGLST(t, y, w, 
+                                w_A = 2.0/np.var(y), A_hat = 0.0,
+                                w_B = 2.0/np.var(y), B_hat = 0.0,
+                                w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                                w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                
+                
+                (freqs, probs) = bglst.calc_all(min(freqs), max(freqs), len(freqs))
+                bglst_local_maxima_inds = mw_utils.find_local_maxima(probs)
+                f_opt_bglst_ind = np.argmax(probs[bglst_local_maxima_inds])
+                f_opt_bglst = freqs[bglst_local_maxima_inds][f_opt_bglst_ind]
+                bglst_freqs[rep_index] = f_opt_bglst
+                dats.append((t, y, w))
         
-    n = len(t)
+            dats = np.asarray(dats)
     
-    var = 1.0
-    sig_var = np.random.uniform(0.2, 0.8)
-    noise_var = np.ones(n) * (var - sig_var)
-    trend_var = np.random.uniform(0.0, 1.0) * var / duration
-    mean = 0.5
+            with open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'wb') as f:
+                pickle.dump((true_freqs, bglst_freqs, ls_freqs, dats), f)
     
-    p = np.random.uniform(2.0, duration/1.5)
-    f = 1.0/p
-    mean = 0.5
-
-    k = calc_cov(t, f, sig_var, trend_var, 0.0) + np.diag(noise_var)
-    l = la.cholesky(k)
-    s = np.random.normal(0, 1, n)
-    
-    y = np.repeat(mean, n) + np.dot(l, s)
-    y += mean
-    
-    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1)
-    fig.set_size_inches(10, 8)
-    
-    ax1.scatter(t, y, s=1)
-    min_y = min(y)
-    max_y = max(y)
-    for i in np.arange(1, duration*f):
-        ax1.plot((min_t + p * i, min_t + p * i), (min_y, max_y), 'k--')    
-    ax1.set_xlim([min_t, max(t)])
-    
-    #data = np.column_stack((t, y))
-    #print data
-    #np.savetxt("cyclic.txt", data, fmt='%f')
-    noise_var_prop = mw_utils.get_seasonal_noise_var(t, y)
-    
-    slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
-    print "slope, intercept", slope, intercept
-    fit_trend = t * slope + intercept
-    y_detrended = y - fit_trend
-    
-    freqs = np.linspace(0.001, 0.5, 1000)
-    power = LombScargle(t, y_detrended, np.sqrt(noise_var_prop)).power(freqs, normalization='psd')
-    
-    ls_local_maxima_inds = mw_utils.find_local_maxima(power)
-    f_opt_ls_ind = np.argmax(power[ls_local_maxima_inds])
-    f_opt_ls = freqs[ls_local_maxima_inds][f_opt_ls_ind]
-    #f_opt_ls = freqs[np.argmax(power[1:])+1]
-    ax2.plot(freqs, power)
-    ax2.plot([f_opt_ls, f_opt_ls], [min(power), power[ls_local_maxima_inds][f_opt_ls_ind]], 'k--')
-    
-    
-    w = np.ones(n) / noise_var_prop
-
-    bglst = BGLST.BGLST(t, y, w, 
-                    w_A = 2.0/np.var(y), A_hat = 0.0,
-                    w_B = 2.0/np.var(y), B_hat = 0.0,
-                    w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
-                    w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
-    
-    
-    (freqs, probs) = bglst.calc_all(min(freqs), max(freqs), len(freqs))
-    bglst_local_maxima_inds = mw_utils.find_local_maxima(probs)
-    f_opt_bglst_ind = np.argmax(probs[bglst_local_maxima_inds])
-    f_opt_bglst = freqs[bglst_local_maxima_inds][f_opt_bglst_ind]
-    #f_opt_bglst = freqs[np.argmax(probs[1:])+1]
-    ax3.plot(freqs, probs)
-    ax3.plot([f_opt_bglst, f_opt_bglst], [min(probs), probs[bglst_local_maxima_inds][f_opt_bglst_ind]], 'k--')
-    
-    seasonal_means = mw_utils.get_seasonal_means(t, y)
-    #op = model.optimizing(data=dict(x=t,N=n,y=y,noise_var=noise_var, var_y=np.var(y), harmonicity=1.0))
-    #freq_gp_opt = op['freq'];
-    
-    index = group_no * num_experiments + experiment_index
-    with FileLock("GPRLock"):
-        with open("comp/results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s\n" % (index, f, f_opt_ls, f_opt_bglst, sig_var, trend_var, duration))  
-
-    fig.savefig("comp/cyclic_" + str(index) + ".png")
-
-    plt.close()
-    
+        exp_no += 1
+    setup_no += 1        
+            
