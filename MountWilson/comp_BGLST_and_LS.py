@@ -22,9 +22,6 @@ import pickle
 offset = 1979.3452
 down_sample_factor = 8
 
-linestyles = ['-', '--', '-.']
-linecolors = ['r', 'b', 'g']
-
 def calc_cov(t, f, sig_var, trend_var, c):
     k = np.zeros((len(t), len(t)))
     for i in np.arange(0, len(t)):
@@ -103,37 +100,39 @@ trend_var_coefs = [0.0, 0.1, 0.2, 0.4, 0.8, 1.6]
 axis_label_fs = 15
 panel_label_fs = 15
 
-fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
-fig_stats.set_size_inches(6, 7)
-
-ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
-ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
-
-ax_stats_2.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
-
-ax_stats_2.set_xlim([np.sqrt(min(trend_var_coefs)), np.sqrt(max(trend_var_coefs))])
-lines1 = [None, None, None]
-lines2 = [None, None, None]
 
 
 setup_no = 0
 for real_sampling in [False, True]:
+
+    fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
+    fig_stats.set_size_inches(6, 7)
+    
+    ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
+    ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+    ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
+    
+    ax_stats_2.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_2.set_xlim([min(trend_var_coefs), max(trend_var_coefs)])
     
     num_exp = len(trend_var_coefs)
-    outperforms = np.zeros(num_exp)
+    outperforms_bglst = np.zeros(num_exp)
+    outperforms_ls_t = np.zeros(num_exp)
+    outperforms_ls = np.zeros(num_exp)
     bglst_err_means = np.zeros(num_exp)
     bglst_err_stds = np.zeros(num_exp)
     ls_err_means = np.zeros(num_exp)
     ls_err_stds = np.zeros(num_exp)
+    ls_t_err_means = np.zeros(num_exp)
+    ls_t_err_stds = np.zeros(num_exp)
     
     exp_no = 0
     for trend_var_coef in [0.0, 0.1, 0.2, 0.4, 0.8, 1.6]:
         print "Experiment with trend_var_coef", trend_var_coef
 
         if os.path.exists('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl'):
-            (true_freqs, bglst_freqs, ls_freqs, dats) = pickle.load(open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'rb'))
+            (true_freqs, bglst_freqs, ls_freqs, ls_t_freqs, dats) = pickle.load(open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'rb'))
         else:
 
             dats = []
@@ -141,7 +140,7 @@ for real_sampling in [False, True]:
             true_freqs = np.zeros(num_rep)
             bglst_freqs = np.zeros(num_rep)
             ls_freqs = np.zeros(num_rep)
-            ls_freqs_t = np.zeros(num_rep)
+            ls_t_freqs = np.zeros(num_rep)
             
             for rep_index in np.arange(0, num_rep):
                 if real_sampling:
@@ -194,8 +193,8 @@ for real_sampling in [False, True]:
                 
                 ls_t_local_maxima_inds = mw_utils.find_local_maxima(power_t)
                 f_opt_ls_t_ind = np.argmax(power[ls_t_local_maxima_inds])
-                f_opt_ls_t = freqs[ls_local_maxima_inds][f_opt_ls_ind]
-                ls_freqs_t[rep_index] = f_opt_ls_t
+                f_opt_ls_t = freqs[ls_t_local_maxima_inds][f_opt_ls_t_ind]
+                ls_t_freqs[rep_index] = f_opt_ls_t
     
                 w = np.ones(n) / noise_var
             
@@ -216,8 +215,60 @@ for real_sampling in [False, True]:
             dats = np.asarray(dats)
     
             with open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'wb') as f:
-                pickle.dump((true_freqs, bglst_freqs, ls_freqs, dats), f)
+                pickle.dump((true_freqs, bglst_freqs, ls_freqs, ls_t_freqs, dats), f)
+
+        bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
+        ls_errs = np.abs(ls_freqs-true_freqs)/true_freqs
+        ls_t_errs = np.abs(ls_t_freqs-true_freqs)/true_freqs
+        
+        indices1 = np.where(bglst_errs < ls_errs)[0]
+        indices2 = np.where(bglst_errs < ls_t_errs)[0]
+        indices1a = np.where(bglst_errs != ls_errs)[0]
+        indices2a = np.where(bglst_errs != ls_t_errs)[0]
+        outperforms_bglst[exp_no] = float(len(np.intersect1d(indices1, indices2)))/float(len(np.union1d(indices1a, indices2a)))
+        
+        indices1 = np.where(ls_errs < bglst_errs)[0]
+        indices2 = np.where(ls_errs < ls_t_errs)[0]
+        indices1a = np.where(ls_errs != bglst_errs)[0]
+        indices2a = np.where(ls_errs != ls_t_errs)[0]
+        outperforms_ls[exp_no] = float(len(np.intersect1d(indices1, indices2)))/float(len(np.union1d(indices1a, indices2a)))
+
+        indices1 = np.where(ls_t_errs < bglst_errs)[0]
+        indices2 = np.where(ls_t_errs < ls_errs)[0]
+        indices1a = np.where(ls_t_errs != bglst_errs)[0]
+        indices2a = np.where(ls_t_errs != ls_errs)[0]
+        outperforms_ls_t[exp_no] = float(len(np.intersect1d(indices1, indices2)))/float(len(np.union1d(indices1a, indices2a)))
+        
+        bglst_err_means[exp_no] = np.mean(bglst_errs)
+        bglst_err_stds[exp_no] = np.std(bglst_errs)
+        ls_err_means[exp_no] = np.mean(ls_errs)
+        ls_err_stds[exp_no] = np.std(ls_errs)
+        ls_t_err_means[exp_no] = np.mean(ls_t_errs)
+        ls_t_err_stds[exp_no] = np.std(ls_t_errs)
     
         exp_no += 1
+    
+    
+    ###############################################################################
+    # Plot experiment statistics
+    ax_stats_1.plot(trend_var_coefs, outperforms_bglst, 'r-')
+    ax_stats_1.plot(trend_var_coefs, outperforms_ls_t, 'b--')
+    ax_stats_1.plot(trend_var_coefs, outperforms_ls, 'g-.')
+    
+    ax_stats_2.plot(trend_var_coefs, bglst_err_means, 'r-')
+    ax_stats_2.plot(trend_var_coefs, ls_t_err_means, 'b--')
+    ax_stats_2.plot(trend_var_coefs, ls_err_means, 'g-.')
+    
+    #ax_stats_1.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.5, 0.5], 'k:')
+    #ax_stats_2.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.0, 0.0], 'k:')
+    fig_stats.savefig("comp/noise_stats_" + str(setup_no) + ".eps")
+    plt.close()
+
     setup_no += 1        
+    
+###############################################################################
+    
+        
+        
+        
             
