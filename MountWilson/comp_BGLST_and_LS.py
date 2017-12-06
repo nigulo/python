@@ -108,8 +108,8 @@ for real_sampling in [False, True]:
     fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
     fig_stats.set_size_inches(6, 7)
     
-    ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-    ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
+    ax_stats_1.set_ylabel(r'$S_3$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_2.set_ylabel(r'$S_4$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
     ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
     ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
     
@@ -251,17 +251,19 @@ for real_sampling in [False, True]:
     
     ###############################################################################
     # Plot experiment statistics
-    ax_stats_1.plot(trend_var_coefs, outperforms_bglst, 'r-')
-    ax_stats_1.plot(trend_var_coefs, outperforms_ls_t, 'b--')
-    ax_stats_1.plot(trend_var_coefs, outperforms_ls, 'g-.')
+    line1, = ax_stats_1.plot(trend_var_coefs, outperforms_bglst, 'r-', label = "Our method")
+    line2, = ax_stats_1.plot(trend_var_coefs, outperforms_ls_t, 'b--', label = "GLS-T")
+    line3, = ax_stats_1.plot(trend_var_coefs, outperforms_ls, 'g-.', label = "GLS")
     
     ax_stats_2.plot(trend_var_coefs, bglst_err_means, 'r-')
     ax_stats_2.plot(trend_var_coefs, ls_t_err_means, 'b--')
     ax_stats_2.plot(trend_var_coefs, ls_err_means, 'g-.')
     
+    ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
+    
     #ax_stats_1.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.5, 0.5], 'k:')
     #ax_stats_2.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.0, 0.0], 'k:')
-    fig_stats.savefig("comp/noise_stats_" + str(setup_no) + ".eps")
+    fig_stats.savefig("comp/trend_stats_" + str(setup_no+1) + ".eps")
     plt.close()
 
     setup_no += 1        

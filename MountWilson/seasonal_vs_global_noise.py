@@ -71,7 +71,8 @@ def get_local_noise_var(t, y, window_size=1.0):
     noise_var = np.zeros(len(t))
     i = 0
     for season in seasons:
-        if np.shape(season[:,1])[0] < 10:
+        if np.shape(season[:,1])[0] < 2:
+            print "OOPS"
             var = total_var # Is it good idea?
         else:
             var = np.var(season[:,1])
@@ -129,7 +130,7 @@ lines2 = [None, None, None]
 
 
 num_exp = len(sns)
-num_rep = 2000
+num_rep = 100
 
 for setup_no in [0, 1, 2]:
     if setup_selected is not None and setup_selected != setup_no:
@@ -180,7 +181,7 @@ for setup_no in [0, 1, 2]:
                     noise_var += sig_var/final_sn_ratio
                 else:
                     time_range = 30.0
-                    n = 200
+                    n = 1000
                     if uniform_sampling:
                         t = np.random.uniform(0, time_range, n)
                     else:
@@ -219,8 +220,8 @@ for setup_no in [0, 1, 2]:
                 
                 real_noise_var = noise_var
                 #now produce empirical noise_var from sample variance
-                #if not real_sampling:
-                #    noise_var = get_local_noise_var(t, y, 2.0)
+                if not real_sampling:
+                    noise_var = get_local_noise_var(t, y, 1.0)
                 
                 #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
                 w = np.ones(n)/noise_var
