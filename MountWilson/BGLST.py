@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 import scipy.misc
+import numpy.linalg as la
 
 class BGLST():
 
@@ -33,6 +34,10 @@ class BGLST():
         self.A_hat = A_hat
         self.w_B = w_B
         self.B_hat = B_hat
+        self.alpha_hat = alpha_hat
+        self.w_alpha = w_alpha
+        self.beta_hat = beta_hat
+        self.w_beta = w_beta
 
     def _linreg(self):
         W = sum(self.w)
@@ -194,32 +199,30 @@ class BGLST():
             sigma_beta = 0.0
             mu_beta = 0.0
         else:
-            sigma_beta = 1.0/P
-            mu_beta = -Q/2.0*sigma_beta
+            sigma_beta = -0.5/P
+            mu_beta = Q*sigma_beta
 
         L = M + N * mu_beta
         
-        sigma_alpha = 1.0/K
-        mu_alpha = -L/2.0*sigma_alpha
+        sigma_alpha = -0.5/K
+        mu_alpha = L*sigma_alpha
         
-        AC = -cc/2.0
-        AS = -ss/2.0
         BC = yc - mu_alpha * ct - mu_beta * c        
         BS = ys - mu_alpha * st - mu_beta * s        
 
-        if AC == 0.0:
+        if cc == 0.0:
             sigma_A = 0.0
             mu_A = 0.0
         else:
-            sigma_A = 1.0/AC
-            mu_A = -BC/2.0*sigma_A
+            sigma_A = 1.0/cc
+            mu_A = BC*sigma_A
 
-        if AS == 0.0:
+        if ss == 0.0:
             sigma_B = 0.0
             mu_B = 0.0
         else:
-            sigma_B = 1.0/AS
-            mu_B = -BS/2.0*sigma_B
+            sigma_B = 1.0/ss
+            mu_B = BS*sigma_B
         
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * mu_B + self.t * mu_alpha + mu_beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
@@ -237,3 +240,25 @@ class BGLST():
         if np.any(t != self.t):
             y_model = np.cos(t * 2.0 * np.pi * freq - tau) * A  + np.sin(t * 2.0 * np.pi * freq - tau) * B + t * alpha + beta
         return y_model, loglik
+
+    '''
+        Simple check if the means and variances of the parameters are correct
+        (assuming constant noise variance)
+    '''
+    def _test(self, freq):
+        (tau, (mu_A, mu_B, mu_alpha, mu_beta), (sigma_A, sigma_B, sigma_alpha, sigma_beta), y_model, loglik) = self.model(freq)
+        w0 = np.array([self.A_hat, self.B_hat, self.alpha_hat, self.beta_hat])
+        V0 = np.diag([1.0/self.w_A, 1.0/self.w_B, 1.0/self.w_alpha, 1.0/self.w_beta])
+        X = np.column_stack((np.cos(self.t * 2.0 * np.pi * freq - tau), 
+                             np.sin(self.t * 2.0 * np.pi * freq - tau), 
+                            self.t, 
+                            np.ones(len(self.t))))
+        V0inv = la.inv(V0)
+        sigma = 1.0/self.w[0]
+        Xt = np.transpose(X)
+        Vn = la.inv(V0inv*sigma+np.dot(Xt,X))*sigma
+        wn = np.dot(np.dot(Vn, V0inv), w0) + np.dot(np.dot(Vn, Xt), self.y)/sigma
+        print mu_A, mu_B, mu_alpha, mu_beta
+        print wn
+        print (sigma_A, sigma_B, sigma_alpha, sigma_beta)
+        print Vn

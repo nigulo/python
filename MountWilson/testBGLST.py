@@ -94,6 +94,8 @@ max_prob = max(probs)
 max_prob_index = np.argmax(probs)
 best_freq = freqs[max_prob_index]
 
+bglst._test(best_freq)
+
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 7)
 

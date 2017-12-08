@@ -31,6 +31,8 @@ real_dats = []
 linestyles = ['-', '--', '-.']
 linecolors = ['r', 'b', 'g']
 
+iterative = True
+
 for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
     for file in dir_files:
         if file[-4:] == ".dat":
@@ -72,7 +74,7 @@ def get_local_noise_var(t, y, window_size=1.0):
     i = 0
     max_var = 0
     for season in seasons:
-        if np.shape(season[:,1])[0] < 2:
+        if np.shape(season[:,1])[0] < 5:
             #print "OOOPS"
             #var = -1#total_var # Is it good idea?
             #print "OOPS"
@@ -126,7 +128,7 @@ fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True
 fig_stats.set_size_inches(6, 7)
 
 ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
+ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
 ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
 ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
 
@@ -135,9 +137,8 @@ ax_stats_2.set_xlim([np.sqrt(min(sns)), np.sqrt(max(sns))])
 lines1 = [None, None, None]
 lines2 = [None, None, None]
 
-
 num_exp = len(sns)
-num_rep = 100
+num_rep = 200
 
 for setup_no in [0, 1, 2]:
     if setup_selected is not None and setup_selected != setup_no:
@@ -188,7 +189,7 @@ for setup_no in [0, 1, 2]:
                     noise_var += sig_var/final_sn_ratio
                 else:
                     time_range = 30.0
-                    n = 1000
+                    n = 200
                     if uniform_sampling:
                         t = np.random.uniform(0, time_range, n)
                     else:
@@ -227,8 +228,10 @@ for setup_no in [0, 1, 2]:
                 
                 real_noise_var = noise_var
                 #now produce empirical noise_var from sample variance
-                if not real_sampling:
-                    noise_var = get_local_noise_var(t, y, 1.0)
+                if real_sampling:
+                    noise_var = mw_utils.get_seasonal_noise_var(t, y)
+                else:
+                    noise_var = get_local_noise_var(t, y, 2.0)
                 
                 #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
                 w = np.ones(n)/noise_var
@@ -251,7 +254,36 @@ for setup_no in [0, 1, 2]:
                 max_prob_index = np.argmax(probs)
                 best_freq_bglst = freqs[max_prob_index]
                 
+                if iterative:
+                    tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq_bglst)
+                    if real_sampling:
+                        noise_var = mw_utils.get_seasonal_noise_var(t, y - y_model)
+                    else:
+                        noise_var = get_local_noise_var(t, y - y_model, 2.0)
+                    
+                    #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
+                    w = np.ones(n)/noise_var
+                    
+                    start = time.time()
+                    #slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
+                    #print "slope, intercept", slope, intercept
+                    bglst = BGLST.BGLST(t, y, w, 
+                                        w_A = 2.0/np.var(y), A_hat = 0.0,
+                                        w_B = 2.0/np.var(y), B_hat = 0.0,
+                                        #w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                                        #w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                                        w_alpha = 1e10, alpha_hat = 0.0, 
+                                        w_beta = 1e10, beta_hat = 0.0)
+                    
+                    (freqs, probs) = bglst.calc_all(freq_start, freq_end, freq_count)
+                    end = time.time()
+                    
+                    max_prob = max(probs)
+                    max_prob_index = np.argmax(probs)
+                    best_freq_bglst = freqs[max_prob_index]
+                    
                 bglst_freqs[rep_no] = best_freq_bglst
+
                 
                 ###############################################################################
                 # LS
