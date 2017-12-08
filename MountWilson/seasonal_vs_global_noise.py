@@ -127,8 +127,8 @@ sns = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0]
 fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
 fig_stats.set_size_inches(6, 7)
 
-ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
+ax_stats_1.set_ylabel(r'$S_3$', fontsize=axis_label_fs)#,fontsize=20)
+ax_stats_2.set_ylabel(r'$S_4$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
 ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
 ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
 

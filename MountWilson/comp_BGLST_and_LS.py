@@ -108,8 +108,8 @@ for real_sampling in [False, True]:
     fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
     fig_stats.set_size_inches(6, 7)
     
-    ax_stats_1.set_ylabel(r'$S_3$', fontsize=axis_label_fs)#,fontsize=20)
-    ax_stats_2.set_ylabel(r'$S_4$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
+    ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_2.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#, labelpad=-5)#,fontsize=20)
     ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
     ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
     
@@ -251,7 +251,7 @@ for real_sampling in [False, True]:
     
     ###############################################################################
     # Plot experiment statistics
-    line1, = ax_stats_1.plot(trend_var_coefs, outperforms_bglst, 'r-', label = "Our method")
+    line1, = ax_stats_1.plot(trend_var_coefs, outperforms_bglst, 'r-', label = "BGLST")
     line2, = ax_stats_1.plot(trend_var_coefs, outperforms_ls_t, 'b--', label = "GLS-T")
     line3, = ax_stats_1.plot(trend_var_coefs, outperforms_ls, 'g-.', label = "GLS")
     
