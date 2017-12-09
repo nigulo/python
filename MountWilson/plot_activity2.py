@@ -15,6 +15,7 @@ import os.path
 from numpy import linalg as LA
 from matplotlib.patches import Ellipse
 import mw_utils
+from bayes_lin_reg import bayes_lin_reg
 
 include_non_ms = False
 
@@ -537,7 +538,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         b = 1.0
                                         active_cyc_mean += p_cyc/365.25
                                         num_active += 1
-                                        active.append([r_hk, val])
+                                        active.append([r_hk, val, err])
                                     else:
                                         sym = "x"
                                         delta_i = val - (a2 * r_hk + b2)
@@ -546,7 +547,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         b = c
                                         inactive_cyc_mean += p_cyc/365.25
                                         num_inactive += 1
-                                        inactive.append([r_hk, val])
+                                        inactive.append([r_hk, val, err])
                                 else:                            
                                     if bic > 100:
                                         r = 0.0
@@ -571,12 +572,27 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     else:
         # don't plot the resudue plot
         plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
-        
+    
+    ###########################################################################
+    # Calculate trend lines for the branches
+    
+    active = np.asarray(active)
+    inactive = np.asarray(inactive)
+    ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik) = bayes_lin_reg(active[:,0], active[:,1], np.ones(len(active[:,2]))/active[:,2])
+    rhks = np.linspace(min(active[:,0]), max(active[:,0]), 100)
+    print "active branch slope:", mu_alpha, sigma_alpha
+    ax11.plot(rhks, rhks * mu_alpha + mu_beta, color='k', linestyle='-', linewidth=1)
+    ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik) = bayes_lin_reg(inactive[:,0], inactive[:,1], np.ones(len(inactive[:,2]))/inactive[:,2])
+    print "inactive branch slope:", mu_alpha, sigma_alpha
+    rhks = np.linspace(min(inactive[:,0]), max(inactive[:,0]), 100)
+    ax11.plot(rhks, rhks * mu_alpha + mu_beta, color='k', linestyle='-', linewidth=1)
+    
+    #np.savetxt("active_" + type + ".dat", np.asarray(active), fmt='%f')
+    #np.savetxt("inactive_" + type + ".dat", np.asarray(inactive), fmt='%f')
+    ###########################################################################
+    
     print "active_cyc_mean: ", active_cyc_mean/num_active
     print "inactive_cyc_mean: ", inactive_cyc_mean/num_inactive
-
-    np.savetxt("active_" + type + ".dat", np.asarray(active), fmt='%f')
-    np.savetxt("inactive_" + type + ".dat", np.asarray(inactive), fmt='%f')
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
