@@ -431,6 +431,8 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     num_active = 0.0
     inactive_cyc_mean = 0.0
     num_inactive = 0.0
+    active = []
+    inactive = []
     with open("mwo-rhk.dat", "r") as ins:
         for line in ins:
             if i < 5:
@@ -526,6 +528,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         b = 1.0
                                         active_cyc_mean += p_cyc/365.25
                                         num_active += 1
+                                        active.append([r_hk, val])
                                     else:
                                         sym = "x"
                                         delta_i = val - (a2 * r_hk + b2)
@@ -534,6 +537,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         b = c
                                         inactive_cyc_mean += p_cyc/365.25
                                         num_inactive += 1
+                                        inactive.append([r_hk, val])
                                 else:                            
                                     if bic > 100:
                                         r = 0.0
@@ -561,6 +565,9 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         
     print "active_cyc_mean: ", active_cyc_mean/num_active
     print "inactive_cyc_mean: ", inactive_cyc_mean/num_inactive
+
+    np.savetxt("active_" + type + ".dat", np.asarray(active), fmt='%f')
+    np.savetxt("inactive_" + type + ".dat", np.asarray(inactive), fmt='%f')
 
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)

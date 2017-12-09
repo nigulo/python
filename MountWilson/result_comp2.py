@@ -143,12 +143,12 @@ for star in keys:
 
     rot_period = r"$\dots$"
     if rot_periods.has_key(star):
-        rot_period = rot_periods[star]
+        (rot_period, rot_period_err) = rot_periods[star]
     r_hk = r"$\dots$"
     if r_hks.has_key(star):
         r_hk = r_hks[star]
         
-    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & " + str(rot_period) + " & " + str(r_hk) + " & "
+    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & " + str(rot_period) + " $\pm$ " + str(rot_period_err) + " & " + str(r_hk) + " & "
     if bglst_cycles.has_key(star):
         i = 0
         cycle_output = ""

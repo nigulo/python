@@ -35,7 +35,7 @@ def make_parser(fieldwidths):
 
 def load_rot_periods(path=""):
     #fieldwidths = (10, 8, 8, 6, 8, 9, 11, 9, 4)  # negative widths represent ignored padding fields
-    fieldwidths = (10, 12, 18, 6, 12, 6)  # negative widths represent ignored padding fields
+    fieldwidths = (10, 12, 18, 6, 3, 9, 6)  # negative widths represent ignored padding fields
     parse = make_parser(fieldwidths)
     rot_periods = dict()
     line_no = 0
@@ -54,8 +54,13 @@ def load_rot_periods(path=""):
                 p_rot = float(fields[3].strip())
             except ValueError:
                 p_rot = None
-            if p_rot != None:
-                rot_periods[star] = p_rot
+            try:
+                #p_rot = float(fields[7].strip())
+                p_rot_err = float(fields[5].strip())
+            except ValueError:
+                p_rot = None
+            if p_rot != None and p_rot != None:
+                rot_periods[star] = (p_rot, p_rot_err)
     return rot_periods
 
 def load_r_hk(path=""):
