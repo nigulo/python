@@ -361,6 +361,6 @@ def read_bglst_cycles(file):
             f_samples = np.random.normal(loc=f, scale=std, size=1000)
             cyc_std = np.std(np.ones(len(f_samples))/f_samples)
             if cyc_std < cyc:
-                cycles.append((cyc*365.25, cyc_std*3*365.25, log_bic)) # three sigma
+                cycles.append((cyc*365.25, cyc_std*365.25, log_bic)) # three sigma
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles

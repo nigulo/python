@@ -80,7 +80,7 @@ def read_gp_cycles(file):
                 min_bic = log_bic
                 
             if std < cyc:
-                cycles.append((cyc*365.25, std*3*365.25, log_bic)) # three sigma
+                cycles.append((cyc*365.25, std*365.25, log_bic)) # three sigma
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
 
@@ -129,6 +129,7 @@ def read_FeH_dR(file):
     return star_FeH_dR
     
 star_FeH_dR = read_FeH_dR("brandenburg2017table.csv")
+rot_periods = mw_utils.load_rot_periods()
 
 ###############################################################################
 if plot_ro:
@@ -205,7 +206,11 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             ax2.plot(np.log10(p), np.log10(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         if plot_ro and not ax12 is None:
             ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
-        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size] in data_star:
+        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err] in data_star:
+            err1 *= 2.0
+            err2 *= 2.0
+            cyc_err *= 2.0
+            p_rot_err *= 2.0
             activity_ls_1.append([r_hk, y])
             activity_ls_2.append([ro, y])
             fillstyles = [None]
@@ -240,12 +245,12 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
 
-                if not first_time or cyc_err/p_cyc < 0.02:
+                if not first_time or (cyc_err/p_cyc/np.log(10.0) < 0.02 and p_rot_err/p_rot/np.log(10.0) < 0.02):
                     if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                 else:
                     if is_ms and not ax2 is None: # omit non MS
-                        ax2.errorbar(np.log10(p_rot), np.log10(p_cyc), yerr=[[cyc_err/p_cyc/np.log(10.0)], [cyc_err/p_cyc/np.log(10.0)]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
+                        ax2.errorbar(np.log10(p_rot), np.log10(p_cyc), xerr=[[p_rot_err/p_rot/np.log(10.0)], [p_rot_err/p_rot/np.log(10.0)]], yerr=[[cyc_err/p_cyc/np.log(10.0)], [cyc_err/p_cyc/np.log(10.0)]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
 
 
                 if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
@@ -450,10 +455,14 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                 r_hk = float(fields[6].strip())
             except ValueError:
                 r_hk = None
-            try:
-                p_rot = float(fields[7].strip())
-            except ValueError:
+            if (rot_periods.has_key(star)):
+                (p_rot, p_rot_err) = rot_periods[star]
+            else: 
                 p_rot = None
+            #try:
+            #    p_rot = float(fields[7].strip())
+            #except ValueError:
+            #    p_rot = None
             if p_rot != None and r_hk != None and bmv != None:
                 if bmv >= 1.0:
                     tau = 25.0
@@ -481,7 +490,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             for (p_cyc_2, std_2, bic_2) in cycs[star]:
                                 if p_cyc != p_cyc_2:
                                     for ii in [2.0, 3.0]:
-                                        if p_cyc_2 + std_2 > (p_cyc - std) * ii and p_cyc_2 - std_2 < (p_cyc + std) * ii:
+                                        if p_cyc_2 + std_2 > (p_cyc - 3.0*std) * ii and p_cyc_2 - std_2 < (p_cyc + 3.0*std) * ii:
                                             #print p_cyc, p_cyc_2
                                             #exclude = True
                                             break
@@ -489,7 +498,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                 continue
                             #r_hks_ls.append(r_hk)
                             val = np.log10(p_rot/p_cyc)
-                            err = std/p_cyc/np.log(10)
+                            err = (p_rot_err/p_rot+std/p_cyc)/np.log(10)#std/p_cyc/np.log(10)
                             #val1 = np.log10(p_rot/(p_cyc + std))
                             #val2 = np.log10(p_rot/(p_cyc - std))
                             #print val - val1, val2 - val, err
@@ -549,7 +558,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         g = c
                                         b = c
                                 #size *= 1.0 - c
-                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25, size])
+                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25, size, p_rot_err])
                         if baliunas:
                             data_baliunas[star] = data_star
                         else:
