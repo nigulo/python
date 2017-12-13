@@ -88,7 +88,9 @@ def constant_model(y, w, y_test, w_test):
 
     return (mu_beta, sigma_beta, y_model, loglik)
 
-
+sun_index = None
+sun_rhk = None
+sun_var_ratio = None
 for root, dirs, files in os.walk(input_path):
     for file in files:
         if file[-4:] == ".dat":
@@ -122,6 +124,10 @@ for root, dirs, files in os.walk(input_path):
                 if all_cycles.has_key(star) or all_cycles_gp_p.has_key(star) or all_cycles_gp_qp.has_key(star):
                     r_hks_a.append(r_hk)
                     var_ratios_a.append(total_var/mean_seasonal_var)
+                    if star == "SUN":
+                        sun_index = len(var_ratios_a) - 1
+                        sun_rhk = r_hk
+                        sun_var_ratio = total_var/mean_seasonal_var
                 else:
                     r_hks_na.append(r_hk)
                     var_ratios_na.append(total_var/mean_seasonal_var)
@@ -159,12 +165,17 @@ for root, dirs, files in os.walk(input_path):
                         var_ratios_na_wot.append(total_var/mean_seasonal_var)
                     ############################
 
+assert(sun_index is not None)
 print "Num cyclic:", len(r_hks_a)
 print "Num noncyclic with trend:", len(r_hks_na_t)
 print "Num noncyclic without trend:", len(r_hks_na_wot)
 ax1.scatter(r_hks_na_t, var_ratios_na_t, marker=markers.MarkerStyle("x", fillstyle=None), lw=1.5, facecolors="green", color="green", s=50, edgecolors="green")
 ax1.scatter(r_hks_na_wot, var_ratios_na_wot, marker=markers.MarkerStyle('d', fillstyle=None), lw=1.5, facecolors="none", color="blue", s=50, edgecolors="blue")
-ax1.scatter(r_hks_a, var_ratios_a, marker=markers.MarkerStyle("+", fillstyle=None), lw=1.5, facecolors="red", color="red", s=50, edgecolors="red")
+ax1.scatter(np.delete(r_hks_a, sun_index, 0), np.delete(var_ratios_a, sun_index, 0), marker=markers.MarkerStyle("+", fillstyle=None), lw=1.5, facecolors="red", color="red", s=50, edgecolors="red")
+# Plot Sun separately
+ax1.scatter([sun_rhk], [sun_var_ratio], marker=markers.MarkerStyle("o", fillstyle=None), lw=1.5, facecolors="none", color="red", s=50, edgecolors="red")
+ax1.scatter([sun_rhk], [sun_var_ratio], marker=markers.MarkerStyle("o", fillstyle='full'), lw=1.5, facecolors="red", color="red", s=1, edgecolors="red")
+#
 slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na_wot, var_ratios_na_wot)
 ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "b--")
 #slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_a, var_ratios_a)
@@ -213,7 +224,7 @@ d_a_and_na_t = density_a_and_na_t(r_hk_bins_values)
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
 ax2.plot(r_hk_bins_values, d_all, "k--")
 ax2.plot(r_hk_bins_values, d_na_t, "g-.")
-ax2.plot(r_hk_bins_values, d_a_and_na_t, ":", color="saddlebrown")
+#ax2.plot(r_hk_bins_values, d_a_and_na_t, ":", color="saddlebrown")
 
 r_hks_a = np.asarray(r_hks_a)
 r_hks_na = np.asarray(r_hks_na)

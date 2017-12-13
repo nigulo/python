@@ -59,6 +59,38 @@ ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
 def star_is_ms(star):
     return len(np.where(ms_stars == star.upper())[0] > 0)
 
+#Omega, P_cyc, E_mag/E_kin
+sim_data = np.array([
+    [0.5, 3.1, 0.06],
+    [1.0, 22.5, 0.16],
+    [1.5, 29.2, 0.17],
+    [2.0, 29.2, 0.09],
+    [2.5, 7.7, 0.10],
+    [3.0, 4.6, 0.13],
+    [4.0, 2.7, 0.21],
+    [5.0, 2.3, 0.29],
+    [7.0, 2.7, 0.39],
+    [10.0, 2.5, 0.52],
+    [15.0, 3.8, 0.84]
+    ])
+    
+sim_data *= [365.25/26.09, 1, 1]
+sim_data += [0, 0, -4.911+0.16]
+sim_data_for_plot = dict()
+
+sim_names = ["M0.5", "M1", "M1.5", "M2", "M2.5", "M3", "M4", "M5", "M7", "M10", "M15"]
+i = 0
+for omega, p_cyc, r_hk in sim_data:
+    #r_hk = np.sqrt(r_hk)-4.911+np.sqrt(0.16)
+    sim = sim_names[i]
+    i+= 1
+    r = 0
+    g = 0
+    b = 0
+    print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    sim_data_for_plot[sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, 0]]
+    
+
 def read_gp_cycles(file):
     max_bic = None
     min_bic = None
@@ -266,7 +298,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     if include_non_ms:
         ax11.set_ylim(-3.0, -0.75)
-        ax11.set_xlim(-5.15, -4.4)
+        #ax11.set_xlim(-5.15, -4.4)
     else:
         ax11.set_ylim(-2.9, -1.7)
         ax11.set_xlim(-5.1, -4.4)        
@@ -569,6 +601,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         plot_data(data, True, ax11, ax12, ax2, ax31, ax32, ax4)
         plot_data(data, False, ax1a, None, None, None, None, None)
         plot_data(data_baliunas, False, ax1a, None, None, None, None, None)
+        plot_data(sim_data_for_plot, False, ax1a, None, None, None, None, None)
     else:
         # don't plot the resudue plot
         plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
