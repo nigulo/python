@@ -364,3 +364,31 @@ def read_bglst_cycles(file):
                 cycles.append((cyc*365.25, cyc_std*365.25, log_bic)) # three sigma
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
+
+def read_gp_cycles(file):
+    time_ranges = load_time_ranges()
+    data = pd.read_csv(file, names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+    gp_cycles = dict()
+    #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
+    for [star, validity, cyc, std, bic] in data:
+        if star == 'SUN':
+            star = 'Sun'
+        if not gp_cycles.has_key(star):
+            gp_cycles[star] = list()
+        all_cycles = gp_cycles[star]
+        cycles = list()
+        if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
+            cycles.append(cyc)
+            cycles.append(std)
+            cycles.append(bic)
+        all_cycles.append(np.asarray(cycles))
+    return gp_cycles
+
+def load_time_ranges():
+    time_ranges_data = np.genfromtxt("time_ranges.dat", usecols=(0,1,2), dtype=None)
+    time_ranges = dict()
+    for [star, time_range, end_time] in time_ranges_data:
+        if star == 'SUN':
+            star = 'Sun'
+        time_ranges[star] = time_range
+    return time_ranges

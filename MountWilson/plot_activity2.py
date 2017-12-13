@@ -17,7 +17,7 @@ from matplotlib.patches import Ellipse
 import mw_utils
 from bayes_lin_reg import bayes_lin_reg
 
-include_non_ms = False
+include_non_ms = True
 
 use_secondary_clusters = False
 plot_ro = False
@@ -363,19 +363,19 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        if type == "BGLST" or type == "GP_QP":
-            m_temp = m2
-            s_temp = s2
-            w_temp = w2
-            v_temp = v2
-            m2 = m1
-            s2 = s1
-            w2 = w1
-            v2 = v1
-            m1 = m_temp
-            s1 = s_temp
-            w1 = w_temp
-            v1 = v_temp            
+        #if type == "BGLST" or type == "GP_QP":
+        #    m_temp = m2
+        #    s_temp = s2
+        #    w_temp = w2
+        #    v_temp = v2
+        #    m2 = m1
+        #    s2 = s1
+        #    w2 = w1
+        #    v2 = v1
+        #    m1 = m_temp
+        #    s1 = s_temp
+        #    w1 = w_temp
+        #    v1 = v_temp            
             
         #print w1
         #print v1
@@ -580,12 +580,12 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     inactive = np.asarray(inactive)
     ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik) = bayes_lin_reg(active[:,0], active[:,1], np.ones(len(active[:,2]))/active[:,2])
     rhks = np.linspace(min(active[:,0]), max(active[:,0]), 100)
-    print "active branch slope:", mu_alpha, sigma_alpha
-    ax11.plot(rhks, rhks * mu_alpha + mu_beta, color='k', linestyle='-', linewidth=1)
+    print "active branch slope:", mu_alpha, 2.0*sigma_alpha
+    #ax11.plot(rhks, rhks * mu_alpha + mu_beta, color='k', linestyle='-', linewidth=1)
     ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik) = bayes_lin_reg(inactive[:,0], inactive[:,1], np.ones(len(inactive[:,2]))/inactive[:,2])
-    print "inactive branch slope:", mu_alpha, sigma_alpha
+    print "inactive branch slope:", mu_alpha, 2.0*sigma_alpha
     rhks = np.linspace(min(inactive[:,0]), max(inactive[:,0]), 100)
-    ax11.plot(rhks, rhks * mu_alpha + mu_beta, color='k', linestyle='-', linewidth=1)
+    #ax11.plot(rhks, rhks * mu_alpha + mu_beta, color='k', linestyle='-', linewidth=1)
     
     #np.savetxt("active_" + type + ".dat", np.asarray(active), fmt='%f')
     #np.savetxt("inactive_" + type + ".dat", np.asarray(inactive), fmt='%f')

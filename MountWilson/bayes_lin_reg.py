@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def bayes_lin_reg(t, y, w):
+def bayes_lin_reg(t, y, w, t_test=None, y_test=None, w_test=None):
     W = sum(w)
     wt_arr = w * t
     tau = sum(wt_arr) / W
@@ -19,8 +19,13 @@ def bayes_lin_reg(t, y, w):
 
     norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
 
-    y_model = t * mu_alpha + mu_beta
-    loglik = norm_term - 0.5 * sum(w * (y - y_model)**2)
+    if t_test is None or y_test is None or w_test is None:
+        t_test = t
+        y_test = y
+        w_test = w
+
+    y_model = t_test * mu_alpha + mu_beta
+    loglik = norm_term - 0.5 * sum(w_test * (y_test - y_model)**2)
 
     return ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik)
 

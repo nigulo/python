@@ -88,38 +88,9 @@ for [star, f, std, normality, bic] in data:
         cycles.append(bic)
     all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_periodic/results_combined.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
-gp_p_cycles = dict()
-#for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
-for [star, validity, cyc, std, bic] in data:
-    if star == 'SUN':
-        star = 'Sun'
-    if not gp_p_cycles.has_key(star):
-        gp_p_cycles[star] = list()
-    all_cycles = gp_p_cycles[star]
-    cycles = list()
-    if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
-        cycles.append(cyc)
-        cycles.append(std)
-        cycles.append(bic)
-    all_cycles.append(np.asarray(cycles))
 
-data = pd.read_csv("GP_quasiperiodic/results_combined.txt", names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
-gp_qp_cycles = dict()
-#for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
-for [star, validity, cyc, std, bic] in data:
-    if star == 'SUN':
-        star = 'Sun'
-    if not gp_qp_cycles.has_key(star):
-        gp_qp_cycles[star] = list()
-    all_cycles = gp_qp_cycles[star]
-    cycles = list()
-    if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
-        cycles.append(cyc)
-        cycles.append(std)
-        cycles.append(bic)
-    all_cycles.append(np.asarray(cycles))
-
+gp_p_cycles = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
+gp_qp_cycles = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
 
 keys = np.asarray(time_ranges.keys())
 keys = np.sort(keys)
@@ -127,6 +98,8 @@ keys = np.sort(keys)
 spec_types = mw_utils.load_spec_types()
 rot_periods = mw_utils.load_rot_periods()
 r_hks = mw_utils.load_r_hk()
+rot_periods["Sun"] = (26.09, 0)
+r_hks["Sun"] = -4.911
 
 for star in keys:
     
@@ -142,13 +115,18 @@ for star in keys:
         hd_str = "HD" + star
 
     rot_period = r"$\dots$"
+    rot_period_err = ""
     if rot_periods.has_key(star):
         (rot_period, rot_period_err) = rot_periods[star]
+        if rot_period_err > 0:
+            rot_period_err = " $\pm$ " + str(rot_period_err)
+        else:
+            rot_period_err = ""
     r_hk = r"$\dots$"
     if r_hks.has_key(star):
         r_hk = r_hks[star]
         
-    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & " + str(rot_period) + " $\pm$ " + str(rot_period_err) + " & " + str(r_hk) + " & "
+    output = hd_str + " & " + str(round(time_ranges[star],1)) + " & " + spec_types[star.upper()] + " & " + is_ms +  " & " + str(rot_period) + rot_period_err + " & " + str(r_hk) + " & "
     if bglst_cycles.has_key(star):
         i = 0
         cycle_output = ""

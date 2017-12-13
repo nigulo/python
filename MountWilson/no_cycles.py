@@ -33,6 +33,10 @@ kde_num_covs = 100
 rot_periods = mw_utils.load_rot_periods()
 
 min_bic, max_bic, all_cycles = mw_utils.read_bglst_cycles("BGLST_BIC_6/results.txt")
+
+all_cycles_gp_p = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
+all_cycles_gp_qp = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
+
 r_hks = mw_utils.load_r_hk()
 min_r_hk = None
 max_r_hk = None
@@ -68,7 +72,7 @@ var_ratios_na_t = []
 var_ratios_na_wot = []
 
 
-def constant_model(t, y, w):
+def constant_model(y, w, y_test, w_test):
     W = sum(w)
     wy_arr = w * y
 
@@ -80,7 +84,7 @@ def constant_model(t, y, w):
     norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
 
     y_model = mu_beta
-    loglik = norm_term - 0.5 * sum(w * (y - y_model)**2)
+    loglik = norm_term - 0.5 * sum(w_test * (y_test - y_model)**2)
 
     return (mu_beta, sigma_beta, y_model, loglik)
 
@@ -112,10 +116,10 @@ for root, dirs, files in os.walk(input_path):
             time_range = max(t) - min(t)
             mean_seasonal_var = np.mean(mw_utils.get_seasonal_noise_var(t, y, False))
             total_var = np.var(y)
-            print total_var/mean_seasonal_var
+            #print total_var/mean_seasonal_var
             if (r_hks.has_key(star)):
                 r_hk = r_hks[star]
-                if all_cycles.has_key(star):
+                if all_cycles.has_key(star) or all_cycles_gp_p.has_key(star) or all_cycles_gp_qp.has_key(star):
                     r_hks_a.append(r_hk)
                     var_ratios_a.append(total_var/mean_seasonal_var)
                 else:
@@ -133,16 +137,18 @@ for root, dirs, files in os.walk(input_path):
                     t = t_orig/365.25 + offset
                     y = y_orig
                     time_range = max(t) - min(t)
+                    noise_var = mw_utils.get_seasonal_noise_var(t, y)
+                    w = np.ones(len(t))/noise_var
                     seasonal_means = mw_utils.get_seasonal_means(t, y)
                     seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
                     seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
-                    _, _, _, loglik_seasons = bayes_lin_reg(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
-                    _, _, _, loglik_seasons_null = constant_model(seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                    _, _, _, loglik_seasons = bayes_lin_reg(t, y, w, seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                    _, _, _, loglik_seasons_null = constant_model(y, w, seasonal_means[:,1], seasonal_weights)
                     log_n = np.log(np.shape(seasonal_means)[0])
                     bic = log_n * 2 - 2.0*loglik_seasons
                     bic_null = log_n  - 2.0*loglik_seasons_null
                     
-                    print bic_null, bic
+                    #print bic_null, bic
                     delta_bic = bic_null - bic
                     if delta_bic >= 6.0:
                         # Significant trend
@@ -153,11 +159,14 @@ for root, dirs, files in os.walk(input_path):
                         var_ratios_na_wot.append(total_var/mean_seasonal_var)
                     ############################
 
+print "Num cyclic:", len(r_hks_a)
+print "Num noncyclic with trend:", len(r_hks_na_t)
+print "Num noncyclic without trend:", len(r_hks_na_wot)
 ax1.scatter(r_hks_na_t, var_ratios_na_t, marker=markers.MarkerStyle("x", fillstyle=None), lw=1.5, facecolors="green", color="green", s=50, edgecolors="green")
 ax1.scatter(r_hks_na_wot, var_ratios_na_wot, marker=markers.MarkerStyle('d', fillstyle=None), lw=1.5, facecolors="none", color="blue", s=50, edgecolors="blue")
 ax1.scatter(r_hks_a, var_ratios_a, marker=markers.MarkerStyle("+", fillstyle=None), lw=1.5, facecolors="red", color="red", s=50, edgecolors="red")
-slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na_t, var_ratios_na_t)
-ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "k--")
+slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_na_wot, var_ratios_na_wot)
+ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "b--")
 #slope, intercept, r_value, p_value, std_err = stats.linregress(r_hks_a, var_ratios_a)
 #ax1.plot(r_hk_bins_values, r_hk_bins_values*slope + intercept, "r-")
 
@@ -202,9 +211,9 @@ d_a_and_na_t = density_a_and_na_t(r_hk_bins_values)
 
 #ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
-ax2.plot(r_hk_bins_values, d_all, "r--")
+ax2.plot(r_hk_bins_values, d_all, "k--")
 ax2.plot(r_hk_bins_values, d_na_t, "g-.")
-ax2.plot(r_hk_bins_values, d_a_and_na_t, "b:")
+ax2.plot(r_hk_bins_values, d_a_and_na_t, ":", color="saddlebrown")
 
 r_hks_a = np.asarray(r_hks_a)
 r_hks_na = np.asarray(r_hks_na)

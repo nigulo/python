@@ -17,6 +17,7 @@ import os.path
 import mw_utils
 from prewhitener import Prewhitener
 from BGLST import BGLST
+from bayes_lin_reg import bayes_lin_reg
 
 num_resamples = 1000
 num_bootstrap = 0
@@ -43,6 +44,24 @@ if len(sys.argv) > 1:
 
 rot_periods = mw_utils.load_rot_periods()
 
+def constant_model(y, w, y_test, w_test):
+    W = sum(w)
+    wy_arr = w * y
+
+    Y = sum(wy_arr)
+
+    sigma_beta = 1.0 / W
+    mu_beta = Y * sigma_beta
+
+    norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
+
+    y_model = mu_beta
+    loglik = norm_term - 0.5 * sum(w_test * (y_test - y_model)**2)
+
+    return (mu_beta, sigma_beta, y_model, loglik)
+
+
+f_trends = map(lambda p_value: open(spectra_path+str(p_value)+'/trends.txt', 'w'), p_values)
 f1s= map(lambda p_value: open(spectra_path+str(p_value)+'/results.txt', 'w'), p_values)
 f2s= map(lambda p_value: open(spectra_path+str(p_value)+'/rot_var_reduction.txt', 'w'), p_values)
 for root, dirs, files in os.walk(input_path):
@@ -62,8 +81,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 rot_period = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            if star != "SUN":
-                continue
+            #if star != "SUN":
+            #    continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]
@@ -137,7 +156,7 @@ for root, dirs, files in os.walk(input_path):
             ###################################################################
 
 
-            for (powers, found_lines, _, _), f1, f2, p_value in zip(res, f1s, f2s, p_values):
+            for (powers, found_lines, _, _), f1, f2, f_trend, p_value in zip(res, f1s, f2s, f_trends, p_values):
                 if len(found_lines) > 0:
                     line_freqs, line_powers, line_freq_stds, line_freq_normalities, z0s = zip(*found_lines)
                     line_freqs = np.asarray(line_freqs)
@@ -151,6 +170,62 @@ for root, dirs, files in os.walk(input_path):
                     line_freq_stds = np.array([])
                     line_freq_normalities = np.array([])
                     z0s = np.array([])
+                
+                
+                ###############################################################
+                # Significance differences of trend lines
+                
+                if len(line_freqs) > 0:
+                    line_freq = line_freqs[0]
+                    if line_freq > 0:
+                        noise_var = mw_utils.get_seasonal_noise_var(t, y)
+                        w = np.ones(len(t))/noise_var
+                        
+                        slope, intercept, _, _, _ = stats.linregress(t, y)
+                        duration = max(t) - min(t)
+                        _, (_, _, mu_alpha, mu_beta), _, y_fit, _ = BGLST(t, y, w, 
+                                        w_A = 2.0/np.var(y), A_hat = 0.0,
+                                        w_B = 2.0/np.var(y), B_hat = 0.0,
+                                        w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                                        w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept).model(line_freq)
+                        
+                        seasonal_means = mw_utils.get_seasonal_means(t, y)
+                        seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
+                        seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
+                                                
+                        norm_term = sum(np.log(np.sqrt(seasonal_weights)) - np.log(np.sqrt(2.0*np.pi)))
+
+                        y_model = seasonal_means[:,0] * mu_alpha + mu_beta
+                        loglik_seasons = norm_term - 0.5 * sum(seasonal_weights * (seasonal_means[:,1] - y_model)**2)
+                        
+                        (mu_alpha_null, mu_beta_null), _, _, loglik_seasons_null = bayes_lin_reg(t, y, w, seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                        mu_beta_null2, _, _, loglik_seasons_null2 = constant_model(y, w, seasonal_means[:,1], seasonal_weights)
+                        
+                        log_n = np.log(np.shape(seasonal_means)[0])
+                        bic = log_n * 2 - 2.0*loglik_seasons
+                        bic_null = log_n  - 2.0*loglik_seasons_null
+                        bic_null2 = log_n  - 2.0*loglik_seasons_null2
+                        
+                        #print bic_null, bic
+                        #print "trend delta_bic:", star, delta_bic, bic_null, bic, mu_alpha, mu_alpha_null, mu_beta, mu_beta_null
+                        fig_trend, ax_trend = plt.subplots(1, 1, figsize=(7, 6))
+                        ax_trend.plot(t, y, 'k+',lw=0.5) 
+                        t_fit = np.linspace(min(t), max(t), 1000)
+                        ax_trend.plot(t_fit, t_fit * mu_alpha + mu_beta, 'r-')
+                        ax_trend.plot(t_fit, t_fit * mu_alpha_null + mu_beta_null, 'b--')
+                        ax_trend.plot(t_fit, np.ones(len(t_fit))*mu_beta_null2, 'g-.')
+                        fig_trend.savefig(spectra_path+str(p_value)+"/" + star + '_trend.png')
+
+                        delta_bic1 = bic_null - bic
+                        delta_bic2 = bic_null2 - bic
+                        if abs(delta_bic1) >= 6.0 and abs(delta_bic2) >= 6.0:
+                            # Significant trend
+                            f_trend.write(star + "\n")
+                        else:
+                            f_trend.write("-" + star + "\n")
+                        f_trend.flush()
+                        
+                ###############################################################                
                 
                 omitted_freq_ids = np.where(line_freqs*time_range < 1.5)
                 omitted_line_freqs = line_freqs[omitted_freq_ids]
