@@ -75,7 +75,7 @@ sim_data = np.array([
     ])
     
 sim_data *= [365.25/26.09, 1, 1]
-sim_data += [0, 0, -4.911+0.16]
+sim_data += [0, 0, -4.911-0.16]
 sim_data_for_plot = dict()
 
 sim_names = ["M0.5", "M1", "M1.5", "M2", "M2.5", "M3", "M4", "M5", "M7", "M10", "M15"]

@@ -262,3 +262,4 @@ class BGLST():
         print wn
         print (sigma_A, sigma_B, sigma_alpha, sigma_beta)
         print Vn
+
