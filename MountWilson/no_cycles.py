@@ -91,6 +91,7 @@ def constant_model(y, w, y_test, w_test):
 sun_index = None
 sun_rhk = None
 sun_var_ratio = None
+slopes = []
 for root, dirs, files in os.walk(input_path):
     for file in files:
         if file[-4:] == ".dat":
@@ -148,7 +149,8 @@ for root, dirs, files in os.walk(input_path):
                     seasonal_means = mw_utils.get_seasonal_means(t, y)
                     seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
                     seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
-                    _, _, _, loglik_seasons = bayes_lin_reg(t, y, w, seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                    (slope, intercept), _, _, loglik_seasons = bayes_lin_reg(t, y, w, seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
+                    slopes.append(slope)
                     _, _, _, loglik_seasons_null = constant_model(y, w, seasonal_means[:,1], seasonal_weights)
                     log_n = np.log(np.shape(seasonal_means)[0])
                     bic = log_n * 2 - 2.0*loglik_seasons
@@ -165,6 +167,7 @@ for root, dirs, files in os.walk(input_path):
                         var_ratios_na_wot.append(total_var/mean_seasonal_var)
                     ############################
 
+print "Slopes: ", np.mean(slopes), np.std(slopes), np.std(slopes)/np.mean(slopes)
 assert(sun_index is not None)
 print "Num cyclic:", len(r_hks_a)
 print "Num noncyclic with trend:", len(r_hks_na_t)

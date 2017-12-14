@@ -17,7 +17,7 @@ from matplotlib.patches import Ellipse
 import mw_utils
 from bayes_lin_reg import bayes_lin_reg
 
-include_non_ms = True
+include_non_ms = False#True
 
 use_secondary_clusters = False
 plot_ro = False
@@ -741,8 +741,8 @@ plt.close(fig1)
 fig1a.savefig("activity_diagram_cmp.pdf")
 plt.close(fig1a)
 
-ax1b.set_ylim(-3.7, -0.8)
-ax1b.set_xlim(-5.15, -4.0)
+ax1b.set_ylim(-3.7, -1.2)
+ax1b.set_xlim(-5.1, -4.0)
 fig1b.savefig("activity_diagram_cmp2.pdf")
 plt.close(fig1b)
 
