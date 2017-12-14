@@ -59,7 +59,7 @@ ms_stars = np.genfromtxt("MS.dat", usecols=(0), dtype=None)
 def star_is_ms(star):
     return len(np.where(ms_stars == star.upper())[0] > 0)
 
-sim_data_for_plot = dict()
+ext_data_for_plot = dict()
 #run, Omega, P_cyc, E_mag/E_kin
 sim_data_joern = [
     ["M0.5", 0.5, 3.1, 0.06],
@@ -101,7 +101,44 @@ sim_data_mariangela = [
     [r'L$^{a}$', 23.3, 0.708, 1.928, 3.13],
     [r'L$^{W}$ ', 23.3, 0.415, 1.102, 5.68],
     [r'M', 28.5, 2.053, 0.967, 6.64],
-    [r'M$^{W}$', 31, 0.328, 1.024, 4.1],
+    [r'M$^{W}$', 31, 0.328, 1.024, 4.1]
+    ]
+
+min_jyris_grade = 0.0
+max_jyris_grade = 3.0
+def get_jyris_grade(grade_string):
+    if grade_string == 'excellent':
+        return 3.0
+    elif grade_string == 'good':
+        return 2.0
+    elif grade_string == 'fair':
+        return 1.0
+    else:
+        return 0.0
+
+#star, r_hk, p_rot, delta_p_rot, p_cyc_1, grade_cyc_1, p_cyc_2, grade_cyc_2
+data_jyri = [
+    ['HD1405', -4.217, 1.75622, 0.00062, 8, 'good', 0, ''], 
+    ['HD10008', -4.480, 6.78, 0.13, 10.9, 'fair', 0, ''], 
+    ['HD26923', -4.618, 11.08, 0.2, 7, 'poor', 0, ''], 
+    ['HD29697', -4.036, 3.9651, 0.0059, 7.3, 'poor', 0, ''], 
+    ['HD41593', -4.427, 8.135, 0.03, 3.3, 'fair', 0, ''], 
+    ['HD43162', -4.425, 7.168, 0.038, 8.1, 'poor', 0, ''], 
+    ['HD63433', -4.452, 6.462, 0.04, 2.7, 'fair', 8, 'poor'], 
+    ['HD70573', -4.488, 3.3143, 0.0034, 6.9, 'good', 0, ''], 
+    ['HD72760', -4.609, 9.57, 0.11, 0, '', 0, ''], 
+    ['HD73350', -4.700, 12.14, 0.13, 3.5, 'fair', 0, ''], 
+    ['HD82443', -4.286, 5.4244, 0.0043, 4.1, 'fair', 20, 'good'], 
+    ['HD82558', -4.079, 1.60435, 0.00042, 17.4, 'excellent', 0, ''], 
+    ['HD116956', -4.366, 7.86, 0.016, 2.9, 'fair', 14.7, 'good'], 
+    ['HD128987', -4.505, 9.8, 0.12, 5.4, 'fair', 0, ''], 
+    ['HD130948', -4.533, 7.849, 0.026, 3.9, 'poor', 0, ''], 
+    ['HD135599', -4.462, 5.529, 0.068, 14.6, 'good,', 0, ''], 
+    ['HD141272', -4.566, 13.843, 0.084, 6.4, 'poor', 0, ''], 
+    ['HD171488', -4.175, 1.3454, 0.0013, 9.5, 'good', 0, ''], 
+    ['HD180161', -4.541, 9.91, 0.11, 0, '', 0, ''], 
+    ['HD220182', -4.388, 7.678, 0.023, 13.7, 'fair', 0, ''], 
+    ['SAO51891', -4.327, 2.4179, 0.0041, 0, '', 0, '']
     ]
 
 for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
@@ -110,8 +147,8 @@ for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
     r = 1
     g = 1
     b = 0
-    print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    sim_data_for_plot[sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, 0]]
+    #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 100, 0]]
 
 for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     omega *= 365.25/26.09
@@ -119,8 +156,28 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     r = 0
     g = 1
     b = 0
-    print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    sim_data_for_plot[sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, 0]]
+    #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 'p', 1/omega, p_cyc, 0, 0, 100, 0]]
+
+for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
+    p_rot /= 365.25
+    err = d_p_rot/p_rot/np.log(10)
+    if p_cyc_1 > 0:
+        grade1 = get_jyris_grade(grade1)
+        if grade1 >= min_jyris_grade:
+            c = 1.0*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
+            r = c
+            g = 0.5 * c
+            b = 0        
+            ext_data_for_plot["Jyri_" + star] = [[r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, d_p_rot]]
+    if p_cyc_2 > 0:
+        grade2 = get_jyris_grade(grade2)
+        if grade2 >= min_jyris_grade:
+            c = 1.0*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
+            r = c
+            g = 0.5 * c
+            b = 0        
+            ext_data_for_plot["Jyri_" + star] = [[r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, d_p_rot]]
     
 
 def read_gp_cycles(file):
@@ -226,7 +283,7 @@ else:
     #ax13.set_aspect('equal', 'datalim')
 
 fig1a, ax1a = plt.subplots(nrows=1, ncols=1, sharex=False)
-fig1a.set_size_inches(6, 6)
+fig1a.set_size_inches(12, 6)
 ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
 
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
@@ -328,12 +385,12 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
     
     ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
-    if include_non_ms:
-        ax11.set_ylim(-3.0, -0.75)
-        #ax11.set_xlim(-5.15, -4.4)
-    else:
-        ax11.set_ylim(-2.9, -1.7)
-        ax11.set_xlim(-5.1, -4.4)        
+    #if include_non_ms:
+    #    ax11.set_ylim(-3.0, -0.75)
+    #    ax11.set_xlim(-5.15, -4.4)
+    #else:
+    #    ax11.set_ylim(-2.9, -1.7)
+    #    ax11.set_xlim(-5.1, -4.4)        
     if plot_ro:
         ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     
@@ -633,7 +690,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         plot_data(data, True, ax11, ax12, ax2, ax31, ax32, ax4)
         plot_data(data, False, ax1a, None, None, None, None, None)
         plot_data(data_baliunas, False, ax1a, None, None, None, None, None)
-        plot_data(sim_data_for_plot, False, ax1a, None, None, None, None, None)
+        plot_data(ext_data_for_plot, False, ax1a, None, None, None, None, None)
     else:
         # don't plot the resudue plot
         plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
