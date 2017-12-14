@@ -89,19 +89,19 @@ sim_data_mariangela = [
     [r'F2', 4.3, 2.898, 1.082, 8.05],
     [r'F3', 4.3, 2.7, 0.767, 5.74],
     [r'G$^{a}$', 4.9, 2.748, 0.754, 7.43],
-    [r'G$^{W}$', 4.8, 3.522, 0.975, 2.37],
+    #[r'G$^{W}$', 4.8, 3.522, 0.975, 2.37],
     [r'H', 7.1, 2.153, 1.049, 27.34],
     [r'H$^{a}$', 7.8, 1.704, 1.449, 7.17],
     [r'I', 9.6, 1.706, 1.361, 7.75],
-    [r'I$^{W}$', 9.6, 1.625, 1.197, 4.44],
+    #[r'I$^{W}$', 9.6, 1.625, 1.197, 4.44],
     [r'J', 14.5, 0.58, 0.113, 8.25],
-    [r'J$^{W}$', 15.5, 0.786, 0.9, 4.05],
+    #[r'J$^{W}$', 15.5, 0.786, 0.9, 4.05],
     [r'K1', 21.4, 2.325, 0.426, 1.24],
     [r'K2', 21.4, 1.549, 1.029, 5.1],
-    [r'L$^{a}$', 23.3, 0.708, 1.928, 3.13],
-    [r'L$^{W}$ ', 23.3, 0.415, 1.102, 5.68],
+    #[r'L$^{a}$', 23.3, 0.708, 1.928, 3.13],
+    #[r'L$^{W}$ ', 23.3, 0.415, 1.102, 5.68],
     [r'M', 28.5, 2.053, 0.967, 6.64],
-    [r'M$^{W}$', 31, 0.328, 1.024, 4.1]
+    #[r'M$^{W}$', 31, 0.328, 1.024, 4.1]
     ]
 
 min_jyris_grade = 0.0
@@ -145,40 +145,46 @@ for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
     omega *= 365.25/26.09
     r_hk = e_mag_div_e_kin-4.911-0.16
     r = 1
-    g = 1
+    g = 0.5
     b = 0
     #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 100, 0]]
+    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 50, 0]]
 
 for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
+    size = 50
+    if sim[-4:] == r"{a}$":
+        # Make points of high resulution runs bigger
+        size = 100
     omega *= 365.25/26.09
     r_hk = e_mag/e_kin-4.911-0.197
     r = 0
-    g = 1
+    g = 0.5
     b = 0
-    #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 'p', 1/omega, p_cyc, 0, 0, 100, 0]]
+    print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
     p_rot /= 365.25
     err = d_p_rot/p_rot/np.log(10)
+    cycles = []
     if p_cyc_1 > 0:
         grade1 = get_jyris_grade(grade1)
         if grade1 >= min_jyris_grade:
-            c = 1.0*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
+            c = 0.5*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
             r = c
-            g = 0.5 * c
-            b = 0        
-            ext_data_for_plot["Jyri_" + star] = [[r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, d_p_rot]]
+            g = c
+            b = c  
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 75, d_p_rot])
     if p_cyc_2 > 0:
         grade2 = get_jyris_grade(grade2)
         if grade2 >= min_jyris_grade:
-            c = 1.0*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
+            c = 0.5*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
             r = c
-            g = 0.5 * c
-            b = 0        
-            ext_data_for_plot["Jyri_" + star] = [[r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc, 0, 0, 100, d_p_rot]]
-    
+            g = c
+            b = c        
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 75, d_p_rot])
+    if len(cycles) > 0:
+        ext_data_for_plot["Jyri_" + star] = cycles
 
 def read_gp_cycles(file):
     max_bic = None
@@ -283,8 +289,12 @@ else:
     #ax13.set_aspect('equal', 'datalim')
 
 fig1a, ax1a = plt.subplots(nrows=1, ncols=1, sharex=False)
-fig1a.set_size_inches(12, 6)
+fig1a.set_size_inches(6, 6)
 ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+
+fig1b, ax1b = plt.subplots(nrows=1, ncols=1, sharex=False)
+fig1b.set_size_inches(6, 6)
+ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
 
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
 fig2.set_size_inches(6, 18)
@@ -314,12 +324,17 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     for star in data.keys():
         is_ms = star_is_ms(star)
         data_star = data[star]
+
         data_star_arr = np.asarray(data_star)
         #data_star_arr = data_star_arr[np.where(data_star_arr[:,0] != None)]
         r0 = float(data_star_arr[0,4])
         g0 = float(data_star_arr[0,5])
         b0 = float(data_star_arr[0,6])
         alpha0 = float(data_star_arr[0,7])
+        if len(data[star]) > 1:
+            print star
+            print data_star_arr[:,0]
+            print data_star_arr[:,1]
         ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
         if is_ms and not ax2 is None:
@@ -339,7 +354,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             syms = [sym]
             facecolors = [[r, g, b, alpha]]
             sizes = [size]
-            if sym == 'd' or sym == ".":
+            if sym == 'd' or sym == 's' or sym == 'p' or sym == '*' or sym == "^" or sym == ".":
                 facecolors = ['none']
             elif star == "SUN":
                 fillstyles = [None, 'full']
@@ -688,12 +703,16 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
             #print star, bmv, r_hk, p_rot
     if type == "BGLST":
         plot_data(data, True, ax11, ax12, ax2, ax31, ax32, ax4)
-        plot_data(data, False, ax1a, None, None, None, None, None)
+        # Comparison to Baliunas
+        plot_data(data, False, ax1a, None, None, None, None, None)        
         plot_data(data_baliunas, False, ax1a, None, None, None, None, None)
-        plot_data(ext_data_for_plot, False, ax1a, None, None, None, None, None)
     else:
         # don't plot the resudue plot
         plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
+        if type == "GP_QP":
+            # Comparison to Simulations and Jyri's results
+            plot_data(data, False, ax1b, None, None, None, None, None)
+            plot_data(ext_data_for_plot, False, ax1b, None, None, None, None, None)
     
     ###########################################################################
     # Calculate trend lines for the branches
@@ -721,6 +740,11 @@ plt.close(fig1)
 
 fig1a.savefig("activity_diagram_cmp.pdf")
 plt.close(fig1a)
+
+ax1b.set_ylim(-3.7, -0.8)
+ax1b.set_xlim(-5.15, -4.0)
+fig1b.savefig("activity_diagram_cmp2.pdf")
+plt.close(fig1b)
 
 fig2.savefig("activity_diagram_2.pdf")
 plt.close(fig2)
