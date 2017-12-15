@@ -61,6 +61,7 @@ def load_rot_periods(path=""):
                 p_rot = None
             if p_rot != None and p_rot != None:
                 rot_periods[star] = (p_rot, p_rot_err)
+    rot_periods["SUN"] = (26.47, 0.21)
     return rot_periods
 
 def load_r_hk(path=""):

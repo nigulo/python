@@ -160,7 +160,7 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     r = 0.5
     g = 0.5
     b = 0.5
-    print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
     ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani"]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
@@ -278,18 +278,39 @@ if plot_ro:
     #ax131.set_aspect('equal', 'datalim')
     #ax132.set_aspect('equal', 'datalim')
 else:
-    fig1, (ax11, ax12, ax13) = plt.subplots(nrows=3, ncols=1, sharex=False)
-    fig1.set_size_inches(6, 18)
+    fig1, ((ax11, ax12), (ax13, ax1a)) = plt.subplots(nrows=2, ncols=2, sharex=False)
+    #fig1.set_size_inches(6, 18)
+    fig1.set_size_inches(12, 12)
     ax13.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
     ax11.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax11.transAxes, fontsize=panel_label_fs)
     ax12.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax12.transAxes, fontsize=panel_label_fs)
     ax13.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax13.transAxes, fontsize=panel_label_fs)
+
+    ax1a.text(0.95, 0.9,'(d)', horizontalalignment='center', transform=ax1a.transAxes, fontsize=panel_label_fs)
     #ax11.set_aspect('equal', 'datalim')
     #ax12.set_aspect('equal', 'datalim')
     #ax13.set_aspect('equal', 'datalim')
+    
+    if include_non_ms:
+        ax11.set_ylim(-3.0, -1.0)
+        ax11.set_xlim(-5.15, -4.4)
 
-fig1a, ax1a = plt.subplots(nrows=1, ncols=1, sharex=False)
-fig1a.set_size_inches(6, 6)
+        ax12.set_xlim(-5.15, -4.4)
+
+        ax13.set_xlim(-5.15, -4.4)
+        ax13.set_ylim(-3.0, -0.75)
+
+        ax1a.set_xlim(-5.3, -4.3)
+        ax1a.set_ylim(-3.0, -1.0)
+        ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+        ax13.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+    #else:
+    #    ax11.set_ylim(-2.9, -1.7)
+    #    ax11.set_xlim(-5.1, -4.4)        
+    
+
+#fig1a, ax1a = plt.subplots(nrows=1, ncols=1, sharex=False)
+#fig1a.set_size_inches(6, 6)
 ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
 
 fig1b, ax1b = plt.subplots(nrows=1, ncols=1, sharex=False)
@@ -357,17 +378,15 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             syms = [sym]
             facecolors = [[r, g, b, alpha]]
             sizes = [size]
-            if sym == 'd' or sym == 's' or sym == 'p' or sym == '*' or sym == "^" or sym == ".":
-                facecolors = ['none']
-            elif star == "SUN":
+            if star == "SUN":
                 fillstyles = [None, 'full']
                 facecolors = ['none', [r, g, b, alpha]]
                 syms = ['o', 'o']
                 sizes = [size, 1]
+            elif sym == 'd' or sym == 's' or sym == 'p' or sym == '*' or sym == "^" or sym == ".":
+                facecolors = ['none']
             first_time = True
             for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
-                if star == "SUN":
-                    print fillstyle
                 handle = None
                 if not first_time or err1 < 0.02 and err2 < 0.02:
                     handle = ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
@@ -385,7 +404,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                         ax4.errorbar(np.log(1.0/p_rot), y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-                if (handle is not None and not used_labels.has_key(label)):
+                if (star != "SUN" and handle is not None and not used_labels.has_key(label)):
                     used_labels[label] = None
                     handles.append(handle)
                     labels.append(label)
@@ -406,13 +425,6 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
         if plot_ro:
             np.savetxt("activity_" + type +"_rho.txt", activity_ls_2, fmt='%f')
     
-    ax11.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
-    #if include_non_ms:
-    #    ax11.set_ylim(-3.0, -0.75)
-    #    ax11.set_xlim(-5.15, -4.4)
-    #else:
-    #    ax11.set_ylim(-2.9, -1.7)
-    #    ax11.set_xlim(-5.1, -4.4)        
     if plot_ro:
         ax12.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
     
@@ -507,19 +519,19 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        #if type == "BGLST" or type == "GP_QP":
-        #    m_temp = m2
-        #    s_temp = s2
-        #    w_temp = w2
-        #    v_temp = v2
-        #    m2 = m1
-        #    s2 = s1
-        #    w2 = w1
-        #    v2 = v1
-        #    m1 = m_temp
-        #    s1 = s_temp
-        #    w1 = w_temp
-        #    v1 = v_temp            
+        if type == "BGLST":# or type == "GP_QP":
+            m_temp = m2
+            s_temp = s2
+            w_temp = w2
+            v_temp = v2
+            m2 = m1
+            s2 = s1
+            w2 = w1
+            v2 = v1
+            m1 = m_temp
+            s1 = s_temp
+            w1 = w_temp
+            v1 = v_temp            
             
         #print w1
         #print v1
@@ -724,7 +736,6 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
             # Comparison to Simulations and Jyri's results
             handles1, labels1 = plot_data(data, False, ax1b, None, None, None, None, None)
             handles2, labels2 = plot_data(ext_data_for_plot, False, ax1b, None, None, None, None, None)
-            print labels1, labels2
             ax1b.legend(handles1 + handles2, labels1 + labels2,
                         numpoints = 1,
                         scatterpoints=1,
@@ -754,11 +765,13 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
 fig1.savefig("activity_diagram.pdf")
 plt.close(fig1)
 
-fig1a.savefig("activity_diagram_cmp.pdf")
-plt.close(fig1a)
+#fig1a.savefig("activity_diagram_cmp.pdf")
+#plt.close(fig1a)
+
 
 ax1b.set_ylim(-3.7, -1.2)
 ax1b.set_xlim(-5.1, -4.0)
+ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
 fig1b.savefig("activity_diagram_cmp2.pdf")
 plt.close(fig1b)
 
