@@ -50,6 +50,10 @@ t /= 365.25
 t += offset
 #t -= np.mean(t)
 
+indices = np.where(t < 1991)[0]
+y = y[indices]
+t = t[indices]
+
 n = len(t)
 duration = max(t) - min(t)
 

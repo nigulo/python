@@ -144,24 +144,24 @@ data_jyri = [
 for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
     omega *= 365.25/26.09
     r_hk = e_mag_div_e_kin-4.911-0.16
-    r = 1
+    r = 0.5
     g = 0.5
-    b = 0
+    b = 0.5
     #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 50, 0]]
+    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 100, 0, "Warnecke"]]
 
 for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
-    size = 50
+    size = 100
     if sim[-4:] == r"{a}$":
         # Make points of high resulution runs bigger
-        size = 100
+        size = 200
     omega *= 365.25/26.09
     r_hk = e_mag/e_kin-4.911-0.197
-    r = 0
+    r = 0.5
     g = 0.5
-    b = 0
+    b = 0.5
     print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0]]
+    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani"]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
     p_rot /= 365.25
@@ -172,17 +172,17 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
         if grade1 >= min_jyris_grade:
             c = 0.5*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
             r = c
-            g = c
+            g = 0.75
             b = c  
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 75, d_p_rot])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 150, d_p_rot, "Lehtinen"])
     if p_cyc_2 > 0:
         grade2 = get_jyris_grade(grade2)
         if grade2 >= min_jyris_grade:
             c = 0.5*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
             r = c
-            g = c
+            g = 0.75
             b = c        
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 75, d_p_rot])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 150, d_p_rot, "Lehtinen"])
     if len(cycles) > 0:
         ext_data_for_plot["Jyri_" + star] = cycles
 
@@ -293,7 +293,7 @@ fig1a.set_size_inches(6, 6)
 ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
 
 fig1b, ax1b = plt.subplots(nrows=1, ncols=1, sharex=False)
-fig1b.set_size_inches(6, 6)
+fig1b.set_size_inches(8, 6)
 ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
 
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
@@ -321,6 +321,9 @@ ax43.set_xlabel(r'$\log \Omega $' + ' [' + r'$d^{-1}$]', fontsize=axis_label_fs)
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     activity_ls_1 = []
     activity_ls_2 = []
+    handles = []
+    labels = []
+    used_labels = dict()
     for star in data.keys():
         is_ms = star_is_ms(star)
         data_star = data[star]
@@ -343,7 +346,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             ax2.plot(np.log10(p), np.log10(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
         if plot_ro and not ax12 is None:
             ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
-        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err] in data_star:
+        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err, label] in data_star:
             err1 *= 2.0
             err2 *= 2.0
             cyc_err *= 2.0
@@ -365,8 +368,9 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
                 if star == "SUN":
                     print fillstyle
+                handle = None
                 if not first_time or err1 < 0.02 and err2 < 0.02:
-                    ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
+                    handle = ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax4 is None: # omit non MS
@@ -381,7 +385,10 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                         ax4.errorbar(np.log(1.0/p_rot), y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-
+                if (handle is not None and not used_labels.has_key(label)):
+                    used_labels[label] = None
+                    handles.append(handle)
+                    labels.append(label)
                 if not first_time or (cyc_err/p_cyc/np.log(10.0) < 0.02 and p_rot_err/p_rot/np.log(10.0) < 0.02):
                     if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
@@ -439,8 +446,9 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
         ax32.plot([xmin, xmax], [-std2, -std2], color='red', linestyle='-.', linewidth=1)
         ax32.set_xlim(xmin, xmax)
     
+    return (handles, labels)
     #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
-
+    
 for type in ["BGLST", "GP_P", "GP_QP"]:
 
     if type == "BGLST":
@@ -623,6 +631,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         data_star = []
                         primary_cycle = True
                         for (p_cyc, std, bic) in cycs[star]:
+                            label = "None"
                             exclude = False
                             for (p_cyc_2, std_2, bic_2) in cycs[star]:
                                 if p_cyc != p_cyc_2:
@@ -667,6 +676,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                     else:
                                         c = 0.5 - 0.5 * (bic - min_bic)/(max_bic - min_bic)
                                     if dist1 < dist2:
+                                        label = "Active"
                                         sym = "+"
                                         delta_i = val - (a1 * r_hk + b1)
                                         r = c
@@ -676,6 +686,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         num_active += 1
                                         active.append([r_hk, val, err])
                                     else:
+                                        label = "Non-active"
                                         sym = "x"
                                         delta_i = val - (a2 * r_hk + b2)
                                         r = 1.0
@@ -695,7 +706,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         g = c
                                         b = c
                                 #size *= 1.0 - c
-                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25, size, p_rot_err])
+                            data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25, size, p_rot_err, label])
                         if baliunas:
                             data_baliunas[star] = data_star
                         else:
@@ -711,9 +722,14 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         plot_data(data, True, ax11, ax12, ax2, None, None, ax4)
         if type == "GP_QP":
             # Comparison to Simulations and Jyri's results
-            plot_data(data, False, ax1b, None, None, None, None, None)
-            plot_data(ext_data_for_plot, False, ax1b, None, None, None, None, None)
-    
+            handles1, labels1 = plot_data(data, False, ax1b, None, None, None, None, None)
+            handles2, labels2 = plot_data(ext_data_for_plot, False, ax1b, None, None, None, None, None)
+            print labels1, labels2
+            ax1b.legend(handles1 + handles2, labels1 + labels2,
+                        numpoints = 1,
+                        scatterpoints=1,
+                        loc='upper right', ncol=1,
+                        fontsize=8, labelspacing=1)
     ###########################################################################
     # Calculate trend lines for the branches
     

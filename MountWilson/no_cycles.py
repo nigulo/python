@@ -120,6 +120,8 @@ for root, dirs, files in os.walk(input_path):
             mean_seasonal_var = np.mean(mw_utils.get_seasonal_noise_var(t, y, False))
             total_var = np.var(y)
             #print total_var/mean_seasonal_var
+            #if (not r_hks.has_key(star)):
+            #    r_hks[star] = 0
             if (r_hks.has_key(star)):
                 r_hk = r_hks[star]
                 if all_cycles.has_key(star) or all_cycles_gp_p.has_key(star) or all_cycles_gp_qp.has_key(star):
