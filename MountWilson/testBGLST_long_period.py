@@ -181,6 +181,7 @@ norm_powers = (power - min_power) / (max_power - min_power)
 
 ax2.plot(freqs, norm_powers, 'b--')
 ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'b--')
+ax2.plot([freq, freq], [0, norm_powers[max_power_ind]], 'k:')
 
 ax1.set_xlabel(r'$t$', fontsize=axis_label_fs)#,fontsize=20)
 ax1.set_ylabel(r'$y$', fontsize=axis_label_fs)#,fontsize=20)
@@ -188,6 +189,6 @@ ax1.set_xlim([0, 180])
 
 ax2.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
 ax2.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
-ax2.set_xlim([0.001, 0.04])
+ax2.set_xlim([0.001, 5.0*freq])
 
 fig.savefig("model_comp_2.eps")

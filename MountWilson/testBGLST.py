@@ -106,7 +106,7 @@ ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes,
 ax1.scatter(t, y, marker='+', color ='k', lw=0.5)
 tau, (A, B, alpha, beta), _, y_model_1, loglik = bglst.model(best_freq)
 bic = 2 * loglik - np.log(n) * 5
-print A, B, alpha, beta
+print "A, B, alpha, beta", A, B, alpha, beta
 t_model = np.linspace(min(t), max(t), 1000)
 y_model = np.cos(t_model * 2.0 * np.pi * best_freq - tau) * A  + np.sin(t_model * 2.0 * np.pi * best_freq - tau) * B + t_model * alpha + beta
 ax1.plot(t_model, y_model, 'r-')
@@ -187,6 +187,7 @@ norm_powers = (power - min_power) / (max_power - min_power)
 
 ax2.plot(freqs, norm_powers, 'b--')
 ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'b--')
+ax2.plot([freq, freq], [0, norm_powers[max_power_ind]], 'k:')
 
 ax1.set_xlabel(r'$t$', fontsize=axis_label_fs)#,fontsize=20)
 ax1.set_ylabel(r'$y$', fontsize=axis_label_fs)#,fontsize=20)
@@ -194,6 +195,6 @@ ax1.set_xlim([0, 180])
 
 ax2.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
 ax2.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
-ax2.set_xlim([0.001, 0.04])
+ax2.set_xlim([0.001, 2.0*freq])
 
 fig.savefig("model_comp.eps")
