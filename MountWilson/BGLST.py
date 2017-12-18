@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 import scipy.misc
-import numpy.linalg as la
+import scipy.linalg as la
 
 class BGLST():
 
@@ -203,9 +203,12 @@ class BGLST():
             mu_beta = Q*sigma_beta
 
         L = M + N * mu_beta
-        
-        sigma_alpha = -0.5/K
-        mu_alpha = L*sigma_alpha
+
+        sigma_alpha_beta=-0.5*sigma_beta*N/K
+        sigma_alpha = -0.5/K+0.25*sigma_beta*N*N/K/K
+        print "sigma_alpha_beta", sigma_alpha_beta
+        #sigma_alpha = sigma_beta*self.W/self.tt#-0.5*/K
+        mu_alpha = -0.5*L/K
         
         BC = yc - mu_alpha * ct - mu_beta * c        
         BS = ys - mu_alpha * st - mu_beta * s        
@@ -223,6 +226,11 @@ class BGLST():
         else:
             sigma_B = 1.0/ss
             mu_B = BS*sigma_B
+        
+        coef1 = (sigma_alpha*sigma_beta-sigma_alpha_beta**2)/ss
+        coef2 = (sigma_alpha*sigma_beta-sigma_alpha_beta**2)/s
+        sigma_B_beta = -(st*coef1*sigma_alpha_beta+s*coef2*sigma_beta)/(sigma_alpha_beta**2+sigma_alpha*sigma_beta)
+        print "sigma_B_beta", sigma_B_beta
         
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * mu_B + self.t * mu_alpha + mu_beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
