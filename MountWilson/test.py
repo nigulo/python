@@ -11,17 +11,17 @@ class TestBGLST(unittest.TestCase):
     '''
     def test_posterior(self):
         # generate some data
-        time_range = 200.0
+        time_range = 1.0#200.0
         n = 300
         t = np.random.uniform(0.0, time_range, n)
         t = np.sort(t)
         duration = max(t) - min(t)
         freq = 1.0/np.random.uniform(0.0, time_range/5)
-        slope = 1.0/np.random.uniform(100, 200)
+        true_slope = 1.0/np.random.uniform(100, 200)
         offset = np.random.uniform(-1, 1)
         sigma = 0.1
         epsilon = np.random.normal(0, sigma, n)
-        y = np.cos(2*np.pi*freq*t) + t*slope + offset + epsilon
+        y = np.cos(2*np.pi*freq*t) + true_slope*t + offset + epsilon
         w = np.ones(n)/sigma**2
         
         # set the prior means and variances of the parameters
@@ -53,16 +53,15 @@ class TestBGLST(unittest.TestCase):
                              np.sin(t*2.0*np.pi*freq - tau), 
                             t, 
                             np.ones(n)))
+                            
+                            
         V0inv = la.inv(V0)
         sigma2 = sigma*sigma
         Xt = np.transpose(X)
         Vn = la.inv(V0inv*sigma2 + np.dot(Xt,X))*sigma2
         wn = np.dot(np.dot(Vn, V0inv), w0) + np.dot(np.dot(Vn, Xt), y)/sigma2
 
-        Vn[0, 1] = 0
-        Vn[1, 0] = 0
-        
-        # chech if the results match
+        # check if the results match
         np.testing.assert_allclose(mean, wn, rtol=1e-10, atol=0)
         np.testing.assert_allclose(cov, Vn, rtol=1e-10, atol=0)
         

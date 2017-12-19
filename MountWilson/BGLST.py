@@ -1,7 +1,5 @@
 import numpy as np
-import scipy
 import scipy.misc
-import scipy.linalg as la
 
 class BGLST():
 
@@ -73,8 +71,6 @@ class BGLST():
         sin_tau = np.sin(tau)
         s_arr = s_arr_1 * cos_tau - c_arr_1 * sin_tau
         c_arr = c_arr_1 * cos_tau + s_arr_1 * sin_tau
-        #c_arr = np.cos(self.two_pi_t * freq - tau)
-        #s_arr = np.sin(self.two_pi_t * freq - tau)
         wc_arr = self.w * c_arr
         ws_arr = self.w * s_arr
         c = sum(wc_arr)
@@ -205,10 +201,8 @@ class BGLST():
 
         L = M + N * mu_beta
 
-        sigma_alpha_beta=-0.5*sigma_beta*N/K
+        sigma_alpha_beta = -0.5*sigma_beta*N/K
         sigma_alpha = -0.5/K+0.25*sigma_beta*N*N/K/K
-        print "sigma_alpha_beta", sigma_alpha_beta
-        #sigma_alpha = sigma_beta*self.W/self.tt#-0.5*/K
         mu_alpha = -0.5*L/K
         
         BC = yc - mu_alpha * ct - mu_beta * c        
@@ -233,21 +227,16 @@ class BGLST():
         sigma_B_alpha = det1*(st*sigma_alpha+s*sigma_alpha_beta)/denom
         sigma_B_beta = det1*(st*sigma_alpha_beta+s*sigma_beta)/denom
         sigma_B = (det1*(self.tt-ct**2/cc)+sigma_B_beta**2)/sigma_beta
-        #sigma_B = (det1*(self.W-c**2/cc)+sigma_B_alpha**2)/sigma_alpha # alternative
 
         det2 = (sigma_alpha*sigma_beta-sigma_alpha_beta**2)/cc
         sigma_A_alpha = det2*(ct*sigma_alpha+c*sigma_alpha_beta)/denom
         sigma_A_beta = det2*(ct*sigma_alpha_beta+c*sigma_beta)/denom
         sigma_A = (det2*(self.tt-st**2/ss)+sigma_A_beta**2)/sigma_beta
-        #sigma_A = (det2*(self.W-s**2/ss)+sigma_A_alpha**2)/sigma_alpha # alternative
 
-        print "sigma_B_alpha", sigma_B_alpha
-        print "sigma_B_beta", sigma_B_beta
-        print "sigma_B", sigma_B
-        print "sigma_A_alpha", sigma_A_alpha
-        print "sigma_A_beta", sigma_A_beta
-        print "sigma_A", sigma_A
-        
+        term_A_B_1 = sigma_A_alpha*(sigma_B_alpha*sigma_beta-sigma_B_beta*sigma_alpha_beta)
+        term_A_B_2 =sigma_A_beta*(sigma_B_beta*sigma_alpha-sigma_B_alpha*sigma_alpha_beta)
+        sigma_A_B = (term_A_B_1 + term_A_B_2)/(sigma_alpha*sigma_beta - sigma_alpha_beta**2)
+            
         y_model = np.cos(self.t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(self.t * 2.0 * np.pi * freq - tau) * mu_B + self.t * mu_alpha + mu_beta
         loglik = self.norm_term_ll - 0.5 * sum(self.w * (self.y - y_model)**2)
         if t is None:
@@ -256,8 +245,8 @@ class BGLST():
             y_model = np.cos(t * 2.0 * np.pi * freq - tau) * mu_A  + np.sin(t * 2.0 * np.pi * freq - tau) * mu_B + t * mu_alpha + mu_beta
         mean = np.array([mu_A, mu_B, mu_alpha, mu_beta])
         cov = np.array([
-            [sigma_A,       0.0,           sigma_A_alpha,    sigma_A_beta],
-            [0.0,           sigma_B,       sigma_B_alpha,    sigma_B_beta],
+            [sigma_A,       sigma_A_B,     sigma_A_alpha,    sigma_A_beta],
+            [sigma_A_B,     sigma_B,       sigma_B_alpha,    sigma_B_beta],
             [sigma_A_alpha, sigma_B_alpha, sigma_alpha,      sigma_alpha_beta],
             [sigma_A_beta,  sigma_B_beta,  sigma_alpha_beta, sigma_beta]
             ])
@@ -271,27 +260,4 @@ class BGLST():
         if np.any(t != self.t):
             y_model = np.cos(t * 2.0 * np.pi * freq - tau) * A  + np.sin(t * 2.0 * np.pi * freq - tau) * B + t * alpha + beta
         return y_model, loglik
-
-    '''
-        Simple check if the means and variances of the parameters are correct
-        (assuming constant noise variance)
-    '''
-    def _test(self, freq):
-        (tau, (mu_A, mu_B, mu_alpha, mu_beta), (sigma_A, sigma_B, sigma_alpha, sigma_beta), y_model, loglik) = self.model(freq)
-        w0 = np.array([self.A_hat, self.B_hat, self.alpha_hat, self.beta_hat])
-        V0 = np.diag([1.0/self.w_A, 1.0/self.w_B, 1.0/self.w_alpha, 1.0/self.w_beta])
-        X = np.column_stack((np.cos(self.t * 2.0 * np.pi * freq - tau), 
-                             np.sin(self.t * 2.0 * np.pi * freq - tau), 
-                            self.t, 
-                            np.ones(len(self.t))))
-        V0inv = la.inv(V0)
-        sigma = 1.0/self.w[0]
-        Xt = np.transpose(X)
-        Vn = la.inv(V0inv*sigma+np.dot(Xt,X))*sigma
-        wn = np.dot(np.dot(Vn, V0inv), w0) + np.dot(np.dot(Vn, Xt), self.y)/sigma
-        assert()
-        print mu_A, mu_B, mu_alpha, mu_beta
-        print wn
-        print (sigma_A, sigma_B, sigma_alpha, sigma_beta)
-        print Vn
 
