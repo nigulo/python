@@ -108,6 +108,7 @@ print "A, B, alpha, beta", A, B, alpha, beta
 t_model = np.linspace(min(t), max(t), 1000)
 y_model = np.cos(t_model * 2.0 * np.pi * best_freq - tau) * A  + np.sin(t_model * 2.0 * np.pi * best_freq - tau) * B + t_model * alpha + beta
 ax1.plot(t_model, y_model, 'r-')
+ax1.plot(t_model, t_model * alpha + beta, 'r-')
 ax1.plot(t_model, t_model/100, 'k:')
 
 

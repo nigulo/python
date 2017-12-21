@@ -104,10 +104,11 @@ ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes,
 ax1.scatter(t, y, marker='+', color ='k', lw=0.5)
 tau, (A, B, alpha, beta), _, y_model_1, loglik = bglst.model(best_freq)
 bic = 2 * loglik - np.log(n) * 5
-print A, B, alpha, beta
+print "A, B, alpha, beta", A, B, alpha, beta
 t_model = np.linspace(min(t), max(t), 1000)
 y_model = np.cos(t_model * 2.0 * np.pi * best_freq - tau) * A  + np.sin(t_model * 2.0 * np.pi * best_freq - tau) * B + t_model * alpha + beta
 ax1.plot(t_model, y_model, 'r-')
+ax1.plot(t_model, t_model * alpha + beta, 'r-')
 
 min_prob = min(probs)
 norm_probs = (probs - min_prob) / (max_prob - min_prob)
