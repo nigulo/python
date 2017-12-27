@@ -292,6 +292,8 @@ class Prewhitener:
 
 def get_max_power_ind(power, peak_index):
     local_maxima_inds = mw_utils.find_local_maxima(power)
+    if len(local_maxima_inds) == 0:
+        return -1
     #if peak_index == 0:
     #    #max_power_ind = np.argmax(power)
     #    maximum_ind = np.argmax(power[local_maxima_inds])

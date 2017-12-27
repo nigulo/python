@@ -275,12 +275,13 @@ def find_local_maxima(x):
     maxima_inds = maxima_inds[np.where(maxima_inds > 0)] # Omit leftmost point
     maxima_inds = maxima_inds[np.where(maxima_inds < len(x) - 1)] # Omit rightmost point
     filtered_maxima_inds = list()
-    start = 0
-    for i in np.arange(1, len(maxima_inds)):
-        if maxima_inds[i] != maxima_inds[i-1] + 1:
-            filtered_maxima_inds.append(int((maxima_inds[start] + maxima_inds[i-1]))/2)
-            start = i
-    filtered_maxima_inds.append(int((maxima_inds[start] + maxima_inds[-1]))/2)
+    if len(maxima_inds) > 0:
+        start = 0
+        for i in np.arange(1, len(maxima_inds)):
+            if maxima_inds[i] != maxima_inds[i-1] + 1:
+                filtered_maxima_inds.append(int((maxima_inds[start] + maxima_inds[i-1]))/2)
+                start = i
+        filtered_maxima_inds.append(int((maxima_inds[start] + maxima_inds[-1]))/2)
     return np.asarray(filtered_maxima_inds)
 
 def daily_averages(t, y, noise):

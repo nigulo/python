@@ -21,7 +21,7 @@ from bayes_lin_reg import bayes_lin_reg
 
 num_resamples = 1000
 num_bootstrap = 0
-#input_path = "downsampling/results"
+#input_path = "cleaned"
 input_path = "BGLST_input"
 if input_path == "cleaned":
     skiprows = 1
@@ -77,11 +77,11 @@ for root, dirs, files in os.walk(input_path):
                 star = star[1:]
             if star_name != None and star != star_name:
                 continue
-            rot_period = 0
+            (rot_period, _) = (0, 0)
             if (rot_periods.has_key(star)):
-                rot_period = rot_periods[star]
+                (rot_period, _) = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            #if star != "SUN":
+            #if star != "54716":
             #    continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
@@ -91,9 +91,16 @@ for root, dirs, files in os.walk(input_path):
             y_orig = data[:,1]
             indices = np.argsort(t_orig)
             t_orig = t_orig[indices]            
-            y_orig = y_orig[indices]            
+            y_orig = y_orig[indices]
+
             t = t_orig/365.25 + offset
+
+            #indices = np.where(t < 1992)[0]
+            #y_orig = y_orig[indices]
+            #t_orig = t_orig[indices]
+            #t = t_orig/365.25 + offset
             y = y_orig
+            
             time_range = max(t) - min(t)
             # removing rotational modulation
             if not remove_rotation:
