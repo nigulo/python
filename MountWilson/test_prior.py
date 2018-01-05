@@ -54,7 +54,7 @@ epsilon = np.random.normal(0, sigma, n)
 trend = np.random.uniform(0, 1.0/duration)
 y = np.cos(2 * np.pi * freq * t) + trend * t + epsilon
 
-
+print "trend", trend
 
 #y = sigma
 w = np.ones(n)/sigma**2
@@ -66,7 +66,7 @@ freq_count = 1000
 
 start = time.time()
 slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
-print "slope, intercept", slope, intercept
+#print "slope, intercept", slope, intercept
 bglst = BGLST.BGLST(t, y, w, 
                     w_A = 2.0/np.var(y), A_hat = 0.0,
                     w_B = 2.0/np.var(y), B_hat = 0.0,
@@ -75,7 +75,7 @@ bglst = BGLST.BGLST(t, y, w,
 
 (freqs, probs) = bglst.calc_all(freq_start, freq_end, freq_count)
 end = time.time()
-print(end - start)
+#print(end - start)
 
 #probs = np.zeros(freq_count)
 #bglst = BGLST.BGLST(t, y, w)
@@ -95,17 +95,22 @@ max_prob = max(probs)
 max_prob_index = np.argmax(probs)
 best_freq = freqs[max_prob_index]
 
+print "BGLST: freq", freq, best_freq, max_prob
+
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 7)
 
 ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=panel_label_fs)
 ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=panel_label_fs)
 
+tau_true, (A, B, alpha, beta), _, y_model_1, loglik = bglst.model(freq)
+
+print "true A, B", np.cos(tau_true), np.sin(tau_true)
 
 ax1.scatter(t, y, marker='+', color ='k', lw=0.5)
 tau, (A, B, alpha, beta), _, y_model_1, loglik = bglst.model(best_freq)
 bic = 2 * loglik - np.log(n) * 5
-print "A, B, alpha, beta", A, B, alpha, beta
+print "BGLST: A, B, alpha, beta", A, B, alpha, beta
 t_model = np.linspace(min(t), max(t), 1000)
 y_model, _ = bglst.fit(tau, best_freq, A, B, alpha, beta, t_model)
 #y_model = np.cos(t_model * 2.0 * np.pi * best_freq - tau) * A  + np.sin(t_model * 2.0 * np.pi * best_freq - tau) * B + t_model * alpha + beta
@@ -136,12 +141,11 @@ min_prob_m = min(probs_m)
 norm_probs_m = (probs_m- min_prob_m) / (max_prob_m - min_prob_m)
 
 
-print "BGLST: ", freq, best_freq, max_prob
 
 _, _, _, loglik_null = bayes_lin_reg.bayes_lin_reg(t, y, w)
 bic_null = 2 * loglik_null - np.log(n) * 2
 
-print bic - bic_null
+#print bic - bic_null
 
 
 ###############################################################################
@@ -159,9 +163,13 @@ max_prob = max(probs)
 max_prob_index = np.argmax(probs)
 best_freq = freqs[max_prob_index]
 
-y_model, _ = bglst_flat.fit(tau, best_freq, A, B, alpha, beta, t_model)
+print "BGLST flat: freq", freq, best_freq, max_prob
+
+tau, (A, B, alpha, beta), _, y_model, loglik = bglst_flat.model(best_freq, t_model)
+print "BGLST flat: A, B, alpha, beta", A, B, alpha, beta
+
+#y_model, _ = bglst_flat.fit(tau, best_freq, A, B, alpha, beta, t_model)
 ax1.plot(t_model, y_model, 'b--')
-print "BGLST flat: ", freq, best_freq, max_prob
 
 min_prob = min(probs)
 norm_powers = (probs - min_prob) / (max_prob - min_prob)
@@ -181,4 +189,4 @@ ax2.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
 ax2.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
 ax2.set_xlim([0, 2.0*freq])
 
-fig.savefig("model_comp_2.eps")
+fig.savefig("prior.eps")

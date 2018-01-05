@@ -177,6 +177,8 @@ for setup_no in [0, 1, 2]:
             true_freqs = np.zeros(num_rep)
             bglst_freqs = np.zeros(num_rep)
             ls_freqs = np.zeros(num_rep)
+            
+            num_worse = 0
             for rep_no in np.arange(0, num_rep):
         
                 if real_sampling:
@@ -189,7 +191,7 @@ for setup_no in [0, 1, 2]:
                     noise_var += sig_var/final_sn_ratio
                 else:
                     time_range = 30.0
-                    n = 200
+                    n = 2000
                     if uniform_sampling:
                         t = np.random.uniform(0, time_range, n)
                     else:
@@ -214,7 +216,9 @@ for setup_no in [0, 1, 2]:
                 
                 # Now generate synthetic data
                 real_period = np.random.uniform(5.0, 15.0)
-                y = np.sqrt(sig_var) * np.cos(2 * np.pi * t / real_period + np.random.uniform() * 2.0 * np.pi) + np.random.normal(np.zeros(n), np.sqrt(noise_var), n)#np.random.normal(0.0, np.sqrt(np.mean(noise_var)), n)
+                y_signal = np.sqrt(sig_var) * np.cos(2 * np.pi * t / real_period + np.random.uniform() * 2.0 * np.pi)
+                y_noise = np.random.normal(np.zeros(n), np.sqrt(noise_var), n)
+                y = y_signal + y_noise#np.random.normal(0.0, np.sqrt(np.mean(noise_var)), n)
                 #print "real freq:", 1.0/real_period
                 true_freq = 1.0/real_period
                 true_freqs[rep_no] = true_freq
@@ -233,7 +237,8 @@ for setup_no in [0, 1, 2]:
                 else:
                     noise_var = get_local_noise_var(t, y, 2.0)
                 
-                #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
+                mse_noise = np.sum((real_noise_var - noise_var)**2)/np.dot(real_noise_var, real_noise_var)
+                #print "MSE noise_var", mse_noise
                 w = np.ones(n)/noise_var
                 
                 start = time.time()
@@ -261,7 +266,13 @@ for setup_no in [0, 1, 2]:
                     else:
                         noise_var = get_local_noise_var(t, y - y_model, 2.0)
                     
-                    #print "MSE noise_var", np.sum(real_noise_var - noise_var)^2/n
+                    #print "var y, residue", np.std(y), np.std(y - y_model)
+                    mse_noise_2 = np.sum((real_noise_var - noise_var)**2)/np.dot(real_noise_var, real_noise_var)
+                    if (mse_noise_2 > mse_noise):
+                        num_worse += 1
+                        print "ERR_freq", abs(true_freq - best_freq_bglst)/true_freq
+                        print "MSE y_signal", np.sum((y_signal - y_model)**2)/np.dot(y_signal, y_signal)
+                    #print "MSE noise_var2", mse_noise_2
                     w = np.ones(n)/noise_var
                     
                     start = time.time()
@@ -301,6 +312,7 @@ for setup_no in [0, 1, 2]:
                 
                 dats.append((t, y, w))
         
+            print "Num worse:", float(num_worse)/num_rep
             dats = np.asarray(dats)
         
             with open('noise_tests/'+str(setup_no)+'/noise_exp_' + str(setup_no) + '_' + str(exp_no) + '.pkl', 'wb') as f:
