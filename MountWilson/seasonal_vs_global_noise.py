@@ -33,6 +33,8 @@ linecolors = ['r', 'b', 'g']
 
 iterative = True
 
+num_points = 1000
+
 for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
     for file in dir_files:
         if file[-4:] == ".dat":
@@ -51,7 +53,7 @@ for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
             t += offset
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-            down_sample_factor = int(np.floor(len(t)/200))
+            down_sample_factor = 1#int(np.floor(len(t)/num_points))
             if down_sample_factor >= 2:
                 indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
                 indices = np.sort(indices)
@@ -138,7 +140,7 @@ lines1 = [None, None, None]
 lines2 = [None, None, None]
 
 num_exp = len(sns)
-num_rep = 200
+num_rep = 2000
 
 for setup_no in [0, 1, 2]:
     if setup_selected is not None and setup_selected != setup_no:
@@ -191,7 +193,7 @@ for setup_no in [0, 1, 2]:
                     noise_var += sig_var/final_sn_ratio
                 else:
                     time_range = 30.0
-                    n = 2000
+                    n = num_points
                     if uniform_sampling:
                         t = np.random.uniform(0, time_range, n)
                     else:
@@ -235,7 +237,7 @@ for setup_no in [0, 1, 2]:
                 if real_sampling:
                     noise_var = mw_utils.get_seasonal_noise_var(t, y)
                 else:
-                    noise_var = get_local_noise_var(t, y, 2.0)
+                    noise_var = get_local_noise_var(t, y, 1.0)
                 
                 mse_noise = np.sum((real_noise_var - noise_var)**2)/np.dot(real_noise_var, real_noise_var)
                 #print "MSE noise_var", mse_noise
@@ -264,7 +266,7 @@ for setup_no in [0, 1, 2]:
                     if real_sampling:
                         noise_var = mw_utils.get_seasonal_noise_var(t, y - y_model)
                     else:
-                        noise_var = get_local_noise_var(t, y - y_model, 2.0)
+                        noise_var = get_local_noise_var(t, y - y_model, 1.0)
                     
                     #print "var y, residue", np.std(y), np.std(y - y_model)
                     mse_noise_2 = np.sum((real_noise_var - noise_var)**2)/np.dot(real_noise_var, real_noise_var)
