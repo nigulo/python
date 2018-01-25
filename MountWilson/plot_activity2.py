@@ -16,8 +16,10 @@ from numpy import linalg as LA
 from matplotlib.patches import Ellipse
 import mw_utils
 from bayes_lin_reg import bayes_lin_reg
+from GPR_QP import GPR_QP
 
 include_non_ms = False#True
+fit_with_baliunas = True
 
 use_secondary_clusters = False
 plot_ro = False
@@ -60,6 +62,7 @@ def star_is_ms(star):
     return len(np.where(ms_stars == star.upper())[0] > 0)
 
 ext_data_for_plot = dict()
+data_for_fit = dict()
 #run, Omega, P_cyc, E_mag/E_kin
 sim_data_joern = [
     ["M0.5", 0.5, 3.1, 0.06],
@@ -148,7 +151,7 @@ for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
     g = 0.5
     b = 0.5
     #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 100, 0, "Warnecke"]]
+    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 100, 0, "Warnecke 2018"]]
 
 for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     size = 100
@@ -161,7 +164,7 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     g = 0.5
     b = 0.5
     #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani"]]
+    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2017"]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
     p_rot /= 365.25
@@ -174,7 +177,7 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
             r = c
             g = 0.75
             b = c  
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 150, d_p_rot, "Lehtinen"])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 150, d_p_rot, "Lehtinen et al. 2016"])
     if p_cyc_2 > 0:
         grade2 = get_jyris_grade(grade2)
         if grade2 >= min_jyris_grade:
@@ -182,9 +185,10 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
             r = c
             g = 0.75
             b = c        
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 150, d_p_rot, "Lehtinen"])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 150, d_p_rot, "Lehtinen et al. 2016"])
     if len(cycles) > 0:
         ext_data_for_plot["Jyri_" + star] = cycles
+        data_for_fit[star[2:]] = cycles
 
 def read_gp_cycles(file):
     max_bic = None
@@ -338,6 +342,58 @@ ax41.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxe
 ax42.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxes, fontsize=panel_label_fs)
 ax43.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes, fontsize=panel_label_fs)
 ax43.set_xlabel(r'$\log \Omega $' + ' [' + r'$d^{-1}$]', fontsize=axis_label_fs)
+
+def fit_data(data, ax):
+    xs = list()
+    ys = list()
+    for star in data.keys():
+        if star == "73350":
+            # This was marked as inactive in Jyris data
+            print "Omitting", star
+        data_star = data[star]
+        for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err, label] in data_star:
+            if not label == "Non-active" and not label == "Non-active Baliunas":
+                xs.append(r_hk)
+                ys.append(y)
+                if r_hk < -4.7:
+                    print "Active star under inactive branch:", star
+            if label == "Active Baliunas":
+                color = [1.0, 0.5, 0.0, alpha]
+                #color = [1.0, 1.0, 0, 1.0]
+                ax.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=None), lw=1.5, facecolors='None', color=color, s=size, edgecolors=color)
+    xs = np.asarray(xs)
+    ys = np.asarray(ys)
+    xs_fit = np.linspace(min(xs), max(xs), 10)
+    max_params = None
+
+    if fit_with_baliunas:
+        sig_vars = [5, 6, 7]
+        noise_vars = [0.08, 0.09, 0.1]
+        length_scales = [0.5, 0.6, 0.7]
+    else:
+        sig_vars = [5, 6, 7]
+        noise_vars = [0.1, 0.11, 0.12]
+        length_scales = [1.5, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5]
+    
+    for sig_var in sig_vars:
+        for noise_var in noise_vars:
+            for length_scale in length_scales:
+                gpr = GPR_QP(sig_var=sig_var, length_scale=length_scale, freq = 0, noise_var=noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0)
+                gpr.init(xs, ys)
+                (ys_fit, ys_var, log_lik) = gpr.fit(xs_fit)
+                if max_params is None or log_lik > max_params[0]:
+                    max_params = (log_lik, sig_var, noise_var, length_scale)
+    print "Best params:", max_params
+    (log_lik, sig_var, noise_var, length_scale) = max_params
+    gpr = GPR_QP(sig_var=sig_var, length_scale=length_scale, freq = 0, noise_var=noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0)
+    gpr.init(xs, ys)
+    xs_fit = np.linspace(-5.1, -4.0, 500)
+    (ys_fit, ys_var, log_lik) = gpr.fit(xs_fit)
+    ax.plot(xs_fit, ys_fit, 'k--')
+    #ys_err = 2.0 * np.sqrt(ys_var)
+    #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
+    ax.plot([-4.46, -4.46], [-3.7, -1.2], 'k-.')
+
 
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     activity_ls_1 = []
@@ -678,6 +734,14 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                 g = c
                                 b = c
                                 sym = "."
+                                if clustered and is_ms:
+                                    point = np.array([r_hk, val])
+                                    dist1 = np.dot(point - m1, np.dot(LA.inv(s1), point - m1))
+                                    dist2 = np.dot(point - m2, np.dot(LA.inv(s2), point - m2))
+                                    if dist1 < dist2:
+                                        label = "Active Baliunas"
+                                    else:
+                                        label = "Non-active Baliunas"
                             else:
                                 if clustered and is_ms:
                                     point = np.array([r_hk, val])
@@ -741,6 +805,19 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         scatterpoints=1,
                         loc='upper right', ncol=1,
                         fontsize=8, labelspacing=1)
+            for star in data.keys():
+                if data_for_fit.has_key(star):
+                    print "Duplicate star:", star 
+                else:
+                    if star_is_ms(star):
+                        data_for_fit[star] = data[star]
+            if fit_with_baliunas:
+                for star in data_baliunas.keys():
+                    if data_for_fit.has_key(star):
+                        print "Duplicate Baliunas star:", star 
+                    else:
+                        data_for_fit[star] = data_baliunas[star]
+            fit_data(data_for_fit, ax1b)
     ###########################################################################
     # Calculate trend lines for the branches
     
