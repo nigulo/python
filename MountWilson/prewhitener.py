@@ -19,7 +19,8 @@ from scipy.signal import argrelextrema
 import scipy
 
 bic_threshold = 6.0
-seasonal_significance = True
+# "Seasonal", "Two-part", "Conventional"
+sig_type = "Conventional"
 
 class Prewhitener:
     def __init__(self, name, type, t, y, freqs, num_resamples=1000, num_bootstrap = 0, 
@@ -207,7 +208,7 @@ class Prewhitener:
             tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq)
     
             condition = False
-            if seasonal_significance:
+            if sig_type == "Seasonal":
                 seasonal_means = mw_utils.get_seasonal_means(t, y)
                 seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, False)
                 seasonal_weights = np.ones(len(seasonal_noise_var))/seasonal_noise_var
@@ -222,7 +223,7 @@ class Prewhitener:
                 print bic_null, bic
                 delta_bic = bic_null - bic
                 condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
-            else:
+            elif sig_type == "Two-part":
                 t_left_inds = np.where(t<1980.0)
                 t_right_inds = np.where(t>=1980.0)
                 t_left = t[t_left_inds]
@@ -264,7 +265,17 @@ class Prewhitener:
                     right_condition = True
                 
                 condition = left_condition and right_condition
-    
+            else:
+                _, loglik = bglst.fit(tau, best_freq, A, B, alpha, beta)
+                _, _, _, loglik_null = bayes_lin_reg(t, y, w)
+                log_n = np.log(np.shape(t)[0])
+                bic = log_n * 5 - 2.0 * loglik
+                bic_null = log_n * 2 - 2.0*loglik_null
+                
+                print bic_null, bic
+                delta_bic = bic_null - bic
+                condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
+                
             if condition:
                 bglst_m = BGLST(t, y_model, np.ones(len(t))/np.var(y))
                 (freqs_m, log_probs_m) = bglst_m.calc_all(freqs_in[0], freqs_in[-1], len(freqs_in))

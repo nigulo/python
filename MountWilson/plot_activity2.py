@@ -21,7 +21,7 @@ from scipy.stats import norm
 import matplotlib.patches as patches
 
 include_non_ms = False#True
-fit_with_baliunas = True
+fit_with_baliunas = False
 
 use_secondary_clusters = False
 plot_ro = False
@@ -85,6 +85,7 @@ sim_data_joern = [
 
 #Using total mag. energy
 #run, Omega, E_kin, E_mag P_cyc
+'''
 sim_data_mariangela = [
     [r'A1', 1, 4.428, 0.876, 3.72],
     [r'A2', 1, 5.055, 0.995, 4.13],
@@ -112,11 +113,11 @@ sim_data_mariangela = [
     [r'M', 28.5, 2.053, 0.967, 6.64],
     #[r'M$^{W}$', 31, 0.328, 1.024, 4.1]
     ]
+'''
 
 
 #Using surf. mag. energy
 #run, Omega, E_kin, E_mag P_cyc
-'''
 sim_data_mariangela = [
     [r'A1', 1, 4.428, 0.211, 3.72],
     [r'A2', 1, 5.055, 0.188, 4.13],
@@ -144,7 +145,6 @@ sim_data_mariangela = [
     [r'M', 28.5, 2.053, 0.133, 6.64],
     #[r'M$^{W}$', 31, 0.328, 0.462, 4.1]
     ]
-'''
 
 min_jyris_grade = 0.0
 max_jyris_grade = 3.0
@@ -199,13 +199,15 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
         size = 200
     omega *= 365.25/26.09
     #global
-    r_hk = e_mag/e_kin-4.911-0.197
+    #r_hk =  e_mag/e_kin-4.911-0.197
+    #r_hk =  np.sqrt(np.sqrt(e_mag/e_kin))/(0.945082615642-0.605478035643)-4.911-1.96
+
     #surface
-    #r_hk = np.sqrt(np.sqrt(e_mag/e_kin))-4.911-0.46721708
+    r_hk = np.sqrt(np.sqrt(e_mag/e_kin))/(0.633057100075-0.322017343435)-4.911-1.5
     r = 0.5
     g = 0.5
     b = 0.5
-    #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
     ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2017"]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
@@ -394,7 +396,7 @@ def fit_data(data, ax):
             print "Omitting", star
         data_star = data[star]
         for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err, label] in data_star:
-            if not label == "Non-active" and not label == "Non-active Baliunas":
+            if not label == "Inactive" and not label == "Inactive Baliunas":
                 xs.append(r_hk)
                 ys.append(y)
                 if r_hk < -4.7:
@@ -434,7 +436,9 @@ def fit_data(data, ax):
     ax.plot(xs_fit, ys_fit, 'k--')
     #ys_err = 2.0 * np.sqrt(ys_var)
     #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
+    # Active longitude vs non active longitude
     ax.plot([-4.46, -4.46], [-3.7, -1.2], 'k-.')
+    ax.plot([-4.97, -4.97], [-3.7, -1.2], 'k-.')
     
     
     ax.add_patch(patches.FancyArrowPatch((max(r_hk_left, -5.1), -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20))
@@ -442,9 +446,9 @@ def fit_data(data, ax):
     ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (-4.0, -3.72), arrowstyle='<->', mutation_scale=20))
     #ax.annotate(s='Arrow', xy=(r_hk_middle, -3.5), xytext=(max(r_hk_left, -5.1), -3.5), arrowprops=dict(arrowstyle='<->'))    
     #ax.arrow(max(r_hk_left, -5.1), -3.5, r_hk_middle-max(r_hk_left, -5.1), 0, head_width=0.05, head_length=0.1, fc='k', ec='k')
-    ax.text((max(r_hk_left, -5.1) + r_hk_middle)/2, -3.67, 'Inactive', size=branch_label_fs, ha='center', va='center')
-    ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'Active', size=branch_label_fs, ha='center', va='center')
-    ax.text((r_hk_right -4.0)/2, -3.67, 'Transitional', size=branch_label_fs, ha='center', va='center')
+    ax.text((max(r_hk_left, -5.1) + r_hk_middle)/2, -3.67, 'I', size=branch_label_fs, ha='center', va='center')
+    ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
+    ax.text((r_hk_right -4.0)/2, -3.67, 'T', size=branch_label_fs, ha='center', va='center')
 
 
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
@@ -806,7 +810,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                     if dist1 < dist2:
                                         label = "Active Baliunas"
                                     else:
-                                        label = "Non-active Baliunas"
+                                        label = "Inactive Baliunas"
                             else:
                                 if clustered and is_ms:
                                     point = np.array([r_hk, val])
@@ -827,7 +831,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         num_active += 1
                                         active.append([r_hk, val, err])
                                     else:
-                                        label = "Non-active"
+                                        label = "Inactive"
                                         sym = "x"
                                         delta_i = val - (a2 * r_hk + b2)
                                         r = 1.0
@@ -914,7 +918,7 @@ plt.close(fig1)
 ax1b.set_ylim(-3.8, -1.2)
 ax1b.set_xlim(-5.1, -4.0)
 ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
-fig1b.savefig("activity_diagram_cmp2.pdf")
+fig1b.savefig("activity_diagram_cmp2.png")
 plt.close(fig1b)
 
 fig2.savefig("activity_diagram_2.pdf")
