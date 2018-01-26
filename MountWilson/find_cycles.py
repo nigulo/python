@@ -81,8 +81,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 (rot_period, _) = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            #if star != "54716":
-            #    continue
+            if star != "190406":
+                continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]

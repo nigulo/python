@@ -17,6 +17,8 @@ from matplotlib.patches import Ellipse
 import mw_utils
 from bayes_lin_reg import bayes_lin_reg
 from GPR_QP import GPR_QP
+from scipy.stats import norm
+import matplotlib.patches as patches
 
 include_non_ms = False#True
 fit_with_baliunas = True
@@ -26,6 +28,9 @@ plot_ro = False
 
 axis_label_fs = 15
 panel_label_fs = 15
+legend_fs = 8
+branch_label_fs = 10
+
 try:
     from itertools import izip_longest  # added in Py 2.6
 except ImportError:
@@ -78,6 +83,7 @@ sim_data_joern = [
     ["M15", 15.0, 3.8, 0.84]
     ]
 
+#Using total mag. energy
 #run, Omega, E_kin, E_mag P_cyc
 sim_data_mariangela = [
     [r'A1', 1, 4.428, 0.876, 3.72],
@@ -106,6 +112,39 @@ sim_data_mariangela = [
     [r'M', 28.5, 2.053, 0.967, 6.64],
     #[r'M$^{W}$', 31, 0.328, 1.024, 4.1]
     ]
+
+
+#Using surf. mag. energy
+#run, Omega, E_kin, E_mag P_cyc
+'''
+sim_data_mariangela = [
+    [r'A1', 1, 4.428, 0.211, 3.72],
+    [r'A2', 1, 5.055, 0.188, 4.13],
+    [r'B', 1.5, 3.263, 0.183, 2.45],
+    [r'C1', 1.8, 3.153, 0.137, 3.53],
+    [r'C2', 1.8, 3.631, 0.128, 4.37],
+    [r'C3', 1.8, 6.572, 0.142, 3.13],
+    [r'D', 2.1, 3.181, 0.180, 18.25],
+    [r'E', 2.9, 4.189, 0.147, 10.31],
+    [r'F1', 4.3, 2.485, 0.290, 6.68],
+    [r'F2', 4.3, 2.898, 0.220, 8.05],
+    [r'F3', 4.3, 2.7, 0.086, 5.74],
+    [r'G$^{a}$', 4.9, 2.748, 0.254, 7.43],
+    #[r'G$^{W}$', 4.8, 3.522, 0.285, 2.37],
+    [r'H', 7.1, 2.153, 0.053, 27.34],
+    [r'H$^{a}$', 7.8, 1.704, 0.274, 7.17],
+    [r'I', 9.6, 1.706, 0.274, 7.75],
+    #[r'I$^{W}$', 9.6, 1.625, 0.220, 4.44],
+    [r'J', 14.5, 0.58, 0.014, 8.25],
+    #[r'J$^{W}$', 15.5, 0.786, 0.421, 4.05],
+    [r'K1', 21.4, 2.325, 0.025, 1.24],
+    [r'K2', 21.4, 1.549, 0.193, 5.1],
+    #[r'L$^{a}$', 23.3, 0.708, 0.475, 3.13],
+    #[r'L$^{W}$ ', 23.3, 0.415, 0.509, 5.68],
+    [r'M', 28.5, 2.053, 0.133, 6.64],
+    #[r'M$^{W}$', 31, 0.328, 0.462, 4.1]
+    ]
+'''
 
 min_jyris_grade = 0.0
 max_jyris_grade = 3.0
@@ -159,7 +198,10 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
         # Make points of high resulution runs bigger
         size = 200
     omega *= 365.25/26.09
+    #global
     r_hk = e_mag/e_kin-4.911-0.197
+    #surface
+    #r_hk = np.sqrt(np.sqrt(e_mag/e_kin))-4.911-0.46721708
     r = 0.5
     g = 0.5
     b = 0.5
@@ -393,6 +435,16 @@ def fit_data(data, ax):
     #ys_err = 2.0 * np.sqrt(ys_var)
     #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
     ax.plot([-4.46, -4.46], [-3.7, -1.2], 'k-.')
+    
+    
+    ax.add_patch(patches.FancyArrowPatch((max(r_hk_left, -5.1), -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20))
+    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
+    ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (-4.0, -3.72), arrowstyle='<->', mutation_scale=20))
+    #ax.annotate(s='Arrow', xy=(r_hk_middle, -3.5), xytext=(max(r_hk_left, -5.1), -3.5), arrowprops=dict(arrowstyle='<->'))    
+    #ax.arrow(max(r_hk_left, -5.1), -3.5, r_hk_middle-max(r_hk_left, -5.1), 0, head_width=0.05, head_length=0.1, fc='k', ec='k')
+    ax.text((max(r_hk_left, -5.1) + r_hk_middle)/2, -3.67, 'Inactive', size=branch_label_fs, ha='center', va='center')
+    ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'Active', size=branch_label_fs, ha='center', va='center')
+    ax.text((r_hk_right -4.0)/2, -3.67, 'Transitional', size=branch_label_fs, ha='center', va='center')
 
 
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
@@ -588,7 +640,20 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
             s1 = s_temp
             w1 = w_temp
             v1 = v_temp            
-            
+        
+        # Calculate the postitions of the middle point between distributions
+        # and left and right 3sigma levels on RHK axis 
+        xs = np.linspace(-6.0, -4.0, 1000)
+        pdf1 = norm.pdf(xs, m1[0], np.sqrt(s1[0, 0]))
+        pdf2 = norm.pdf(xs, m2[0], np.sqrt(s2[0, 0]))
+        last_sign = np.sign(pdf1[0] - pdf2[0])
+        for i in np.arange(0, len(xs)):
+            if not np.sign(pdf1[i] - pdf2[i]) == last_sign:
+                r_hk_middle = xs[i]
+                break
+        r_hk_left = m2[0] - 2.0 * np.sqrt(s2[0, 0])
+        r_hk_right = m1[0] + 2.0 * np.sqrt(s1[0, 0])
+        
         #print w1
         #print v1
         #print w2
@@ -804,7 +869,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         numpoints = 1,
                         scatterpoints=1,
                         loc='upper right', ncol=1,
-                        fontsize=8, labelspacing=1)
+                        fontsize=legend_fs, labelspacing=1)
             for star in data.keys():
                 if data_for_fit.has_key(star):
                     print "Duplicate star:", star 
@@ -846,7 +911,7 @@ plt.close(fig1)
 #plt.close(fig1a)
 
 
-ax1b.set_ylim(-3.7, -1.2)
+ax1b.set_ylim(-3.8, -1.2)
 ax1b.set_xlim(-5.1, -4.0)
 ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
 fig1b.savefig("activity_diagram_cmp2.pdf")
