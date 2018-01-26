@@ -391,12 +391,12 @@ def fit_data(data, ax):
     xs = list()
     ys = list()
     for star in data.keys():
-        if star == "73350":
+        if fit_with_baliunas and star == "73350":
             # This was marked as inactive in Jyris data
             print "Omitting", star
         data_star = data[star]
         for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err, label] in data_star:
-            if not label == "Inactive" and not label == "Inactive Baliunas":
+            if not fit_with_baliunas or (not label == "Inactive" and not label == "Inactive Baliunas"):
                 xs.append(r_hk)
                 ys.append(y)
                 if r_hk < -4.7:
@@ -415,9 +415,9 @@ def fit_data(data, ax):
         noise_vars = [0.08, 0.09, 0.1]
         length_scales = [0.5, 0.6, 0.7]
     else:
-        sig_vars = [5, 6, 7]
-        noise_vars = [0.1, 0.11, 0.12]
-        length_scales = [1.5, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5]
+        sig_vars = [8, 9, 10, 12, 15]
+        noise_vars = [0.05, 0.06, 0.07, 0.08, 0.09]
+        length_scales = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
     
     for sig_var in sig_vars:
         for noise_var in noise_vars:
