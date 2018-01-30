@@ -81,8 +81,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 (rot_period, _) = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            if star != "190406":
-                continue
+            #if star != "190406":
+            #    continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]
@@ -280,6 +280,7 @@ for root, dirs, files in os.walk(input_path):
                     for freq_index in np.arange(0, len(omitted_line_freqs)):
                         line_freq = omitted_line_freqs[freq_index]
                         if line_freq > 0:
+                            print "Removing too long cycle: ", 1.0/line_freq
                             noise_var = mw_utils.get_seasonal_noise_var(t, y1)
                             w1 = np.ones(len(t))/noise_var
                             _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq)

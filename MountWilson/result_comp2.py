@@ -137,7 +137,7 @@ for star in keys:
                     cycle_output += r"\\ "
             i += 1
         if i > 1:
-            cycle_output = r"\begin{tabular}{@{}l@{}}" + cycle_output + "\end{tabular}"
+            cycle_output = r"\begin{tabular}[t]{@{}l@{}}" + cycle_output + "\end{tabular}"
         output += cycle_output
     else:
         output += "--"
@@ -153,7 +153,7 @@ for star in keys:
                     cycle_output += r"\\ "
             i += 1
         if i > 1:
-            cycle_output = r"\begin{tabular}{@{}l@{}}" + cycle_output + "\end{tabular}"
+            cycle_output = r"\begin{tabular}[t]{@{}l@{}}" + cycle_output + "\end{tabular}"
         output += cycle_output
     else:
         output += "--"
@@ -169,7 +169,7 @@ for star in keys:
                     cycle_output += r"\\ "
             i += 1        
         if i > 1:
-            cycle_output = r"\begin{tabular}{@{}l@{}}" + cycle_output + "\end{tabular}"
+            cycle_output = r"\begin{tabular}[t]{@{}l@{}}" + cycle_output + "\end{tabular}"
         output += cycle_output
     else:
         output += "--"

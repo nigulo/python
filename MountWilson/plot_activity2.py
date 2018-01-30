@@ -85,7 +85,6 @@ sim_data_joern = [
 
 #Using total mag. energy
 #run, Omega, E_kin, E_mag P_cyc
-'''
 sim_data_mariangela = [
     [r'A1', 1, 4.428, 0.876, 3.72],
     [r'A2', 1, 5.055, 0.995, 4.13],
@@ -113,11 +112,11 @@ sim_data_mariangela = [
     [r'M', 28.5, 2.053, 0.967, 6.64],
     #[r'M$^{W}$', 31, 0.328, 1.024, 4.1]
     ]
-'''
 
 
 #Using surf. mag. energy
 #run, Omega, E_kin, E_mag P_cyc
+'''
 sim_data_mariangela = [
     [r'A1', 1, 4.428, 0.211, 3.72],
     [r'A2', 1, 5.055, 0.188, 4.13],
@@ -145,6 +144,7 @@ sim_data_mariangela = [
     [r'M', 28.5, 2.053, 0.133, 6.64],
     #[r'M$^{W}$', 31, 0.328, 0.462, 4.1]
     ]
+'''
 
 min_jyris_grade = 0.0
 max_jyris_grade = 3.0
@@ -200,10 +200,12 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     omega *= 365.25/26.09
     #global
     #r_hk =  e_mag/e_kin-4.911-0.197
+    #r_hk =  np.log10(e_mag/e_kin)/4.0-4.911+0.330481289227
     #r_hk =  np.sqrt(np.sqrt(e_mag/e_kin))/(0.945082615642-0.605478035643)-4.911-1.96
 
     #surface
-    r_hk = np.sqrt(np.sqrt(e_mag/e_kin))/(0.633057100075-0.322017343435)-4.911-1.5
+    r_hk =  np.log10(e_mag/e_kin)-4.911+0.70370350603
+    #r_hk = np.sqrt(np.sqrt(e_mag/e_kin))/(0.633057100075-0.322017343435)-4.911-1.5
     r = 0.5
     g = 0.5
     b = 0.5

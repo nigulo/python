@@ -266,14 +266,63 @@ class Prewhitener:
                 
                 condition = left_condition and right_condition
             else:
-                _, loglik = bglst.fit(tau, best_freq, A, B, alpha, beta)
-                _, _, _, loglik_null = bayes_lin_reg(t, y, w)
-                log_n = np.log(np.shape(t)[0])
-                bic = log_n * 5 - 2.0 * loglik
-                bic_null = log_n * 2 - 2.0*loglik_null
-                
-                print bic_null, bic
-                delta_bic = bic_null - bic
+                seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
+
+                #t_left_inds = np.where(t<1980.0)[0]
+                #t_right_inds = np.where(t>=1980.0)[0]
+
+                delta_bic = 0
+                n_tries = 1000
+                min_season = np.shape(seasons[0])[0]
+                for season in seasons:
+                    if np.shape(season)[0] < min_season:
+                        min_season = np.shape(season)[0]
+                #print "Min season: ", min_season
+                n_points_from_season = 1#np.min(10, min_season)
+                seasonal_noise_var = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
+                for i in np.arange(0, n_tries):
+                    t1 = []
+                    y1 = []
+                    w1 = []
+                    for (season, noise_var) in zip(seasons, seasonal_noise_var):
+                        if np.shape(season)[0] > n_points_from_season:
+                            inds = np.random.choice(np.shape(season)[0], size=n_points_from_season, replace=False)
+                            t1 = np.concatenate((t1, season[inds,0]))
+                            y1 = np.concatenate((y1, season[inds,1]))
+                            w1 = np.concatenate((w1, np.repeat(1.0/noise_var, len(inds))))
+                        else:
+                            t1 = np.concatenate((t1, season[:,0]))
+                            y1 = np.concatenate((y1, season[:,1]))
+                            w1 = np.concatenate((w1, np.repeat(1.0/noise_var, len(season[:,0]))))
+                    sort_inds = np.argsort(t1)
+                    t1 = t1[sort_inds]
+                    y1 = y1[sort_inds]
+                    w1 = w1[sort_inds]
+                    #t_right_inds1 = np.random.choice(t_right_inds, size=len(t_left_inds), replace=False)
+                    #inds = np.concatenate((t_left_inds, t_right_inds1))
+                    #t1 = t[inds]
+                    #y1 = y[inds]
+                    #noise_var = mw_utils.get_seasonal_noise_var(t1, y1)
+                    #w1 = np.ones(len(t1))/noise_var
+                    #print "CHECK:", len(t), t1
+                    
+                    if len(t1) > 0:
+                        slope, intercept, r_value, p_value, std_err = stats.linregress(t1, y1)
+                        duration = max(t1) - min(t1)
+                        bglst = BGLST(t1, y1, w1, 
+                                        w_A = 2.0/np.var(y1), A_hat = 0.0,
+                                        w_B = 2.0/np.var(y1), B_hat = 0.0,
+                                        w_alpha = duration**2 / np.var(y1), alpha_hat = slope, 
+                                        w_beta = 1.0 / (np.var(y1) + intercept**2), beta_hat = intercept)
+                        _, loglik = bglst.fit(tau, best_freq, A, B, alpha, beta)
+                        _, _, _, loglik_null = bayes_lin_reg(t1, y1, w1)
+                        log_n = len(t1)
+                        bic = log_n * 5 - 2.0 * loglik
+                        bic_null = log_n * 2 - 2.0*loglik_null
+                        
+                        #print bic_null, bic
+                        delta_bic += bic_null - bic
+                delta_bic /= n_tries
                 condition = delta_bic >= bic_threshold#6.0:#10.0:#np.log(1.0/p_value):
                 
             if condition:

@@ -206,7 +206,7 @@ def calc_kde(data):
         if max_lik is None or log_lik > max_lik:
             max_lik = log_lik
             opt_kde = kde_cov
-    print opt_kde
+    print "opt_kde", opt_kde
     return gaussian_kde(data, bw_method = opt_kde), opt_kde
         
 density_a, cov_a = calc_kde(r_hks_a)
