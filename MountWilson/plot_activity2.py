@@ -19,6 +19,8 @@ from bayes_lin_reg import bayes_lin_reg
 from GPR_QP import GPR_QP
 from scipy.stats import norm
 import matplotlib.patches as patches
+from scipy import stats
+
 
 include_non_ms = False#True
 fit_with_baliunas = False
@@ -26,10 +28,14 @@ fit_with_baliunas = False
 use_secondary_clusters = False
 plot_ro = False
 
-axis_label_fs = 15
+axis_label_fs = 20
 panel_label_fs = 15
-legend_fs = 8
-branch_label_fs = 10
+legend_fs = 11
+branch_label_fs = 15
+axis_unit_fs = 15
+
+fig1b_left = -5.1
+fig1b_right = -4.0
 
 try:
     from itertools import izip_longest  # added in Py 2.6
@@ -186,25 +192,26 @@ data_jyri = [
 for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
     omega *= 365.25/26.09
     r_hk = e_mag_div_e_kin-4.911-0.16
+    #r_hk = np.log10(e_mag_div_e_kin)-4.911+0.795
     r = 0.5
     g = 0.5
     b = 0.5
-    #print r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 100, 0, "Warnecke 2018"]]
+    #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 150, 0, "Warnecke 2018"]]
 
 for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
-    size = 100
+    size = 150
     if sim[-4:] == r"{a}$":
         # Make points of high resulution runs bigger
-        size = 200
+        size = 300
     omega *= 365.25/26.09
     #global
-    #r_hk =  e_mag/e_kin-4.911-0.197
+    r_hk =  e_mag/e_kin-4.911-0.197
+    #r_hk =  np.log10(e_mag/e_kin)-4.911+0.704
     #r_hk =  np.log10(e_mag/e_kin)/4.0-4.911+0.330481289227
-    #r_hk =  np.sqrt(np.sqrt(e_mag/e_kin))/(0.945082615642-0.605478035643)-4.911-1.96
 
     #surface
-    r_hk =  np.log10(e_mag/e_kin)-4.911+0.70370350603
+    #r_hk =  np.log10(e_mag/e_kin)-4.911+0.70370350603
     #r_hk = np.sqrt(np.sqrt(e_mag/e_kin))/(0.633057100075-0.322017343435)-4.911-1.5
     r = 0.5
     g = 0.5
@@ -231,7 +238,7 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
             r = c
             g = 0.75
             b = c        
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 150, d_p_rot, "Lehtinen et al. 2016"])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 200, d_p_rot, "Lehtinen et al. 2016"])
     if len(cycles) > 0:
         ext_data_for_plot["Jyri_" + star] = cycles
         data_for_fit[star[2:]] = cycles
@@ -367,6 +374,7 @@ fig1b, ax1b = plt.subplots(nrows=1, ncols=1, sharex=False)
 fig1b.set_size_inches(8, 6)
 ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
 
+
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
 fig2.set_size_inches(6, 18)
 ax21.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax21.transAxes, fontsize=panel_label_fs)
@@ -409,48 +417,91 @@ def fit_data(data, ax):
                 ax.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=None), lw=1.5, facecolors='None', color=color, s=size, edgecolors=color)
     xs = np.asarray(xs)
     ys = np.asarray(ys)
+    
+    ws = np.ones(len(xs))
+    inactive_indices = np.where(xs < -4.738)[0]
+    active_and_tran_indices = np.where(xs >= -4.738)[0]   
+    
+
+    xs_inactive = xs[inactive_indices]
+    ys_inactive = ys[inactive_indices]
+
+    xs_active_and_tran = xs[active_and_tran_indices]
+    ys_active_and_tran = ys[active_and_tran_indices]
+    
+    slope, intercept, r_value, p_value, std_err = stats.linregress(xs_inactive, ys_inactive)
+    fit_inactive = xs_inactive * slope + intercept
+    xs_for_gp = np.linspace(fig1b_left, fig1b_right, 20)
+    ys_fit_inactive = slope*xs_for_gp + intercept
+    ax.plot(xs_for_gp, ys_fit_inactive, 'k:')
+    inactive_var = np.var(ys_inactive - fit_inactive)
+    
+    slope, intercept, r_value, p_value, std_err = stats.linregress(xs_active_and_tran, ys_active_and_tran)
+    fit_active_and_tran = xs_active_and_tran * slope + intercept
+    ys_fit_active_and_tran = slope*xs_for_gp + intercept
+    ax.plot(xs_for_gp, ys_fit_active_and_tran, 'k:')
+    active_and_tran_var = np.var(ys_active_and_tran - fit_active_and_tran)
+
+    ws[inactive_indices] = np.repeat(inactive_var, len(inactive_indices))
+    ws[active_and_tran_indices] = np.repeat(active_and_tran_var, len(active_and_tran_indices))
+
+    values = ys_fit_inactive
+    ys_for_gp = np.zeros(len(values))
+    for i in np.arange(0, len(xs_for_gp) - 1):
+        ys_for_gp[i] = values[i]
+        if ys_fit_inactive[i] < ys_fit_active_and_tran[i] and ys_fit_inactive[i+1] > ys_fit_active_and_tran[i+1]:
+            values = ys_fit_active_and_tran
+    ys_for_gp[-1] = values[-1]
+
     xs_fit = np.linspace(min(xs), max(xs), 10)
     max_params = None
 
+    #ax.scatter(xs_for_gp, ys_for_gp)
+    y_mean = np.mean(ys_for_gp)
+    ys_for_gp -= y_mean
     if fit_with_baliunas:
         sig_vars = [5, 6, 7]
         noise_vars = [0.08, 0.09, 0.1]
         length_scales = [0.5, 0.6, 0.7]
     else:
-        sig_vars = [8, 9, 10, 12, 15]
-        noise_vars = [0.05, 0.06, 0.07, 0.08, 0.09]
-        length_scales = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7]
+        sig_vars = [0.10, 0.15, 0.2]
+        #noise_vars = [0.05, 0.06, 0.07, 0.08, 0.09]
+        noise_vars = [0.001]
+        length_scales = [0.1, 0.11, 0.12, 0.15, 0.2, 0.3, 0.4, 0.5]
     
     for sig_var in sig_vars:
         for noise_var in noise_vars:
             for length_scale in length_scales:
                 gpr = GPR_QP(sig_var=sig_var, length_scale=length_scale, freq = 0, noise_var=noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0)
-                gpr.init(xs, ys)
+                gpr.init(xs_for_gp, ys_for_gp)
                 (ys_fit, ys_var, log_lik) = gpr.fit(xs_fit)
                 if max_params is None or log_lik > max_params[0]:
                     max_params = (log_lik, sig_var, noise_var, length_scale)
     print "Best params:", max_params
     (log_lik, sig_var, noise_var, length_scale) = max_params
     gpr = GPR_QP(sig_var=sig_var, length_scale=length_scale, freq = 0, noise_var=noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0)
-    gpr.init(xs, ys)
-    xs_fit = np.linspace(-5.1, -4.0, 500)
+    gpr.init(xs_for_gp, ys_for_gp)
+    xs_fit = np.linspace(fig1b_left, fig1b_right, 500)
     (ys_fit, ys_var, log_lik) = gpr.fit(xs_fit)
-    ax.plot(xs_fit, ys_fit, 'k--')
+    ax.plot(xs_fit, ys_fit+y_mean, 'k--')
     #ys_err = 2.0 * np.sqrt(ys_var)
     #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
+
     # Active longitude vs non active longitude
     ax.plot([-4.46, -4.46], [-3.7, -1.2], 'k-.')
     ax.plot([-4.97, -4.97], [-3.7, -1.2], 'k-.')
     
     
-    ax.add_patch(patches.FancyArrowPatch((max(r_hk_left, -5.1), -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20))
-    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
-    ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (-4.0, -3.72), arrowstyle='<->', mutation_scale=20))
-    #ax.annotate(s='Arrow', xy=(r_hk_middle, -3.5), xytext=(max(r_hk_left, -5.1), -3.5), arrowprops=dict(arrowstyle='<->'))    
+    ax.add_patch(patches.FancyArrowPatch((max(r_hk_left, fig1b_left), -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20))
+    #ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
+    #ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20))
+    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20))
+    #ax.annotate(s='Arrow', xy=(r_hk_middle, -3.5), xytext=(max(r_hk_left, -5.1), -3.5), arrowprops=dict(arrowstyle='<->'))
     #ax.arrow(max(r_hk_left, -5.1), -3.5, r_hk_middle-max(r_hk_left, -5.1), 0, head_width=0.05, head_length=0.1, fc='k', ec='k')
-    ax.text((max(r_hk_left, -5.1) + r_hk_middle)/2, -3.67, 'I', size=branch_label_fs, ha='center', va='center')
-    ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
-    ax.text((r_hk_right -4.0)/2, -3.67, 'T', size=branch_label_fs, ha='center', va='center')
+    ax.text((max(r_hk_left, fig1b_left) + r_hk_middle)/2, -3.67, 'I', size=branch_label_fs, ha='center', va='center')
+    #ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
+    #ax.text((r_hk_right + fig1b_right)/2, -3.67, 'T', size=branch_label_fs, ha='center', va='center')
+    ax.text((r_hk_middle+ fig1b_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
 
 
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
@@ -502,7 +553,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             first_time = True
             for fillstyle, sym, facecolor, size in zip(fillstyles, syms, facecolors, sizes):
                 handle = None
-                if not first_time or err1 < 0.02 and err2 < 0.02:
+                if not first_time or err1 < 0.1 and err2 < 0.1:
                     handle = ax11.scatter(r_hk, y, marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                     if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
@@ -522,7 +573,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                     used_labels[label] = None
                     handles.append(handle)
                     labels.append(label)
-                if not first_time or (cyc_err/p_cyc/np.log(10.0) < 0.02 and p_rot_err/p_rot/np.log(10.0) < 0.02):
+                if not first_time or (cyc_err/p_cyc/np.log(10.0) < 0.1 and p_rot_err/p_rot/np.log(10.0) < 0.1):
                     if is_ms and not ax2 is None: # omit non MS
                         ax2.scatter(np.log10(p_rot), np.log10(p_cyc), marker=markers.MarkerStyle(sym, fillstyle=fillstyle), lw=1.5, facecolors=facecolor, color=[r, g, b, alpha], s=size, edgecolors=[r, g, b, alpha])
                 else:
@@ -789,9 +840,9 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             #print val - val1, val2 - val, err
                             delta_i = None
                             if primary_cycle:
-                                size = 100
+                                size = 200
                             else:
-                                size = 50
+                                size = 100
                             primary_cycle = False
                             if baliunas:
                                 alpha = 0.7
@@ -833,6 +884,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         num_active += 1
                                         active.append([r_hk, val, err])
                                     else:
+                                        size /= np.sqrt(2)
                                         label = "Inactive"
                                         sym = "x"
                                         delta_i = val - (a2 * r_hk + b2)
@@ -918,8 +970,10 @@ plt.close(fig1)
 
 
 ax1b.set_ylim(-3.8, -1.2)
-ax1b.set_xlim(-5.1, -4.0)
+ax1b.set_xlim(fig1b_left, fig1b_right)
 ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+ax1b.tick_params(axis='x', labelsize=axis_unit_fs)
+ax1b.tick_params(axis='y', labelsize=axis_unit_fs)
 fig1b.savefig("activity_diagram_cmp2.png")
 plt.close(fig1b)
 
