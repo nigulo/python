@@ -230,7 +230,7 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
             r = c
             g = 0.75
             b = c  
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 150, d_p_rot, "Lehtinen et al. 2016"])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
     if p_cyc_2 > 0:
         grade2 = get_jyris_grade(grade2)
         if grade2 >= min_jyris_grade:
@@ -238,7 +238,7 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
             r = c
             g = 0.75
             b = c        
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 200, d_p_rot, "Lehtinen et al. 2016"])
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
     if len(cycles) > 0:
         ext_data_for_plot["Jyri_" + star] = cycles
         data_for_fit[star[2:]] = cycles
@@ -433,13 +433,13 @@ def fit_data(data, ax):
     fit_inactive = xs_inactive * slope + intercept
     xs_for_gp = np.linspace(fig1b_left, fig1b_right, 20)
     ys_fit_inactive = slope*xs_for_gp + intercept
-    ax.plot(xs_for_gp, ys_fit_inactive, 'k:')
+    #ax.plot(xs_for_gp, ys_fit_inactive, 'k:')
     inactive_var = np.var(ys_inactive - fit_inactive)
     
     slope, intercept, r_value, p_value, std_err = stats.linregress(xs_active_and_tran, ys_active_and_tran)
     fit_active_and_tran = xs_active_and_tran * slope + intercept
     ys_fit_active_and_tran = slope*xs_for_gp + intercept
-    ax.plot(xs_for_gp, ys_fit_active_and_tran, 'k:')
+    #ax.plot(xs_for_gp, ys_fit_active_and_tran, 'k:')
     active_and_tran_var = np.var(ys_active_and_tran - fit_active_and_tran)
 
     ws[inactive_indices] = np.repeat(inactive_var, len(inactive_indices))
@@ -483,14 +483,15 @@ def fit_data(data, ax):
     gpr.init(xs_for_gp, ys_for_gp)
     xs_fit = np.linspace(fig1b_left, fig1b_right, 500)
     (ys_fit, ys_var, log_lik) = gpr.fit(xs_fit)
-    ax.plot(xs_fit, ys_fit+y_mean, 'k--')
+    ax.plot(xs_fit, ys_fit+y_mean, 'k--', lw=3.0)
     #ys_err = 2.0 * np.sqrt(ys_var)
     #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
 
     # Active longitude vs non active longitude
-    ax.plot([-4.46, -4.46], [-3.7, -1.2], 'k-.')
-    ax.plot([-4.97, -4.97], [-3.7, -1.2], 'k-.')
-    
+    ax.plot([-4.46, -4.46], [-3.7, -1.2], '-.', lw=3.0, color='orange')
+    ax.plot([-4.97, -4.97], [-3.7, -1.2], '-.', lw=3.0, color='teal')
+    ax.text(-4.48, -3.5, 'obs', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs)
+    ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs)
     
     ax.add_patch(patches.FancyArrowPatch((max(r_hk_left, fig1b_left), -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
@@ -524,14 +525,14 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
             print star
             print data_star_arr[:,0]
             print data_star_arr[:,1]
-        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+        ax11.plot(data_star_arr[:,0], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=2.0)
         #inds = np.where(data_star_arr[:,11])[0] # is_ms
         if is_ms and not ax2 is None:
             p = data_star_arr[:,10].astype(float)
             c = data_star_arr[:,11].astype(float)
-            ax2.plot(np.log10(p), np.log10(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+            ax2.plot(np.log10(p), np.log10(c), linestyle=':', color=(r0, g0, b0, alpha0), lw=2.0)
         if plot_ro and not ax12 is None:
-            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=1.5)
+            ax12.plot(data_star_arr[:,5], data_star_arr[:,1], linestyle=':', color=(r0, g0, b0, alpha0), lw=2.0)
         for [r_hk, y, err1, err2, r, g, b, alpha, ro, sym, p_rot, p_cyc, delta_i, cyc_err, size, p_rot_err, label] in data_star:
             err1 *= 2.0
             err2 *= 2.0
@@ -927,7 +928,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                         numpoints = 1,
                         scatterpoints=1,
                         loc='upper right', ncol=1,
-                        fontsize=legend_fs, labelspacing=1)
+                        fontsize=legend_fs, labelspacing=0.7)
             for star in data.keys():
                 if data_for_fit.has_key(star):
                     print "Duplicate star:", star 
@@ -974,7 +975,7 @@ ax1b.set_xlim(fig1b_left, fig1b_right)
 ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
 ax1b.tick_params(axis='x', labelsize=axis_unit_fs)
 ax1b.tick_params(axis='y', labelsize=axis_unit_fs)
-fig1b.savefig("activity_diagram_cmp2.png")
+fig1b.savefig("activity_diagram_cmp2.jpg")
 plt.close(fig1b)
 
 fig2.savefig("activity_diagram_2.pdf")
