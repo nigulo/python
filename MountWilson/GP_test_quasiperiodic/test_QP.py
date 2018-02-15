@@ -35,7 +35,7 @@ group_no = 0
 if len(sys.argv) > 1:
     group_no = int(sys.argv[1])
 
-num_experiments = 40
+num_experiments = 1
 num_iters = 100
 num_chains = 4
 n_jobs = 4
@@ -213,8 +213,9 @@ for experiment_index in np.arange(0, num_experiments):
     ax4.plot([freq_gp, freq_gp], [min(freq_freqs(freqs)), freq_freqs(freqs)[freq_gp_ind]], 'k--')
 
     gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var_gp, length_scale=length_scale_gp, freq=freq_gp, noise_var=noise_var,rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_gp, c=0.0)
+    gpr_gp.init(t, y-m);
     t_test = np.linspace(min(t), max(t), 500)
-    (f_mean, var_pred, _) = gpr_gp.fit(t, y-m, t_test)
+    (f_mean, var_pred, _) = gpr_gp.fit(t_test)
     f_mean += m
 
     ax5.plot(t, y, 'b+')

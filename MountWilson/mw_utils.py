@@ -394,3 +394,33 @@ def load_time_ranges():
             star = 'Sun'
         time_ranges[star] = time_range
     return time_ranges
+    
+def inducing_points_to_front(t, y):
+    seasons = get_seasons(zip(t, y), 1.0, True)
+    t_out = np.zeros(len(t))
+    y_out = np.zeros(len(y))
+    i1 = 0
+    i2 = len(seasons)
+    for season in seasons:
+        season_mid = (season[0,0] + season[-1,0])/2
+        min_diff = abs(season[0,0] - season_mid)
+        min_index = 0
+        j = 0
+        for [t, y] in season:
+            if abs(t - season_mid) < min_diff:
+                min_diff = abs(t - season_mid)
+                min_index = j
+            j += 1
+        j = 0
+        for [t, y] in season:
+            if j == min_index:
+                t_out[i1] = t
+                y_out[i1] = y
+                i1 += 1
+            else:
+                t_out[i2] = t
+                y_out[i2] = y
+                i2 += 1
+            j += 1
+    assert(i1 == len(seasons))
+    return t_out, y_out

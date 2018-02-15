@@ -372,7 +372,8 @@ ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_l
 
 fig1b, ax1b = plt.subplots(nrows=1, ncols=1, sharex=False)
 fig1b.set_size_inches(8, 6)
-ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+#ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+ax1b.set_xlabel(r'Activity index', fontsize=axis_label_fs)
 
 
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
@@ -972,7 +973,8 @@ plt.close(fig1)
 
 ax1b.set_ylim(-3.8, -1.2)
 ax1b.set_xlim(fig1b_left, fig1b_right)
-ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+#ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+ax1b.set_ylabel(r'Rotation to cycle ratio', fontsize=axis_label_fs)
 ax1b.tick_params(axis='x', labelsize=axis_unit_fs)
 ax1b.tick_params(axis='y', labelsize=axis_unit_fs)
 fig1b.savefig("activity_diagram_cmp2.jpg")
