@@ -21,7 +21,6 @@ from scipy.stats import norm
 import matplotlib.patches as patches
 from scipy import stats
 
-
 include_non_ms = False#True
 fit_with_baliunas = False
 
@@ -217,7 +216,7 @@ for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
     g = 0.5
     b = 0.5
     print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2017"]]
+    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2018"]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
     p_rot /= 365.25
@@ -491,19 +490,19 @@ def fit_data(data, ax):
     # Active longitude vs non active longitude
     ax.plot([-4.46, -4.46], [-3.7, -1.2], '-.', lw=3.0, color='orange')
     ax.plot([-4.97, -4.97], [-3.7, -1.2], '-.', lw=3.0, color='teal')
-    ax.text(-4.48, -3.5, 'obs', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs)
-    ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs)
+    ax.text(-4.48, -3.5, 'obs', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "orange")
+    ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "teal")
     
-    ax.add_patch(patches.FancyArrowPatch((max(r_hk_left, fig1b_left), -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20))
+    ax.add_patch(patches.FancyArrowPatch((fig1b_left, -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20, color="r", linewidth=2))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20))
-    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20))
+    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20, color="b", linewidth=2))
     #ax.annotate(s='Arrow', xy=(r_hk_middle, -3.5), xytext=(max(r_hk_left, -5.1), -3.5), arrowprops=dict(arrowstyle='<->'))
     #ax.arrow(max(r_hk_left, -5.1), -3.5, r_hk_middle-max(r_hk_left, -5.1), 0, head_width=0.05, head_length=0.1, fc='k', ec='k')
-    ax.text((max(r_hk_left, fig1b_left) + r_hk_middle)/2, -3.67, 'I', size=branch_label_fs, ha='center', va='center')
+    ax.text((fig1b_left + r_hk_middle)/2, -3.67, 'I', size=branch_label_fs, ha='center', va='center', color = "r")
     #ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
     #ax.text((r_hk_right + fig1b_right)/2, -3.67, 'T', size=branch_label_fs, ha='center', va='center')
-    ax.text((r_hk_middle+ fig1b_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
+    ax.text((r_hk_middle+ fig1b_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center', color = "b")
 
 
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
@@ -977,7 +976,7 @@ ax1b.set_xlim(fig1b_left, fig1b_right)
 ax1b.set_ylabel(r'Rotation to cycle ratio', fontsize=axis_label_fs)
 ax1b.tick_params(axis='x', labelsize=axis_unit_fs)
 ax1b.tick_params(axis='y', labelsize=axis_unit_fs)
-fig1b.savefig("activity_diagram_cmp2.jpg")
+fig1b.savefig("activity_diagram_cmp2.pdf")
 plt.close(fig1b)
 
 fig2.savefig("activity_diagram_2.pdf")
