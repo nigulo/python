@@ -397,10 +397,13 @@ def load_time_ranges():
     
 def inducing_points_to_front(t, y):
     seasons = get_seasons(zip(t, y), 1.0, True)
+    noise_var = get_seasonal_noise_var(t, y, per_point = False)
     t_out = np.zeros(len(t))
     y_out = np.zeros(len(y))
+    noise_out = np.zeros(len(t))
     i1 = 0
     i2 = len(seasons)
+    season_index = 0
     for season in seasons:
         season_mid = (season[0,0] + season[-1,0])/2
         min_diff = abs(season[0,0] - season_mid)
@@ -416,11 +419,30 @@ def inducing_points_to_front(t, y):
             if j == min_index:
                 t_out[i1] = t
                 y_out[i1] = y
+                noise_out[i1] = noise_var[season_index]
                 i1 += 1
             else:
                 t_out[i2] = t
                 y_out[i2] = y
+                noise_out[i2] = noise_var[season_index]
                 i2 += 1
             j += 1
+        season_index += 1
     assert(i1 == len(seasons))
-    return t_out, y_out
+    return t_out, y_out, noise_out
+
+def downsample(t, y, noise, min_time_diff=1.0/365.25):
+    t_out = list()
+    y_out = list()
+    noise_out = list()
+    for i in np.arange(0, len(t)):
+        found = False
+        for t_out_i in t_out:
+            if abs(t[i] - t_out_i) < min_time_diff:
+                found = True
+                break
+        if not found:
+            t_out.append(t[i])
+            y_out.append(y[i])
+            noise_out.append(noise[i])
+    return np.asarray(t_out), np.asarray(y_out), np.asarray(noise_out)

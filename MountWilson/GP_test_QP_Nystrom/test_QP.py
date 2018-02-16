@@ -27,7 +27,7 @@ from scipy import stats
 from scipy.misc import logsumexp
 
 offset = 1979.3452
-down_sample_factor = 8
+down_sample_factor = 1
 
 model = pickle.load(open('model_test.pkl', 'rb'))
 
@@ -87,11 +87,12 @@ def select_dataset():
 for experiment_index in np.arange(0, num_experiments):
 
     duration = 0
-    while duration < 30:
+    length = 0
+    while duration < 30 or length < 100:
         t = select_dataset()
         min_t = min(t)
         duration = max(t) - min_t
-
+        length = len(t)
         
     n = len(t)
     
@@ -171,8 +172,10 @@ for experiment_index in np.arange(0, num_experiments):
     #op = model.optimizing(data=dict(x=t,N=n,y=y,noise_var=noise_var, var_y=np.var(y), harmonicity=1.0))
     #freq_gp_opt = op['freq'];
     
-    t, y = mw_utils.inducing_points_to_front(t, y)
-    print t
+    #t, y, noise_var_prop = mw_utils.inducing_points_to_front(t, y)
+    t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop, 15.0/365.25)
+    down_sample_factor = float(n)/len(t)
+    n = len(t)
     initial_param_values = []
     for i in np.arange(0, num_chains):                    
         initial_freq = 0.5*float(i+0.5)/num_chains#np.random.uniform(0, 0.5)
@@ -217,7 +220,7 @@ for experiment_index in np.arange(0, num_experiments):
     ax4.plot(freqs, freq_freqs(freqs), freqs1, freq_freqs(freqs1), 'k--')
     ax4.plot([freq_gp, freq_gp], [min(freq_freqs(freqs)), freq_freqs(freqs)[freq_gp_ind]], 'k--')
 
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var_gp, length_scale=length_scale_gp, freq=freq_gp, noise_var=noise_var,rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_gp, c=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var_gp, length_scale=length_scale_gp, freq=freq_gp, noise_var=noise_var_prop,rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_gp, c=0.0)
     gpr_gp.init(t, y-m)
     t_test = np.linspace(min(t), max(t), 500)
     (f_mean, var_pred, _) = gpr_gp.fit(t_test)
@@ -231,7 +234,7 @@ for experiment_index in np.arange(0, num_experiments):
     index = group_no * num_experiments + experiment_index
     with FileLock("GPRLock"):
         with open("test/results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, f, f_opt_ls, f_opt_bglst, freq_gp, freq_se, length_scale, length_scale_gp, sig_var, sig_var_gp, trend_var, trend_var_gp, duration))  
+            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, f, f_opt_ls, f_opt_bglst, freq_gp, freq_se, length_scale, length_scale_gp, sig_var, sig_var_gp, trend_var, trend_var_gp, duration, down_sample_factor))  
             #output.write("%s %s %s %s %s %s %s %s %s %s\n" % (index, f, f_opt_ls, f_opt_bglst, freq_gp, np.std(freq1_samples), length_scale, sig_var, sig_var_gp, np.std(sig_var_samples)))  
 
     with open("test/detailed_results_" + str(index) + ".txt", "w") as output:
