@@ -70,6 +70,7 @@ for coh_len in coh_lens:
     #indices = np.arange(0, len(f))
     indices = np.where(l_orig < np.ones(len(f_orig))/f_orig*coh_len)
     if len(indices[0]) > 0:
+        print len(indices[0])
         #indices = np.intersect1d(indices1, indices2)    
         
         f = f_orig[indices]
@@ -80,6 +81,7 @@ for coh_len in coh_lens:
         l_gp = l_gp_orig[indices]
         sig_var = sig_var_orig[indices]
         #print np.shape(np.where(np.abs(f-f_gp) < np.abs(f-f_ls))), len(f)
+        #print np.mean((l_gp - l)/l)
     
         (a, b) = mw_utils.estimate_with_se(np.column_stack((f,f_bglst,f_gp)), lambda x: sum(abs(x[:,0]-x[:,1])/x[:,0])/sum(abs(x[:,0]-x[:,2])/x[:,0]))
         quality1[i] = a#sum(abs(f-f_ls)/f)/sum(abs(f-f_gp)/f)
@@ -126,10 +128,18 @@ ax1.plot(coh_lens, quality1, 'k-')
 ax1.fill_between(coh_lens, quality1 + std1, quality1 - std1, alpha=0.1, facecolor='gray', interpolate=True)
 ax2.plot(coh_lens, quality2, 'k-')
 ax2.fill_between(coh_lens, quality2 + std2, quality2 - std2, alpha=0.1, facecolor='gray', interpolate=True)
-ax3.plot(coh_lens, quality31, 'b--', alpha=0.9)
-ax3.plot(coh_lens, quality32, 'r-', alpha=0.9)
+handles1 = ax3.plot(coh_lens, quality31, 'b--', alpha=0.9)
+handles2 = ax3.plot(coh_lens, quality32, 'r-', alpha=0.9)
 ax3.fill_between(coh_lens, quality31 + std31, quality31 - std31, alpha=0.1, facecolor='lightblue', interpolate=True)
 ax3.fill_between(coh_lens, quality32 + std32, quality32 - std32, alpha=0.1, facecolor='lightsalmon', interpolate=True)
+
+ax3.legend(handles1 + handles2, ["Harmonic", "Quasiperiodic GP"],
+            numpoints = 1,
+            scatterpoints=1,
+            bbox_to_anchor=(0., 0.8, 1., .1),
+            #loc='upper right', 
+            ncol=1,
+            fontsize=10, labelspacing=0.7)
 
 ax3.set_ylabel(r'$\overline{\Delta}$', fontsize=axis_label_fs)#,fontsize=20)
 ax3.set_xlabel(r'$\ell/P_{\rm true}$', fontsize=axis_label_fs)#,fontsize=20)
