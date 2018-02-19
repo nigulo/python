@@ -35,7 +35,7 @@ group_no = 0
 if len(sys.argv) > 1:
     group_no = int(sys.argv[1])
 
-num_experiments = 1
+num_experiments = 40
 num_iters = 100
 num_chains = 4
 n_jobs = 4
