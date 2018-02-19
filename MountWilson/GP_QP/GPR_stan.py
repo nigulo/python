@@ -231,7 +231,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "trend_var", trend_var
     print "m", m
     
-    gpr_gp = GPR_QP2.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t, y-m)
     (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
