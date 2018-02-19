@@ -190,14 +190,8 @@ for downsample_iter in np.arange(0, downsample_iters):
     length_scale_samples = results['length_scale'];
     (length_scale, length_scale_se) = mw_utils.mean_with_se(length_scale_samples)
 
-    length_scale2_samples = results['length_scale2'];
-    (length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
-
     sig_var_samples = results['sig_var']
     sig_var = np.mean(sig_var_samples)
-
-    sig_var2_samples = results['sig_var2']
-    sig_var2 = np.mean(sig_var2_samples)
 
     m_samples = results['m'];
     m = np.mean(m_samples)
