@@ -84,5 +84,5 @@ class GPR_QP:
         #det_covar = la.det(covar)
         #print det_covar
         #loglik = -0.5 * np.dot((y_test-f_mean).T, np.dot(inv_covar, y_test-f_mean)) - 0.5 * np.log(det_covar) - 0.5 * n_test * np.log(2.0 * np.pi)
-        print loglik
+        #print loglik
         return (f_mean, var, loglik)

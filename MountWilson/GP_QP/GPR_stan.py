@@ -128,9 +128,12 @@ for downsample_iter in np.arange(0, downsample_iters):
 
     t /= 365.25
     t += offset
+    
+    t_non_ds = np.array(t)
+    y_non_ds = np.array(y)
 
     seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
-    noise_var_prop = mw_utils.get_seasonal_noise_var(t, y)
+    noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y)
     seasonal_means_var =np.var(mw_utils.get_seasonal_means(t, y)[:,1])
 
     
@@ -145,7 +148,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     n = len(t)
     t -= np.mean(t)
 
-    t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop, 15.0/365.25)
+    t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop_non_ds, 15.0/365.25)
     n = len(t)
 
     var = np.var(y)
@@ -202,8 +205,6 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################    
     # Find optimum freq 1
 
-    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
-    fig.set_size_inches(18, 12)
 
     freq_samples = results['freq'];
     
@@ -218,9 +219,6 @@ for downsample_iter in np.arange(0, downsample_iters):
     
     inds = np.searchsorted(freqs, freq_samples_)
     freqs_ = freqs[inds]
-
-    ax1.plot(freqs, freq_freqs(freqs), "b-", freqs_, freq_freqs(freqs_), 'k--')
-
 
     ###########################################################################    
 
@@ -240,6 +238,16 @@ for downsample_iter in np.arange(0, downsample_iters):
     fvu = np.sum((f_t + m - y)**2) / n / var
     print "FVU", fvu
     print "loglik", loglik #(loglik + 0.5 * n * np.log(2.0 * np.pi))
+    
+    # Calculate the resiudes for the original data    
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0)
+    t_test = np.linspace(min(t), max(t), 500)
+    gpr_gp.init(t_non_ds, y_non_ds-m)
+    (f_non_ds, _, _) = gpr_gp.fit(t_non_ds)
+    np.savetxt("residues/" + star + ".dat", np.column_stack((t_non_ds, y_non_ds - f_non_ds - m)), fmt='%f')
+    #plt.plot(t_non_ds, y_non_ds - f_non_ds - m, 'b+')
+    #plt.savefig("residues/" + star + ".png")
+    #plt.close()
     
     ###########################################################################
     #Squared-exponential GP for model comparison
@@ -294,16 +302,26 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "loglik_null", loglik #(loglik + 0.5 * n * np.log(2.0 * np.pi))
 
     ###########################################################################
+    # Plot results
+
+    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+    fig.set_size_inches(18, 12)
+    ax1.plot(freqs, freq_freqs(freqs), "b-", freqs_, freq_freqs(freqs_), 'k--')
+
     ax2.plot(t, y, 'b+')
     #ax2.plot(t, y_wo_rot, 'r+')
     ax2.plot(t_test, f_mean, 'k-')
     ax2.fill_between(t_test, f_mean + 2.0 * np.sqrt(pred_var), f_mean - 2.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightgray', interpolate=True)
     ax2.plot(t_test_null, f_mean_null, 'g-')
 
+    period = 1.0/freq
+    period_samples = np.ones(len(freq_samples_)) / freq_samples_;
+    period_se = freq_se/freq/freq
+
     ###########################################################################
     # LOO-CV
 
-    seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
+    seasons = mw_utils.get_seasons(zip(t, y), max(period, 1.0), True)
 
     l_loo = 0.0
     l_loo_null = 0.0
@@ -340,14 +358,14 @@ for downsample_iter in np.arange(0, downsample_iters):
         gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
         gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
-        print seasonal_noise
-        print dat_test
-        print m
-        print m_null
+        #print seasonal_noise
+        #print dat_test
+        #print m
+        #print m_null
         (_, _, loglik_test) = gpr_gp_cv.cv(dat_test[:,0], dat_test[:,1]-m, np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0]))
         l_loo += loglik_test
         gpr_gp_cv_null.init(dat_train[:,0], dat_train[:,1]-m_null)
-        (_, _, loglik_test_null) = gpr_gp_null.cv(dat_test[:,0], dat_test[:,1]-m_null, np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0]))
+        (_, _, loglik_test_null) = gpr_gp_cv_null.cv(dat_test[:,0], dat_test[:,1]-m_null, np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0]))
         l_loo_null += loglik_test_null
         season_index += 1
     print "l_loo, l_loo_null", l_loo, l_loo_null
@@ -360,9 +378,6 @@ for downsample_iter in np.arange(0, downsample_iters):
 
     ###########################################################################
 
-    period = 1.0/freq
-    period_samples = np.ones(len(freq_samples_)) / freq_samples_;
-    period_se = freq_se/freq/freq
     with FileLock("GPRLock"):
         with open("results/"+peak_no_str+"results.txt", "a") as output:
             #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
