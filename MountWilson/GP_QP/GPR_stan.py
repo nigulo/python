@@ -321,7 +321,8 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    seasons = mw_utils.get_seasons(zip(t, y), max(period, 1.0), True)
+    #seasons = mw_utils.get_seasons(zip(t, y), max(min(duration/2.0, period), 1.0), True)
+    seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
 
     l_loo = 0.0
     l_loo_null = 0.0

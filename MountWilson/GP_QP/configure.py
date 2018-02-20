@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import os.path
 
-num_iters = 100
+num_iters = 400
 num_chains = 16
 down_sample_factor = 1
 queue = "parallel"
