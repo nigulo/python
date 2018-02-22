@@ -23,6 +23,7 @@ offset = 1979.3452
 down_sample_factor = 8
 
 plot_both_metrics = False
+num_bs = 1000
 
 def calc_cov(t, f, sig_var, trend_var, c):
     k = np.zeros((len(t), len(t)))
@@ -119,14 +120,16 @@ for real_sampling in [False, True]:
         ax_stats_2.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
         ax_stats_2.set_xlim([min(trend_var_coefs), max(trend_var_coefs)])
     else:
-        fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
-        fig_stats.set_size_inches(6, 7)
+        fig_stats, ax_stats_1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
+        fig_stats.set_size_inches(6, 4)
         ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-        ax_stats_2.set_ylabel(r'$90\%$ conf. int.', fontsize=axis_label_fs)#,fontsize=20)
-        ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-        ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
+        #ax_stats_2.set_ylabel(r'$90\%$ conf. int.', fontsize=axis_label_fs)#,fontsize=20)
+        #ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+        #ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
         ax_stats_1.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
-        ax_stats_2.set_xlim([min(trend_var_coefs), max(trend_var_coefs)])
+        ax_stats_1.set_xlim([min(trend_var_coefs), max(trend_var_coefs)])
+    
+    fig_stats.tight_layout()    
     
     num_exp = len(trend_var_coefs)
     outperforms_bglst = np.zeros(num_exp)
@@ -148,6 +151,10 @@ for real_sampling in [False, True]:
     ls_t_err_low_perc = np.zeros(num_exp)
     ls_t_err_mean_perc = np.zeros(num_exp)
     ls_t_err_high_perc = np.zeros(num_exp)
+    
+    bglst_err_means_bs = np.zeros((num_exp, num_bs))
+    ls_err_means_bs = np.zeros((num_exp, num_bs))
+    ls_t_err_means_bs = np.zeros((num_exp, num_bs))
     
     exp_no = 0
     for trend_var_coef in trend_var_coefs:
@@ -272,11 +279,6 @@ for real_sampling in [False, True]:
         bglst_err_mean_perc[exp_no] = np.percentile(bglst_errs, 50)
         bglst_err_high_perc[exp_no] = np.percentile(bglst_errs, 95)
         
-        #if exp_no == 0:
-        #    plt.hist(bglst_errs, bins='auto')
-        #    plt.savefig("comp/hist"+str(setup_no+1)+".png")
-        #    plt.close()
-
         ls_err_low_perc[exp_no] = np.percentile(ls_errs, 5)
         ls_err_mean_perc[exp_no] = np.percentile(ls_errs, 50)
         ls_err_high_perc[exp_no] = np.percentile(ls_errs, 95)
@@ -284,6 +286,15 @@ for real_sampling in [False, True]:
         ls_t_err_low_perc[exp_no] = np.percentile(ls_t_errs, 5)
         ls_t_err_mean_perc[exp_no] = np.percentile(ls_t_errs, 50)
         ls_t_err_high_perc[exp_no] = np.percentile(ls_t_errs, 95)
+
+
+        for bs_index in np.arange(0, num_bs):
+            bglst_errs_bs = np.random.choice(bglst_errs, size=len(bglst_errs))
+            ls_errs_bs = np.random.choice(ls_errs, size=len(ls_errs))
+            ls_t_errs_bs = np.random.choice(ls_t_errs, size=len(ls_t_errs))
+            bglst_err_means_bs[exp_no, bs_index] = np.mean(bglst_errs_bs)
+            ls_err_means_bs[exp_no, bs_index] = np.mean(ls_errs_bs)
+            ls_t_err_means_bs[exp_no, bs_index] = np.mean(ls_t_errs_bs)
     
         exp_no += 1
     
@@ -309,25 +320,31 @@ for real_sampling in [False, True]:
         line1, = ax_stats_1.plot(trend_var_coefs, bglst_err_means, 'r-', label = "BGLST")
         line2, = ax_stats_1.plot(trend_var_coefs, ls_t_err_means, 'b--', label = "GLS-T")
         line3, = ax_stats_1.plot(trend_var_coefs, ls_err_means, 'g-.', label = "GLS")
+
+        ax_stats_1.fill_between(trend_var_coefs, np.percentile(bglst_err_means_bs, 2.5, axis=1), np.percentile(bglst_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightsalmon', interpolate=True)
+        ax_stats_1.fill_between(trend_var_coefs, np.percentile(ls_t_err_means_bs, 2.5, axis=1), np.percentile(ls_t_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightblue', interpolate=True)
+        ax_stats_1.fill_between(trend_var_coefs, np.percentile(ls_err_means_bs, 2.5, axis=1), np.percentile(ls_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightgreen', interpolate=True)
         
         #ax_stats_2.plot(trend_var_coefs, bglst_err_stds, 'r-')
         #ax_stats_2.plot(trend_var_coefs, ls_t_err_stds, 'b--')
         #ax_stats_2.plot(trend_var_coefs, ls_err_stds, 'g-.')
 
-        ax_stats_2.plot(trend_var_coefs, bglst_err_high_perc - bglst_err_low_perc, 'r-')
-        ax_stats_2.plot(trend_var_coefs, ls_t_err_high_perc - ls_t_err_low_perc, 'b--')
-        ax_stats_2.plot(trend_var_coefs, ls_err_high_perc - ls_err_low_perc, 'g-.')
+        #ax_stats_2.plot(trend_var_coefs, bglst_err_high_perc - bglst_err_low_perc, 'r-')
+        #ax_stats_2.plot(trend_var_coefs, ls_t_err_high_perc - ls_t_err_low_perc, 'b--')
+        #ax_stats_2.plot(trend_var_coefs, ls_err_high_perc - ls_err_low_perc, 'g-.')
         
-        #ax_stats.fill_between(trend_var_coefs, bglst_err_low_perc, bglst_err_high_perc, alpha=0.1, facecolor='lightsalmon', interpolate=True)
-        #ax_stats.fill_between(trend_var_coefs, ls_t_err_low_perc, ls_t_err_high_perc, alpha=0.1, facecolor='lightblue', interpolate=True)
-        #ax_stats.fill_between(trend_var_coefs, ls_err_low_perc, ls_err_high_perc, alpha=0.1, facecolor='lightgreen', interpolate=True)
         
-        ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
+        #ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
         
+        ax_stats_1.legend(handles=[line1, line2, line3],
+                numpoints = 1,
+                scatterpoints=1,
+                loc='upper left', ncol=1,
+                fontsize=11, labelspacing=0.7)
     
     #ax_stats_1.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.5, 0.5], 'k:')
     #ax_stats_2.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.0, 0.0], 'k:')
-    fig_stats.savefig("comp/trend_stats_" + str(setup_no+1) + ".eps")
+    fig_stats.savefig("comp/trend_stats_" + str(setup_no+1) + ".pdf")
     plt.close()
 
     setup_no += 1        
