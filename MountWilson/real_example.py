@@ -43,8 +43,8 @@ def calc_BGLS(t, y, w, freq):
 offset = 1979.3452
 
     
-star = "37394"
-#star = "3651"
+#star = "37394"
+star = "3651"
 dat = np.loadtxt("cleaned/"+ star +".cl.dat", usecols=(0,1), skiprows=1)
 
 y_orig = dat[:,1]
@@ -53,9 +53,9 @@ t /= 365.25
 t += offset
 #t -= np.mean(t)
 
-indices = np.where(t < 1994)[0]
-y_orig = y_orig[indices]
-t = t[indices]
+#indices = np.where(t < 1994)[0]
+#y_orig = y_orig[indices]
+#t = t[indices]
 
 #indices = np.where(t >= 1980)[0]
 #y_orig = y_orig[indices]
@@ -140,7 +140,16 @@ for const_noise_var in [True, False]:
     ax2.plot(freqs, norm_probs, 'r-')
     ax2.plot([best_freq, best_freq], [0, norm_probs[max_prob_index]], 'r-')
     
-    bglst_m = BGLST.BGLST(t, y_model_1, np.ones(n)/np.var(y_model_1),
+
+    residues = y - y_model_1
+    noise_var_m = mw_utils.get_seasonal_noise_var(t, residues)
+    
+    if const_noise_var:
+        w_m = np.ones(n)/np.var(residues)
+    else:
+        w_m = np.ones(n)/noise_var_m
+    
+    bglst_m = BGLST.BGLST(t, y_model_1, w_m,
                         w_A = 2.0/np.var(y_model_1), A_hat = 0.0,
                         w_B = 2.0/np.var(y_model_1), B_hat = 0.0,
                         w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
@@ -177,8 +186,8 @@ for const_noise_var in [True, False]:
     print bic - bic_null
     
     fig_model, (model_plot) = plt.subplots(1, 1, figsize=(20, 8))
-    model_plot.plot(freqs_m, log_probs_m)
-    fig_model.savefig(star + '_model.png')
+    model_plot.plot(freqs_m, log_probs_m, 'b-')
+    fig_model.savefig(star + '_model_bglst_' + str(const_noise_var) + '.png')
     
     ###############################################################################
     # LS
@@ -202,13 +211,38 @@ for const_noise_var in [True, False]:
     best_freq = freqs[max_power_ind]
     y_model = ls.model(t_model, best_freq)
     line3, = ax1.plot(t_model, y_model + mean_y, 'g-.', label = "GLS")
-    print "LS: ", best_freq, 1.0/best_freq, max_power
     
     min_power = min(power)
     norm_powers = (power - min_power) / (max_power - min_power)
     
     ax2.plot(freqs, norm_powers, 'g-.')
     ax2.plot([best_freq, best_freq], [0, norm_powers[max_power_ind]], 'g-.')
+    
+    y_model_1 = ls.model(t, best_freq)    
+    residues = y - y_model_1
+    noise_var_m = mw_utils.get_seasonal_noise_var(t, residues)
+    if const_noise_var:
+        sigma_m = np.sqrt(np.var(residues))
+    else:
+        sigma_m = np.sqrt(noise_var_m)
+
+    best_freqs_bs = np.zeros(1000)
+    for i in np.arange(0, 1000):
+        indices = np.random.choice(len(residues), len(residues))
+        residues_bs = residues[indices]
+        if const_noise_var:
+            sigma_bs = sigma_m
+        else:
+            sigma_bs = sigma_m[indices]
+        y_bs = y_model_1 + residues_bs * sigma_bs / sigma_m
+
+        ls_bs = LombScargle(t, y_bs, sigma_bs)
+        
+        power_bs = ls_bs.power(freqs, normalization='psd')#/np.var(y)
+        max_power_ind_bs = np.argmax(power_bs)
+        best_freqs_bs[i] = freqs[max_power_ind_bs]
+    
+    print "LS: ", best_freq, 1.0/best_freq, max_power, np.mean(best_freqs_bs), np.std(best_freqs_bs), (np.std(best_freqs_bs))/best_freq/best_freq
     
     ###############################################################################
     # LS detrended
@@ -226,7 +260,6 @@ for const_noise_var in [True, False]:
     y_model = ls.model(t_model, best_freq)
     line2, = ax1.plot(t_model, y_model+t_model * slope + intercept + mean_y, 'b--', label = 'GLS-T')
     ax1.plot(t_model, t_model * slope + intercept + mean_y, 'b--')
-    print "LS detrended: ", best_freq, 1.0/best_freq, max_power
     
     min_power = min(power)
     norm_powers = (power - min_power) / (max_power - min_power)
@@ -242,6 +275,34 @@ for const_noise_var in [True, False]:
     #ax2.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
     ax2.set_xlim([0.001, 0.5])
     
+    y_model_1 = ls.model(t, best_freq)    
+    residues = y - y_model_1
+    noise_var_m = mw_utils.get_seasonal_noise_var(t, residues)
+    if const_noise_var:
+        sigma_m = np.sqrt(np.var(residues))
+    else:
+        sigma_m = np.sqrt(noise_var_m)
+
+    best_freqs_bs = np.zeros(1000)
+    for i in np.arange(0, 1000):
+        indices = np.random.choice(len(residues), len(residues))
+        residues_bs = residues[indices]
+        if const_noise_var:
+            sigma_bs = sigma_m
+        else:
+            sigma_bs = sigma_m[indices]
+        y_bs = y_model_1 + residues_bs * sigma_bs / sigma_m
+
+        ls_bs = LombScargle(t, y_bs, sigma_bs)
+        
+        power_bs = ls_bs.power(freqs, normalization='psd')#/np.var(y)
+        max_power_ind_bs = np.argmax(power_bs)
+        best_freqs_bs[i] = freqs[max_power_ind_bs]
+    
+    print "LS detrended: ", best_freq, 1.0/best_freq, max_power, np.std(best_freqs_bs), (np.std(best_freqs_bs))/best_freq/best_freq
+    
+    ###########################################################################
+
     y = np.array(y_orig)
 
 ax12.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)

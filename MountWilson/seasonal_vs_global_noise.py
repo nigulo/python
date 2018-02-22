@@ -18,6 +18,8 @@ import mw_utils
 import sys
 import pickle
 
+plot_both_metrics = False
+
 setup_selected = None
 if len(sys.argv) > 1:
     setup_selected = int(sys.argv[1])
@@ -30,6 +32,7 @@ real_dats = []
 
 linestyles = ['-', '--', '-.']
 linecolors = ['r', 'b', 'g']
+errorcolors = ['lightsalmon', 'lightblue', 'lightgreen']
 
 iterative = True
 
@@ -126,21 +129,37 @@ def calc_BGLS(t, y, w, freq):
 
 sns = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0]
 
-fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
-fig_stats.set_size_inches(6, 7)
+if plot_both_metrics:
+    fig_stats, (ax_stats_1, ax_stats_2) = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False)
+    fig_stats.set_size_inches(6, 7)
+    
+    ax_stats_1.set_ylabel(r'$S_3$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_2.set_ylabel(r'$S_4$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
+    ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+    ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
+    
+    ax_stats_2.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_2.set_xlim([np.sqrt(min(sns)), np.sqrt(max(sns))])
+else:
+    fig_stats, ax_stats_1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
+    fig_stats.set_size_inches(6, 4)
+    
+    ax_stats_1.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#,fontsize=20)
+    #ax_stats_2.set_ylabel(r'$90\%$ conf. int.', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
+    #ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+    #ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
+    
+    ax_stats_1.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_1.set_xlim([np.sqrt(min(sns)), np.sqrt(max(sns))])
 
-ax_stats_1.set_ylabel(r'$S_3$', fontsize=axis_label_fs)#,fontsize=20)
-ax_stats_2.set_ylabel(r'$S_4$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
-ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
-
-ax_stats_2.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
-ax_stats_2.set_xlim([np.sqrt(min(sns)), np.sqrt(max(sns))])
+fig_stats.tight_layout()    
 lines1 = [None, None, None]
 lines2 = [None, None, None]
 
 num_exp = len(sns)
 num_rep = 2000
+
+num_bs = 1000
 
 for setup_no in [0, 1, 2]:
     if setup_selected is not None and setup_selected != setup_no:
@@ -163,6 +182,9 @@ for setup_no in [0, 1, 2]:
     bglst_err_stds = np.zeros(num_exp)
     ls_err_means = np.zeros(num_exp)
     ls_err_stds = np.zeros(num_exp)
+    
+    bglst_err_means_bs = np.zeros((num_exp, num_bs))
+    ls_err_means_bs = np.zeros((num_exp, num_bs))
     
     for exp_no in np.arange(0, num_exp):
     
@@ -328,6 +350,12 @@ for setup_no in [0, 1, 2]:
         bglst_err_stds[exp_no] = np.std(bglst_errs)
         ls_err_means[exp_no] = np.mean(ls_errs)
         ls_err_stds[exp_no] = np.std(ls_errs)
+        
+        for bs_index in np.arange(0, num_bs):
+            bglst_errs_bs = np.random.choice(bglst_errs, size=len(bglst_errs))
+            ls_errs_bs = np.random.choice(ls_errs, size=len(ls_errs))
+            bglst_err_means_bs[exp_no, bs_index] = np.mean(bglst_errs_bs)
+            ls_err_means_bs[exp_no, bs_index] = np.mean(ls_errs_bs)
     
         ###########################################################################
         # Plot experiment results
@@ -458,16 +486,32 @@ for setup_no in [0, 1, 2]:
     
     ###############################################################################
     # Plot experiment statistics
-    line1, = ax_stats_1.plot(np.sqrt(sns), outperforms, label = "Exp. no. " + str(setup_no+1), color=linecolors[setup_no], linestyle=linestyles[setup_no])
-    line2, = ax_stats_2.plot(np.sqrt(sns), np.ones(num_exp) - bglst_err_means/ls_err_means, label = "Exp. no. " + str(setup_no+1), color=linecolors[setup_no], linestyle=linestyles[setup_no])
-    
+    if plot_both_metrics:
+        line1, = ax_stats_1.plot(np.sqrt(sns), outperforms, label = "Exp. no. " + str(setup_no+1), color=linecolors[setup_no], linestyle=linestyles[setup_no])
+        line2, = ax_stats_2.plot(np.sqrt(sns), np.ones(num_exp) - bglst_err_means/ls_err_means, label = "Exp. no. " + str(setup_no+1), color=linecolors[setup_no], linestyle=linestyles[setup_no])
+    else:
+        line1, = ax_stats_1.plot(np.sqrt(sns), np.ones(num_exp) - bglst_err_means/ls_err_means, label = "Exp. no. " + str(setup_no+1), color=linecolors[setup_no], linestyle=linestyles[setup_no])
+        stat_bs = np.ones((num_exp, num_bs)) - bglst_err_means_bs/ls_err_means_bs
+        ax_stats_1.fill_between(np.sqrt(sns), np.percentile(stat_bs, 2.5, axis=1), np.percentile(stat_bs, 97.5, axis=1), alpha=0.2, facecolor=errorcolors[setup_no], interpolate=True)
+        
     lines1[setup_no] = line1
-    lines2[setup_no] = line2
+    #lines2[setup_no] = line2
     
-ax_stats_1.legend(handles=lines1, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
-ax_stats_1.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.5, 0.5], 'k:')
-ax_stats_2.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.0, 0.0], 'k:')
-#ax_stats_2.legend(handles=lines2, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=1, mode="expand", borderaxespad=0.)
-fig_stats.savefig("noise_tests/noise_stats.eps")
+    
+if plot_both_metrics:
+    ax_stats_1.legend(handles=lines1, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
+    ax_stats_1.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.5, 0.5], 'k:')
+    ax_stats_2.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.0, 0.0], 'k:')
+    #ax_stats_2.legend(handles=lines2, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=1, mode="expand", borderaxespad=0.)
+else:
+    ax_stats_1.legend(handles=lines1,
+            numpoints = 1,
+            scatterpoints=1,
+            loc='upper left', ncol=1,
+            fontsize=11, labelspacing=0.7)
+#ax_stats_1.legend(handles=lines1, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
+    ax_stats_1.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.0, 0.0], 'k:')
+    
+fig_stats.savefig("noise_tests/noise_stats.pdf")
 plt.close()
 ###############################################################################
