@@ -122,14 +122,15 @@ for real_sampling in [False, True]:
     else:
         fig_stats, ax_stats_1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
         fig_stats.set_size_inches(6, 4)
-        ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
-        #ax_stats_2.set_ylabel(r'$90\%$ conf. int.', fontsize=axis_label_fs)#,fontsize=20)
-        #ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-        #ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
-        ax_stats_1.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
+        if setup_no == 0:
+            ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+        else:
+            ax_stats_1.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
+            ax_stats_1.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
         ax_stats_1.set_xlim([min(trend_var_coefs), max(trend_var_coefs)])
+        ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
     
-    fig_stats.tight_layout()    
+    #fig_stats.tight_layout()
     
     num_exp = len(trend_var_coefs)
     outperforms_bglst = np.zeros(num_exp)
@@ -333,14 +334,15 @@ for real_sampling in [False, True]:
         #ax_stats_2.plot(trend_var_coefs, ls_t_err_high_perc - ls_t_err_low_perc, 'b--')
         #ax_stats_2.plot(trend_var_coefs, ls_err_high_perc - ls_err_low_perc, 'g-.')
         
+        ax_stats_1.set_position([0.12, 0.12, 0.85, 0.75])
+        if setup_no == 0:
+            ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0., fontsize=panel_label_fs)#, columnspacing=10)
         
-        #ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
-        
-        ax_stats_1.legend(handles=[line1, line2, line3],
-                numpoints = 1,
-                scatterpoints=1,
-                loc='upper left', ncol=1,
-                fontsize=11, labelspacing=0.7)
+        #ax_stats_1.legend(handles=[line1, line2, line3],
+        #        numpoints = 1,
+        #        scatterpoints=1,
+        #        loc='upper left', ncol=1,
+        #        fontsize=11, labelspacing=0.7)
     
     #ax_stats_1.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.5, 0.5], 'k:')
     #ax_stats_2.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.0, 0.0], 'k:')

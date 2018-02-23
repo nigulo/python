@@ -145,11 +145,8 @@ else:
     fig_stats.set_size_inches(6, 4)
     
     ax_stats_1.set_ylabel(r'$S_2$', fontsize=axis_label_fs)#,fontsize=20)
-    #ax_stats_2.set_ylabel(r'$90\%$ conf. int.', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
-    #ax_stats_1.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-    #ax_stats_2.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_2.transAxes, fontsize=panel_label_fs)
-    
-    ax_stats_1.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs)#,fontsize=20)
+    ax_stats_1.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)    
+    ax_stats_1.set_xlabel(r'$\sigma_1/\sigma_2$', fontsize=axis_label_fs, labelpad=-5)#,fontsize=20)
     ax_stats_1.set_xlim([np.sqrt(min(sns)), np.sqrt(max(sns))])
 
 fig_stats.tight_layout()    
@@ -504,12 +501,13 @@ if plot_both_metrics:
     ax_stats_2.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.0, 0.0], 'k:')
     #ax_stats_2.legend(handles=lines2, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=1, mode="expand", borderaxespad=0.)
 else:
-    ax_stats_1.legend(handles=lines1,
-            numpoints = 1,
-            scatterpoints=1,
-            loc='upper left', ncol=1,
-            fontsize=11, labelspacing=0.7)
-#ax_stats_1.legend(handles=lines1, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0.)#, columnspacing=10)
+    #ax_stats_1.legend(handles=lines1,
+    #        numpoints = 1,
+    #        scatterpoints=1,
+    #        loc='upper left', ncol=1,
+    #        fontsize=11, labelspacing=0.7)
+    ax_stats_1.set_position([0.13, 0.12, 0.85, 0.75])      
+    ######ax_stats_1.legend(handles=lines1, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0., fontsize=panel_label_fs)#, columnspacing=10)
     ax_stats_1.plot([np.sqrt(min(sns)), np.sqrt(max(sns))], [0.0, 0.0], 'k:')
     
 fig_stats.savefig("noise_tests/noise_stats.pdf")
