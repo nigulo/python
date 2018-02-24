@@ -100,7 +100,7 @@ def select_dataset():
 axis_label_fs = 15
 panel_label_fs = 15
 
-max_count_per_bin = 1
+max_count_per_bin = 100
 max_emp_mean_err = 0.5
 num_bins = 10
 bin_locs = np.linspace(0.0, max_emp_mean_err, num_bins)
@@ -138,30 +138,30 @@ else:
     ls_freqs = np.zeros((num_bins, max_count_per_bin))
     
     while sum(counts) < max_count_per_bin * num_bins:
-        time_range = 30.0
-        n = 20
-        t_orig = np.random.uniform(0, time_range, n)
-        t_orig = np.linspace(0, time_range, n) + np.random.rand(n)*0.2
-        t = t_orig
-        #for i in np.arange(0, 5):
-        #    t = np.concatenate((t, t_orig + np.random.rand(n)*0.2))
-        n = len(t)
-        t = np.sort(t)
-        min_t = min(t)
-        max_t = max(t)
-        duration = max_t - min_t
-                    
-        var = 1.0
-        sig_var = np.random.uniform(0.99, 0.99)
-        noise_var = np.ones(n) * (var - sig_var)
-
-
         bin_index = -1
         while bin_index < 0 or bin_index >= num_bins or counts[bin_index] >= max_count_per_bin:
-            mean = 0.0#np.random.uniform(-5.0, 5.0)
+            time_range = 30.0
+            n = 5
             
-            p = np.random.uniform(duration/float(n))
+            p = np.random.uniform(time_range/float(n))
             f = 1.0/p
+            
+            t_orig = np.random.uniform(0, time_range, n)
+            #t_orig = np.linspace(0, time_range, n) + np.random.rand(n)*0.2
+            t = t_orig
+            for i in np.arange(0, 5):
+                t = np.concatenate((t, t_orig + np.random.rand(n)*time_range/n*0.1))
+            n = len(t)
+            t = np.sort(t)
+            min_t = min(t)
+            max_t = max(t)
+            duration = max_t - min_t
+                        
+            var = 1.0
+            sig_var = np.random.uniform(0.99, 0.99)
+            noise_var = np.ones(n) * (var - sig_var)
+
+            mean = 0.0#np.random.uniform(-5.0, 5.0)
         
             k = calc_cov(t, f, sig_var, 0.0, 0.0) + np.diag(noise_var)
             l = la.cholesky(k)
@@ -215,16 +215,19 @@ else:
         bglst_freqs[bin_index, counts[bin_index]] = f_opt_bglst
         dats.append((t, y, w))
         
-        #plt.plot(t, y, "k+")
-        #t_model = np.linspace(max_t, min_t, 200)
-        #y_model = gls.model(t_model, f)   
-        #plt.plot(t_model, y_model, 'r-')
-        #y_model = gls.model(t_model, f_opt_gls)   
-        #plt.plot(t_model, y_model, 'b--')
-        #y_model = ls.model(t_model, f_opt_ls)   
-        #plt.plot(t_model, y_model+np.mean(y), 'g--')
-        #plt.savefig("offset_tests/temp/" + str(bin_index) + "_" + str(counts[bin_index]) + ".png")
-        #plt.close()
+        fig_tmp, ax_tmp = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
+        fig_tmp.set_size_inches(12, 8)
+        ax_tmp.plot(t, y, "k+")
+        t_model = np.linspace(max_t, min_t, 200)
+        y_model = gls.model(t_model, f)   
+        ax_tmp.plot(t_model, y_model, 'r-')
+        y_model = gls.model(t_model, f_opt_gls)   
+        ax_tmp.plot(t_model, y_model, 'b:')
+        y_model = ls.model(t_model, f_opt_ls)   
+        ax_tmp.plot(t_model, y_model+np.mean(y), 'g:')
+        (tau, mean, cov, y_model, loglik) = bglst.model(f_opt_bglst, t_model)   
+        ax_tmp.plot(t_model, y_model, 'k:')
+        fig_tmp.savefig("offset_tests/temp/" + str(bin_index) + "_" + str(counts[bin_index]) + ".png")
         
         print f, f_opt_ls, f_opt_gls, f_opt_bglst
         
