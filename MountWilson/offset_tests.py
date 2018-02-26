@@ -100,7 +100,7 @@ def select_dataset():
 axis_label_fs = 15
 panel_label_fs = 15
 
-max_count_per_bin = 100
+max_count_per_bin = 10
 max_emp_mean_err = 0.5
 num_bins = 10
 bin_locs = np.linspace(0.0, max_emp_mean_err, num_bins)
@@ -290,9 +290,9 @@ print gls_err_means, ls_err_means
 
 for bin_index in np.arange(0, num_bins):
     for bs_index in np.arange(0, num_bs):
-        bglst_errs_bs = np.random.choice(bglst_errs[bin_index,:], size=np.size(bglst_errs)[1])
-        gls_errs_bs = np.random.choice(gls_errs[bin_index,:], size=np.size(gls_errs)[1])
-        ls_errs_bs = np.random.choice(ls_errs[bin_index,:], size=np.size(ls_errs)[1])
+        bglst_errs_bs = np.random.choice(bglst_errs[bin_index,:], size=np.shape(bglst_errs)[1])
+        gls_errs_bs = np.random.choice(gls_errs[bin_index,:], size=np.shape(gls_errs)[1])
+        ls_errs_bs = np.random.choice(ls_errs[bin_index,:], size=np.shape(ls_errs)[1])
         bglst_err_means_bs[bin_index, bs_index] = np.mean(bglst_errs_bs)
         gls_err_means_bs[bin_index, bs_index] = np.mean(gls_errs_bs)
         ls_err_means_bs[bin_index, bs_index] = np.mean(ls_errs_bs)
