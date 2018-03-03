@@ -23,6 +23,7 @@ offset = 1979.3452
 down_sample_factor = 32
 
 num_bs = 1000
+n_sparse = 5
 
 def calc_cov(t, f, sig_var, trend_var, c):
     k = np.zeros((len(t), len(t)))
@@ -39,14 +40,14 @@ real_dats = []
 axis_label_fs = 15
 panel_label_fs = 15
 
-max_count_per_bin = 1000
-ns = [20, 50, 100, 200]
+max_count_per_bin = 500
+ns = np.array([5, 10, 20, 50, 100, 200])
 num_bins = len(ns)
 
 fig_stats, ax_stats_1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
 fig_stats.set_size_inches(6, 4)
 #ax_stats_1.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-ax_stats_1.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
+ax_stats_1.set_xlabel(r'$n$', fontsize=axis_label_fs)#,fontsize=20)
 #ax_stats_1.set_xlim([0, 1])
 #ax_stats_1.set_ylim([0, 1])
 ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
@@ -71,9 +72,10 @@ else:
     ls_freqs = np.zeros((num_bins, max_count_per_bin))
     
     exp_no = 0
-    for n in ns:
+    for n1 in ns:
         for rep_no in np.arange(0, max_count_per_bin):
             time_range = 30.0
+            n = n_sparse
             
             p = np.random.uniform(time_range/float(n))
             f = 1.0/p
@@ -81,14 +83,17 @@ else:
             t_orig = np.random.uniform(0, time_range, n)
             #t_orig = np.linspace(0, time_range, n) + np.random.rand(n)*0.2
             t = t_orig
+            for i in np.arange(0, n1):
+                t = np.concatenate((t, t_orig + np.random.rand(n)*time_range/n*0.1))
 
+            n = len(t)
             t = np.sort(t)
             min_t = min(t)
             max_t = max(t)
             duration = max_t - min_t
                         
             var = 1.0
-            sig_var = np.random.uniform(0.2, 0.99)
+            sig_var = np.random.uniform(0.99, 0.99)
             noise_var = np.ones(n) * (var - sig_var)
 
             mean = np.random.uniform(-5.0, 5.0)
@@ -170,23 +175,24 @@ for bin_index in np.arange(0, num_bins):
 ###############################################################################
 # Plot experiment statistics
 
-line1, = ax_stats_1.plot(ns, bglst_err_means, 'r-', markerfacecolor='None', label = "BGLST")
-line2, = ax_stats_1.plot(ns, gls_err_means, 'b--', markerfacecolor='None', label = "GLS")
+n_sparse = float(n_sparse)
 
-ax_stats_1.fill_between(ns, np.percentile(bglst_err_means_bs, 2.5, axis=1), np.percentile(bglst_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightsalmon', interpolate=True)
-ax_stats_1.fill_between(ns, np.percentile(gls_err_means_bs, 2.5, axis=1), np.percentile(gls_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightblue', interpolate=True)
+line1, = ax_stats_1.plot(ns*n_sparse, bglst_err_means, 'r-', markerfacecolor='None', label = "BGLST")
+line2, = ax_stats_1.plot(ns*n_sparse, gls_err_means, 'b--', markerfacecolor='None', label = "GLS")
 
-ax_stats_1.set_position([0.12, 0.12, 0.85, 0.75])
-ax_stats_1.legend(handles=[line1, line2], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0., fontsize=panel_label_fs)#, columnspacing=10)
+ax_stats_1.fill_between(ns*n_sparse, np.percentile(bglst_err_means_bs, 2.5, axis=1), np.percentile(bglst_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightsalmon', interpolate=True)
+ax_stats_1.fill_between(ns*n_sparse, np.percentile(gls_err_means_bs, 2.5, axis=1), np.percentile(gls_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightblue', interpolate=True)
 
-#ax_stats_1.legend(handles=[line1, line2, line3],
-#        numpoints = 1,
-#        scatterpoints=1,
-#        loc='upper left', ncol=1,
-#        fontsize=11, labelspacing=0.7)
+#ax_stats_1.set_position([0.12, 0.12, 0.85, 0.75])
+#ax_stats_1.legend(handles=[line1, line2], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0., fontsize=panel_label_fs)#, columnspacing=10)
 
-#ax_stats_1.plot([min(means), max(means)], [0.5, 0.5], 'k:')
-#ax_stats_2.plot([min(means), max(means)], [0.0, 0.0], 'k:')
+ax_stats_1.legend(handles=[line1, line2],
+        numpoints = 1,
+        scatterpoints=1,
+        loc='upper right', ncol=1,
+        fontsize=11, labelspacing=0.7)
+
+ax_stats_1.set_xlim([min(ns*n_sparse), max(ns*n_sparse)])
 fig_stats.savefig("offset_tests/offset_limit_stats.pdf")
 plt.close()
 
