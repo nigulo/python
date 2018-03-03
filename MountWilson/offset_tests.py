@@ -100,7 +100,7 @@ def select_dataset():
 axis_label_fs = 15
 panel_label_fs = 15
 
-max_count_per_bin = 10
+max_count_per_bin = 1000
 max_emp_mean_err = 0.5
 num_bins = 10
 bin_locs = np.linspace(0.0, max_emp_mean_err, num_bins)
@@ -126,10 +126,9 @@ gls_err_means_bs = np.zeros((num_bins, num_bs))
 counts = np.zeros(num_bins, dtype=int)
 
 if os.path.exists('offset_tests/offset_exp.pkl'):
-    (emp_mean_errs, true_freqs, bglst_freqs, gls_freqs, ls_freqs, dats) = pickle.load(open('offset_tests/offset_exp.pkl', 'rb'))
+    (true_freqs, bglst_freqs, gls_freqs, ls_freqs) = pickle.load(open('offset_tests/offset_exp.pkl', 'rb'))
 else:
 
-    dats = []
     true_freqs = np.zeros((num_bins, max_count_per_bin))
     bglst_freqs = np.zeros((num_bins, max_count_per_bin))
     gls_freqs = np.zeros((num_bins, max_count_per_bin))
@@ -184,9 +183,8 @@ else:
         ls = LombScargle(t, y-np.mean(y), np.sqrt(noise_var), fit_mean=False)
         power_ls = ls.power(freqs, normalization='psd')
         
-        ls_local_maxima_inds = mw_utils.find_local_maxima(power_ls)
-        f_opt_ls_ind = np.argmax(power_ls[ls_local_maxima_inds])
-        f_opt_ls = freqs[ls_local_maxima_inds][f_opt_ls_ind]
+        f_opt_ls_ind = np.argmax(power_ls)
+        f_opt_ls = freqs[f_opt_ls_ind]
         ls_freqs[bin_index, counts[bin_index]] = f_opt_ls
 
         min_power_ls = min(power_ls)
@@ -196,9 +194,8 @@ else:
         gls = LombScargle(t, y, np.sqrt(noise_var))
         power_gls = gls.power(freqs, normalization='psd')
         
-        gls_local_maxima_inds = mw_utils.find_local_maxima(power_gls)
-        f_opt_gls_ind = np.argmax(power_gls[gls_local_maxima_inds])
-        f_opt_gls = freqs[gls_local_maxima_inds][f_opt_gls_ind]
+        f_opt_gls_ind = np.argmax(power_gls)
+        f_opt_gls = freqs[f_opt_gls_ind]
         gls_freqs[bin_index, counts[bin_index]] = f_opt_gls
         
         min_power_gls = min(power_gls)
@@ -217,66 +214,62 @@ else:
         
         
         (freqs, probs) = bglst.calc_all(min(freqs), max(freqs), len(freqs))
-        bglst_local_maxima_inds = mw_utils.find_local_maxima(probs)
-        f_opt_bglst_ind = np.argmax(probs[bglst_local_maxima_inds])
-        f_opt_bglst = freqs[bglst_local_maxima_inds][f_opt_bglst_ind]
+        f_opt_bglst_ind = np.argmax(probs)
+        f_opt_bglst = freqs[f_opt_bglst_ind]
         bglst_freqs[bin_index, counts[bin_index]] = f_opt_bglst
         
         min_prob_bglst = min(probs)
         max_prob_bglst = max(probs)
         norm_probs_bglst = (probs - min_prob_bglst) / (max_prob_bglst - min_prob_bglst)
         
-        dats.append((t, y, w))
         
-        fig1, (ax_a, ax_b) = plt.subplots(nrows=2, ncols=1, sharex=False, sharey=False)
-        fig1.set_size_inches(6, 7)
+        if counts[bin_index] % 10 == 0:
+            fig1, (ax_a, ax_b) = plt.subplots(nrows=2, ncols=1, sharex=False, sharey=False)
+            fig1.set_size_inches(6, 7)
+        
+            ax_a.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax_a.transAxes, fontsize=panel_label_fs)
+            ax_b.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax_b.transAxes, fontsize=panel_label_fs)
+
+            ax_a.plot(t, y, "k+")
+            t_model = np.linspace(max_t, min_t, 200)
+            y_model = gls.model(t_model, f)   
+            ax_a.plot(t_model, y_model, 'r-')
+            y_model = gls.model(t_model, f_opt_gls)   
+            ax_a.plot(t_model, y_model, 'b:')
+            y_model = ls.model(t_model, f_opt_ls)   
+            ax_a.plot(t_model, y_model+np.mean(y), 'g:')
+            (tau, mean, cov, y_model, loglik) = bglst.model(f_opt_bglst, t_model)   
+            ax_a.plot(t_model, y_model, 'k:')
+            
+            ax_b.plot(freqs, norm_probs_bglst, 'r-')
+            ax_b.plot([f_opt_bglst, f_opt_bglst], [0, 1], 'r-')
     
-        ax_a.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax_a.transAxes, fontsize=panel_label_fs)
-        ax_b.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax_b.transAxes, fontsize=panel_label_fs)
-        
-        fig_tmp, ax_tmp = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
-        fig_tmp.set_size_inches(12, 8)
-        ax_a.plot(t, y, "k+")
-        t_model = np.linspace(max_t, min_t, 200)
-        y_model = gls.model(t_model, f)   
-        ax_a.plot(t_model, y_model, 'r-')
-        y_model = gls.model(t_model, f_opt_gls)   
-        ax_a.plot(t_model, y_model, 'b:')
-        y_model = ls.model(t_model, f_opt_ls)   
-        ax_a.plot(t_model, y_model+np.mean(y), 'g:')
-        (tau, mean, cov, y_model, loglik) = bglst.model(f_opt_bglst, t_model)   
-        ax_a.plot(t_model, y_model, 'k:')
-        
-        ax_b.plot(freqs, norm_probs_bglst, 'r-')
-        ax_b.plot([f_opt_bglst, f_opt_bglst], [0, 1], 'r-')
-
-        ax_b.plot(freqs, norm_powers_gls, 'b--')
-        ax_b.plot([f_opt_gls, f_opt_gls], [0, 1], 'b--')
-
-        ax_b.plot(freqs, norm_powers_ls, 'g-.')
-        ax_b.plot([f_opt_ls, f_opt_ls], [0, 1], 'g-.')
-        
-        ax_b.plot([f, f], [0, 1], 'k:')
-        
-        ax_a.set_xlabel(r'$t$', fontsize=axis_label_fs)#,fontsize=20)
-        ax_a.set_ylabel(r'y', fontsize=axis_label_fs)#,fontsize=20)
-        ax_a.set_xlim([min(t), max(t)])
-        
-        ax_b.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
-        ax_b.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
-        ax_b.set_xlim([min_freq, max_freq])
-        
-        fig1.savefig("offset_tests/temp/" + str(bin_index) + "_" + str(counts[bin_index]) + ".eps")
+            ax_b.plot(freqs, norm_powers_gls, 'b--')
+            ax_b.plot([f_opt_gls, f_opt_gls], [0, 1], 'b--')
+    
+            ax_b.plot(freqs, norm_powers_ls, 'g-.')
+            ax_b.plot([f_opt_ls, f_opt_ls], [0, 1], 'g-.')
+            
+            ax_b.plot([f, f], [0, 1], 'k:')
+            
+            ax_a.set_xlabel(r'$t$', fontsize=axis_label_fs)#,fontsize=20)
+            ax_a.set_ylabel(r'y', fontsize=axis_label_fs)#,fontsize=20)
+            ax_a.set_xlim([min(t), max(t)])
+            
+            ax_b.set_xlabel(r'$f$', fontsize=axis_label_fs)#,fontsize=20)
+            ax_b.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
+            ax_b.set_xlim([min_freq, max_freq])
+            
+            fig1.savefig("offset_tests/temp/" + str(bin_index) + "_" + str(counts[bin_index]) + ".eps")
+            plt.close(fig1)
         
         print f, f_opt_ls, f_opt_gls, f_opt_bglst
         
         counts[bin_index] += 1
         #print counts
 
-    dats = np.asarray(dats)
-
-    #with open('offset_tests/offset_exp.pkl', 'wb') as f:
-    #    pickle.dump((emp_mean_errs, true_freqs, bglst_freqs, gls_freqs, ls_freqs, dats), f)
+    with open('offset_tests/offset_exp.pkl', 'wb') as f:
+        pickle.dump((true_freqs, bglst_freqs, gls_freqs, ls_freqs), f)
 
 bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
 gls_errs = np.abs(gls_freqs-true_freqs)/true_freqs
