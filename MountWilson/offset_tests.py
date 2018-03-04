@@ -108,8 +108,8 @@ bin_locs = np.linspace(0.0, max_emp_mean_err, num_bins)
 fig_stats, ax_stats_1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
 fig_stats.set_size_inches(6, 4)
 #ax_stats_1.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
-ax_stats_1.set_xlabel(r'$k$', fontsize=axis_label_fs)#,fontsize=20)
-#ax_stats_1.set_xlim([0, 1])
+ax_stats_1.set_xlabel(r'$\mu$', fontsize=axis_label_fs, labelpad=-1)#,fontsize=20)
+ax_stats_1.set_xlim([0, max_emp_mean_err])
 #ax_stats_1.set_ylim([0, 1])
 ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
 
@@ -301,14 +301,14 @@ ax_stats_1.fill_between(bin_locs, np.percentile(bglst_err_means_bs, 2.5, axis=1)
 ax_stats_1.fill_between(bin_locs, np.percentile(gls_err_means_bs, 2.5, axis=1), np.percentile(gls_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightblue', interpolate=True)
 ax_stats_1.fill_between(bin_locs, np.percentile(ls_err_means_bs, 2.5, axis=1), np.percentile(ls_err_means_bs, 97.5, axis=1), alpha=0.2, facecolor='lightgreen', interpolate=True)
 
-ax_stats_1.set_position([0.12, 0.12, 0.85, 0.75])
-ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0., fontsize=panel_label_fs)#, columnspacing=10)
+#ax_stats_1.set_position([0.12, 0.12, 0.85, 0.75])
+#ax_stats_1.legend(handles=[line1, line2, line3], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0., handletextpad=0., fontsize=panel_label_fs)#, columnspacing=10)
 
-#ax_stats_1.legend(handles=[line1, line2, line3],
-#        numpoints = 1,
-#        scatterpoints=1,
-#        loc='upper left', ncol=1,
-#        fontsize=11, labelspacing=0.7)
+ax_stats_1.legend(handles=[line1, line2, line3],
+        numpoints = 1,
+        scatterpoints=1,
+        loc='upper left', ncol=1,
+        fontsize=11, labelspacing=0.7)
 
 #ax_stats_1.plot([min(means), max(means)], [0.5, 0.5], 'k:')
 #ax_stats_2.plot([min(means), max(means)], [0.0, 0.0], 'k:')
