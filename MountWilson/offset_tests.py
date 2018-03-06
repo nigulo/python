@@ -110,7 +110,9 @@ fig_stats.set_size_inches(6, 4)
 #ax_stats_1.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax_stats_1.transAxes, fontsize=panel_label_fs)
 ax_stats_1.set_xlabel(r'$\mu$', fontsize=axis_label_fs, labelpad=-1)#,fontsize=20)
 ax_stats_1.set_xlim([0, max_emp_mean_err])
-#ax_stats_1.set_ylim([0, 1])
+#ax_stats_1.set_ylim([0, 0.15])
+ax_stats_1.set_yscale("log")
+ax_stats_1.set_ylim([4.0e-4, 1])
 ax_stats_1.set_ylabel(r'$S_1$', fontsize=axis_label_fs)#,fontsize=20)
 
 #fig_stats.tight_layout()
@@ -155,7 +157,7 @@ else:
             duration = max_t - min_t
                         
             var = 1.0
-            sig_var = np.random.uniform(0.99, 0.99)
+            sig_var = np.random.uniform(0.9999, 0.9999)
             noise_var = np.ones(n) * (var - sig_var)
 
             mean = 0.0#np.random.uniform(-5.0, 5.0)
@@ -233,13 +235,13 @@ else:
             ax_a.plot(t, y, "k+")
             t_model = np.linspace(max_t, min_t, 200)
             y_model = gls.model(t_model, f)   
-            ax_a.plot(t_model, y_model, 'r-')
+            ax_a.plot(t_model, y_model, 'k-')
             y_model = gls.model(t_model, f_opt_gls)   
             ax_a.plot(t_model, y_model, 'b:')
             y_model = ls.model(t_model, f_opt_ls)   
             ax_a.plot(t_model, y_model+np.mean(y), 'g:')
             (tau, mean, cov, y_model, loglik) = bglst.model(f_opt_bglst, t_model)   
-            ax_a.plot(t_model, y_model, 'k:')
+            ax_a.plot(t_model, y_model, 'r:')
             
             ax_b.plot(freqs, norm_probs_bglst, 'r-')
             ax_b.plot([f_opt_bglst, f_opt_bglst], [0, 1], 'r-')
@@ -260,7 +262,7 @@ else:
             ax_b.set_ylabel(r'Power', fontsize=axis_label_fs)#,fontsize=20)
             ax_b.set_xlim([min_freq, max_freq])
             
-            fig1.savefig("offset_tests/temp/" + str(bin_index) + "_" + str(counts[bin_index]) + ".eps")
+            fig1.savefig("offset_tests/fig/" + str(bin_index) + "_" + str(counts[bin_index]) + ".eps")
             plt.close(fig1)
         
         print f, f_opt_ls, f_opt_gls, f_opt_bglst

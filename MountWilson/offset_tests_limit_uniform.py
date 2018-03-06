@@ -40,7 +40,7 @@ axis_label_fs = 15
 panel_label_fs = 15
 
 max_count_per_bin = 500
-ns = np.array([10, 20, 50, 100, 200])
+ns = np.array([5, 10, 20, 50, 100])
 num_bins = len(ns)
 
 fig_stats, ax_stats_1 = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=False)
@@ -60,6 +60,7 @@ bglst_err_means_bs = np.zeros((num_bins, num_bs))
 gls_err_means_bs = np.zeros((num_bins, num_bs))
 
 counts = np.zeros(num_bins, dtype=int)
+
 
 if os.path.exists('offset_tests/offset_limit_uniform_exp.pkl'):
     (true_freqs, bglst_freqs, gls_freqs, ls_freqs) = pickle.load(open('offset_tests/offset_limit_uniform_exp.pkl', 'rb'))
@@ -88,7 +89,7 @@ else:
             duration = max_t - min_t
                         
             var = 1.0
-            sig_var = np.random.uniform(0.99, 0.99)
+            sig_var = 0.9#np.random.uniform(0.99, 0.99)
             noise_var = np.ones(n) * (var - sig_var)
 
             mean = np.random.uniform(-5.0, 5.0)
@@ -141,7 +142,7 @@ else:
             min_prob_bglst = min(probs)
             max_prob_bglst = max(probs)
             norm_probs_bglst = (probs - min_prob_bglst) / (max_prob_bglst - min_prob_bglst)
-            
+                        
             print f, f_opt_gls, f_opt_bglst
             
         exp_no += 1
