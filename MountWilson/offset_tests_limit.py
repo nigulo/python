@@ -281,6 +281,7 @@ else: #3d plot
             j +=1
         i += 1
     
+    ax.text(0, 2, 4.5, '(b)', horizontalalignment='center', transform=ax.transAxes, fontsize=panel_label_fs)
     ax.plot_surface(x, y, bglst_err_means, linewidth=0.2, antialiased=True, color = 'r', alpha = 0.5)
     ax.plot_surface(x, y, gls_err_means, linewidth=0.2, antialiased=True, color = 'b', alpha = 0.5)
     

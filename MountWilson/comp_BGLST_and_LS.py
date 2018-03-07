@@ -161,7 +161,7 @@ for real_sampling in [False, True]:
     for trend_var_coef in trend_var_coefs:
         print "Experiment with trend_var_coef", trend_var_coef
 
-        if os.path.exists('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl'):
+        if os.path.exists('trend_stats/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl'):
             (true_freqs, bglst_freqs, ls_freqs, ls_t_freqs, dats) = pickle.load(open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'rb'))
         else:
 
@@ -188,7 +188,7 @@ for real_sampling in [False, True]:
                 sig_var = np.random.uniform(0.2, 0.8)
                 noise_var = np.ones(n) * (var - sig_var)
                 trend_var = trend_var_coef * var / duration
-                mean = np.random.uniform(-1.0, 1.0)
+                mean = np.random.normal()
                 
                 p = np.random.uniform(2.0, duration/1.5)
                 f = 1.0/p
@@ -199,7 +199,7 @@ for real_sampling in [False, True]:
                 s = np.random.normal(0, 1, n)
                 
                 y = np.repeat(mean, n) + np.dot(l, s)
-                y += mean
+                #y += mean
                 
                 #data = np.column_stack((t, y))
                 #print data
@@ -244,7 +244,7 @@ for real_sampling in [False, True]:
         
             dats = np.asarray(dats)
     
-            with open('comp/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'wb') as f:
+            with open('trend_stats/'+str(setup_no)+'/noise_exp_' + str(exp_no) + '.pkl', 'wb') as f:
                 pickle.dump((true_freqs, bglst_freqs, ls_freqs, ls_t_freqs, dats), f)
 
         bglst_errs = np.abs(bglst_freqs-true_freqs)/true_freqs
@@ -346,7 +346,7 @@ for real_sampling in [False, True]:
     
     #ax_stats_1.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.5, 0.5], 'k:')
     #ax_stats_2.plot([min(trend_var_coefs), max(trend_var_coefs)], [0.0, 0.0], 'k:')
-    fig_stats.savefig("comp/trend_stats_" + str(setup_no+1) + ".pdf")
+    fig_stats.savefig("trend_stats/trend_stats_" + str(setup_no+1) + ".pdf")
     plt.close()
 
     setup_no += 1        
