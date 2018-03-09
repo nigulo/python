@@ -357,7 +357,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         
         #print indices_before, indices_after, noise_train
         gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
-        gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
+        gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
         #print seasonal_noise
         #print dat_test

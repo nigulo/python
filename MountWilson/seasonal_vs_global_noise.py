@@ -265,14 +265,22 @@ for setup_no in [0, 1, 2]:
                 start = time.time()
                 #slope, intercept, r_value, p_value, std_err = stats.linregress(t, y)
                 #print "slope, intercept", slope, intercept
-                bglst = BGLST.BGLST(t, y, w, 
-                                    w_A = 2.0/np.var(y), A_hat = 0.0,
-                                    w_B = 2.0/np.var(y), B_hat = 0.0,
-                                    #w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
-                                    #w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
-                                    w_alpha = 1e10, alpha_hat = 0.0, 
-                                    w_beta = 1e10, beta_hat = 0.0)
-                
+                if iterative:
+                    bglst = BGLST.BGLST(t, y, np.ones(n)/np.var(y), 
+                                        w_A = 2.0/np.var(y), A_hat = 0.0,
+                                        w_B = 2.0/np.var(y), B_hat = 0.0,
+                                        #w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                                        #w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                                        w_alpha = 1e10, alpha_hat = 0.0, 
+                                        w_beta = 1e10, beta_hat = 0.0)
+                else:
+                    bglst = BGLST.BGLST(t, y, w, 
+                                        w_A = 2.0/np.var(y), A_hat = 0.0,
+                                        w_B = 2.0/np.var(y), B_hat = 0.0,
+                                        #w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
+                                        #w_beta = 1.0 / (np.var(y) + intercept**2), beta_hat = intercept)
+                                        w_alpha = 1e10, alpha_hat = 0.0, 
+                                        w_beta = 1e10, beta_hat = 0.0)
                 (freqs, probs) = bglst.calc_all(freq_start, freq_end, freq_count)
                 end = time.time()
                 
