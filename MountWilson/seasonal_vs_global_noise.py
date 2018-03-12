@@ -34,9 +34,14 @@ linestyles = ['-', '--', '-.']
 linecolors = ['r', 'b', 'g']
 errorcolors = ['lightsalmon', 'lightblue', 'lightgreen']
 
-iterative = True
+iterative = False
+empirical = True
 
-num_points = 1000
+if empirical:
+    num_points = 1000
+else:
+    num_points = 200
+    
 
 for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
     for file in dir_files:
@@ -56,7 +61,13 @@ for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
             t += offset
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
 
-            down_sample_factor = 1#int(np.floor(len(t)/num_points))
+            if empirical:
+                down_sample_factor = 1#int(np.floor(len(t)/num_points))
+                min_n = 500
+            else:
+                down_sample_factor = int(np.floor(len(t)/num_points))
+                min_n = 200
+                
             if down_sample_factor >= 2:
                 indices = np.random.choice(len(t), len(t)/down_sample_factor, replace=False, p=None)
                 indices = np.sort(indices)
@@ -64,7 +75,7 @@ for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
                 y = y[indices]
                 noise_var = noise_var[indices]
     
-            if len(t) >=100 and max(t) - min(t) >= 30:
+            if len(t) >= min_n and max(t) - min(t) >= 30:
 
                 #print noise_var
                 #if len(np.where(noise_var == noise_var[0])[0]) == len(noise_var):
@@ -72,7 +83,7 @@ for root, dirs, dir_files in os.walk("cleaned_wo_rot"):
 
                 real_dats.append((t, y, noise_var, star))
 
-def get_local_noise_var(t, y, window_size=1.0):
+def get_local_noise_var(t, y, window_size=1.0, remove_trend=False, mode=1):
     total_var = np.var(y)
     seasons = mw_utils.get_seasons(zip(t, y), window_size, False)
     noise_var = np.zeros(len(t))
@@ -80,21 +91,40 @@ def get_local_noise_var(t, y, window_size=1.0):
     max_var = 0
     for season in seasons:
         if np.shape(season[:,1])[0] < 5:
-            #print "OOOPS"
-            #var = -1#total_var # Is it good idea?
+            print "OOOPS"
+            if mode == 1:
+                var = -1#total_var # Is it good idea?
+            else:
+                var = total_var # Is it good idea?
             #print "OOPS"
-            var = total_var # Is it good idea?
         else:
-            var = np.var(season[:,1])
+            y_season = season[:,1]
+            if remove_trend:
+                slope, intercept, r_value, p_value, std_err = stats.linregress(season[:,0], y_season)
+                #print "slope, intercept", slope, intercept
+                fit_trend = season[:,0] * slope + intercept
+                y_season = y_season - fit_trend
+            var = np.var(y_season)
         max_var=max(max_var, var)
         season_len = np.shape(season)[0]
         for j in np.arange(i, i + season_len):
             noise_var[j] = var
         i += season_len
-    #for j in np.arange(0, len(t)):
-    #    if noise_var[j] < 0:
-    #        noise_var[j] = max_var
     assert(i == len(noise_var))
+    if mode == 1:
+        for j in np.arange(0, len(t)):
+            if noise_var[j] < 0:
+                jj = j - 1
+                while jj >= 0 and noise_var[jj] < 0:
+                    jj -= 1
+                if jj < 0:
+                    jj = j + 1
+                    while jj < len(t) and noise_var[jj] < 0:
+                        jj += 1
+                if jj < len(t):
+                    noise_var[j] = noise_var[jj]
+                else:    
+                    noise_var[j] = max_var
     return noise_var
 
 def calc_BGLS(t, y, w, freq):
@@ -238,7 +268,8 @@ for setup_no in [0, 1, 2]:
                 # Now generate synthetic data
                 real_period = np.random.uniform(5.0, 15.0)
                 y_signal = np.sqrt(sig_var) * np.cos(2 * np.pi * t / real_period + np.random.uniform() * 2.0 * np.pi)
-                y_noise = np.random.normal(np.zeros(n), np.sqrt(noise_var), n)
+                y_noise = np.random.normal(np.zeros(n), np.sqrt(noise_var))
+                print np.shape(y_signal), np.shape(y_noise)
                 y = y_signal + y_noise#np.random.normal(0.0, np.sqrt(np.mean(noise_var)), n)
                 #print "real freq:", 1.0/real_period
                 true_freq = 1.0/real_period
@@ -253,13 +284,17 @@ for setup_no in [0, 1, 2]:
                 
                 real_noise_var = noise_var
                 #now produce empirical noise_var from sample variance
-                if real_sampling:
-                    noise_var = mw_utils.get_seasonal_noise_var(t, y)
-                else:
-                    noise_var = get_local_noise_var(t, y, 1.0)
+                if empirical:
+                    if real_sampling:
+                        noise_var = mw_utils.get_seasonal_noise_var(t, y, remove_trend=True)
+                        noise_var_1 = noise_var
+                    else:
+                        noise_var = get_local_noise_var(t, y, 1.0, remove_trend=False, mode = 0)
+                        noise_var_1 = get_local_noise_var(t, y, 1.0, remove_trend=False, mode = 1)
                 
                 mse_noise = np.sum((real_noise_var - noise_var)**2)/np.dot(real_noise_var, real_noise_var)
-                #print "MSE noise_var", mse_noise
+                mse_noise_1 = np.sum((real_noise_var - noise_var_1)**2)/np.dot(real_noise_var, real_noise_var)
+                print "MSE noise_var", mse_noise/mse_noise_1
                 w = np.ones(n)/noise_var
                 
                 start = time.time()
@@ -290,10 +325,11 @@ for setup_no in [0, 1, 2]:
                 
                 if iterative:
                     tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq_bglst)
-                    if real_sampling:
-                        noise_var = mw_utils.get_seasonal_noise_var(t, y - y_model)
-                    else:
-                        noise_var = get_local_noise_var(t, y - y_model, 1.0)
+                    if empirical:
+                        if real_sampling:
+                            noise_var = mw_utils.get_seasonal_noise_var(t, y - y_model)
+                        else:
+                            noise_var = get_local_noise_var(t, y - y_model, 1.0)
                     
                     #print "var y, residue", np.std(y), np.std(y - y_model)
                     mse_noise_2 = np.sum((real_noise_var - noise_var)**2)/np.dot(real_noise_var, real_noise_var)

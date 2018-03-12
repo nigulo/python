@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import argrelextrema
 from scipy.stats import gaussian_kde
 import pandas as pd
+from scipy import stats
 
 ###############################################################################
 # Load rotational periods
@@ -182,7 +183,7 @@ def resample_seasons(seasons):
         resampled_seasons.append(resampled_season)
     return resampled_seasons
 
-def get_seasonal_noise_var(t, y, per_point=True):
+def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=1):
     total_var = np.var(y)
     seasons = get_seasons(zip(t, y), 1.0, True)
     if per_point:
@@ -190,11 +191,23 @@ def get_seasonal_noise_var(t, y, per_point=True):
     else: 
         noise_var = np.zeros(np.shape(seasons)[0])
     i = 0
+    max_var = 0
     for season in seasons:
         if np.shape(season[:,1])[0] < 10:
-            var = total_var # Is it good idea?
+            if mode == 1:
+                var = -1#total_var # Is it good idea?
+            else:
+                var = total_var # Is it good idea?
         else:
-            var = np.var(season[:,1])
+            y_season = season[:,1]
+            if remove_trend:
+                slope, intercept, r_value, p_value, std_err = stats.linregress(season[:,0], y_season)
+                #print "slope, intercept", slope, intercept
+                fit_trend = season[:,0] * slope + intercept
+                y_season = y_season - fit_trend
+                
+            var = np.var(y_season)
+        max_var=max(max_var, var)
         if per_point:
             season_len = np.shape(season)[0]
             for j in np.arange(i, i + season_len):
@@ -204,6 +217,20 @@ def get_seasonal_noise_var(t, y, per_point=True):
             noise_var[i] = var
             i += 1
     assert(i == len(noise_var))
+    if mode == 1:
+        for j in np.arange(0, len(noise_var)):
+            if noise_var[j] < 0:
+                jj = j - 1
+                while jj >= 0 and noise_var[jj] < 0:
+                    jj -= 1
+                if jj < 0:
+                    jj = j + 1
+                    while jj < len(noise_var) and noise_var[jj] < 0:
+                        jj += 1
+                if jj < len(t):
+                    noise_var[j] = noise_var[jj]
+                else:    
+                    noise_var[j] = max_var
     return noise_var
 
 def get_test_point_noise_var(t, y, t_test, sliding=False, season_length = 1.0):
