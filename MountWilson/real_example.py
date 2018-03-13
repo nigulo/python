@@ -43,8 +43,8 @@ def calc_BGLS(t, y, w, freq):
 offset = 1979.3452
 
     
-#star = "37394"
-star = "3651"
+star = "37394"
+#star = "3651"
 dat = np.loadtxt("cleaned/"+ star +".cl.dat", usecols=(0,1), skiprows=1)
 
 y_orig = dat[:,1]
