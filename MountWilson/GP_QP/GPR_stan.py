@@ -91,7 +91,7 @@ if not data_found:
 
 offset = 1979.3452
 
-model = pickle.load(open('model.pkl', 'rb'))
+model = pickle.load(open('model3.pkl', 'rb'))
 model_null = pickle.load(open('model_null.pkl', 'rb'))
 
 t_orig = dat[:,0]
@@ -148,7 +148,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     n = len(t)
     t -= np.mean(t)
 
-    t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop_non_ds, 15.0/365.25)
+    t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop_non_ds, 10.0/365.25)
     n = len(t)
 
     var = np.var(y)
@@ -321,7 +321,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    cv_segment_size = max(min(duration/2.0, period), 1.0)
+    cv_segment_size = max(min(duration/2.0, period/2.0), 1.0)
     num_segments = round(duration/cv_segment_size)
     cv_segment_size = duration/num_segments
     #cv_segment_size = 1.0
