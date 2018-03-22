@@ -264,7 +264,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         iter=num_iters, chains=num_chains, n_jobs=n_jobs)
     
     with open("results/"+peak_no_str+star + downsample_iter_str + "_results_null.txt", "w") as output:
-        output.write(str(fit))    
+        output.write(str(fit_null))    
 
 
     fit_null.plot()
@@ -321,9 +321,13 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    seasons = mw_utils.get_seasons(zip(t, y), max(min(duration/2.0, period), 1.0), True)
+    cv_segment_size = max(min(duration/2.0, period), 1.0)
+    print "cv_segment_size", cv_segment_size
+    seasons = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
+    seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False, num_days=cv_segment_size)
     #seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
 
+    t_test_cv = np.linspace(min(t), max(t), 200)
     l_loo = 0.0
     l_loo_null = 0.0
     dat = np.column_stack((t, y))
@@ -332,11 +336,11 @@ for downsample_iter in np.arange(0, downsample_iters):
         season_start = min(season[:,0])
         season_end = max(season[:,0])
         print "cv for season: ", season_index, season_start, season_end
-        dat_test = seasons[season_index]
+        dat_train = seasons[season_index]
         if season_index == len(seasons) - 1:
             indices = np.where(dat[:,0] < season_start)[0]
-            dat_train = dat[indices,:]
-            noise_train = noise_var_prop[indices]
+            dat_test = dat[indices,:]
+            noise_test = noise_var_prop[indices]
             #dat_test = dat[np.where(dat[:,0] >= season_start)[0],:]
         else:
             dat_season = dat[np.where(dat[:,0] < season_end)[0],:]
@@ -345,10 +349,10 @@ for downsample_iter in np.arange(0, downsample_iters):
             indices_before = np.where(dat_season[:,0] < season_start)[0]
             dat_before = dat_season[indices_before,:]
             #dat_test = seasonal_means[season_index]# dat_season[np.where(dat_season[:,0] >= season_start)[0],:]
-            dat_train = np.concatenate((dat_before, dat_after), axis=0)
+            dat_test = np.concatenate((dat_before, dat_after), axis=0)
             noise_before = noise_var_prop[indices_before]
             noise_after = noise_var_prop[indices_after]
-            noise_train = np.concatenate((noise_before, noise_after), axis=0)
+            noise_test = np.concatenate((noise_before, noise_after), axis=0)
         #test_mat = np.array([[1.16490151e-08, 1.16493677e-08], [1.16493677e-08, 1.16497061e-08]])
         #test_mat = np.array([[1.16490151e-08, 1.16e-08], [1.16e-08, 1.16497061e-08]])
         #test_mat *= 1e8
@@ -356,6 +360,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         #L_test_covar = la.cholesky(test_mat)
         
         #print indices_before, indices_after, noise_train
+        noise_train = np.repeat(seasonal_noise[season_index], np.shape(dat_train)[0])
         gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
         gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
@@ -363,12 +368,25 @@ for downsample_iter in np.arange(0, downsample_iters):
         #print dat_test
         #print m
         #print m_null
-        (_, _, loglik_test) = gpr_gp_cv.cv(dat_test[:,0], dat_test[:,1]-m, np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0]))
+        (_, _, loglik_test) = gpr_gp_cv.cv(dat_test[:,0], dat_test[:,1]-m, noise_test)
         l_loo += loglik_test
         gpr_gp_cv_null.init(dat_train[:,0], dat_train[:,1]-m_null)
-        (_, _, loglik_test_null) = gpr_gp_cv_null.cv(dat_test[:,0], dat_test[:,1]-m_null, np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0]))
+        (_, _, loglik_test_null) = gpr_gp_cv_null.cv(dat_test[:,0], dat_test[:,1]-m_null, noise_test)
         l_loo_null += loglik_test_null
         season_index += 1
+        
+        fig_cv, ax_cv = plt.subplots(nrows=1, ncols=1)
+        fig.set_size_inches(6, 10)
+    
+        ax_cv.plot(dat_train[:,0], dat_train[:,1], 'k+')
+        ax_cv.plot(dat_test[:,0], dat_test[:,1], 'kx')
+        
+        (f_mean_cv, _, _) = gpr_gp_cv.fit(t_test_cv)
+        (f_mean_cv_null, _, _) = gpr_gp_cv_null.fit(t_test_cv)
+        ax_cv.plot(t_test_cv, f_mean_cv+m, 'r-')
+        ax_cv.plot(t_test_cv, f_mean_cv_null+m_null, 'b-')
+        fig_cv.savefig("cv/"+peak_no_str+star + downsample_iter_str +  '_cv' + str(season_index) + '.png')
+        
     print "l_loo, l_loo_null", l_loo, l_loo_null
 
     ###########################################################################
