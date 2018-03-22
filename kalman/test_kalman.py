@@ -37,6 +37,38 @@ def calc_cov_p(t, f, sig_var):
     return k
 
 
+def get_params(j_max, omega_0, ell):
+    ell_inv_sq = 1.0/ell/ell
+    
+    F = np.zeros((2*j_max, 2*j_max))
+    L = np.zeros((2*j_max, 2*j_max))
+    Q_c = np.zeros((2*j_max, 2*j_max)) # process noise
+    H = np.zeros(2*j_max) # ovservatioanl matrix
+    
+    m_0 = np.zeros(2*j_max) # zeroth state mean
+    P_0 = np.zeros((2*j_max, 2*j_max)) # zeroth state covariance
+    
+    R = noise_var # observational noise
+    
+    for j in np.arange(0, j_max):
+        F[2*j, 2*j+1] = -omega_0*j
+        F[2*j+1, 2*j] = omega_0*j
+    
+        L[2*j, 2*j] = 1.0
+        L[2*j+1, 2*j+1] = 1.0
+    
+        if j == 0:
+            q = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
+        else:
+            q = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
+    
+        #print q
+        P_0[2*j, 2*j] = q
+        P_0[2*j+1, 2*j+1] = q
+    
+        H[2*j] = 1.0
+    return F, L, H, R, m_0, P_0, Q_c
+
 n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
@@ -78,40 +110,12 @@ y_means_max = None
 loglik_max = None
 omega_max = None
 
+j_max = 2
+ell = 10
+
 for omega_0 in np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
-    j_max = 2
-    ell = 10
     
-    ell_inv_sq = 1.0/ell/ell
-    
-    F = np.zeros((2*j_max, 2*j_max))
-    L = np.zeros((2*j_max, 2*j_max))
-    Q_c = np.zeros((2*j_max, 2*j_max)) # process noise
-    H = np.zeros(2*j_max) # ovservatioanl matrix
-    
-    m_0 = np.zeros(2*j_max) # zeroth state mean
-    P_0 = np.zeros((2*j_max, 2*j_max)) # zeroth state covariance
-    
-    R = 0.0 # observational noise
-    
-    for j in np.arange(0, j_max):
-        F[2*j, 2*j+1] = -omega_0*j
-        F[2*j+1, 2*j] = omega_0*j
-    
-        L[2*j, 2*j] = 1.0
-        L[2*j+1, 2*j+1] = 1.0
-    
-        if j == 0:
-            q = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
-        else:
-            q = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
-    
-        #print q
-        P_0[2*j, 2*j] = q
-        P_0[2*j+1, 2*j+1] = q
-    
-        H[2*j] = 1.0
-    
+    F, L, H, R, m_0, P_0, Q_c = get_params(j_max, omega_0, ell)
     
     #F = 1.0
     #L = 1.0
@@ -132,8 +136,11 @@ for omega_0 in np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
 print omega_max, freq*2.0*np.pi
 ax1.plot(t[1:], y_means_max, 'r--')
 
-#y_means = kalman.smooth()
-#ax1.plot(t[1:], y_means, 'g--')
+F, L, H, R, m_0, P_0, Q_c = get_params(j_max, omega_max, ell)
+kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c)
+
+y_means = kf.smooth()
+ax1.plot(t[1:], y_means, 'g--')
 
 fig.savefig('test.png')
 plt.close(fig)
