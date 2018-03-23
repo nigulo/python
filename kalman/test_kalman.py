@@ -109,6 +109,7 @@ ax1.plot(t, y, 'b+')
 y_means_max = None
 loglik_max = None
 omega_max = None
+kf_max =None
 
 j_max = 2
 ell = 10
@@ -127,20 +128,18 @@ for omega_0 in np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
     
     kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c)
     y_means, loglik = kf.filter()
-    print omega_0, loglik
+    #print omega_0, loglik
     if loglik_max is None or loglik > loglik_max:
        loglik_max = loglik
        y_means_max = y_means
        omega_max = omega_0
+       kf_max = kf
 
 print omega_max, freq*2.0*np.pi
 ax1.plot(t[1:], y_means_max, 'r--')
 
-F, L, H, R, m_0, P_0, Q_c = get_params(j_max, omega_max, ell)
-kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c)
-
-y_means = kf.smooth()
-ax1.plot(t[1:], y_means, 'g--')
+y_means = kf_max.smooth()
+ax1.plot(t[1:-1], y_means, 'g--')
 
 fig.savefig('test.png')
 plt.close(fig)

@@ -151,22 +151,26 @@ class kalman():
         self.ms[-1] = self.m[-1]
         self.Ps[-1] = self.P[-1]
         
-        y_means = np.zeros(len(self.t)-1)
+        y_means = np.zeros(len(self.t)-2)
         
-        for step in np.arange(len(self.t)-1, 0, step=-1):
+        for step in np.arange(len(self.t)-2, 0, step=-1):
             print step
             (y_mean, S) = self.smooth_step()
             y_means[step-1] = y_mean
         return y_means
 
     def smooth_step(self):
-        m_ = self.m_[self.k-1]
-        P_ = self.P_[self.k-1]
+        m_ = self.m_[self.k]
+        P_ = self.P_[self.k]
+        A = self.A[self.k]
+        
+        P = self.P[self.k]
+        
+        G = np.dot(P, np.dot(A, la.inv(P_)))
+        ms = self.m[self.k] + np.dot(G, self.ms[self.k + 1] - m_)
+        Ps = P + np.dot(G, np.dot(self.Ps[self.k + 1] - P_, G.T))
 
-        G = np.dot(self.P[self.k], np.dot(self.A[self.k], la.inv(P_)))
-        ms = self.m[self.k] + np.dot(G, self.ms[self.k+1] - m_)
-        Ps = self.P[self.k] + np.dot(G, np.dot(self.Ps[self.k + 1]-P_, G.T))
-
+        print ms
         self.ms[self.k] = ms
         self.Ps[self.k] = Ps
         
