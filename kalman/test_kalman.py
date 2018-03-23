@@ -38,8 +38,27 @@ def calc_cov_p(t, f, sig_var):
     return k
 
 
-def get_params_p(j_max, omega_0, ell, noise_var):
+def get_params_p_j(j, omega_0, ell):
     ell_inv_sq = 1.0/ell/ell
+    I2 = np.diag(np.ones(2))
+
+    Fpj = np.array([[0.0, -omega_0*j], [omega_0*j, 0.0]])
+
+    Lpj = I2
+
+    if j == 0:
+        qj = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
+    else:
+        qj = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
+
+    P0pj = I2 * qj
+    #Qcpj = np.zeros((2, 2))
+    Hpj = np.array([1.0, 0.0])
+    
+    return Fpj, Lpj, P0pj, Hpj, qj
+
+
+def get_params_p(j_max, omega_0, ell, noise_var):
     
     F = np.zeros((2*j_max, 2*j_max))
     L = np.zeros((2*j_max, 2*j_max))
@@ -52,26 +71,28 @@ def get_params_p(j_max, omega_0, ell, noise_var):
     R = noise_var # observational noise
     
     for j in np.arange(0, j_max):
-        F[2*j, 2*j+1] = -omega_0*j
-        F[2*j+1, 2*j] = omega_0*j
-    
-        L[2*j, 2*j] = 1.0
-        L[2*j+1, 2*j+1] = 1.0
-    
-        if j == 0:
-            q = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
-        else:
-            q = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
-    
-        #print q
-        P_0[2*j, 2*j] = q
-        P_0[2*j+1, 2*j+1] = q
+        Fpj, Lpj, P0pj, Hpj, _ = get_params_p_j(j, omega_0, ell)
+        F[2*j:2*j+2, 2*j:2*j+2] = Fpj
+        L[2*j:2*j+2, 2*j:2*j+2] = Lpj
+        P_0[2*j:2*j+2, 2*j:2*j+2] = P0pj
+        H[2*j:2*j+2] = Hpj
 
-        H[2*j] = 1.0
+        #ell_inv_sq = 1.0/ell/ell
+        #F[2*j, 2*j+1] = -omega_0*j
+        #F[2*j+1, 2*j] = omega_0*j
+        #L[2*j, 2*j] = 1.0
+        #L[2*j+1, 2*j+1] = 1.0
+        #if j == 0:
+        #    q = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
+        #else:
+        #    q = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
+        #P_0[2*j, 2*j] = q
+        #P_0[2*j+1, 2*j+1] = q
+        #H[2*j] = 1.0
     return F, L, H, R, m_0, P_0, Q_c
 
 def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
-    ell_inv_sq = 1.0/ell/ell
+    #ell_inv_sq = 1.0/ell/ell
 
     lmbda = 1.0/ellq
     Fq = -np.ones(1) * lmbda
@@ -92,24 +113,25 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     
     I2 = np.diag(np.ones(2))
     for j in np.arange(0, j_max):
-        Fpj = np.array([[0.0, -omega_0*j], [omega_0*j, 0.0]])
+        Fpj, Lpj, P0pj, Hpj, qj = get_params_p_j(j, omega_0, ell)
+        #Fpj = np.array([[0.0, -omega_0*j], [omega_0*j, 0.0]])
     
-        Lpj = I2
+        #Lpj = I2
     
-        if j == 0:
-            q = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
-        else:
-            q = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
+        #if j == 0:
+        #    q = special.iv(0, ell_inv_sq)/np.exp(ell_inv_sq)
+        #else:
+        #    q = 2.0 * special.iv(j, ell_inv_sq)/np.exp(ell_inv_sq)
 
-        P0pj = I2 * q
-        #Qcpj = np.zeros((2, 2))
-        Hpj = np.array([1.0, 0.0])
+        #P0pj = I2 * q
+        ##Qcpj = np.zeros((2, 2))
+        #Hpj = np.array([1.0, 0.0])
         
-        F[j:j+2, j:j+2] = np.kron(Fq, I2) + np.kron(np.diag(np.ones(1)), Fpj)
-        L[j:j+2, j:j+2] = np.kron(Lq, Lpj)
-        Q_c[j:j+2, j:j+2] = np.kron(Qcq, I2 * q)
-        P_0[j:j+2, j:j+2] = np.kron(P0q, P0pj)
-        H[j:j+2] = np.kron(Hq, Hpj)
+        F[2*j:2*j+2, 2*j:2*j+2] = np.kron(Fq, I2) + np.kron(np.diag(np.ones(1)), Fpj)
+        L[2*j:2*j+2, 2*j:2*j+2] = np.kron(Lq, Lpj)
+        Q_c[2*j:2*j+2, 2*j:2*j+2] = np.kron(Qcq, I2 * qj)
+        P_0[2*j:2*j+2, 2*j:2*j+2] = np.kron(P0q, P0pj)
+        H[2*j:2*j+2] = np.kron(Hq, Hpj)
         
     return F, L, H, R, m_0, P_0, Q_c
 
@@ -118,7 +140,7 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 1.0
-sig_var = np.random.uniform(0.99, 0.99)
+sig_var = np.random.uniform(0.999, 0.999)
 noise_var = var - sig_var
 mean = 0.5
 
@@ -153,41 +175,48 @@ ax1.plot(t, y, 'b+')
 y_means_max = None
 loglik_max = None
 omega_max = None
+ellq_max = None
 kf_max =None
 
 j_max = 2
 ell = 10
-ellq = length_scale
-
+if cov_type == "periodic":
+    ellqs = [length_scale]
+else:
+    ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
+    
 for omega_0 in np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
     
-    if cov_type == "periodic":
-        F, L, H, R, m_0, P_0, Q_c = get_params_p(j_max, omega_0, ell, noise_var)
-    else:
-        F, L, H, R, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
+    for ellq in ellqs:
+        if cov_type == "periodic":
+            F, L, H, R, m_0, P_0, Q_c = get_params_p(j_max, omega_0, ell, noise_var)
+        else:
+            F, L, H, R, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
+            
+        #F = 1.0
+        #L = 1.0
+        #H = 1.0
+        #R = 0.0
+        #m_0 = 0.0
+        #P_0 = 1.0
+        #Q_c = 1.0
         
-    #F = 1.0
-    #L = 1.0
-    #H = 1.0
-    #R = 0.0
-    #m_0 = 0.0
-    #P_0 = 1.0
-    #Q_c = 1.0
-    
-    kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c)
-    y_means, loglik = kf.filter()
-    #print omega_0, loglik
-    if loglik_max is None or loglik > loglik_max:
-       loglik_max = loglik
-       y_means_max = y_means
-       omega_max = omega_0
-       kf_max = kf
+        kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c)
+        y_means, loglik = kf.filter()
+        #print omega_0, loglik
+        if loglik_max is None or loglik > loglik_max:
+           loglik_max = loglik
+           y_means_max = y_means
+           omega_max = omega_0
+           ellq_max = ellq
+           kf_max = kf
 
 print omega_max, freq*2.0*np.pi
+print ellq_max, length_scale
 ax1.plot(t[1:], y_means_max, 'r--')
 
-#y_means = kf_max.smooth()
-#ax1.plot(t[1:-1], y_means, 'g--')
+y_means = kf_max.smooth()
+ax1.plot(t[1:-1], y_means, 'g--')
 
 fig.savefig('test.png')
 plt.close(fig)

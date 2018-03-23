@@ -189,6 +189,7 @@ class kalman():
         
         P = self.P[self.k]
         
+        print P_
         G = np.dot(P, np.dot(A, la.inv(P_)))
         ms = self.m[self.k] + np.dot(G, self.ms[self.k + 1] - m_)
         Ps = P + np.dot(G, np.dot(self.Ps[self.k + 1] - P_, G.T))
