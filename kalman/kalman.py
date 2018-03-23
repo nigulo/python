@@ -11,7 +11,7 @@ Created on Mon Mar 19 15:36:22 2018
 
 class kalman():
     
-    def __init__(self, t, y, F, L, H, R, m_0, P_0, Q_c, F_is_A = False):
+    def __init__(self, t, y, F, L, H, R, m_0, P_0, Q_c, F_is_A = False, noise_int_prec=1000):
         assert(np.shape(t)[0] == np.shape(y)[0])
         y_dim_2 = 1
         if np.ndim(y) > 1:
@@ -76,14 +76,38 @@ class kalman():
         self.ms = np.zeros((len(t), np.shape(m_0)[0]))
         self.Ps = np.zeros((len(t), np.shape(P_0)[0], np.shape(P_0)[1]))
 
-        self.F_is_A = F_is_A
+        self.Q = np.zeros((len(t)-1, np.shape(self.L)[1], np.shape(self.L)[1]))
 
+        self.F_is_A = F_is_A
+        self.noise_int_prec = noise_int_prec
+        
     def phi(self, tau):
         return la.expm(self.F*tau)
     
+    def calc_Q(self):
+        if self.Q_c_is_not_zero:
+            delta_t = self.t[1:] - self.t[:-1]
+            #min_delta_t = np.min(delta_t)
+            max_delta_t = np.max(delta_t)
+            d_tau = max_delta_t/self.noise_int_prec
+            
+            Q = np.zeros((np.shape(self.L)[1], np.shape(self.L)[1]))
+            last_d = 0.0
+            filled_count = 0
+            for tau in np.linspace(max_delta_t, 0, self.noise_int_prec):
+                d = max_delta_t-tau
+                Phi = self.phi(d)
+                Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))*d_tau
+                for i in np.arange(0, len(delta_t)):
+                    if delta_t[i] > last_d and delta_t[i] <= d:
+                        self.Q[i] = np.array(Q)
+                        filled_count += 1
+                last_d = d
+            assert(filled_count == len(delta_t))
         
     def filter(self):
         self.k = 1
+        self.calc_Q()
         y_means = np.zeros(len(self.t)-1)
         loglik = 0.0
         
@@ -107,16 +131,15 @@ class kalman():
         #print A[3,2] + np.sin(self.F[2,3]*delta_t)
         #print A[3,3] - np.cos(self.F[2,3]*delta_t)
         
+        #Q = np.zeros((np.shape(self.L)[1], np.shape(self.L)[1]))
+        #if self.Q_c_is_not_zero:
+        #    d_tau = delta_t/self.noise_int_prec
+        #    for tau in np.linspace(0, delta_t, self.noise_int_prec):
+        #        Phi = self.phi(delta_t-tau)
+        #        Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))
+        #    Q *= d_tau
 
-        Q = np.zeros((np.shape(self.L)[1], np.shape(self.L)[1]))
-        if self.Q_c_is_not_zero:
-            d_tau = delta_t/1000
-            for tau in np.linspace(0, delta_t, 1000):
-                Phi = self.phi(delta_t-tau)
-                Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))
-            Q *= d_tau
-
-
+        Q = self.Q[self.k-1]
         m = self.m[self.k-1]
         P = self.P[self.k-1]
 
