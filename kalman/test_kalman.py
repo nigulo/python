@@ -183,11 +183,12 @@ ell = 10
 if cov_type == "periodic":
     ellqs = [length_scale]
 else:
-    ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
+    ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
     
-for omega_0 in np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
+for omega_0 in [2.0*np.pi*freq]:#np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
     
     for ellq in ellqs:
+        print ellq
         if cov_type == "periodic":
             F, L, H, R, m_0, P_0, Q_c = get_params_p(j_max, omega_0, ell, noise_var)
         else:

@@ -11,7 +11,7 @@ Created on Mon Mar 19 15:36:22 2018
 
 class kalman():
     
-    def __init__(self, t, y, F, L, H, R, m_0, P_0, Q_c, F_is_A = False, noise_int_prec=1000):
+    def __init__(self, t, y, F, L, H, R, m_0, P_0, Q_c, F_is_A = False, noise_int_prec=100):
         assert(np.shape(t)[0] == np.shape(y)[0])
         y_dim_2 = 1
         if np.ndim(y) > 1:
@@ -92,17 +92,19 @@ class kalman():
             d_tau = max_delta_t/self.noise_int_prec
             
             Q = np.zeros((np.shape(self.L)[1], np.shape(self.L)[1]))
-            last_d = 0.0
+            last_tau = 0.0
             filled_count = 0
-            for tau in np.linspace(max_delta_t, 0, self.noise_int_prec):
-                d = max_delta_t-tau
-                Phi = self.phi(d)
-                Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))*d_tau
+            
+            X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
+            for tau in np.linspace(0, max_delta_t, self.noise_int_prec):
+                Phi = self.phi(tau)
+                #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))*d_tau
+                Q += np.dot(Phi, np.dot(X, Phi.T))
                 for i in np.arange(0, len(delta_t)):
-                    if delta_t[i] > last_d and delta_t[i] <= d:
-                        self.Q[i] = np.array(Q)
+                    if delta_t[i] > last_tau and delta_t[i] <= tau:
+                        self.Q[i] = np.array(Q)*d_tau
                         filled_count += 1
-                last_d = d
+                last_tau = tau
             assert(filled_count == len(delta_t))
         
     def filter(self):
@@ -177,7 +179,6 @@ class kalman():
         y_means = np.zeros(len(self.t)-2)
         
         for step in np.arange(len(self.t)-2, 0, step=-1):
-            print step
             (y_mean, S) = self.smooth_step()
             y_means[step-1] = y_mean
         return y_means
@@ -189,12 +190,10 @@ class kalman():
         
         P = self.P[self.k]
         
-        print P_
         G = np.dot(P, np.dot(A, la.inv(P_)))
         ms = self.m[self.k] + np.dot(G, self.ms[self.k + 1] - m_)
         Ps = P + np.dot(G, np.dot(self.Ps[self.k + 1] - P_, G.T))
 
-        print ms
         self.ms[self.k] = ms
         self.Ps[self.k] = Ps
         
