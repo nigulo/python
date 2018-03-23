@@ -98,7 +98,7 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     Fq = -np.ones(1) * lmbda
     Lq = np.ones(1)
     Qcq = np.ones(1) * 2.0*sig_var*np.sqrt(np.pi)*lmbda*special.gamma(1.0)/special.gamma(0.5)
-    Hq = np.ones(1) # ovservatioanl matrix
+    Hq = np.ones(1) # observatioanl matrix
     P0q = np.ones(1)
     
     F = np.zeros((2*j_max, 2*j_max))
@@ -140,7 +140,7 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 1.0
-sig_var = np.random.uniform(0.999, 0.999)
+sig_var = np.random.uniform(0.99999, 0.99999)
 noise_var = var - sig_var
 mean = 0.5
 
@@ -183,7 +183,7 @@ ell = 10
 if cov_type == "periodic":
     ellqs = [length_scale]
 else:
-    ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+    ellqs = np.linspace(length_scale/200, length_scale*2, 20) 
     
 for omega_0 in [2.0*np.pi*freq]:#np.linspace(np.pi*freq, 4.0*np.pi*freq, 100):
     
