@@ -91,7 +91,7 @@ if not data_found:
 
 offset = 1979.3452
 
-model = pickle.load(open('model3.pkl', 'rb'))
+model = pickle.load(open('model.pkl', 'rb'))
 model_null = pickle.load(open('model_null.pkl', 'rb'))
 
 t_orig = dat[:,0]
@@ -146,7 +146,8 @@ for downsample_iter in np.arange(0, downsample_iters):
     #y -= orig_mean
     orig_std = np.std(y)
     n = len(t)
-    t -= np.mean(t)
+    t_mean = np.mean(t)
+    t -= t_mean
 
     t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop_non_ds, 10.0/365.25)
     n = len(t)
@@ -193,6 +194,9 @@ for downsample_iter in np.arange(0, downsample_iters):
     length_scale_samples = results['length_scale'];
     (length_scale, length_scale_se) = mw_utils.mean_with_se(length_scale_samples)
 
+    length_scale2_samples = results['length_scale2'];
+    (length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
+
     sig_var_samples = results['sig_var']
     sig_var = np.mean(sig_var_samples)
 
@@ -225,11 +229,12 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "var=", var
     print "sig_var=", sig_var
     print "length_scale", length_scale
+    print "length_scale2", length_scale2
     print "freq, freq_se", freq, freq_se
     print "trend_var", trend_var
     print "m", m
     
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t, y-m)
     (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
@@ -240,7 +245,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "loglik", loglik #(loglik + 0.5 * n * np.log(2.0 * np.pi))
     
     # Calculate the resiudes for the original data    
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t_non_ds, y_non_ds-m)
     (f_non_ds, _, _) = gpr_gp.fit(t_non_ds)
@@ -321,35 +326,41 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    cv_segment_size = max(min(duration/2.0, period/2.0), 1.0)
-    num_segments = round(duration/cv_segment_size)
-    cv_segment_size = duration/num_segments
-    #cv_segment_size = 1.0
+    #cv_segment_size = max(min(duration/2.0, period/2.0), 1.0)
+    #num_segments = round(duration/cv_segment_size)
+    #cv_segment_size = duration/num_segments
+    cv_segment_size = 3.0
     print "cv_segment_size", cv_segment_size
-    seasons = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
-    seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False, num_days=cv_segment_size)
+    segments = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
+    
+    seasonal_noise = mw_utils.get_seasonal_noise_var(t_non_ds - t_mean, y_non_ds, per_point=True, t_out=t)
     #seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
+    #seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
+    #seasonal_means = mw_utils.get_seasonal_means(t_non_ds, y_non_ds)
 
     t_test_cv = np.linspace(min(t), max(t), 200)
     l_loo = 0.0
     l_loo_null = 0.0
     dat = np.column_stack((t, y))
-    season_index = 0
-    for season in seasons:
-        season_start = min(season[:,0])
-        season_end = max(season[:,0])
-        print "cv for season: ", season_index, season_start, season_end
-        dat_test = seasons[season_index]
-        if season_index == len(seasons) - 1:
-            indices = np.where(dat[:,0] < season_start)[0]
+    segment_index = 0
+    for segment in segments:
+        segment_start = min(segment[:,0])
+        segment_end = max(segment[:,0])
+        print "cv for segment: ", segment_index, segment_start, segment_end
+        dat_test = segments[segment_index]
+        #dat_test = seasonal_means[seasonal_means[:,0] >= season_start,:]
+        #dat_test = dat_test[dat_test[:,0] < season_end,:]
+        #print dat_test
+        if segment_index == len(segments) - 1:
+            indices = np.where(t < segment_start)[0]
             dat_train = dat[indices,:]
             noise_train = noise_var_prop[indices]
             #dat_test = dat[np.where(dat[:,0] >= season_start)[0],:]
         else:
-            dat_season = dat[np.where(dat[:,0] < season_end)[0],:]
-            indices_after = np.where(dat[:,0] >= season_end)[0]
+            dat_season = dat[np.where(t < segment_end)[0],:]
+            indices_after = np.where(t >= segment_end)[0]
             dat_after = dat[indices_after,:]
-            indices_before = np.where(dat_season[:,0] < season_start)[0]
+            indices_before = np.where(dat_season[:,0] < segment_start)[0]
             dat_before = dat_season[indices_before,:]
             #dat_test = seasonal_means[season_index]# dat_season[np.where(dat_season[:,0] >= season_start)[0],:]
             dat_train = np.concatenate((dat_before, dat_after), axis=0)
@@ -363,8 +374,12 @@ for downsample_iter in np.arange(0, downsample_iters):
         #L_test_covar = la.cholesky(test_mat)
         
         #print indices_before, indices_after, noise_train
-        noise_test = np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0])
-        gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
+        #noise_test = np.repeat(seasonal_noise[season_index], np.shape(dat_test)[0])
+        
+        indices1 = np.where(t >= segment_start)[0]
+        indices2 = np.where(t[indices1] <= segment_end)[0]
+        noise_test = seasonal_noise[indices1][indices2]
+        gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
         gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
         #print seasonal_noise
@@ -376,7 +391,6 @@ for downsample_iter in np.arange(0, downsample_iters):
         gpr_gp_cv_null.init(dat_train[:,0], dat_train[:,1]-m_null)
         (_, _, loglik_test_null) = gpr_gp_cv_null.cv(dat_test[:,0], dat_test[:,1]-m_null, noise_test)
         l_loo_null += loglik_test_null/np.shape(dat_test)[0]
-        season_index += 1
         
         fig_cv, ax_cv = plt.subplots(nrows=1, ncols=1)
         fig_cv.set_size_inches(8, 6)
@@ -388,7 +402,9 @@ for downsample_iter in np.arange(0, downsample_iters):
         (f_mean_cv_null, _, _) = gpr_gp_cv_null.fit(t_test_cv)
         ax_cv.plot(t_test_cv, f_mean_cv+m, 'r-')
         ax_cv.plot(t_test_cv, f_mean_cv_null+m_null, 'b-')
-        fig_cv.savefig("cv/"+peak_no_str+star + downsample_iter_str +  '_cv' + str(season_index) + '.png')
+        fig_cv.savefig("cv/"+peak_no_str+star + downsample_iter_str +  '_cv' + str(segment_index) + '.png')
+
+        segment_index += 1
     
     print "l_loo, l_loo_null", l_loo, l_loo_null
 
@@ -403,4 +419,4 @@ for downsample_iter in np.arange(0, downsample_iters):
     with FileLock("GPRLock"):
         with open("results/"+peak_no_str+"results.txt", "a") as output:
             #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
-            output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + "\n")    
+            output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    

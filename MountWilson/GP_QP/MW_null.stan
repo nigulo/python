@@ -49,7 +49,7 @@ model {
     L = cholesky_decompose(Sigma);
     
     sig_var ~ normal(0, var_seasonal_means);
-    inv_length_scale ~ normal(0, 0.5);
+    inv_length_scale ~ normal(0, 0.5/3);
     trend_var ~ normal(0, var_y/duration/duration);
     m ~ normal(mean_y, sqrt(var_y));
     y ~ multi_normal_cholesky(mu, L);

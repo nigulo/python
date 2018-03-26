@@ -183,11 +183,13 @@ def resample_seasons(seasons):
         resampled_seasons.append(resampled_season)
     return resampled_seasons
 
-def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=1, num_days=1.0):
+def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=1, num_days=1.0, t_out=None):
+    if t_out is None:
+        t_out = t
     total_var = np.var(y)
     seasons = get_seasons(zip(t, y), num_days, True)
     if per_point:
-        noise_var = np.zeros(len(t))
+        noise_var = np.zeros(len(t_out))
     else: 
         noise_var = np.zeros(np.shape(seasons)[0])
     i = 0
@@ -210,9 +212,12 @@ def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=1, num
         max_var=max(max_var, var)
         if per_point:
             season_len = np.shape(season)[0]
-            for j in np.arange(i, i + season_len):
-                noise_var[j] = var
-            i += season_len
+            j = 0
+            season_end = max(season[:,0])
+            while i + j < len(t_out) and t_out[i + j] <= season_end:
+                noise_var[i + j] = var
+                j += 1
+            i += j
         else:
             noise_var[i] = var
             i += 1

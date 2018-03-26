@@ -10,7 +10,7 @@ import numpy.linalg as la
 
 class GPR_QP:
     
-    def __init__(self, sig_var, length_scale, freq, noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0):
+    def __init__(self, sig_var, length_scale, freq, noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0, length_scale2=0.0):
         self.sig_var = sig_var
         self.length_scale = length_scale
         self.freq = freq
@@ -19,13 +19,17 @@ class GPR_QP:
         self.rot_amplitude = rot_amplitude
         self.trend_var = trend_var
         self.c=c
+        self.length_scale2 = length_scale2
 
     def calc_cov(self, t1, t2, data_or_test):
         K = np.zeros((len(t1), len(t2)))
         for i in np.arange(0, len(t1)):
             for j in np.arange(0, len(t2)):
                 if self.sig_var > 0 and self.freq > 0:
-                    K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale) * np.cos(2.0 * np.pi*self.freq*(t1[i] - t2[j]))
+                    if self.length_scale2 > 0:
+                        K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale) * np.exp(-2.0 * np.sin(np.pi*self.freq*(t1[i] - t2[j]))**2/self.length_scale2/self.length_scale2)
+                    else:
+                        K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale) * np.cos(2.0 * np.pi*self.freq*(t1[i] - t2[j]))
                 elif self.sig_var > 0 and self.freq == 0:
                     K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale)
                 if self.trend_var > 0:
