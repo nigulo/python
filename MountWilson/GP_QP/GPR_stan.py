@@ -133,7 +133,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     y_non_ds = np.array(y)
 
     seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
-    noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y)
+    noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y, num_days=1.0)
     seasonal_means_var =np.var(mw_utils.get_seasonal_means(t, y)[:,1])
 
     
@@ -326,14 +326,14 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    #cv_segment_size = max(min(duration/2.0, period/2.0), 1.0)
-    #num_segments = round(duration/cv_segment_size)
-    #cv_segment_size = duration/num_segments
-    cv_segment_size = 3.0
+    cv_segment_size = max(min(duration/2.0, period/2.0), 1.0)
+    num_segments = round(duration/cv_segment_size)
+    cv_segment_size = duration/num_segments
+    #cv_segment_size = 3.0
     print "cv_segment_size", cv_segment_size
     segments = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
     
-    seasonal_noise = mw_utils.get_seasonal_noise_var(t_non_ds - t_mean, y_non_ds, per_point=True, t_out=t)
+    #seasonal_noise = mw_utils.get_seasonal_noise_var(t_non_ds - t_mean, y_non_ds, per_point=True, t_out=t)
     #seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
     #seasons = mw_utils.get_seasons(zip(t, y), 1.0, True)
     #seasonal_means = mw_utils.get_seasonal_means(t_non_ds, y_non_ds)
@@ -378,7 +378,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         
         indices1 = np.where(t >= segment_start)[0]
         indices2 = np.where(t[indices1] <= segment_end)[0]
-        noise_test = seasonal_noise[indices1][indices2]
+        noise_test = noise_var_prop[indices1][indices2]
         gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
         gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
