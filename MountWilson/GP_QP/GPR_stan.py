@@ -326,7 +326,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    cv_segment_size = max(min(duration/2.0, period/2.0), 1.0)
+    cv_segment_size = max(min(duration/2.0, period), 1.0)
     num_segments = round(duration/cv_segment_size)
     cv_segment_size = duration/num_segments
     #cv_segment_size = 3.0
