@@ -46,9 +46,8 @@ class kalman():
         assert(np.shape(R)[1] == y_dim_2)
 
         assert(np.shape(F)[0] == np.shape(L)[0])
-        assert(np.shape(L)[1] == np.shape(L)[0])
-        assert(np.shape(Q_c)[0] == np.shape(L)[1])
         assert(np.shape(Q_c)[1] == np.shape(L)[1])
+        assert(np.shape(Q_c)[0] == np.shape(L)[1])
         assert(np.shape(F)[1] == np.shape(m_0)[0])
         assert(np.shape(P_0)[0] == np.shape(m_0)[0])
         assert(np.shape(P_0)[1] == np.shape(m_0)[0])
