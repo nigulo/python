@@ -146,7 +146,7 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
         
     return F, L, H, R, m_0, P_0, Q_c
 
-def get_params_exp_quad(j_max, ell, noise_var, sig_var):
+def get_params_exp_quad(ell, noise_var, sig_var):
     
     k = cov_exp_quad()
     F, q = k.get_F_q(sig_var, ell)
@@ -154,14 +154,15 @@ def get_params_exp_quad(j_max, ell, noise_var, sig_var):
     n_dim = np.shape(F)[0]
     Q_c = np.zeros((1, 1))*q
     L = np.zeros((n_dim, 1))
+    L[n_dim - 1] = 1.0
     
     H = np.zeros(n_dim) # ovservatioanl matrix
+    H[0] = 1.0
     
     m_0 = np.zeros(n_dim) # zeroth state mean
-    P_0 = np.diag(np.ones(n_dim)) # zeroth state covariance
+    P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
     
     #Q_c[n_dim - 1, n_dim - 1] = q
-    L[n_dim - 1] = 1.0
 
     R = noise_var # observational noise
     
@@ -235,7 +236,7 @@ for omega_0 in omegas:
         elif cov_type == "quasiperiodic":
             F, L, H, R, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
         elif cov_type == "exp_quad":
-            F, L, H, R, m_0, P_0, Q_c = get_params_exp_quad(j_max, ell, noise_var, sig_var)
+            F, L, H, R, m_0, P_0, Q_c = get_params_exp_quad(ell, noise_var, sig_var)
             
         #F = 1.0
         #L = 1.0
@@ -245,7 +246,7 @@ for omega_0 in omegas:
         #P_0 = 1.0
         #Q_c = 1.0
         
-        kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c)
+        kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100)
         y_means, loglik = kf.filter()
         #print omega_0, loglik
         if loglik_max is None or loglik > loglik_max:
@@ -259,8 +260,8 @@ print omega_max, freq*2.0*np.pi
 print ellq_max, length_scale
 ax1.plot(t[1:], y_means_max, 'r--')
 
-y_means = kf_max.smooth()
-ax1.plot(t[1:-1], y_means, 'g--')
+#y_means = kf_max.smooth()
+#ax1.plot(t[1:-1], y_means, 'g--')
 
 fig.savefig('test.png')
 plt.close(fig)
