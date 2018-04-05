@@ -227,7 +227,7 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 2.0
-sig_var = np.random.uniform(1.9999, 1.9999)
+sig_var = np.random.uniform(0.9999*var, 0.9999*var)
 noise_var = var - sig_var
 mean = 0.5
 
@@ -284,12 +284,13 @@ elif cov_type == "quasiperiodic":
 elif cov_type == "exp_quad":
     #ellqs = [length_scale] 
     #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
-    ellqs = [length_scale/2, length_scale] 
+    #ellqs = [length_scale/2, length_scale] 
+    ellqs = [length_scale/2.1, length_scale/2, length_scale/1.9, length_scale] 
     omegas = [0.0]
 elif cov_type == "matern":
     #ellqs = [length_scale] 
     #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
-    ellqs = [length_scale/2, length_scale] 
+    ellqs = [length_scale/2.3, length_scale/2, length_scale/1.7, length_scale] 
     omegas = [0.0]
 else:           
     assert(True==False)
