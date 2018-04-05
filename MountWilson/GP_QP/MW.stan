@@ -59,7 +59,7 @@ model {
     L = cholesky_decompose(Sigma);
     
     freq ~ normal(prior_freq_mean, prior_freq_std);
-    sig_var ~ normal(0, var_seasonal_means);
+    sig_var ~ normal(var_seasonal_means, var_seasonal_means);
     inv_length_scale ~ normal(0, freq/3.0);
     //inv_length_scale ~ beta(1, 3);
     //inv_length_scale ~ normal(0, 0.5/3);

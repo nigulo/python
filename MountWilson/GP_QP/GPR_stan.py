@@ -171,7 +171,8 @@ for downsample_iter in np.arange(0, downsample_iters):
         initial_trend_var = var / duration
         #initial_inv_length_scale = 0.0001#abs(np.random.normal(0, prior_freq_mean))
         #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var, inv_lengh_scale=initial_inv_length_scale))
-        initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
+        #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
+        initial_param_values.append(dict())
 
     fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
         var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 

@@ -11,6 +11,8 @@ import matplotlib.colors as colors
 import matplotlib.ticker as ticker
 import scipy.special as special
 import numpy.linalg as la
+from scipy.special import gamma
+from scipy.special import kv
 
 try:
     from scipy.linalg import solve_lyapunov as solve_continuous_lyapunov
@@ -19,14 +21,33 @@ except ImportError:  # pragma: no cover; github.com/scipy/scipy/pull/8082
 
 import kalman
 from cov_exp_quad import cov_exp_quad
+from cov_matern import cov_matern
 
 #cov_type = "periodic"
 #cov_type = "quasiperiodic"
-cov_type = "exp_quad"
+#cov_type = "exp_quad"
+cov_type = "matern"
+
+matern_p = 1
+
+def calc_cov_matern(t, length_scale, sig_var, nu):
+    k = np.zeros((len(t), len(t)))
+    sqrt_two_nu_inv_l = np.sqrt(2.0*nu)/length_scale
+    for i in np.arange(0, len(t)):
+        for j in np.arange(i, len(t)):
+            if i == j:
+                k[i, j] = sig_var
+            else:
+                tau = np.abs(t[i]-t[j])
+                k[i, j] = sig_var*2.0**(1.0-nu)/gamma(nu)*(sqrt_two_nu_inv_l*tau)**nu*kv(nu, sqrt_two_nu_inv_l*tau)
+            #test = sig_var*np.exp(-np.abs(t[i]-t[j])/length_scale)
+            #assert(k[i, j] - test < 1e-15)
+            k[j, i] = k[i, j]
+    return k
 
 def calc_cov_exp_quad(t, length_scale, sig_var):
     k = np.zeros((len(t), len(t)))
-    inv_l2 = 1.0/length_scale/length_scale/2.0
+    inv_l2 = 0.5/(length_scale*length_scale)
     for i in np.arange(0, len(t)):
         for j in np.arange(i, len(t)):
             k[i, j] = sig_var*np.exp(-inv_l2*(t[i]-t[j])**2)
@@ -151,12 +172,11 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
 
 def get_params_exp_quad(ell, noise_var, sig_var):
     
-    k = cov_exp_quad(N=10)
+    k = cov_exp_quad(N=6)
     F, q = k.get_F_q(sig_var, ell)
 
     n_dim = np.shape(F)[0]
-    Q_c = np.ones((1, 1))#*q
-    #print q, sig_var
+    Q_c = np.ones((1, 1))*q
     L = np.zeros((n_dim, 1))
     L[n_dim - 1] = 1.0
     
@@ -166,7 +186,34 @@ def get_params_exp_quad(ell, noise_var, sig_var):
     m_0 = np.zeros(n_dim) # zeroth state mean
     #P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
     
-    P_0 = solve_continuous_lyapunov(F, -np.dot(L, np.dot(Q_c, L.T)))
+    #P_0 = solve_continuous_lyapunov(F, -np.dot(L, np.dot(Q_c, L.T)))
+    P_0 = solve_continuous_lyapunov(F, -np.dot(L, L.T)*Q_c[0,0])
+    #print P_0
+    
+    #Q_c[n_dim - 1, n_dim - 1] = q
+
+    R = noise_var # observational noise
+    
+    return F, L, H, R, m_0, P_0, Q_c
+
+def get_params_matern(ell, noise_var, sig_var):
+    
+    k = cov_matern(p=matern_p)
+    F, q = k.get_F_q(sig_var, ell)
+
+    n_dim = np.shape(F)[0]
+    Q_c = np.ones((1, 1))*q
+    L = np.zeros((n_dim, 1))
+    L[n_dim - 1] = 1.0
+    
+    H = np.zeros(n_dim) # ovservatioanl matrix
+    H[0] = 1.0
+    
+    m_0 = np.zeros(n_dim) # zeroth state mean
+    #P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
+    
+    #P_0 = solve_continuous_lyapunov(F, -np.dot(L, np.dot(Q_c, L.T)))
+    P_0 = solve_continuous_lyapunov(F, -np.dot(L, L.T)*Q_c[0,0])
     #print P_0
     
     #Q_c[n_dim - 1, n_dim - 1] = q
@@ -198,6 +245,9 @@ elif cov_type == "quasiperiodic":
 elif cov_type == "exp_quad":
     length_scale = np.random.uniform(time_range/10, time_range/5)
     k = calc_cov_exp_quad(t, length_scale, sig_var) + np.diag(np.ones(n) * noise_var)
+elif cov_type == "matern":
+    length_scale = np.random.uniform(time_range/10, time_range/5)
+    k = calc_cov_matern(t, length_scale, sig_var, matern_p + 0.5) + np.diag(np.ones(n) * noise_var)
 else:
     assert(True==False)
 
@@ -236,6 +286,13 @@ elif cov_type == "exp_quad":
     #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
     ellqs = [length_scale/2, length_scale] 
     omegas = [0.0]
+elif cov_type == "matern":
+    #ellqs = [length_scale] 
+    #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+    ellqs = [length_scale/2, length_scale] 
+    omegas = [0.0]
+else:           
+    assert(True==False)
     
 for omega_0 in omegas:
     
@@ -246,7 +303,10 @@ for omega_0 in omegas:
             F, L, H, R, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
         elif cov_type == "exp_quad":
             F, L, H, R, m_0, P_0, Q_c = get_params_exp_quad(ellq, noise_var, sig_var)
-            
+        elif cov_type == "matern":
+            F, L, H, R, m_0, P_0, Q_c = get_params_matern(ellq, noise_var, sig_var)
+        else:           
+            assert(True==False)
         #F = 1.0
         #L = 1.0
         #H = 1.0

@@ -59,7 +59,7 @@ class kalman():
         self.H = H
         self.R = R
         self.m_0 = m_0
-        self.P_0 = m_0
+        self.P_0 = P_0
         self.Q_c = Q_c
         self.Q_c_is_not_zero = np.count_nonzero(Q_c) > 0
 
@@ -133,6 +133,7 @@ class kalman():
         #print A[3,3] - np.cos(self.F[2,3]*delta_t)
         
         Q = np.zeros((np.shape(self.F)[0], np.shape(self.F)[0]))
+        #print self.Q_c[0,0]
         if self.Q_c_is_not_zero:
             d_tau = delta_t/self.noise_int_prec
             X = np.dot(self.L, np.dot(self.Q_c, self.L.T))

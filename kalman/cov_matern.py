@@ -11,6 +11,7 @@ class cov_matern():
             assert (not nu is None)
             p = nu - 0.5
         assert(float(int(p)) == p)
+        assert(p >= 0)
         self.nu = nu
         self.p = p
 
