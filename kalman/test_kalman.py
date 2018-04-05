@@ -1,8 +1,6 @@
 
 import numpy as np
-import scipy
 from scipy import stats
-import random
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.colorbar as cb
@@ -11,8 +9,13 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
 import matplotlib.colors as colors
 import matplotlib.ticker as ticker
-import numpy.linalg as la
 import scipy.special as special
+import numpy.linalg as la
+
+try:
+    from scipy.linalg import solve_lyapunov as solve_continuous_lyapunov
+except ImportError:  # pragma: no cover; github.com/scipy/scipy/pull/8082
+    from scipy.linalg import solve_continuous_lyapunov
 
 import kalman
 from cov_exp_quad import cov_exp_quad
@@ -23,7 +26,7 @@ cov_type = "exp_quad"
 
 def calc_cov_exp_quad(t, length_scale, sig_var):
     k = np.zeros((len(t), len(t)))
-    inv_l2 = 1.0/length_scale/length_scale
+    inv_l2 = 1.0/length_scale/length_scale/2.0
     for i in np.arange(0, len(t)):
         for j in np.arange(i, len(t)):
             k[i, j] = sig_var*np.exp(-inv_l2*(t[i]-t[j])**2)
@@ -148,11 +151,12 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
 
 def get_params_exp_quad(ell, noise_var, sig_var):
     
-    k = cov_exp_quad()
+    k = cov_exp_quad(N=10)
     F, q = k.get_F_q(sig_var, ell)
 
     n_dim = np.shape(F)[0]
-    Q_c = np.zeros((1, 1))*q
+    Q_c = np.ones((1, 1))#*q
+    #print q, sig_var
     L = np.zeros((n_dim, 1))
     L[n_dim - 1] = 1.0
     
@@ -160,7 +164,10 @@ def get_params_exp_quad(ell, noise_var, sig_var):
     H[0] = 1.0
     
     m_0 = np.zeros(n_dim) # zeroth state mean
-    P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
+    #P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
+    
+    P_0 = solve_continuous_lyapunov(F, -np.dot(L, np.dot(Q_c, L.T)))
+    #print P_0
     
     #Q_c[n_dim - 1, n_dim - 1] = q
 
@@ -172,8 +179,8 @@ n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
-var = 1.0
-sig_var = np.random.uniform(0.99999, 0.99999)
+var = 2.0
+sig_var = np.random.uniform(1.9999, 1.9999)
 noise_var = var - sig_var
 mean = 0.5
 
@@ -189,12 +196,13 @@ elif cov_type == "quasiperiodic":
     length_scale = np.random.uniform(p/2.0, 4.0*p)
     k = calc_cov_qp(t, freq, length_scale, sig_var) + np.diag(np.ones(n) * noise_var)
 elif cov_type == "exp_quad":
-    length_scale = np.random.uniform(p/2.0, 4.0*p)
+    length_scale = np.random.uniform(time_range/10, time_range/5)
     k = calc_cov_exp_quad(t, length_scale, sig_var) + np.diag(np.ones(n) * noise_var)
 else:
     assert(True==False)
+
 l = la.cholesky(k)
-s = np.random.normal(0, 1, n)
+s = np.random.normal(0.0, 1.0, n)
 
 y = np.repeat(mean, n) + np.dot(l, s)
 #y += mean
@@ -224,19 +232,20 @@ elif cov_type == "quasiperiodic":
     ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
     omegas = [2.0*np.pi*freq]
 elif cov_type == "exp_quad":
-    ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+    #ellqs = [length_scale] 
+    #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+    ellqs = [length_scale/2, length_scale] 
     omegas = [0.0]
     
 for omega_0 in omegas:
     
     for ellq in ellqs:
-        print ellq
         if cov_type == "periodic":
             F, L, H, R, m_0, P_0, Q_c = get_params_p(j_max, omega_0, ell, noise_var)
         elif cov_type == "quasiperiodic":
             F, L, H, R, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
         elif cov_type == "exp_quad":
-            F, L, H, R, m_0, P_0, Q_c = get_params_exp_quad(ell, noise_var, sig_var)
+            F, L, H, R, m_0, P_0, Q_c = get_params_exp_quad(ellq, noise_var, sig_var)
             
         #F = 1.0
         #L = 1.0
@@ -248,7 +257,7 @@ for omega_0 in omegas:
         
         kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100)
         y_means, loglik = kf.filter()
-        #print omega_0, loglik
+        print omega_0, ellq, loglik
         if loglik_max is None or loglik > loglik_max:
            loglik_max = loglik
            y_means_max = y_means
