@@ -132,27 +132,18 @@ class kalman():
         #print A[3,2] + np.sin(self.F[2,3]*delta_t)
         #print A[3,3] - np.cos(self.F[2,3]*delta_t)
         
-        Q = np.zeros((np.shape(self.F)[0], np.shape(self.F)[0]))
-        if self.Q_c_is_not_zero:
-            num_points = 10.0*delta_t*self.noise_int_prec/(self.t[-1] - self.t[0])
-            d_tau = delta_t/num_points
-            X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
-            #y = []
-            for tau in np.linspace(0.0, delta_t, num=num_points):
-                Phi = self.phi(delta_t-tau)
-                #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))
-                Q += np.dot(Phi, np.dot(X, Phi.T))
-                #y.append(np.dot(Phi, np.dot(X, Phi.T)))
-            Q *= d_tau
-            #y = np.asanyarray(y)
-            #Q_test = np.trapz(y, np.linspace(0.0, delta_t, num=self.noise_int_prec), d_tau, axis=0)
+        #Q = np.zeros((np.shape(self.F)[0], np.shape(self.F)[0]))
+        #if self.Q_c_is_not_zero:
+        #    num_points = 10.0*delta_t*self.noise_int_prec/(self.t[-1] - self.t[0])
+        #    d_tau = delta_t/num_points
+        #    X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
+        #    for tau in np.linspace(0.0, delta_t, num=num_points):
+        #        Phi = self.phi(delta_t-tau)
+        #        #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))
+        #        Q += np.dot(Phi, np.dot(X, Phi.T))
+        #    Q *= d_tau
 
-
-            #print "Q", Q
-            #print "Q_test", Q_test
-            #Q = Q_test
-
-        #Q = self.Q[self.k-1]
+        Q = self.Q[self.k-1]
         m = self.m[self.k-1]
         P = self.P[self.k-1]
 

@@ -24,9 +24,9 @@ from cov_exp_quad import cov_exp_quad
 from cov_matern import cov_matern
 
 #cov_type = "periodic"
-#cov_type = "quasiperiodic"
+cov_type = "quasiperiodic"
 #cov_type = "exp_quad"
-cov_type = "matern"
+#cov_type = "matern"
 
 matern_p = 1
 
@@ -56,11 +56,11 @@ def calc_cov_exp_quad(t, length_scale, sig_var):
 
 def calc_cov_qp(t, f, length_scale, sig_var):
     k = np.zeros((len(t), len(t)))
-    inv_l2 = 1.0/length_scale/length_scale
+    inv_l2 = 0.5/(length_scale*length_scale)
     for i in np.arange(0, len(t)):
         for j in np.arange(i, len(t)):
-            #k[i, j] = sig_var*np.exp(-inv_l2*(t[i]-t[j])**2)*(np.cos(2 * np.pi*f*(t[i] - t[j])))
-            k[i, j] = sig_var*np.exp(-np.abs(t[i]-t[j])/length_scale)*(np.cos(2 * np.pi*f*(t[i] - t[j])))
+            k[i, j] = sig_var*np.exp(-inv_l2*(t[i]-t[j])**2)*(np.cos(2 * np.pi*f*(t[i] - t[j])))
+            #k[i, j] = sig_var*np.exp(-np.abs(t[i]-t[j])/length_scale)*(np.cos(2 * np.pi*f*(t[i] - t[j])))
             k[j, i] = k[i, j]
     return k
 
@@ -128,21 +128,23 @@ def get_params_p(j_max, omega_0, ell, noise_var):
 
 def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     #ell_inv_sq = 1.0/ell/ell
-
-    lmbda = 1.0/ellq
-    Fq = -np.ones(1) * lmbda
-    Lq = np.ones(1)
-    Qcq = np.ones(1) * 2.0*sig_var*np.sqrt(np.pi)*lmbda*special.gamma(1.0)/special.gamma(0.5)
-    Hq = np.ones(1) # observatioanl matrix
-    P0q = np.ones(1)
+    Nq = 6
+    Fq, Lq, Hq, _, _, P0q, Qcq = get_params_exp_quad(ellq, noise_var, sig_var, N=Nq)
     
-    F = np.zeros((2*j_max, 2*j_max))
-    L = np.zeros((2*j_max, 2*j_max))
+    #lmbda = 1.0/ellq
+    #Fq = -np.ones(1) * lmbda
+    #Lq = np.ones(1)
+    #Qcq = np.ones(1) * 2.0*sig_var*np.sqrt(np.pi)*lmbda*special.gamma(1.0)/special.gamma(0.5)
+    #Hq = np.ones(1) # observatioanl matrix
+    #P0q = np.ones(1)
+    
+    F = np.zeros((2*Nq*j_max, 2*Nq*j_max))
+    L = np.zeros((2*Nq*j_max, 2*j_max))
     Q_c = np.zeros((2*j_max, 2*j_max)) # process noise
-    H = np.zeros(2*j_max) # observatioanl matrix
+    H = np.zeros(2*Nq*j_max) # observatioanl matrix
     
-    m_0 = np.zeros(2*j_max) # zeroth state mean
-    P_0 = np.zeros((2*j_max, 2*j_max)) # zeroth state covariance
+    m_0 = np.zeros(2*Nq*j_max) # zeroth state mean
+    P_0 = np.zeros((2*Nq*j_max, 2*Nq*j_max)) # zeroth state covariance
     
     R = noise_var # observational noise
     
@@ -162,17 +164,17 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
         ##Qcpj = np.zeros((2, 2))
         #Hpj = np.array([1.0, 0.0])
         
-        F[2*j:2*j+2, 2*j:2*j+2] = np.kron(Fq, I2) + np.kron(np.diag(np.ones(1)), Fpj)
-        L[2*j:2*j+2, 2*j:2*j+2] = np.kron(Lq, Lpj)
+        F[2*Nq*j:2*Nq*j+2*Nq, 2*Nq*j:2*Nq*j+2*Nq] = np.kron(Fq, I2) + np.kron(np.diag(np.ones(Nq)), Fpj)
+        L[2*Nq*j:2*Nq*j+2*Nq, 2*j:2*j+2] = np.kron(Lq, Lpj)
         Q_c[2*j:2*j+2, 2*j:2*j+2] = np.kron(Qcq, I2 * qj)
-        P_0[2*j:2*j+2, 2*j:2*j+2] = np.kron(P0q, P0pj)
-        H[2*j:2*j+2] = np.kron(Hq, Hpj)
+        P_0[2*Nq*j:2*Nq*j+2*Nq, 2*Nq*j:2*Nq*j+2*Nq] = np.kron(P0q, P0pj)
+        H[2*Nq*j:2*Nq*j+2*Nq] = np.kron(Hq, Hpj)
         
     return F, L, H, R, m_0, P_0, Q_c
 
-def get_params_exp_quad(ell, noise_var, sig_var):
+def get_params_exp_quad(ell, noise_var, sig_var, N=6):
     
-    k = cov_exp_quad(N=6)
+    k = cov_exp_quad(N=N)
     F, q = k.get_F_q(sig_var, ell)
 
     n_dim = np.shape(F)[0]
@@ -227,7 +229,7 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 2.0
-sig_var = np.random.uniform(0.99999*var, 0.99999*var)
+sig_var = np.random.uniform(0.99*var, 0.99*var)
 noise_var = var - sig_var
 mean = 0.5
 
@@ -273,24 +275,25 @@ omega_max = None
 ellq_max = None
 kf_max =None
 
-j_max = 2
+j_max = 1
 ell = 10
 if cov_type == "periodic":
     ellqs = [length_scale]
     omegas = [2.0*np.pi*freq]
 elif cov_type == "quasiperiodic":
-    ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
-    omegas = [2.0*np.pi*freq]
+    ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
+    omegas = np.linspace(2.0*np.pi*freq/2, 2.0*np.pi*freq*2, 10) 
+    #omegas = [2.0*np.pi*freq]
 elif cov_type == "exp_quad":
     #ellqs = [length_scale] 
-    #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+    ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
     #ellqs = [length_scale/2, length_scale] 
-    ellqs = [length_scale/2, length_scale, length_scale*2] 
+    #ellqs = [length_scale/2, length_scale, length_scale*2] 
     omegas = [2.0*np.pi*freq]
 elif cov_type == "matern":
     #ellqs = [length_scale] 
-    #ellqs = np.linspace(length_scale/4, length_scale*2, 20) 
-    ellqs = [length_scale/5, length_scale, length_scale*2] 
+    ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+    #ellqs = [length_scale/2, length_scale, length_scale*2] 
     #ellqs = [length_scale] 
     omegas = [2.0*np.pi*freq]
 else:           
@@ -330,7 +333,7 @@ for omega_0 in omegas:
         if ellq == length_scale and omega_0 == freq*2.0*np.pi:
             y_means_true = y_means
 
-print omega_max, freq*2.0*np.pi
+print 2.0*np.pi/omega_max, 1.0/freq
 print ellq_max, length_scale
 ax1.plot(t[1:], y_means_max, 'r--')
 if y_means_true is not None:
