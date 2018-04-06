@@ -224,6 +224,31 @@ def get_params_matern(ell, noise_var, sig_var):
     
     return F, L, H, R, m_0, P_0, Q_c
 
+def get_params_linear_trend(slope, intercept):
+    
+    k = cov_matern(p=matern_p)
+    F, q = k.get_F_q(sig_var, ell)
+
+    n_dim = np.shape(F)[0]
+    Q_c = np.zeros((1, 1))
+    L = np.zeros((n_dim, 1))
+    L[n_dim - 1] = 1.0
+    
+    H = np.array([0.0, 1.0]) # observatioanl matrix
+    
+    m_0 = np.array([1.0, 0.0]) # zeroth state mean
+    #P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
+    
+    #P_0 = solve_continuous_lyapunov(F, -np.dot(L, np.dot(Q_c, L.T)))
+    P_0 = solve_continuous_lyapunov(F, -np.dot(L, L.T)*Q_c[0,0])
+    #print P_0
+    
+    #Q_c[n_dim - 1, n_dim - 1] = q
+
+    R = noise_var # observational noise
+    
+    return F, L, H, R, m_0, P_0, Q_c
+
 n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
