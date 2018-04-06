@@ -95,7 +95,7 @@ class kalman():
             filled_count = 0
             
             X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
-            for tau in np.linspace(0, max_delta_t, self.noise_int_prec):
+            for tau in np.linspace(0, max_delta_t, num=self.noise_int_prec):
                 Phi = self.phi(tau)
                 #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))*d_tau
                 Q += np.dot(Phi, np.dot(X, Phi.T))
@@ -133,15 +133,24 @@ class kalman():
         #print A[3,3] - np.cos(self.F[2,3]*delta_t)
         
         Q = np.zeros((np.shape(self.F)[0], np.shape(self.F)[0]))
-        #print self.Q_c[0,0]
         if self.Q_c_is_not_zero:
-            d_tau = delta_t/self.noise_int_prec
+            num_points = 10.0*delta_t*self.noise_int_prec/(self.t[-1] - self.t[0])
+            d_tau = delta_t/num_points
             X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
-            for tau in np.linspace(0, delta_t, self.noise_int_prec):
+            #y = []
+            for tau in np.linspace(0.0, delta_t, num=num_points):
                 Phi = self.phi(delta_t-tau)
                 #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))
                 Q += np.dot(Phi, np.dot(X, Phi.T))
+                #y.append(np.dot(Phi, np.dot(X, Phi.T)))
             Q *= d_tau
+            #y = np.asanyarray(y)
+            #Q_test = np.trapz(y, np.linspace(0.0, delta_t, num=self.noise_int_prec), d_tau, axis=0)
+
+
+            #print "Q", Q
+            #print "Q_test", Q_test
+            #Q = Q_test
 
         #Q = self.Q[self.k-1]
         m = self.m[self.k-1]
@@ -160,7 +169,7 @@ class kalman():
         S = np.dot(self.H, np.dot(P_, self.H.T)) + self.R
         S_inv = la.inv(S)
 
-        loglik_y = -0.5 * np.dot(v.T, np.dot(S_inv, v)) - 0.5 * la.det(S) - 0.5 * self.y_dim_2 * np.log(2.0 * np.pi)
+        loglik_y = -0.5 * (np.dot(v.T, np.dot(S_inv, v)) + np.log(la.det(S)) + self.y_dim_2 * np.log(2.0 * np.pi))
         #print S, S_inv
 
         K = np.dot(P_, np.dot(self.H.T, S_inv))

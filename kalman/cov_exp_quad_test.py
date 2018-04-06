@@ -1,7 +1,6 @@
 import numpy as np
 from cov_exp_quad import cov_exp_quad
 import unittest
-import scipy.misc as misc
 
 class test_cov_exp_quad(unittest.TestCase):
 

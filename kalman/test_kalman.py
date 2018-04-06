@@ -98,7 +98,7 @@ def get_params_p(j_max, omega_0, ell, noise_var):
     F = np.zeros((2*j_max, 2*j_max))
     L = np.zeros((2*j_max, 2*j_max))
     Q_c = np.zeros((2*j_max, 2*j_max)) # process noise
-    H = np.zeros(2*j_max) # ovservatioanl matrix
+    H = np.zeros(2*j_max) # observatioanl matrix
     
     m_0 = np.zeros(2*j_max) # zeroth state mean
     P_0 = np.zeros((2*j_max, 2*j_max)) # zeroth state covariance
@@ -139,7 +139,7 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     F = np.zeros((2*j_max, 2*j_max))
     L = np.zeros((2*j_max, 2*j_max))
     Q_c = np.zeros((2*j_max, 2*j_max)) # process noise
-    H = np.zeros(2*j_max) # ovservatioanl matrix
+    H = np.zeros(2*j_max) # observatioanl matrix
     
     m_0 = np.zeros(2*j_max) # zeroth state mean
     P_0 = np.zeros((2*j_max, 2*j_max)) # zeroth state covariance
@@ -180,7 +180,7 @@ def get_params_exp_quad(ell, noise_var, sig_var):
     L = np.zeros((n_dim, 1))
     L[n_dim - 1] = 1.0
     
-    H = np.zeros(n_dim) # ovservatioanl matrix
+    H = np.zeros(n_dim) # observatioanl matrix
     H[0] = 1.0
     
     m_0 = np.zeros(n_dim) # zeroth state mean
@@ -206,7 +206,7 @@ def get_params_matern(ell, noise_var, sig_var):
     L = np.zeros((n_dim, 1))
     L[n_dim - 1] = 1.0
     
-    H = np.zeros(n_dim) # ovservatioanl matrix
+    H = np.zeros(n_dim) # observatioanl matrix
     H[0] = 1.0
     
     m_0 = np.zeros(n_dim) # zeroth state mean
@@ -227,7 +227,7 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 2.0
-sig_var = np.random.uniform(0.9999*var, 0.9999*var)
+sig_var = np.random.uniform(0.99999*var, 0.99999*var)
 noise_var = var - sig_var
 mean = 0.5
 
@@ -285,16 +285,18 @@ elif cov_type == "exp_quad":
     #ellqs = [length_scale] 
     #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
     #ellqs = [length_scale/2, length_scale] 
-    ellqs = [length_scale/2.1, length_scale/2, length_scale/1.9, length_scale] 
-    omegas = [0.0]
+    ellqs = [length_scale/2, length_scale, length_scale*2] 
+    omegas = [2.0*np.pi*freq]
 elif cov_type == "matern":
     #ellqs = [length_scale] 
-    #ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
-    ellqs = [length_scale/2.3, length_scale/2, length_scale/1.7, length_scale] 
-    omegas = [0.0]
+    #ellqs = np.linspace(length_scale/4, length_scale*2, 20) 
+    ellqs = [length_scale/5, length_scale, length_scale*2] 
+    #ellqs = [length_scale] 
+    omegas = [2.0*np.pi*freq]
 else:           
     assert(True==False)
-    
+
+y_means_true = None
 for omega_0 in omegas:
     
     for ellq in ellqs:
@@ -325,10 +327,14 @@ for omega_0 in omegas:
            omega_max = omega_0
            ellq_max = ellq
            kf_max = kf
+        if ellq == length_scale and omega_0 == freq*2.0*np.pi:
+            y_means_true = y_means
 
 print omega_max, freq*2.0*np.pi
 print ellq_max, length_scale
 ax1.plot(t[1:], y_means_max, 'r--')
+if y_means_true is not None:
+    ax1.plot(t[1:], y_means_true, 'g--')
 
 #y_means = kf_max.smooth()
 #ax1.plot(t[1:-1], y_means, 'g--')
