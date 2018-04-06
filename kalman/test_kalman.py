@@ -275,7 +275,7 @@ omega_max = None
 ellq_max = None
 kf_max =None
 
-j_max = 1
+j_max = 2
 ell = 10
 if cov_type == "periodic":
     ellqs = [length_scale]
@@ -323,7 +323,7 @@ for omega_0 in omegas:
         
         kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100)
         y_means, loglik = kf.filter()
-        print omega_0, ellq, loglik
+        print 2.0*np.pi/omega_0, ellq, loglik
         if loglik_max is None or loglik > loglik_max:
            loglik_max = loglik
            y_means_max = y_means
@@ -333,7 +333,7 @@ for omega_0 in omegas:
         if ellq == length_scale and omega_0 == freq*2.0*np.pi:
             y_means_true = y_means
 
-print 2.0*np.pi/omega_max, 1.0/freq
+print 2.0*np.pi/omega_max, p
 print ellq_max, length_scale
 ax1.plot(t[1:], y_means_max, 'r--')
 if y_means_true is not None:
