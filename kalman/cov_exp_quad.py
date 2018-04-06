@@ -5,6 +5,7 @@ class cov_exp_quad():
 
     def __init__(self, N = 6):
         assert(N % 2 == 0)
+        assert(N <= 20)
         self.N = N
 
         self.coefs = np.zeros(2*N + 1)
@@ -23,6 +24,9 @@ class cov_exp_quad():
         P_coefs = np.array(self.coefs)
         for n in np.arange(0, self.N + 1):
             P_coefs[2*n] *= (4.0 * kappa)**(self.N-n)
+        
+        P_coefs = np.flip(P_coefs, axis=0) # np.roots takes the coefs in the opposite order
+
         roots = np.roots(P_coefs)
         positive_roots = []
         negative_roots = []
@@ -36,15 +40,17 @@ class cov_exp_quad():
         P_plus_coefs = np.poly(positive_roots)
         P_minus_coefs = np.poly(negative_roots)
         
-        m = len(P_minus_coefs)
+        m = len(P_minus_coefs) - 1
         
         F = np.zeros((m, m))
         
         for i in np.arange(0, m - 1):
             F[i, i+1] = 1.0
         
-        F[m - 1,:] = -P_minus_coefs
-
+        for i in np.arange(0, m):
+            F[m - 1,i] = -P_minus_coefs[m-i]
+        #F[m - 1,:] = -P_minus_coefs
+            
         q = sigma*self.N_fact*(4.0*kappa)**self.N*np.sqrt(np.pi/kappa)
 
         if return_P:
