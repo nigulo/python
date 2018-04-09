@@ -23,12 +23,21 @@ import kalman
 from cov_exp_quad import cov_exp_quad
 from cov_matern import cov_matern
 
+cov_type = "linear_trend"
 #cov_type = "periodic"
-cov_type = "quasiperiodic"
+#cov_type = "quasiperiodic"
 #cov_type = "exp_quad"
 #cov_type = "matern"
 
 matern_p = 1
+
+def calc_cov_linear_trend(t, trend_var, c = 0.0):
+    k = np.zeros((len(t), len(t)))
+    for i in np.arange(0, len(t)):
+        for j in np.arange(i, len(t)):
+            k[i, j] = trend_var * (t[i] - c)*(t[j] - c)
+            k[j, i] = k[i, j]
+    return k
 
 def calc_cov_matern(t, length_scale, sig_var, nu):
     k = np.zeros((len(t), len(t)))
@@ -103,8 +112,6 @@ def get_params_p(j_max, omega_0, ell, noise_var):
     m_0 = np.zeros(2*j_max) # zeroth state mean
     P_0 = np.zeros((2*j_max, 2*j_max)) # zeroth state covariance
     
-    R = noise_var # observational noise
-    
     for j in np.arange(0, j_max):
         Fpj, Lpj, P0pj, Hpj, _ = get_params_p_j(j, omega_0, ell)
         F[2*j:2*j+2, 2*j:2*j+2] = Fpj
@@ -124,7 +131,7 @@ def get_params_p(j_max, omega_0, ell, noise_var):
         #P_0[2*j, 2*j] = q
         #P_0[2*j+1, 2*j+1] = q
         #H[2*j] = 1.0
-    return F, L, H, R, m_0, P_0, Q_c
+    return F, L, H, m_0, P_0, Q_c
 
 def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     #ell_inv_sq = 1.0/ell/ell
@@ -145,8 +152,6 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     
     m_0 = np.zeros(2*Nq*j_max) # zeroth state mean
     P_0 = np.zeros((2*Nq*j_max, 2*Nq*j_max)) # zeroth state covariance
-    
-    R = noise_var # observational noise
     
     I2 = np.diag(np.ones(2))
     for j in np.arange(0, j_max):
@@ -170,7 +175,7 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
         P_0[2*Nq*j:2*Nq*j+2*Nq, 2*Nq*j:2*Nq*j+2*Nq] = np.kron(P0q, P0pj)
         H[2*Nq*j:2*Nq*j+2*Nq] = np.kron(Hq, Hpj)
         
-    return F, L, H, R, m_0, P_0, Q_c
+    return F, L, H, m_0, P_0, Q_c
 
 def get_params_exp_quad(ell, noise_var, sig_var, N=6):
     
@@ -192,11 +197,7 @@ def get_params_exp_quad(ell, noise_var, sig_var, N=6):
     P_0 = solve_continuous_lyapunov(F, -np.dot(L, L.T)*Q_c[0,0])
     #print P_0
     
-    #Q_c[n_dim - 1, n_dim - 1] = q
-
-    R = noise_var # observational noise
-    
-    return F, L, H, R, m_0, P_0, Q_c
+    return F, L, H, m_0, P_0, Q_c
 
 def get_params_matern(ell, noise_var, sig_var):
     
@@ -220,64 +221,68 @@ def get_params_matern(ell, noise_var, sig_var):
     
     #Q_c[n_dim - 1, n_dim - 1] = q
 
-    R = noise_var # observational noise
-    
-    return F, L, H, R, m_0, P_0, Q_c
+    return F, L, H, m_0, P_0, Q_c
 
-def get_params_linear_trend(slope, intercept):
+def get_params_linear_trend(t, slope, intercept):
     
-    k = cov_matern(p=matern_p)
-    F, q = k.get_F_q(sig_var, ell)
+    delta_t = t[1:] - t[:-1]
 
-    n_dim = np.shape(F)[0]
+
     Q_c = np.zeros((1, 1))
-    L = np.zeros((n_dim, 1))
-    L[n_dim - 1] = 1.0
+    L = np.zeros((2, 1))
+    L[1] = 1.0
     
     H = np.array([0.0, 1.0]) # observatioanl matrix
     
-    m_0 = np.array([1.0, 0.0]) # zeroth state mean
+    F = np.zeros((len(delta_t), 2, 2))
+    i = 0
+    for dt in delta_t:
+        F[i] = np.array([[1, 0], [slope*dt,1]])
+        i += 1
     #P_0 = np.diag(np.ones(n_dim))#*sig_var) # zeroth state covariance
     
     #P_0 = solve_continuous_lyapunov(F, -np.dot(L, np.dot(Q_c, L.T)))
-    P_0 = solve_continuous_lyapunov(F, -np.dot(L, L.T)*Q_c[0,0])
+    m_0 = np.array([1.0, slope*t[0] + intercept]) # zeroth state mean
+    P_0 = np.diag(np.array([0.0, 0.0]))#slope**2*t[0]**2 + intercept**2]))
     #print P_0
     
     #Q_c[n_dim - 1, n_dim - 1] = q
 
-    R = noise_var # observational noise
-    
-    return F, L, H, R, m_0, P_0, Q_c
+    return F, L, H, m_0, P_0, Q_c
 
 n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 2.0
-sig_var = np.random.uniform(0.99*var, 0.99*var)
-noise_var = var - sig_var
-mean = 0.5
+sig_var = 0.0#np.random.uniform(0.99*var, 0.99*var)
+trend_var = np.random.uniform(0.9999*var, 0.9999*var)
+noise_var = var - sig_var - trend_var
+t -= np.mean(t)
 
 #p = time_range/12.54321#
 p = time_range/5#np.random.uniform(time_range/200, time_range/5)
 freq = 1.0/p
-mean = 0.0
+mean = np.random.uniform(-100.0, 100.0)
 
-if cov_type == "periodic":
+if cov_type == "linear_trend":
+    k = calc_cov_linear_trend(t, trend_var)
+elif cov_type == "periodic":
     length_scale = 1e10*p
-    k = calc_cov_p(t, freq, sig_var) + np.diag(np.ones(n) * noise_var)
+    k = calc_cov_p(t, freq, sig_var)
 elif cov_type == "quasiperiodic":
     length_scale = np.random.uniform(p/2.0, 4.0*p)
-    k = calc_cov_qp(t, freq, length_scale, sig_var) + np.diag(np.ones(n) * noise_var)
+    k = calc_cov_qp(t, freq, length_scale, sig_var)
 elif cov_type == "exp_quad":
     length_scale = np.random.uniform(time_range/10, time_range/5)
-    k = calc_cov_exp_quad(t, length_scale, sig_var) + np.diag(np.ones(n) * noise_var)
+    k = calc_cov_exp_quad(t, length_scale, sig_var)
 elif cov_type == "matern":
     length_scale = np.random.uniform(time_range/10, time_range/5)
-    k = calc_cov_matern(t, length_scale, sig_var, matern_p + 0.5) + np.diag(np.ones(n) * noise_var)
+    k = calc_cov_matern(t, length_scale, sig_var, matern_p + 0.5)
 else:
     assert(True==False)
 
+k += np.diag(np.ones(n) * noise_var)
 l = la.cholesky(k)
 s = np.random.normal(0.0, 1.0, n)
 
@@ -298,11 +303,21 @@ y_means_max = None
 loglik_max = None
 omega_max = None
 ellq_max = None
+slope_max = None
+intercept_max = None
 kf_max =None
 
 j_max = 2
 ell = 10
-if cov_type == "periodic":
+true_slope = np.sqrt(trend_var)
+slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
+print "slope_hat, intercept_hat", slope_hat, intercept_hat
+slopes = np.linspace(slope_hat/2, slope_hat*2, 10)#[true_slope, -true_slope]
+intercepts = np.linspace(mean/2, mean*2, 10)#[true_slope, -true_slope]
+if cov_type == "linear_trend":
+    ellqs = [length_scale]
+    omegas = [2.0*np.pi*freq]
+elif cov_type == "periodic":
     ellqs = [length_scale]
     omegas = [2.0*np.pi*freq]
 elif cov_type == "quasiperiodic":
@@ -328,38 +343,48 @@ y_means_true = None
 for omega_0 in omegas:
     
     for ellq in ellqs:
-        if cov_type == "periodic":
-            F, L, H, R, m_0, P_0, Q_c = get_params_p(j_max, omega_0, ell, noise_var)
-        elif cov_type == "quasiperiodic":
-            F, L, H, R, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
-        elif cov_type == "exp_quad":
-            F, L, H, R, m_0, P_0, Q_c = get_params_exp_quad(ellq, noise_var, sig_var)
-        elif cov_type == "matern":
-            F, L, H, R, m_0, P_0, Q_c = get_params_matern(ellq, noise_var, sig_var)
-        else:           
-            assert(True==False)
-        #F = 1.0
-        #L = 1.0
-        #H = 1.0
-        #R = 0.0
-        #m_0 = 0.0
-        #P_0 = 1.0
-        #Q_c = 1.0
-        
-        kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100)
-        y_means, loglik = kf.filter()
-        print 2.0*np.pi/omega_0, ellq, loglik
-        if loglik_max is None or loglik > loglik_max:
-           loglik_max = loglik
-           y_means_max = y_means
-           omega_max = omega_0
-           ellq_max = ellq
-           kf_max = kf
-        if ellq == length_scale and omega_0 == freq*2.0*np.pi:
-            y_means_true = y_means
+        for slope in slopes:
+            for intercept in intercepts:
+                if cov_type == "linear_trend":
+                    F, L, H, m_0, P_0, Q_c = get_params_linear_trend(t, slope=slope, intercept=intercept)
+                elif cov_type == "periodic":
+                    F, L, H, m_0, P_0, Q_c = get_params_p(j_max, omega_0, ell, noise_var)
+                elif cov_type == "quasiperiodic":
+                    F, L, H, m_0, P_0, Q_c = get_params_qp(j_max, omega_0, ell, noise_var, ellq, sig_var)
+                elif cov_type == "exp_quad":
+                    F, L, H, m_0, P_0, Q_c = get_params_exp_quad(ellq, noise_var, sig_var)
+                elif cov_type == "matern":
+                    F, L, H, m_0, P_0, Q_c = get_params_matern(ellq, noise_var, sig_var)
+                else:           
+                    assert(True==False)
+                #F = 1.0
+                #L = 1.0
+                #H = 1.0
+                #R = 0.0
+                #m_0 = 0.0
+                #P_0 = 1.0
+                #Q_c = 1.0
+                    
+                R = noise_var # observational noise
+                
+                kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100, F_is_A=True)
+                y_means, loglik = kf.filter()
+                print 2.0*np.pi/omega_0, ellq, slope, intercept, loglik
+                if loglik_max is None or loglik > loglik_max:
+                   loglik_max = loglik
+                   y_means_max = y_means
+                   omega_max = omega_0
+                   ellq_max = ellq
+                   slope_max = slope
+                   intercept_max = intercept
+                   kf_max = kf
+                if ellq == length_scale and omega_0 == freq*2.0*np.pi and abs(slope) == slope_hat and intercept == mean:
+                    y_means_true = y_means
 
-print 2.0*np.pi/omega_max, p
-print ellq_max, length_scale
+print "period", 2.0*np.pi/omega_max, p
+print "length-scale", ellq_max, length_scale
+print "slope", slope_max, slope_hat
+print "intercept", intercept_max, mean
 ax1.plot(t[1:], y_means_max, 'r--')
 if y_means_true is not None:
     ax1.plot(t[1:], y_means_true, 'g--')

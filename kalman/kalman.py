@@ -29,26 +29,35 @@ class kalman():
             L = np.reshape(L, (1,1))
         if np.ndim(H) == 0:
             H = np.reshape(H, 1)
+           
+        if F_is_A and np.ndim(F) == 3:
+            self.dimF0 = np.shape(F)[1]
+            self.dimF1 = np.shape(F)[2]
+        else:
+            assert(np.ndim(F) == 2)
+            self.dimF0 = np.shape(F)[0]
+            self.dimF1 = np.shape(F)[1]
+            
         if np.ndim(H) == 1:
-            assert(np.shape(H)[0] == np.shape(F)[0])
+            assert(np.shape(H)[0] == self.dimF0)
             H = np.reshape(H, (1, np.shape(H)[0]))
         if np.ndim(R) == 0:
             R = np.reshape(R, (1,1))
 
         if y_dim_2 == 1:
-            assert(np.shape(H)[1] == np.shape(F)[0])
+            assert(np.shape(H)[1] == self.dimF0)
         else:
             assert(np.ndim(H) == 2)
             assert(np.shape(H)[0] == y_dim_2)
-            assert(np.shape(H)[1] == np.shape(F)[0])
+            assert(np.shape(H)[1] == self.dimF0)
 
         assert(np.shape(R)[0] == y_dim_2)
         assert(np.shape(R)[1] == y_dim_2)
 
-        assert(np.shape(F)[0] == np.shape(L)[0])
+        assert(self.dimF0 == np.shape(L)[0])
         assert(np.shape(Q_c)[1] == np.shape(L)[1])
         assert(np.shape(Q_c)[0] == np.shape(L)[1])
-        assert(np.shape(F)[1] == np.shape(m_0)[0])
+        assert(self.dimF1 == np.shape(m_0)[0])
         assert(np.shape(P_0)[0] == np.shape(m_0)[0])
         assert(np.shape(P_0)[1] == np.shape(m_0)[0])
         
@@ -68,18 +77,24 @@ class kalman():
         self.m[0] = m_0
         self.P[0] = P_0
         
-        self.A = np.zeros((len(t)-1, np.shape(F)[0], np.shape(F)[1]))
+        self.F_is_A = F_is_A
+        self.A_filled = False
+        if F_is_A and np.ndim(F) == 3:
+            assert(np.shape(F)[0] == len(t) - 1)
+            self.A = np.array(F)
+            self.A_filled = True
+        else:
+            self.A = np.zeros((len(t)-1, np.shape(F)[0], np.shape(F)[1]))
         self.m_ = np.zeros((len(t)-1, np.shape(m_0)[0]))
         self.P_ = np.zeros((len(t)-1, np.shape(P_0)[0], np.shape(P_0)[1]))
 
         self.ms = np.zeros((len(t), np.shape(m_0)[0]))
         self.Ps = np.zeros((len(t), np.shape(P_0)[0], np.shape(P_0)[1]))
 
-        self.Q = np.zeros((len(t)-1, np.shape(self.F)[0], np.shape(self.F)[0]))
+        self.Q = np.zeros((len(t)-1, self.dimF0, self.dimF0))
 
-        self.F_is_A = F_is_A
         self.noise_int_prec = noise_int_prec
-        
+    
     def phi(self, tau):
         return la.expm(self.F*tau)
     
@@ -90,7 +105,7 @@ class kalman():
             max_delta_t = np.max(delta_t)
             d_tau = max_delta_t/self.noise_int_prec
             
-            Q = np.zeros((np.shape(self.F)[0], np.shape(self.F)[0]))
+            Q = np.zeros((self.dimF0, self.dimF0))
             last_tau = 0.0
             filled_count = 0
             
@@ -122,10 +137,14 @@ class kalman():
         #print "step", self.k
         delta_t = self.t[self.k] - self.t[self.k-1]
         if self.F_is_A:
-            A = self.F
+            if self.A_filled:
+                A = self.A[self.k-1]
+            else:
+                A = self.F
+                self.A[self.k-1] = A
         else:
             A = self.phi(delta_t)
-        self.A[self.k-1] = A
+            self.A[self.k-1] = A
         
         #print A[2,2] - np.cos(self.F[2,3]*delta_t)
         #print A[2,3] - np.sin(self.F[2,3]*delta_t)
