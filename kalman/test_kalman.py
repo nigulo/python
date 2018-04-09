@@ -13,6 +13,7 @@ import scipy.special as special
 import numpy.linalg as la
 from scipy.special import gamma
 from scipy.special import kv
+import scipy.linalg as la
 
 try:
     from scipy.linalg import solve_lyapunov as solve_continuous_lyapunov
@@ -260,8 +261,11 @@ def get_next_params(params, indices):
             break
         else:
             new_indices[i] = 0
-            
-    return params[indices], done, new_indices
+    prms = np.zeros(len(indices))
+    
+    for i in np.arange(0, len(indices)):
+        prms[i] = params[i][indices[i]]
+    return prms, done, new_indices
 
 n = 50
 time_range = 200
@@ -317,6 +321,7 @@ ax1.plot(t, y, 'b+')
 loglik_max = None
 params_max = None
 kf_max =None
+y_means_max = None
 
 j_max = 2
 ell = 10
@@ -335,41 +340,43 @@ for cov_type in cov_types:
         has_A = True
         slopes = np.linspace(slope_hat/2, slope_hat*2, 10)
         intercepts = np.linspace(mean/2, mean*2, 10)
-        params.append([slopes, intercepts])
+        params.append(slopes)
+        params.append(intercepts)
         param_index += 2
     elif cov_type == "periodic":
         omegas = np.linspace(2.0*np.pi*freq/2, 2.0*np.pi*freq*2, 10) 
-        params.append([omegas])
+        params.append(omegas)
         param_index += 1
     elif cov_type == "quasiperiodic":
         ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
         omegas = np.linspace(2.0*np.pi*freq/2, 2.0*np.pi*freq*2, 10) 
-        params.append([ellqs, omegas])
+        params.append(ellqs)
+        params.append(omegas)
         param_index += 2
     elif cov_type == "exp_quad":
         ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
-        params.append([ellqs])
+        params.append(ellqs)
         param_index += 1
     elif cov_type == "matern":
         ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
-        params.append([ellqs])
+        params.append(ellqs)
         param_index += 1
     else:           
         assert(True==False)
 
-
-indices = np.zeros(np.shape(params)[0])
+delta_t = t[1:] - t[:-1]
+indices = np.zeros(np.shape(params)[0], dtype=int)
 done = False
 while not done:
     prms, done, new_indices = get_next_params(params, indices)
 
-    As = np.array([])
-    Fs = np.array([])
-    Ls = np.array([])
-    Hs = np.array([])
-    m_0s = np.array([])
-    P_0s = np.array([])
-    Q_cs = np.array([])
+    As = np.zeros((len(delta_t), 0, 0))
+    Fs = np.zeros((0, 0))
+    Ls = np.zeros((0, 0))
+    Hs = np.zeros(0)
+    m_0s = np.zeros(0)
+    P_0s = np.zeros((0, 0))
+    Q_cs = np.zeros((0, 0))
     for cov_type in cov_types:
         index = cov_type_param_indices[cov_type]
         A = None
@@ -381,63 +388,62 @@ while not done:
         elif cov_type == "quasiperiodic":
             F, L, H, m_0, P_0, Q_c = get_params_qp(j_max, omega_0=prms[index], ell=ell, noise_var=noise_var, ellq=prms[index + 1], sig_var=sig_var)
         elif cov_type == "exp_quad":
-            F, L, H, m_0, P_0, Q_c = get_params_exp_quad(ellq=prams[index], noise_var=noise_var, sig_var=sig_var)
+            F, L, H, m_0, P_0, Q_c = get_params_exp_quad(ellq=prms[index], noise_var=noise_var, sig_var=sig_var)
         elif cov_type == "matern":
-            F, L, H, m_0, P_0, Q_c = get_params_matern(ellq=prams[index], noise_var=noise_var, sig_var=sig_var)
+            F, L, H, m_0, P_0, Q_c = get_params_matern(ellq=prms[index], noise_var=noise_var, sig_var=sig_var)
         else:           
             assert(True==False)
             
         if has_A:
-            if A is none:
-                delta_t = t[1:] - t[:-1]
+            if A is None:
                 A = np.zeros((len(delta_t), np.shape(F)[0], np.shape(F)[1]))
                 for i in np.arange(0, len(delta_t)):
-                    A[i] = la.expm(self.F*delta_t[i])
+                    A[i] = la.expm(F*delta_t[i])
+            As_size = np.shape(As)
+            As.resize(As_size[0], As_size[1] + np.shape(A)[1], As_size[2] + np.shape(A)[2])
             for i in np.arange(0, np.shape(As)[0]):
-                At = A[i]
-                Ast = As[i]
-                Ast_size = np.shape(Ast)
-                Ast.resize(Ast_size[0] + np.shape(At)[0], Ast_size[1] + np.shape(At)[1])
-                Ast[Ast_size[0], Ast_size[1]] = At
+                As[i, As_size[1]:, As_size[2]:] = A[i]
         else:
             F_size = np.shape(Fs)
             Fs.resize(F_size[0] + np.shape(F)[0], F_size[1] + np.shape(F)[1])
-            Fs[F_size[0], F_size[1]] = F
+            Fs[F_size[0]:, F_size[1]:] = F
         L_size = np.shape(Ls)
         Ls.resize(L_size[0] + np.shape(L)[0], L_size[1] + np.shape(L)[1])
-        Ls[L_size[0], L_size[1]] = L
+        Ls[L_size[0]:, L_size[1]:] = L
         
         m_0_size = np.shape(m_0s)
-        m_0s.resize(m_0_size + np.shape(m_0)[0])
-        m_0s[m_0_size] = m_0
+        print m_0_size
+        m_0s.resize(m_0_size[0] + np.shape(m_0)[0])
+        m_0s[m_0_size[0]:] = m_0
 
         P_0_size = np.shape(P_0s)
         P_0s.resize(P_0_size[0] + np.shape(P_0)[0], P_0_size[1] + np.shape(P_0)[1])
-        P_0s[P_0_size[0], P_0_size[1]] = P_0
+        P_0s[P_0_size[0]:, P_0_size[1]:] = P_0
 
         H_size = np.shape(Hs)
-        Hs.resize(H_size + np.shape(H)[0])
-        Hs[H_size] = H
+        Hs.resize(H_size[0] + np.shape(H)[0])
+        Hs[H_size[0]:] = H
 
         Q_c_size = np.shape(Q_cs)
         Q_cs.resize(Q_c_size[0] + np.shape(Q_c)[0], Q_c_size[1] + np.shape(Q_c)[1])
-        Q_cs[Q_c_size[0], Q_c_size[1]] = Q_c
+        Q_cs[Q_c_size[0]:, Q_c_size[1]:] = Q_c
 
 
-                        
+
     R = noise_var # observational noise
     
-    kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100, F_is_A=F_is_A)
+    kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100, F_is_A=has_A)
     y_means, loglik = kf.filter()
-    print 2.0*np.pi/omega_0, ellq, slope, intercept, loglik
+    print prms
     if loglik_max is None or loglik > loglik_max:
        loglik_max = loglik
        params_max = prms
        kf_max = kf
+       y_means_max = y_means
 
 print params_max
 
-print "true values", 2.0*np.pi/omega_max, 2.0*np.pi*f, length_scale, slope_hat, mean
+print "true values", 2.0*np.pi*f, length_scale, slope_hat, mean
 ax1.plot(t[1:], y_means_max, 'r--')
 
 #y_means = kf_max.smooth()
