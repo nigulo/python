@@ -4,7 +4,9 @@ data {
     vector[N] y;
     vector[N] noise_var;
     real var_y;
-    real var_seasonal_means;
+    real sig_var_prior_var;
+    real inv_length_scale_prior_var;
+    real inv_length_scale_max;
 }
 
 transformed data {
@@ -19,7 +21,7 @@ transformed data {
 }
 
 parameters {
-    real<lower=0> inv_length_scale;
+    real<lower=0, upper=inv_length_scale_max> inv_length_scale;
     real<lower=0> sig_var;
     real<lower=0> trend_var;
     real m;
@@ -38,7 +40,7 @@ model {
 
     for (i in 1:(N-1)) {
         for (j in (i+1):N) {
-            Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale * pow(x[i] - x[j],2));
+            Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale * pow(x[i] - x[j],2)) + trend_var * x[i] * x[j];
             Sigma[j, i] = Sigma[i, j];
         }
     }
@@ -48,8 +50,8 @@ model {
     
     L = cholesky_decompose(Sigma);
     
-    sig_var ~ normal(0, var_seasonal_means);
-    inv_length_scale ~ normal(0, 0.5/3);
+    sig_var ~ normal(0, sig_var_prior_var);
+    inv_length_scale ~ normal(0, inv_length_scale_prior_var);
     trend_var ~ normal(0, var_y/duration/duration);
     m ~ normal(mean_y, sqrt(var_y));
     y ~ multi_normal_cholesky(mu, L);

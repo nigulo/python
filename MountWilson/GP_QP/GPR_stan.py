@@ -25,7 +25,6 @@ from scipy.stats import gaussian_kde
 from sklearn.cluster import KMeans
 #import pandas as pd
 
-
 #num_groups = 1
 #group_no = 0
 #if len(sys.argv) > 1:
@@ -171,8 +170,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         initial_trend_var = var / duration
         #initial_inv_length_scale = 0.0001#abs(np.random.normal(0, prior_freq_mean))
         #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, noise_var=initial_noise_var, inv_lengh_scale=initial_inv_length_scale))
-        #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
-        initial_param_values.append(dict())
+        initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
 
     fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
         var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
@@ -195,8 +193,8 @@ for downsample_iter in np.arange(0, downsample_iters):
     length_scale_samples = results['length_scale'];
     (length_scale, length_scale_se) = mw_utils.mean_with_se(length_scale_samples)
 
-    #length_scale2_samples = results['length_scale2'];
-    #(length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
+    length_scale2_samples = results['length_scale2'];
+    (length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
 
     sig_var_samples = results['sig_var']
     sig_var = np.mean(sig_var_samples)
@@ -230,12 +228,12 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "var=", var
     print "sig_var=", sig_var
     print "length_scale", length_scale
-    #print "length_scale2", length_scale2
+    print "length_scale2", length_scale2
     print "freq, freq_se", freq, freq_se
     print "trend_var", trend_var
     print "m", m
     
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0, length_scale2=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t, y-m)
     (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
@@ -246,7 +244,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "loglik", loglik #(loglik + 0.5 * n * np.log(2.0 * np.pi))
     
     # Calculate the resiudes for the original data    
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0, length_scale2=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t_non_ds, y_non_ds-m)
     (f_non_ds, _, _) = gpr_gp.fit(t_non_ds)
@@ -264,8 +262,18 @@ for downsample_iter in np.arange(0, downsample_iters):
         initial_trend_var = var / duration
         initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
+    sig_var_prior_var=seasonal_means_var
+    inv_length_scale_prior_var = 0.5/3
+    inv_length_scale_max = 1.0
+
+    #If using only linear model, then do the following:
+    #sig_var_prior_var=seasonal_means_var*1e-10
+    #length_scale_prior_var=1e-10
+
     fit_null = model_null.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
-        var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
+        sig_var_prior_var=sig_var_prior_var, inv_length_scale_prior_var=inv_length_scale_prior_var,
+        inv_length_scale_max=inv_length_scale_max,
+        prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
         init=initial_param_values,
         iter=num_iters, chains=num_chains, n_jobs=n_jobs)
     
@@ -327,10 +335,10 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    cv_segment_size = max(min(duration/2.0, period), 1.0)
-    num_segments = round(duration/cv_segment_size)
-    cv_segment_size = duration/num_segments
-    #cv_segment_size = 3.0
+    #cv_segment_size = max(min(duration/2.0, period), 1.0)
+    #num_segments = round(duration/cv_segment_size)
+    #cv_segment_size = duration/num_segments
+    cv_segment_size = 1.0
     print "cv_segment_size", cv_segment_size
     segments = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
     
@@ -380,7 +388,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         indices1 = np.where(t >= segment_start)[0]
         indices2 = np.where(t[indices1] <= segment_end)[0]
         noise_test = noise_var_prop[indices1][indices2]
-        gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
+        gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
         gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
         #print seasonal_noise
@@ -388,10 +396,10 @@ for downsample_iter in np.arange(0, downsample_iters):
         #print m
         #print m_null
         (_, _, loglik_test) = gpr_gp_cv.cv(dat_test[:,0], dat_test[:,1]-m, noise_test)
-        l_loo += loglik_test/np.shape(dat_test)[0]
+        l_loo += loglik_test#/np.shape(dat_test)[0]
         gpr_gp_cv_null.init(dat_train[:,0], dat_train[:,1]-m_null)
         (_, _, loglik_test_null) = gpr_gp_cv_null.cv(dat_test[:,0], dat_test[:,1]-m_null, noise_test)
-        l_loo_null += loglik_test_null/np.shape(dat_test)[0]
+        l_loo_null += loglik_test_null#/np.shape(dat_test)[0]
         
         fig_cv, ax_cv = plt.subplots(nrows=1, ncols=1)
         fig_cv.set_size_inches(8, 6)
@@ -419,6 +427,5 @@ for downsample_iter in np.arange(0, downsample_iters):
 
     with FileLock("GPRLock"):
         with open("results/"+peak_no_str+"results.txt", "a") as output:
-            #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")
-            #output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n") 
-            output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + "\n")
+            #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
+            output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    
