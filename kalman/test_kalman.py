@@ -24,7 +24,7 @@ import kalman
 from cov_exp_quad import cov_exp_quad
 from cov_matern import cov_matern
 
-cov_types = ["periodic", "linear_trend"]
+cov_types = ["quasiperiodic", "linear_trend"]
 #cov_types = ["linear_trend"]
 #cov_type = "periodic"
 #cov_type = "quasiperiodic"
@@ -138,7 +138,7 @@ def get_params_p(j_max, omega_0, ell, noise_var):
 def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     #ell_inv_sq = 1.0/ell/ell
     Nq = 6
-    Fq, Lq, Hq, _, _, P0q, Qcq = get_params_exp_quad(ellq, noise_var, sig_var, N=Nq)
+    Fq, Lq, Hq, _, P0q, Qcq = get_params_exp_quad(ellq, noise_var, sig_var, N=Nq)
     
     #lmbda = 1.0/ellq
     #Fq = -np.ones(1) * lmbda
@@ -355,15 +355,17 @@ for cov_type in cov_types:
         params.append(omegas)
         param_index += 2
     elif cov_type == "exp_quad":
-        ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+        ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
         params.append(ellqs)
         param_index += 1
     elif cov_type == "matern":
-        ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+        ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
         params.append(ellqs)
         param_index += 1
     else:           
         assert(True==False)
+
+R = noise_var # observational noise
 
 delta_t = t[1:] - t[:-1]
 indices = np.zeros(np.shape(params)[0], dtype=int)
@@ -378,7 +380,7 @@ while not done:
     H_shape = np.array([0])
     m_0_shape = np.array([0])
     P_0_shape = np.array([0, 0])
-    Q_c_shape = np.array([0, 0])
+    Q_shape = np.array([0, 0])
 
     cov_data = []
     
@@ -391,26 +393,29 @@ while not done:
         elif cov_type == "periodic":
             F, L, H, m_0, P_0, Q_c = get_params_p(j_max, omega_0=prms[index], ell=ell, noise_var=noise_var)
         elif cov_type == "quasiperiodic":
-            F, L, H, m_0, P_0, Q_c = get_params_qp(j_max, omega_0=prms[index], ell=ell, noise_var=noise_var, ellq=prms[index + 1], sig_var=sig_var)
+            F, L, H, m_0, P_0, Q_c = get_params_qp(j_max, omega_0=prms[index], ellp=ell, noise_var=noise_var, ellq=prms[index + 1], sig_var=sig_var)
         elif cov_type == "exp_quad":
-            F, L, H, m_0, P_0, Q_c = get_params_exp_quad(ellq=prms[index], noise_var=noise_var, sig_var=sig_var)
+            F, L, H, m_0, P_0, Q_c = get_params_exp_quad(ell=prms[index], noise_var=noise_var, sig_var=sig_var)
         elif cov_type == "matern":
-            F, L, H, m_0, P_0, Q_c = get_params_matern(ellq=prms[index], noise_var=noise_var, sig_var=sig_var)
+            F, L, H, m_0, P_0, Q_c = get_params_matern(ell=prms[index], noise_var=noise_var, sig_var=sig_var)
         else:           
             assert(True==False)
         if A is not None:
             A_shape += np.shape(A)[1:]
-        if F is not None:
+            F = A
+        elif F is not None:
             if has_A:
                 A_shape += np.shape(F)
             else:
                 F_shape += np.shape(F)
+        kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100, F_is_A=has_A)
+        kf.calc_Q()
         L_shape += np.shape(L)
         H_shape += np.shape(H)
         m_0_shape += np.shape(m_0)
         P_0_shape += np.shape(P_0)
-        Q_c_shape += np.shape(Q_c)
-        cov_data.append((A, F, L, H, m_0, P_0, Q_c))
+        Q_shape += np.shape(kf.Q)[1:]
+        cov_data.append((A, F, L, H, m_0, P_0, kf.Q))
 
     As = np.zeros((len(delta_t), A_shape[0], A_shape[1]))
     Fs = np.zeros(F_shape)
@@ -418,7 +423,7 @@ while not done:
     Hs = np.zeros(H_shape)
     m_0s = np.zeros(m_0_shape)
     P_0s = np.zeros(P_0_shape)
-    Q_cs = np.zeros(Q_c_shape)
+    Qs = np.zeros((len(delta_t), Q_shape[0], Q_shape[1]))
     
     A_index = np.array([0, 0])
     F_index = np.array([0, 0])
@@ -426,9 +431,9 @@ while not done:
     H_index = np.array([0])
     m_0_index = np.array([0])
     P_0_index = np.array([0, 0])
-    Q_c_index = np.array([0, 0])
+    Q_index = np.array([0, 0])
     
-    for A, F, L, H, m_0, P_0, Q_c in cov_data:
+    for A, F, L, H, m_0, P_0, Q in cov_data:
         if has_A:
             if A is None:
                 A = np.zeros((len(delta_t), np.shape(F)[0], np.shape(F)[1]))
@@ -461,17 +466,17 @@ while not done:
         Hs[H_index[0]:H_index[0]+H_size[0]] = H
         H_index += H_size
 
-        Q_c_size = np.shape(Q_c)
-        Q_cs[Q_c_index[0]:Q_c_index[0]+Q_c_size[0], Q_c_index[0]:Q_c_index[0]+Q_c_size[0]] = Q_c
-        Q_c_index += Q_c_size
+        Q_size = np.shape(Q)[1:]
+        for i in np.arange(0, np.shape(Qs)[0]):
+            Qs[i, Q_index[0]:Q_index[0]+Q_size[0], Q_index[1]:Q_index[1]+Q_size[1]] = Q[i]
+        Q_index += Q_size
 
 
 
-    R = noise_var # observational noise
     if has_A:
-        kf = kalman.kalman(t=t, y=y, F=As, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=Q_cs, noise_int_prec=100, F_is_A=has_A)
+        kf = kalman.kalman(t=t, y=y, F=As, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=None, noise_int_prec=100, F_is_A=has_A, Q=Qs)
     else:
-        kf = kalman.kalman(t=t, y=y, F=Fs, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=Q_cs, noise_int_prec=100, F_is_A=has_A)
+        kf = kalman.kalman(t=t, y=y, F=Fs, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=None, noise_int_prec=100, F_is_A=has_A, Q=Qs)
     y_means, loglik = kf.filter()
     #print prms
     if loglik_max is None or loglik > loglik_max:

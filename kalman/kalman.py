@@ -11,7 +11,7 @@ Created on Mon Mar 19 15:36:22 2018
 
 class kalman():
     
-    def __init__(self, t, y, F, L, H, R, m_0, P_0, Q_c, F_is_A = False, noise_int_prec=100):
+    def __init__(self, t, y, F, L, H, R, m_0, P_0, Q_c, F_is_A = False, noise_int_prec=100, Q = None):
         assert(np.shape(t)[0] == np.shape(y)[0])
         y_dim_2 = 1
         if np.ndim(y) > 1:
@@ -19,7 +19,7 @@ class kalman():
         self.y_dim_2 = y_dim_2
         if np.ndim(m_0) == 0:
             m_0 = np.reshape(m_0, 1)
-        if np.ndim(Q_c) == 0:
+        if Q_c is not None and np.ndim(Q_c) == 0:
             Q_c = np.reshape(Q_c, (1,1))
         if np.ndim(P_0) == 0:
             P_0 = np.reshape(P_0, (1,1))
@@ -55,11 +55,19 @@ class kalman():
         assert(np.shape(R)[1] == y_dim_2)
 
         assert(self.dimF0 == np.shape(L)[0])
-        assert(np.shape(Q_c)[1] == np.shape(L)[1])
-        assert(np.shape(Q_c)[0] == np.shape(L)[1])
+        if Q_c is not None:
+            assert(np.shape(Q_c)[1] == np.shape(L)[1])
+            assert(np.shape(Q_c)[0] == np.shape(L)[1])
         assert(self.dimF1 == np.shape(m_0)[0])
         assert(np.shape(P_0)[0] == np.shape(m_0)[0])
         assert(np.shape(P_0)[1] == np.shape(m_0)[0])
+        
+        if Q_c is not None:
+            self.Q_c_is_not_zero = np.count_nonzero(Q_c) > 0
+        else:
+            assert(Q is not None)
+            self.Q_c_is_not_zero = False
+        self.Q_c = Q_c
         
         self.t = t
         self.y = y
@@ -69,8 +77,6 @@ class kalman():
         self.R = R
         self.m_0 = m_0
         self.P_0 = P_0
-        self.Q_c = Q_c
-        self.Q_c_is_not_zero = np.count_nonzero(Q_c) > 0
 
         self.m = np.zeros((len(t), np.shape(m_0)[0]))
         self.P = np.zeros((len(t), np.shape(P_0)[0], np.shape(P_0)[1]))
@@ -91,7 +97,12 @@ class kalman():
         self.ms = np.zeros((len(t), np.shape(m_0)[0]))
         self.Ps = np.zeros((len(t), np.shape(P_0)[0], np.shape(P_0)[1]))
 
-        self.Q = np.zeros((len(t)-1, self.dimF0, self.dimF0))
+        if Q is not None:
+            self.Q = Q
+            self.Q_calculated = True
+        else:
+            self.Q = np.zeros((len(t)-1, self.dimF0, self.dimF0))
+            self.Q_calculated = False
 
         self.noise_int_prec = noise_int_prec
     
@@ -99,7 +110,7 @@ class kalman():
         return la.expm(self.F*tau)
     
     def calc_Q(self):
-        if self.Q_c_is_not_zero:
+        if self.Q_c_is_not_zero and not self.Q_calculated:
             delta_t = self.t[1:] - self.t[:-1]
             #min_delta_t = np.min(delta_t)
             max_delta_t = np.max(delta_t)
@@ -120,6 +131,7 @@ class kalman():
                         filled_count += 1
                 last_tau = tau
             assert(filled_count == len(delta_t))
+        self.Q_calculated = True
         
     def filter(self):
         self.k = 1
