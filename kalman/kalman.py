@@ -37,7 +37,7 @@ class kalman():
             assert(np.ndim(F) == 2)
             self.dimF0 = np.shape(F)[0]
             self.dimF1 = np.shape(F)[1]
-            
+        
         if np.ndim(H) == 1:
             assert(np.shape(H)[0] == self.dimF0)
             H = np.reshape(H, (1, np.shape(H)[0]))
@@ -179,6 +179,7 @@ class kalman():
         S = np.dot(self.H, np.dot(P_, self.H.T)) + self.R
         S_inv = la.inv(S)
 
+        #print la.det(S)
         loglik_y = -0.5 * (np.dot(v.T, np.dot(S_inv, v)) + np.log(la.det(S)) + self.y_dim_2 * np.log(2.0 * np.pi))
         #print S, S_inv
 

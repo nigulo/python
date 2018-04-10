@@ -13,7 +13,7 @@ import scipy.special as special
 import numpy.linalg as la
 from scipy.special import gamma
 from scipy.special import kv
-import scipy.linalg as la
+from scipy.linalg import expm
 
 try:
     from scipy.linalg import solve_lyapunov as solve_continuous_lyapunov
@@ -25,10 +25,11 @@ from cov_exp_quad import cov_exp_quad
 from cov_matern import cov_matern
 
 cov_types = ["periodic", "linear_trend"]
-#cov_type1 = "periodic"
-#cov_type1 = "quasiperiodic"
-#cov_type1 = "exp_quad"
-#cov_type1 = "matern"
+#cov_types = ["linear_trend"]
+#cov_type = "periodic"
+#cov_type = "quasiperiodic"
+#cov_type = "exp_quad"
+#cov_type = "matern"
 
 matern_p = 1
 
@@ -272,15 +273,15 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 2.0
-sig_var = 0.0#np.random.uniform(0.99*var, 0.99*var)
-trend_var = np.random.uniform(0.9999*var, 0.9999*var)
+sig_var = np.random.uniform(0.9*var, 0.9*var)
+trend_var = 0.09*var#np.random.uniform(0.9999*var, 0.9999*var)
 noise_var = var - sig_var - trend_var
 t -= np.mean(t)
 
 #p = time_range/12.54321#
 p = time_range/5#np.random.uniform(time_range/200, time_range/5)
 freq = 1.0/p
-mean = np.random.uniform(-100.0, 100.0)
+mean = np.random.uniform(-10.0, 10.0)
 
 k = np.zeros((len(t), len(t)))
 for cov_type in cov_types:
@@ -369,14 +370,18 @@ indices = np.zeros(np.shape(params)[0], dtype=int)
 done = False
 while not done:
     prms, done, new_indices = get_next_params(params, indices)
+    indices = new_indices
 
-    As = np.zeros((len(delta_t), 0, 0))
-    Fs = np.zeros((0, 0))
-    Ls = np.zeros((0, 0))
-    Hs = np.zeros(0)
-    m_0s = np.zeros(0)
-    P_0s = np.zeros((0, 0))
-    Q_cs = np.zeros((0, 0))
+    A_shape = np.array([0, 0])
+    F_shape = np.array([0, 0])
+    L_shape = np.array([0, 0])
+    H_shape = np.array([0])
+    m_0_shape = np.array([0])
+    P_0_shape = np.array([0, 0])
+    Q_c_shape = np.array([0, 0])
+
+    cov_data = []
+    
     for cov_type in cov_types:
         index = cov_type_param_indices[cov_type]
         A = None
@@ -393,48 +398,82 @@ while not done:
             F, L, H, m_0, P_0, Q_c = get_params_matern(ellq=prms[index], noise_var=noise_var, sig_var=sig_var)
         else:           
             assert(True==False)
-            
+        if A is not None:
+            A_shape += np.shape(A)[1:]
+        if F is not None:
+            if has_A:
+                A_shape += np.shape(F)
+            else:
+                F_shape += np.shape(F)
+        L_shape += np.shape(L)
+        H_shape += np.shape(H)
+        m_0_shape += np.shape(m_0)
+        P_0_shape += np.shape(P_0)
+        Q_c_shape += np.shape(Q_c)
+        cov_data.append((A, F, L, H, m_0, P_0, Q_c))
+
+    As = np.zeros((len(delta_t), A_shape[0], A_shape[1]))
+    Fs = np.zeros(F_shape)
+    Ls = np.zeros(L_shape)
+    Hs = np.zeros(H_shape)
+    m_0s = np.zeros(m_0_shape)
+    P_0s = np.zeros(P_0_shape)
+    Q_cs = np.zeros(Q_c_shape)
+    
+    A_index = np.array([0, 0])
+    F_index = np.array([0, 0])
+    L_index = np.array([0, 0])
+    H_index = np.array([0])
+    m_0_index = np.array([0])
+    P_0_index = np.array([0, 0])
+    Q_c_index = np.array([0, 0])
+    
+    for A, F, L, H, m_0, P_0, Q_c in cov_data:
         if has_A:
             if A is None:
                 A = np.zeros((len(delta_t), np.shape(F)[0], np.shape(F)[1]))
                 for i in np.arange(0, len(delta_t)):
-                    A[i] = la.expm(F*delta_t[i])
-            As_size = np.shape(As)
-            As.resize(As_size[0], As_size[1] + np.shape(A)[1], As_size[2] + np.shape(A)[2])
+                    A[i] = expm(F*delta_t[i])
+            A_size = np.shape(A)[1:]
             for i in np.arange(0, np.shape(As)[0]):
-                As[i, As_size[1]:, As_size[2]:] = A[i]
+                #print np.shape(A[i])
+                #print np.shape(As[i])
+                As[i, A_index[0]:A_index[0]+A_size[0], A_index[1]:A_index[1]+A_size[1]] = A[i]
+            A_index += A_size
+            #print As[0]
         else:
-            F_size = np.shape(Fs)
-            Fs.resize(F_size[0] + np.shape(F)[0], F_size[1] + np.shape(F)[1])
-            Fs[F_size[0]:, F_size[1]:] = F
-        L_size = np.shape(Ls)
-        Ls.resize(L_size[0] + np.shape(L)[0], L_size[1] + np.shape(L)[1])
-        Ls[L_size[0]:, L_size[1]:] = L
+            F_size = np.shape(F)
+            Fs[F_index[0]:F_index[0]+F_size[0], F_index[1]:F_index[1]+F_size[1]] = F
+            F_index += F_size
+        L_size = np.shape(L)
+        Ls[L_index[0]:L_index[0]+L_size[0], L_index[1]:L_index[1]+L_size[1]] = L
+        L_index += L_size
         
-        m_0_size = np.shape(m_0s)
-        print m_0_size
-        m_0s.resize(m_0_size[0] + np.shape(m_0)[0])
-        m_0s[m_0_size[0]:] = m_0
+        m_0_size = np.shape(m_0)
+        m_0s[m_0_index[0]:m_0_index[0]+m_0_size[0]] = m_0
+        m_0_index += m_0_size
 
-        P_0_size = np.shape(P_0s)
-        P_0s.resize(P_0_size[0] + np.shape(P_0)[0], P_0_size[1] + np.shape(P_0)[1])
-        P_0s[P_0_size[0]:, P_0_size[1]:] = P_0
+        P_0_size = np.shape(P_0)
+        P_0s[P_0_index[0]:P_0_index[0]+P_0_size[0], P_0_index[1]:P_0_index[1]+P_0_size[1]] = P_0
+        P_0_index += P_0_size
 
-        H_size = np.shape(Hs)
-        Hs.resize(H_size[0] + np.shape(H)[0])
-        Hs[H_size[0]:] = H
+        H_size = np.shape(H)
+        Hs[H_index[0]:H_index[0]+H_size[0]] = H
+        H_index += H_size
 
-        Q_c_size = np.shape(Q_cs)
-        Q_cs.resize(Q_c_size[0] + np.shape(Q_c)[0], Q_c_size[1] + np.shape(Q_c)[1])
-        Q_cs[Q_c_size[0]:, Q_c_size[1]:] = Q_c
+        Q_c_size = np.shape(Q_c)
+        Q_cs[Q_c_index[0]:Q_c_index[0]+Q_c_size[0], Q_c_index[0]:Q_c_index[0]+Q_c_size[0]] = Q_c
+        Q_c_index += Q_c_size
 
 
 
     R = noise_var # observational noise
-    
-    kf = kalman.kalman(t=t, y=y, F=F, L=L, H=H, R=R, m_0=m_0, P_0=P_0, Q_c=Q_c, noise_int_prec=100, F_is_A=has_A)
+    if has_A:
+        kf = kalman.kalman(t=t, y=y, F=As, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=Q_cs, noise_int_prec=100, F_is_A=has_A)
+    else:
+        kf = kalman.kalman(t=t, y=y, F=Fs, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=Q_cs, noise_int_prec=100, F_is_A=has_A)
     y_means, loglik = kf.filter()
-    print prms
+    #print prms
     if loglik_max is None or loglik > loglik_max:
        loglik_max = loglik
        params_max = prms
@@ -442,8 +481,7 @@ while not done:
        y_means_max = y_means
 
 print params_max
-
-print "true values", 2.0*np.pi*f, length_scale, slope_hat, mean
+print "true values", 2.0*np.pi*freq, length_scale, slope_hat, mean
 ax1.plot(t[1:], y_means_max, 'r--')
 
 #y_means = kf_max.smooth()
