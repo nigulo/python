@@ -158,7 +158,7 @@ def get_params_qp(j_max, omega_0, ellp, noise_var, ellq, sig_var):
     
     I2 = np.diag(np.ones(2))
     for j in np.arange(0, j_max):
-        Fpj, Lpj, P0pj, Hpj, qj = get_params_p_j(j, omega_0, ell)
+        Fpj, Lpj, P0pj, Hpj, qj = get_params_p_j(j, omega_0, ellp)
         #Fpj = np.array([[0.0, -omega_0*j], [omega_0*j, 0.0]])
     
         #Lpj = I2
@@ -278,13 +278,13 @@ time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
 var = 2.0
-sig_var = np.random.uniform(0.99*var, 0.99*var)
+sig_var = np.random.uniform(0.9*var, 0.9*var)
 trend_var = 0.009*var#np.random.uniform(0.9999*var, 0.9999*var)
 noise_var = var - sig_var - trend_var
 t -= np.mean(t)
 
 #p = time_range/12.54321#
-p = time_range/5#np.random.uniform(time_range/200, time_range/5)
+p = np.random.uniform(time_range/20, time_range/5)
 freq = 1.0/p
 mean = np.random.uniform(-10.0, 10.0)
 
@@ -296,7 +296,7 @@ for cov_type in cov_types:
         length_scale = 1e10*p
         k += calc_cov_p(t, freq, sig_var)
     elif cov_type == "quasiperiodic":
-        length_scale = np.random.uniform(p/2.0, 4.0*p)
+        length_scale = np.random.uniform(p, 4.0*p)
         k += calc_cov_qp(t, freq, length_scale, sig_var)
     elif cov_type == "exp_quad":
         length_scale = np.random.uniform(time_range/10, time_range/5)
@@ -314,11 +314,6 @@ s = np.random.normal(0.0, 1.0, n)
 y = np.repeat(mean, n) + np.dot(l, s)
 #y += mean
 
-num_freqs = 100
-num_cohs = 10
-
-if cov_type == "periodic":
-    num_cohs = 1
     
 fig, (ax1) = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 3)
