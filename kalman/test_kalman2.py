@@ -15,9 +15,9 @@ import numpy.linalg as la
 import kalman_utils as ku
 
 cov_types = ["quasiperiodic", "linear_trend"]
-total_vars = np.array([2.0, 0.2])
-sig_vars = np.random.uniform(total_vars*0.9, total_vars*0.9)
-noise_var = sum(total_vars) - sum(sig_vars)
+var = 2.0
+sig_vars = [np.random.uniform(var*0.9, var*0.9), np.random.uniform(var*0.009, var*0.009)]
+noise_var = var - sum(sig_vars)
 #cov_types = ["linear_trend"]
 #cov_type = "periodic"
 #cov_type = "quasiperiodic"
@@ -109,7 +109,7 @@ param_values, y_means = kalman_utils.do_inference()
 
 
 print "Estimated:", param_values
-print "True:", sig_vars[0], 2.0*np.pi*freq, 10.0, ellq, sig_vars[1], slope_hat, mean, noise_var
+print "True:", sig_vars[0], 2.0*np.pi*freq, 10.0, ellq, slope_hat, mean, noise_var
 ax1.plot(t[1:], y_means, 'r--')
 
 #y_means = kf_max.smooth()

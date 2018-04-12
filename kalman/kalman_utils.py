@@ -237,5 +237,5 @@ class kalman_utils():
                 print "Iteration", self.sampler.get_iteration()
                 last_iteration = self.sampler.get_iteration()
             params_sample, loglik = self.sampler.sample()
-            print "Sample", params_sample, loglik
+            #print "Sample", params_sample, loglik
         return self.sampler.get_best_sample()

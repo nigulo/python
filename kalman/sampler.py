@@ -20,6 +20,7 @@ class sampler():
                 self.indices.append(0)
     
     def init(self):
+        self.indices = np.asarray(self.indices)
         if self.greedy:
             self.params_order = np.random.choice(len(self.params_values), size=len(self.params_values), replace=False)
             self.indices[self.params_order[self.current_param]] = 0
@@ -34,10 +35,10 @@ class sampler():
         y_means, loglik = self.loglik_fn(params_sample)
         if self.max_loglik is None or loglik > self.max_loglik:
             self.max_loglik = loglik
-            self.best_indices = self.indices
+            self.best_indices = np.array(self.indices)
             self.best_y_mean = y_means
 
-        if self.greedy is None:
+        if self.greedy:
             i_s = [self.current_param]
         else:
             i_s = np.arange(0, len(self.params_values))
@@ -48,14 +49,13 @@ class sampler():
             index += 1
             if index >= len(self.params_values[self.params_order[i]]):
                 if self.greedy:
-                    self.indices = self.best_indices
+                    self.indices = np.array(self.best_indices)
                 else:
                     self.indices[self.params_order[i]] = 0
             else:
                 self.indices[self.params_order[i]] = index
                 done = False
                 break
-
         if done:
             if self.greedy:
                 self.current_param += 1
