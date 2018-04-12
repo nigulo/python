@@ -13,11 +13,11 @@ class sampler():
 
     def add_parameter_values(self, param_values):
         self.params_values += param_values
-        print self.params_values
-        if self.greedy:
-            self.indices.append(np.random.randint(len(param_values)))
-        else:
-            self.indices.append(0)
+        for i in np.arange(0, len(param_values)):
+            if self.greedy:
+                self.indices.append(np.random.randint(len(param_values[i])))
+            else:
+                self.indices.append(0)
     
     def init(self):
         if self.greedy:
@@ -32,8 +32,8 @@ class sampler():
             params_sample.append(self.params_values[i][self.indices[i]])
 
         y_means, loglik = self.loglik_fn(params_sample)
-        if self.max_log_lik is None or loglik > self.max_log_lik:
-            self.max_log_lik = loglik
+        if self.max_loglik is None or loglik > self.max_loglik:
+            self.max_loglik = loglik
             self.best_indices = self.indices
             self.best_y_mean = y_means
 

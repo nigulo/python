@@ -129,10 +129,11 @@ class kalman_utils():
                     assert(True==False)
                 index += self.param_counts[cov_type]
                 F, L, H, m_0, P_0, Q_c = component.get_params()
-                if F_is_A is not None:
+                if F_is_A:
                     A = F
                     A_shape += np.shape(A)[1:]
                 else:
+                    A = None
                     if self.has_A:
                         A_shape += np.shape(F)
                     else:
@@ -230,7 +231,7 @@ class kalman_utils():
     def do_inference(self):
         self.sampler.init()
     
-        last_iteration = 0
+        last_iteration = -1
         while self.sampler.get_iteration() < self.num_iterations:
             if self.sampler.get_iteration() != last_iteration:
                 print "Iteration", self.sampler.get_iteration()

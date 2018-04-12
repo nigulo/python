@@ -15,7 +15,7 @@ import numpy.linalg as la
 import kalman_utils as ku
 
 cov_types = ["quasiperiodic", "linear_trend"]
-total_vars = np.array([2.0, 2.0])
+total_vars = np.array([2.0, 0.2])
 sig_vars = np.random.uniform(total_vars*0.9, total_vars*0.9)
 noise_var = sum(total_vars) - sum(sig_vars)
 #cov_types = ["linear_trend"]
@@ -49,14 +49,14 @@ for i in np.arange(0, len(cov_types)):
     elif cov_type == "periodic":
         k += ku.calc_cov_p(t, freq, sig_vars[i])
     elif cov_type == "quasiperiodic":
-        length_scale = np.random.uniform(p, 4.0*p)
-        k += ku.calc_cov_qp(t, freq, length_scale, sig_vars[i])
+        ellq = np.random.uniform(p, 4.0*p)
+        k += ku.calc_cov_qp(t, freq, ellq, sig_vars[i])
     elif cov_type == "exp_quad":
-        length_scale = np.random.uniform(time_range/10, time_range/5)
-        k += ku.calc_cov_exp_quad(t, length_scale, sig_vars[i])
+        ellq = np.random.uniform(time_range/10, time_range/5)
+        k += ku.calc_cov_exp_quad(t, ellq, sig_vars[i])
     elif cov_type == "matern":
-        length_scale = np.random.uniform(time_range/10, time_range/5)
-        k += ku.calc_cov_matern(t, length_scale, sig_vars[i], matern_p + 0.5)
+        ellq = np.random.uniform(time_range/10, time_range/5)
+        k += ku.calc_cov_matern(t, ellq, sig_vars[i], matern_p + 0.5)
     else:
         assert(True==False)
 
@@ -73,7 +73,6 @@ fig.set_size_inches(6, 3)
 ax1.plot(t, y, 'b+')
 
 j_max = 2
-ell = 10
 
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
 print "slope_hat, intercept_hat", slope_hat, intercept_hat
@@ -93,24 +92,24 @@ for i in np.arange(0, len(cov_types)):
     elif cov_type == "quasiperiodic":
         omegas = np.linspace(2.0*np.pi*freq/1.9, 2.0*np.pi*freq*2, 10) 
         ellps = np.array([10.0])
-        ellqs = np.linspace(length_scale/2, length_scale*2, 10) 
+        ellqs = np.linspace(ellq/2, ellq*2, 10) 
         kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs])
     elif cov_type == "exp_quad":
-        ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+        ellqs = np.linspace(ellq/2, ellq*2, 20) 
         kalman_utils.add_component(cov_type, [sig_var, ellqs])
     elif cov_type == "matern":
-        ellqs = np.linspace(length_scale/2, length_scale*2, 20) 
+        ellqs = np.linspace(ellq/2, ellq*2, 20) 
         kalman_utils.add_component(cov_type, [sig_var, ellqs])
     else:           
         assert(True==False)
 
-kalman_utils.add_component("white_noise", [noise_var])
+kalman_utils.add_component("white_noise", [np.array([noise_var])])
 
 param_values, y_means = kalman_utils.do_inference()
 
 
-print param_values
-print "true values", 2.0*np.pi*freq, length_scale, slope_hat, mean
+print "Estimated:", param_values
+print "True:", sig_vars[0], 2.0*np.pi*freq, 10.0, ellq, sig_vars[1], slope_hat, mean, noise_var
 ax1.plot(t[1:], y_means, 'r--')
 
 #y_means = kf_max.smooth()

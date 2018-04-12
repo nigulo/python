@@ -52,10 +52,10 @@ class component_quasiperiodic():
             ##Qcpj = np.zeros((2, 2))
             #Hpj = np.array([1.0, 0.0])
             
-            F[2*self.Nq*j:2*self.Nq*j+2*Nq, 2*self.Nq*j:2*self.Nq*j+2*self.Nq] = np.kron(Fq, I2) + np.kron(np.diag(np.ones(self.Nq)), Fpj)
-            L[2*self.Nq*j:2*self.Nq*j+2*Nq, 2*j:2*j+2] = np.kron(Lq, Lpj)
+            F[2*self.Nq*j:2*self.Nq*j+2*self.Nq, 2*self.Nq*j:2*self.Nq*j+2*self.Nq] = np.kron(Fq, I2) + np.kron(np.diag(np.ones(self.Nq)), Fpj)
+            L[2*self.Nq*j:2*self.Nq*j+2*self.Nq, 2*j:2*j+2] = np.kron(Lq, Lpj)
             Q_c[2*j:2*j+2, 2*j:2*j+2] = np.kron(Qcq, I2 * qj)
-            P_0[2*self.Nq*j:2*self.Nq*j+2*self.Nq, 2*Nq*j:2*self.Nq*j+2*self.Nq] = np.kron(P0q, P0pj)
+            P_0[2*self.Nq*j:2*self.Nq*j+2*self.Nq, 2*self.Nq*j:2*self.Nq*j+2*self.Nq] = np.kron(P0q, P0pj)
             H[2*self.Nq*j:2*self.Nq*j+2*self.Nq] = np.kron(Hq, Hpj)
             
         return F, L, H, m_0, P_0, Q_c
