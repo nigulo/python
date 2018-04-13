@@ -3,8 +3,9 @@ import scipy.special as special
 
 class component_periodic():
     
-    def __init__(self, j_max, omega_0, ell):
+    def __init__(self, j_max, sig_var, omega_0, ell):
         self.j_max = j_max
+        self.sig_var = sig_var
         self.omega_0 = omega_0
         self.ell = ell
 
@@ -39,10 +40,10 @@ class component_periodic():
         P_0 = np.zeros((2*self.j_max, 2*self.j_max)) # zeroth state covariance
         
         for j in np.arange(0, self.j_max):
-            Fpj, Lpj, P0pj, Hpj, _ = self.__get_params_j(j)
+            Fpj, Lpj, P0pj, Hpj, _ = self.get_params_j(j)
             F[2*j:2*j+2, 2*j:2*j+2] = Fpj
             L[2*j:2*j+2, 2*j:2*j+2] = Lpj
-            P_0[2*j:2*j+2, 2*j:2*j+2] = P0pj
+            P_0[2*j:2*j+2, 2*j:2*j+2] = P0pj*self.sig_var
             H[2*j:2*j+2] = Hpj
     
             #ell_inv_sq = 1.0/ell/ell

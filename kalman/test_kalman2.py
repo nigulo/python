@@ -14,9 +14,9 @@ import numpy.linalg as la
 
 import kalman_utils as ku
 
-cov_types = ["quasiperiodic", "linear_trend"]
-var = 2.0
-sig_vars = [np.random.uniform(var*0.9, var*0.9), np.random.uniform(var*0.009, var*0.009)]
+cov_types = ["periodic"]#, "linear_trend"]
+var = 200.0
+sig_vars = [np.random.uniform(var*0.9, var*0.9)]#, np.random.uniform(var*0.0009, var*0.0009)]
 noise_var = var - sum(sig_vars)
 #cov_types = ["linear_trend"]
 #cov_type = "periodic"
@@ -30,17 +30,14 @@ n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 t = np.sort(t)
-var = 2.0
-sig_var = np.random.uniform(0.9*var, 0.9*var)
-trend_var = 0.009*var#np.random.uniform(0.9999*var, 0.9999*var)
-noise_var = var - sig_var - trend_var
 t -= np.mean(t)
 
 #p = time_range/12.54321#
 p = np.random.uniform(time_range/20, time_range/5)
 freq = 1.0/p
-mean = np.random.uniform(-10.0, 10.0)
+mean = 0.0#np.random.uniform(-10.0, 10.0)
 
+ellq = None
 k = np.zeros((len(t), len(t)))
 for i in np.arange(0, len(cov_types)):
     cov_type = cov_types[i]
@@ -77,17 +74,18 @@ j_max = 2
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
 print "slope_hat, intercept_hat", slope_hat, intercept_hat
 
-kalman_utils = ku.kalman_utils(t, y)
+kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
 for i in np.arange(0, len(cov_types)):
     cov_type = cov_types[i]
-    sig_var = np.array([sig_vars[i]])
+    #sig_var = np.array([sig_vars[i], 1.0])
+    sig_var = np.linspace(sig_vars[i]/10, sig_vars[i]*5, 10)
     if cov_type == "linear_trend":
         slopes = np.linspace(slope_hat/2, slope_hat*2, 10)
         intercepts = np.linspace(mean/2, mean*2, 10)
         kalman_utils.add_component(cov_type, [slopes, intercepts])
     elif cov_type == "periodic":
         ells = np.array([10.0])
-        omegas = np.linspace(2.0*np.pi*freq/2, 2.0*np.pi*freq*2, 10) 
+        omegas = np.linspace(2.0*np.pi*freq/2, 2.0*np.pi*freq*2, 10)
         kalman_utils.add_component(cov_type, [sig_var, omegas, ells])
     elif cov_type == "quasiperiodic":
         omegas = np.linspace(2.0*np.pi*freq/1.9, 2.0*np.pi*freq*2, 10) 
@@ -105,10 +103,12 @@ for i in np.arange(0, len(cov_types)):
 
 kalman_utils.add_component("white_noise", [np.array([noise_var])])
 
-param_values, y_means = kalman_utils.do_inference()
+param_modes, param_means, param_sigmas, y_means = kalman_utils.do_inference()
 
 
-print "Estimated:", param_values
+print "Estimated mode:", param_modes
+print "Estimated mean:", param_means
+print "Estimated sigma:", param_sigmas
 print "True:", sig_vars[0], 2.0*np.pi*freq, 10.0, ellq, slope_hat, mean, noise_var
 ax1.plot(t[1:], y_means, 'r--')
 

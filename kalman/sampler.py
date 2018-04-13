@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.misc as misc
 
 class sampler():
     
@@ -10,10 +11,12 @@ class sampler():
         self.loglik_fn = loglik_fn
         self.max_loglik = None
         self.greedy = greedy
+        self.logliks = []
 
     def add_parameter_values(self, param_values):
         self.params_values += param_values
         for i in np.arange(0, len(param_values)):
+            self.logliks.append(np.zeros(len(param_values[i])))
             if self.greedy:
                 self.indices.append(np.random.randint(len(param_values[i])))
             else:
@@ -33,6 +36,7 @@ class sampler():
             params_sample.append(self.params_values[i][self.indices[i]])
 
         y_means, loglik = self.loglik_fn(params_sample)
+        self.logliks[self.params_order[self.current_param]][self.indices[self.params_order[self.current_param]]] = loglik
         if self.max_loglik is None or loglik > self.max_loglik:
             self.max_loglik = loglik
             self.best_indices = np.array(self.indices)
@@ -71,8 +75,30 @@ class sampler():
     def get_iteration(self):
         return self.iteration
 
-    def get_best_sample(self):
-        params_sample = []
+    def get_results(self):
+        
+        params_mode = []
+        params_mean = []
+        params_sigma = []
         for i in np.arange(0, len(self.params_values)):
-            params_sample.append(self.params_values[i][self.best_indices[i]])
-        return params_sample, self.best_y_mean
+            if len(self.params_values[i]) > 1:
+                if self.best_indices[i] == 0 :
+                    print "WARNING, optimal value for parameter " + str(i) + " at the lower boundary of the grid"
+                elif self.best_indices[i] == len(self.params_values[i]) - 1:
+                    print "WARNING, optimal value for parameter " + str(i) + " at the upper boundary of the grid"
+            param_value = self.params_values[i][self.best_indices[i]]
+            params_mode.append(param_value)
+            log_probs = np.array(self.logliks[i])
+            log_probs -= misc.logsumexp(log_probs)
+            probs = np.exp(log_probs)
+            probs /= sum(probs)
+            #mean = np.exp(scipy.misc.logsumexp(np.log(freqs_m)+probs_m))
+            #sigma = np.sqrt(np.exp(scipy.misc.logsumexp(2*np.log(freqs_m-best_freq) + probs_m)))
+            mean = sum(self.params_values[i]*probs)
+            sigma = np.sqrt(sum((self.params_values[i]-param_value)**2 * probs))
+            params_mean.append(mean)
+            params_sigma.append(sigma)
+            if len(self.params_values[i]) > 1:
+                if sigma < max(self.params_values[i][1:] - self.params_values[i][:-1]):
+                    print "WARNING, grid for parameter " + str(i) + " too sparse"
+        return params_mode, params_mean, params_sigma, self.best_y_mean

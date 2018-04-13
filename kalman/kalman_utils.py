@@ -118,7 +118,7 @@ class kalman_utils():
                     component = component_linear_trend(slope=param_values[index], intercept=param_values[index+1], t=self.t)
                     F_is_A = True
                 elif cov_type == "periodic":
-                    component = component_periodic(j_max, omega_0=param_values[index+1], ell=param_values[index+1])
+                    component = component_periodic(j_max, sig_var=param_values[index], omega_0=param_values[index+1], ell=param_values[index+1])
                 elif cov_type == "quasiperiodic":
                     component = component_quasiperiodic(j_max, sig_var=param_values[index], omega_0=param_values[index+1], ellp=param_values[index+2], ellq=param_values[index+3])
                 elif cov_type == "exp_quad":
@@ -238,4 +238,4 @@ class kalman_utils():
                 last_iteration = self.sampler.get_iteration()
             params_sample, loglik = self.sampler.sample()
             #print "Sample", params_sample, loglik
-        return self.sampler.get_best_sample()
+        return self.sampler.get_results()
