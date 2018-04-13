@@ -264,7 +264,7 @@ for downsample_iter in np.arange(0, downsample_iters):
 
     sig_var_prior_var=seasonal_means_var
     inv_length_scale_prior_var = 0.5/3
-    inv_length_scale_max = 1.0
+    inv_length_scale_max = freq*3.0
 
     #If using only linear model, then do the following:
     #sig_var_prior_var=seasonal_means_var*1e-10
