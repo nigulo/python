@@ -20,7 +20,7 @@ import scipy
 
 bic_threshold = 6.0
 # "Seasonal", "Two-part", "Conventional"
-sig_type = "Conventional"
+sig_type = "Seasonal"
 
 class Prewhitener:
     def __init__(self, name, type, t, y, freqs, num_resamples=1000, num_bootstrap = 0, 
