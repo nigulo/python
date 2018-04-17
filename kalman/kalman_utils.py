@@ -87,12 +87,12 @@ def calc_cov_p(t, f, sig_var):
 
 class kalman_utils():
     
-    def __init__(self, t, y, num_iterations = 3):
+    def __init__(self, t, y, num_iterations = 3, condition_fn = None):
         self.t = t
         self.y = y
         self.cov_types = []
         self.param_counts = dict()
-        self.sampler = sampler(self.loglik_fn)
+        self.sampler = sampler(self.loglik_fn, condition_fn = condition_fn)
         self.num_iterations = num_iterations
         self.has_A = False
         self.delta_t = t[1:] - t[:-1]

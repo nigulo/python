@@ -15,7 +15,7 @@ class component_quasiperiodic():
 
         self.Nq = 6
         self.exp_quad = component_exp_quad(sig_var=sig_var, ell=ellq, N=self.Nq)
-        self.periodic = component_periodic(j_max=j_max, omega_0=omega_0, ell=ellp)
+        self.periodic = component_periodic(j_max=j_max, sig_var=1.0, omega_0=omega_0, ell=ellp)
         
     def get_params(self):
         #ell_inv_sq = 1.0/ell/ell

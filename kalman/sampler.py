@@ -3,7 +3,7 @@ import scipy.misc as misc
 
 class sampler():
     
-    def __init__(self, loglik_fn, greedy = True):
+    def __init__(self, loglik_fn, greedy = True, condition_fn = None):
         self.params_values = []
         self.indices = []
         self.current_param = 0
@@ -12,6 +12,7 @@ class sampler():
         self.max_loglik = None
         self.greedy = greedy
         self.logliks = []
+        self.condition_fn = condition_fn
 
     def add_parameter_values(self, param_values):
         self.params_values += param_values
@@ -21,7 +22,7 @@ class sampler():
                 self.indices.append(np.random.randint(len(param_values[i])))
             else:
                 self.indices.append(0)
-    
+                
     def init(self):
         self.indices = np.asarray(self.indices)
         if self.greedy:
@@ -35,12 +36,16 @@ class sampler():
         for i in np.arange(0, len(self.params_values)):
             params_sample.append(self.params_values[i][self.indices[i]])
 
-        y_means, loglik = self.loglik_fn(params_sample)
-        self.logliks[self.params_order[self.current_param]][self.indices[self.params_order[self.current_param]]] = loglik
-        if self.max_loglik is None or loglik > self.max_loglik:
-            self.max_loglik = loglik
-            self.best_indices = np.array(self.indices)
-            self.best_y_mean = y_means
+        loglik = None
+        if self.max_loglik is None or self.condition_fn is None or self.condition_fn(params_sample):
+            y_means, loglik = self.loglik_fn(params_sample)
+            self.logliks[self.params_order[self.current_param]][self.indices[self.params_order[self.current_param]]] = loglik
+            if (self.max_loglik is None or loglik > self.max_loglik):
+                self.max_loglik = loglik
+                self.best_indices = np.array(self.indices)
+                self.best_y_mean = y_means
+        #else:
+        #    print "Skipping ", params_sample
 
         if self.greedy:
             i_s = [self.current_param]
@@ -101,4 +106,4 @@ class sampler():
             if len(self.params_values[i]) > 1:
                 if sigma < max(self.params_values[i][1:] - self.params_values[i][:-1]):
                     print "WARNING, grid for parameter " + str(i) + " too sparse"
-        return params_mode, params_mean, params_sigma, self.best_y_mean
+        return params_mode, params_mean, params_sigma, self.best_y_mean, self.max_loglik

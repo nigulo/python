@@ -103,7 +103,7 @@ for i in np.arange(0, len(cov_types)):
 
 kalman_utils.add_component("white_noise", [np.array([noise_var])])
 
-param_modes, param_means, param_sigmas, y_means = kalman_utils.do_inference()
+param_modes, param_means, param_sigmas, y_means, logliks = kalman_utils.do_inference()
 
 
 print "Estimated mode:", param_modes
