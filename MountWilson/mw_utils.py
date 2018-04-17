@@ -463,18 +463,28 @@ def inducing_points_to_front(t, y):
     assert(i1 == len(seasons))
     return t_out, y_out, noise_out
 
-def downsample(t, y, noise, min_time_diff=1.0/365.25):
+def downsample(t, y, noise, min_time_diff=1.0/365.25, average=False):
     t_out = list()
     y_out = list()
+    counts = list()
     noise_out = list()
     for i in np.arange(0, len(t)):
         found = False
-        for t_out_i in t_out:
-            if abs(t[i] - t_out_i) < min_time_diff:
+        for j in np.arange(0, len(t_out)):
+            t_out_j = t_out[j]
+            if abs(t[i] - t_out_j) <= min_time_diff:
                 found = True
+                if average:
+                    y_out[j] += y[i]
+                    counts[j] += 1             
                 break
         if not found:
             t_out.append(t[i])
             y_out.append(y[i])
             noise_out.append(noise[i])
-    return np.asarray(t_out), np.asarray(y_out), np.asarray(noise_out)
+            counts.append(1.0)
+    y_out = np.asarray(y_out)
+    if average:
+        y_out /= counts
+    return np.asarray(t_out), y_out, np.asarray(noise_out)
+    
