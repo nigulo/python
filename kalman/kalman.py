@@ -51,8 +51,15 @@ class kalman():
             assert(np.shape(H)[0] == y_dim_2)
             assert(np.shape(H)[1] == self.dimF0)
 
-        assert(np.shape(R)[0] == y_dim_2)
-        assert(np.shape(R)[1] == y_dim_2)
+        self.constant_noise = True
+        if np.ndim(R) == 3:
+            self.constant_noise = False
+            assert(np.shape(R)[0] == len(t))
+            assert(np.shape(R)[1] == y_dim_2)
+            assert(np.shape(R)[2] == y_dim_2)
+        else:
+            assert(np.shape(R)[0] == y_dim_2)
+            assert(np.shape(R)[1] == y_dim_2)
 
         assert(self.dimF0 == np.shape(L)[0])
         if Q_c is not None:
@@ -188,7 +195,11 @@ class kalman():
         y_mean = np.dot(self.H, m_)
         v = self.y[self.k] - y_mean
 
-        S = np.dot(self.H, np.dot(P_, self.H.T)) + self.R
+        if self.constant_noise:
+            R = self.R
+        else:
+            R = self.R[self.k]
+        S = np.dot(self.H, np.dot(P_, self.H.T)) + R
         S_inv = la.inv(S)
 
         #print la.det(S)
