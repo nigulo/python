@@ -187,7 +187,7 @@ def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=1, num
     if t_out is None:
         t_out = t
     total_var = np.var(y)
-    seasons = get_seasons(zip(t, y), num_days, True)
+    seasons = get_seasons(zip(t, y), num_days, num_days==1.0)
     if per_point:
         noise_var = np.zeros(len(t_out))
     else: 

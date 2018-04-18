@@ -60,7 +60,7 @@ t += offset
 
 
 duration = t[-1] - t[0]
-t -= np.mean(t)
+t -= duration/2
 
 cov_types = ["quasiperiodic", "linear_trend"]
 
@@ -70,23 +70,23 @@ fig, (ax1) = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 3)
 
 orig_var = np.var(y)
-noise_var = mw_utils.get_seasonal_noise_var(t, y, per_point=True, num_days=2.0)
+noise_var = mw_utils.get_seasonal_noise_var(t, y, per_point=True, num_days=1.0)
 noise_var = np.reshape(noise_var, (len(noise_var), 1, 1))
 
 # just for removing the duplicates
 t, y, noise_var = mw_utils.downsample(t, y, noise_var, min_time_diff=30.0/365.25, average=True)
 ax1.plot(t, y, 'b+')
 
-j_max = 2
+#print orig_var, np.min(noise_var), np.max(noise_var), np.mean(noise_var), np.std(noise_var)
+noise_var = np.mean(noise_var)#np.max(noise_var)
 
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
 print "slope_hat, intercept_hat", slope_hat, intercept_hat
 
-sig_vars = [orig_var - np.mean(noise_var), slope_hat**2]
+sig_vars = [orig_var, slope_hat**2]
 freqs = np.linspace(0.0, 0.5, 100)
 omegas = freqs*2.0*np.pi
 ellqs = np.linspace(2.0, duration, int(duration))
-noise_var = orig_var/2
 
 def condition_fn(params):
     omega = params[1]
@@ -100,10 +100,10 @@ kalman_utils = ku.kalman_utils(t, y, num_iterations=3, condition_fn=condition_fn
 for i in np.arange(0, len(cov_types)):
     cov_type = cov_types[i]
     #sig_var = np.array([sig_vars[i], 1.0])
-    sig_var = np.linspace(sig_vars[i]*0.5, sig_vars[i]*1.5, 10)
+    sig_var = np.linspace(sig_vars[i]*0.01, sig_vars[i]*100.0, 10)
     if cov_type == "linear_trend":
-        slopes = np.linspace(slope_hat*0.8, slope_hat*1.2, 10)
-        intercepts = np.linspace(intercept_hat*0.8, intercept_hat*1.2, 10)
+        slopes = np.linspace(slope_hat*0.5, slope_hat*1.5, 10)
+        intercepts = np.linspace(intercept_hat*0.5, intercept_hat*1.5, 10)
         kalman_utils.add_component(cov_type, [slopes, intercepts])
     elif cov_type == "periodic":
         ells = np.array([10.0])

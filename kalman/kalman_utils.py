@@ -33,7 +33,7 @@ from cov_matern import cov_matern
 
 
 matern_p = 1
-j_max = 2
+j_max = 3
 
 def calc_cov_linear_trend(t, trend_var, c = 0.0):
     k = np.zeros((len(t), len(t)))

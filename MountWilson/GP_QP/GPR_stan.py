@@ -129,6 +129,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
     noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y, num_days=1.0)
     seasonal_means_var =np.var(mw_utils.get_seasonal_means(t, y)[:,1])
+    #noise_var_prop_non_ds = np.ones(len(noise_var_prop_non_ds))*np.max(noise_var_prop_non_ds)
 
     
     n = len(t)
@@ -259,7 +260,7 @@ for downsample_iter in np.arange(0, downsample_iters):
 
     sig_var_prior_var=seasonal_means_var
     inv_length_scale_prior_var = 0.5/3
-    inv_length_scale_max = freq*3.0
+    inv_length_scale_max = freq*2.0
 
     #If using only linear model, then do the following:
     #sig_var_prior_var=seasonal_means_var*1e-10
