@@ -26,7 +26,6 @@ parameters {
     real<lower=0> sig_var;
     real<lower=0> freq;
     real<lower=0> trend_var;
-    real<lower=0> noise_const;
     real m;
 }
 
@@ -55,13 +54,12 @@ model {
     }
     
     for (k in 1:N)
-        Sigma[k, k] = sig_var + trend_var * x[k] * x[k] + noise_var[k] + noise_const; // + jitter    
+        Sigma[k, k] = sig_var + trend_var * x[k] * x[k] + noise_var[k]; // + jitter    
     
     L = cholesky_decompose(Sigma);
     
     freq ~ normal(prior_freq_mean, prior_freq_std);
     sig_var ~ normal(var_seasonal_means, var_seasonal_means);
-    noise_const ~ normal(0, var_seasonal_means);
     //inv_length_scale ~ normal(0, freq/3.0);
     inv_length_scale ~ beta(1, 3);
     //inv_length_scale ~ normal(0, 0.5/3);

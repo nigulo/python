@@ -3,7 +3,7 @@ import scipy.misc as misc
 
 class sampler():
     
-    def __init__(self, loglik_fn, greedy = True, condition_fn = None):
+    def __init__(self, loglik_fn, greedy = True, condition_fn = None, initial_indices = None):
         self.params_values = []
         self.indices = []
         self.current_param = 0
@@ -13,13 +13,17 @@ class sampler():
         self.greedy = greedy
         self.logliks = []
         self.condition_fn = condition_fn
+        self.initial_indices = initial_indices
 
     def add_parameter_values(self, param_values):
         self.params_values += param_values
         for i in np.arange(0, len(param_values)):
             self.logliks.append(np.zeros(len(param_values[i])))
             if self.greedy:
-                self.indices.append(np.random.randint(len(param_values[i])))
+                if self.initial_indices is not None and self.initial_indices[i] is not None:
+                    self.indices.append(self.initial_indices[i])
+                else:
+                    self.indices.append(np.random.randint(len(param_values[i])))
             else:
                 self.indices.append(0)
                 
