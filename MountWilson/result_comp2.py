@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import mw_utils
 
+use_periodic_gp = False
+
 data = np.genfromtxt("Goettingen.csv", dtype=None, delimiter=';')
 goet_cycles = dict()
 for [star, per, cyc1, cyc2, cyc3] in data:
@@ -89,8 +91,11 @@ for [star, f, std, normality, bic] in data:
     all_cycles.append(np.asarray(cycles))
 
 
-gp_p_cycles = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
-gp_qp_cycles = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
+#gp_p_cycles = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
+#gp_qp_cycles = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
+
+gp_p_cycles = dict()
+gp_qp_cycles = mw_utils.read_gp_cycles("GP_QP/processed_with_cycles.txt")
 
 keys = np.asarray(time_ranges.keys())
 keys = np.sort(keys)
@@ -143,21 +148,22 @@ for star in keys:
         output += "--"
     output += " & "
 
-    if gp_p_cycles.has_key(star):
-        i = 0
-        cycle_output = ""
-        for cycles in gp_p_cycles[star]:
-            if len(cycles) > 0:
-                cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
-                if i < np.shape(gp_p_cycles[star])[0] - 1:        
-                    cycle_output += r"\\ "
-            i += 1
-        if i > 1:
-            cycle_output = r"\begin{tabular}[t]{@{}l@{}}" + cycle_output + "\end{tabular}"
-        output += cycle_output
-    else:
-        output += "--"
-    output += " & "
+    if use_periodic_gp:
+        if gp_p_cycles.has_key(star):
+            i = 0
+            cycle_output = ""
+            for cycles in gp_p_cycles[star]:
+                if len(cycles) > 0:
+                    cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                    if i < np.shape(gp_p_cycles[star])[0] - 1:        
+                        cycle_output += r"\\ "
+                i += 1
+            if i > 1:
+                cycle_output = r"\begin{tabular}[t]{@{}l@{}}" + cycle_output + "\end{tabular}"
+            output += cycle_output
+        else:
+            output += "--"
+        output += " & "
 
     if gp_qp_cycles.has_key(star):
         i = 0
@@ -176,12 +182,12 @@ for star in keys:
     output += " & "
 
     ##### Commenting Goettingen out for now
-    #if goet_cycles.has_key(star):
-    #    for cycle in goet_cycles[star]:
-    #        output += " " + str(round(cycle,2))
-    #else:
-    #    output += "NA"
-    #output += " & "
+    if goet_cycles.has_key(star):
+        for cycle in goet_cycles[star]:
+            output += " " + str(round(cycle,2))
+    else:
+        output += "--"
+    output += " & "
 
     #if olah_cycles.has_key(star):
     #    if len(olah_cycles[star]) == 0:

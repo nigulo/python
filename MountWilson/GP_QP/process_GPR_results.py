@@ -63,12 +63,14 @@ parse = make_parser(fieldwidths)
 
 rot_periods = mw_utils.load_rot_periods("../")
 
-output_cycles = open("processed/"+prefix+"processed_with_cycles.txt", "a")
+output_cycles = open(prefix+"processed_with_cycles.txt", "a")
 
-data = pd.read_csv(prefix+"results/"+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'rot_amplitude', 'fvu', 'delta_bic', 'length_scale2', 'length_scale2_se', 'length_scale2_std'], dtype=None, sep='\s+', engine='python').as_matrix()
+#data = pd.read_csv(prefix+"results/"+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic', 'length_scale2', 'length_scale2_se', 'length_scale2_std'], dtype=None, sep='\s+', engine='python').as_matrix()
+data = pd.read_csv(prefix+"results/"+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
 
 #data = np.genfromtxt(file, dtype=None, skip_header=1)
-for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, rot_amplitude, fvu, delta_bic, length_scale2, length_scale2_se, length_scale2_std] in data:
+#for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_bic, length_scale2, length_scale2_se, length_scale2_std] in data:
+for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_bic] in data:
 
     #if delta_bic < 6:
     #    continue
@@ -125,7 +127,8 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
     
             # Full fit
-            gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
+            #gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
+            gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
             t_test = np.linspace(min(t), max(t), 200)
             gpr_gp.init(t, y-m)
             (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)

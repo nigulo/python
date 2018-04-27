@@ -173,13 +173,6 @@ for downsample_iter in np.arange(0, downsample_iters):
         init=initial_param_values,
         iter=num_iters, chains=num_chains, n_jobs=n_jobs)
     
-    with open("results/"+star + downsample_iter_str + "_results.txt", "w") as output:
-        output.write(str(fit))    
-
-
-    fit.plot()
-    plt.savefig("results/"+star + downsample_iter_str + "_results.png")
-    plt.close()
 
     results = fit.extract()
 
@@ -273,13 +266,6 @@ for downsample_iter in np.arange(0, downsample_iters):
         init=initial_param_values,
         iter=num_iters, chains=num_chains, n_jobs=n_jobs)
     
-    with open("results/"+star + downsample_iter_str + "_results_null.txt", "w") as output:
-        output.write(str(fit_null))    
-
-
-    fit_null.plot()
-    plt.savefig("results/"+star + downsample_iter_str + "_results_null.png")
-    plt.close()
 
     results_null = fit_null.extract()
 
@@ -412,17 +398,53 @@ for downsample_iter in np.arange(0, downsample_iters):
         segment_index += 1
     
     print "l_loo, l_loo_null", l_loo, l_loo_null
+    delta_loo = l_loo - l_loo_null
 
-    ###########################################################################
 
+    data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
 
-    fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')
-    plt.close()
-
-    ###########################################################################
-
-    with FileLock("GPRLock"):
-        with open("results/results.txt", "a") as output:
-            #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
-            #output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    
-            output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + "\n")    
+    save = True    
+    for [star1, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_loo1] in data:
+        star1 = str(star)
+        if star1 == star and delta_loo1 >= delta_loo:
+            save = False
+            break
+            
+        
+    if save:
+        ###########################################################################
+        with open("results/"+star + downsample_iter_str + "_results.txt", "w") as output:
+            output.write(str(fit))    
+    
+    
+        fit.plot()
+        plt.savefig("results/"+star + downsample_iter_str + "_results.png")
+        plt.close()
+    
+        with open("results/"+star + downsample_iter_str + "_results_null.txt", "w") as output:
+            output.write(str(fit_null))    
+    
+    
+        fit_null.plot()
+        plt.savefig("results/"+star + downsample_iter_str + "_results_null.png")
+        plt.close()
+    
+    
+        fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')
+        plt.close()
+    
+        ###########################################################################
+    
+        with FileLock("GPRLock"):
+            f = open("results/results.txt","r")
+            lines = f.readlines()
+            f.close()
+            f = open("results/results.txt","w")
+            for line in lines:
+              if line[0:len(star)] != star:
+                f.write(line)
+            f.close()
+            with open("results/results.txt", "a") as output:
+                #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
+                #output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    
+                output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    

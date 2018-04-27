@@ -69,7 +69,7 @@ fig, (ax1) = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 3)
 
 orig_var = np.var(y)
-noise_var = mw_utils.get_seasonal_noise_var(t, y, per_point=True, num_days=2.0)
+noise_var = mw_utils.get_seasonal_noise_var(t, y, per_point=True, num_days=1.0)
 noise_var = np.reshape(noise_var, (len(noise_var), 1, 1))
 
 # just for removing the duplicates
