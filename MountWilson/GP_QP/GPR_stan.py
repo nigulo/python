@@ -253,7 +253,7 @@ for downsample_iter in np.arange(0, downsample_iters):
 
     sig_var_prior_var=seasonal_means_var
     inv_length_scale_prior_var = 0.5/3
-    inv_length_scale_max = freq*2.0
+    inv_length_scale_max = freq*3.0
 
     #If using only linear model, then do the following:
     #sig_var_prior_var=seasonal_means_var*1e-10
@@ -401,14 +401,15 @@ for downsample_iter in np.arange(0, downsample_iters):
     delta_loo = l_loo - l_loo_null
 
 
-    data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
 
     save = True    
-    for [star1, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_loo1] in data:
-        star1 = str(star1)
-        if star1 == star and delta_loo1 >= delta_loo:
-            save = False
-            break
+    if os.path.isfile("results/results.txt"):
+        data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+        for [star1, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_loo1] in data:
+            star1 = str(star1)
+            if star1 == star and delta_loo1 >= delta_loo:
+                save = False
+                break
             
         
     if save:

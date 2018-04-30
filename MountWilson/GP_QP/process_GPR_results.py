@@ -21,7 +21,7 @@ import GPR_QP
 num_iters = 300
 n_eff_col = 9
 
-do_cv = False
+do_fits = False
 
 prefix = ""
 
@@ -63,7 +63,7 @@ parse = make_parser(fieldwidths)
 
 rot_periods = mw_utils.load_rot_periods("../")
 
-output_cycles = open(prefix+"processed_with_cycles.txt", "a")
+output_cycles = open(prefix+"processed_with_cycles.txt", "w")
 
 #data = pd.read_csv(prefix+"results/"+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic', 'length_scale2', 'length_scale2_se', 'length_scale2_std'], dtype=None, sep='\s+', engine='python').as_matrix()
 data = pd.read_csv(prefix+"results/"+"results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
@@ -106,23 +106,24 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     #assert(m >= 0)
     print n_eff
     if n_eff >= 5:#float(num_iters) / 10:
-        if not os.path.isfile("fits/" + prefix + star + '.pdf'):
+        dat = np.loadtxt(data_dir+star + ".dat", usecols=(0,1), skiprows=0)
+        
+        offset = 1979.3452
+        
+        t_orig = dat[:,0]
+        y = dat[:,1]
+        
+        t = t_orig/365.25
+        t += offset
+        t_mean = np.mean(t)
+        t -= t_mean
+        if delta_bic > 0.0 and cyc < (max(t) - min(t)) / 1.5 and cyc > 2.0:
+            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")
+        if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
             print cyc, length_scale, sig_var, trend_var, m
     
-            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")    
             ###################################################################
     
-            dat = np.loadtxt(data_dir+star + ".dat", usecols=(0,1), skiprows=0)
-            
-            offset = 1979.3452
-            
-            t_orig = dat[:,0]
-            y = dat[:,1]
-            
-            t = t_orig/365.25
-            t += offset
-            t_mean = np.mean(t)
-            t -= t_mean
     
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
     

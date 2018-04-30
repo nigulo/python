@@ -21,7 +21,7 @@ from scipy.stats import norm
 import matplotlib.patches as patches
 from scipy import stats
 
-include_non_ms = False#True
+include_non_ms = True
 fit_with_baliunas = False
 
 use_secondary_clusters = False
@@ -627,7 +627,8 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     return (handles, labels)
     #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
     
-for type in ["BGLST", "GP_P", "GP_QP"]:
+#for type in ["BGLST", "GP_P", "GP_QP"]:
+for type in ["BGLST", "GP_QP"]:
 
     if type == "BGLST":
         if plot_ro:
@@ -657,7 +658,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
             ax11 = ax13            
         ax2 = ax23
         ax4 = ax43
-        input_path = "GP_quasiperiodic/results_combined.txt"
+        input_path = "GP_QP/processed_with_cycles.txt"
         bglst_or_gp = False
     else:
         assert(False)    
@@ -685,7 +686,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        if type == "BGLST":# or type == "GP_QP":
+        if type == "BGLST" or type == "GP_QP":
             m_temp = m2
             s_temp = s2
             w_temp = w2
@@ -907,10 +908,11 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         b = c
                                 #size *= 1.0 - c
                             data_star.append([r_hk, val, err, err, r, g, b, alpha, ro, sym, p_rot, p_cyc/365.25, delta_i, std/365.25, size, p_rot_err, label])
-                        if baliunas:
-                            data_baliunas[star] = data_star
-                        else:
-                            data[star] = data_star
+                        if len(data_star) > 0:
+                            if baliunas:
+                                data_baliunas[star] = data_star
+                            else:
+                                data[star] = data_star
             #print star, bmv, r_hk, p_rot
     if type == "BGLST":
         plot_data(data, True, ax11, ax12, ax2, ax31, ax32, ax4)
