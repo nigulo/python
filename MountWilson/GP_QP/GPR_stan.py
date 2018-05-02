@@ -341,8 +341,10 @@ for downsample_iter in np.arange(0, downsample_iters):
             seg_duration = segment_end - segment_start
             if segment_index == 0:
                 segment = segment[segment[:,0] > segment_start + seg_duration * 0.5,:]
+                segment_start = segment_start + seg_duration * 0.5
             elif segment_index == len(segments) - 1:
                 segment = segment[segment[:,0] < segment_start + seg_duration * 0.5,:]
+                segment_end = segment_start + seg_duration * 0.5
         print "cv for segment: ", segment_index, segment_start, segment_end
         dat_test = segment#segments[segment_index]
         #dat_test = seasonal_means[seasonal_means[:,0] >= season_start,:]
@@ -443,14 +445,15 @@ for downsample_iter in np.arange(0, downsample_iters):
         ###########################################################################
     
         with FileLock("GPRLock"):
-            f = open("results/results.txt","r")
-            lines = f.readlines()
-            f.close()
-            f = open("results/results.txt","w")
-            for line in lines:
-              if line[0:len(star)] != star:
-                f.write(line)
-            f.close()
+            if os.path.isfile("results/results.txt"):
+                f = open("results/results.txt","r")
+                lines = f.readlines()
+                f.close()
+                f = open("results/results.txt","w")
+                for line in lines:
+                  if line[0:len(star)] != star:
+                    f.write(line)
+                f.close()
             with open("results/results.txt", "a") as output:
                 #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
                 #output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    
