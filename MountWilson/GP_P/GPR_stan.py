@@ -16,6 +16,7 @@ import numpy as np
 import pylab as plt
 from filelock import FileLock
 import mw_utils
+import GPR_per
 import GPR_QP
 import pandas as pd
 
@@ -222,7 +223,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "trend_var", trend_var
     print "m", m
     
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0, length_scale2=0.0)
+    gpr_gp = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t, y-m)
     (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
@@ -233,7 +234,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     print "loglik", loglik #(loglik + 0.5 * n * np.log(2.0 * np.pi))
     
     # Calculate the resiudes for the original data    
-    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0, length_scale2=0.0)
+    gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0)
     t_test = np.linspace(min(t), max(t), 500)
     gpr_gp.init(t_non_ds, y_non_ds-m)
     (f_non_ds, _, _) = gpr_gp.fit(t_non_ds)
@@ -341,7 +342,7 @@ for downsample_iter in np.arange(0, downsample_iters):
             seg_duration = segment_end - segment_start
             if segment_index == 0:
                 segment = segment[segment[:,0] > segment_start + seg_duration * 0.5,:]
-            elif segment_index == len(segments) - 1:
+            elif segment_index == len(segments):
                 segment = segment[segment[:,0] < segment_start + seg_duration * 0.5,:]
         print "cv for segment: ", segment_index, segment_start, segment_end
         dat_test = segment#segments[segment_index]
@@ -376,7 +377,7 @@ for downsample_iter in np.arange(0, downsample_iters):
         indices1 = np.where(t >= segment_start)[0]
         indices2 = np.where(t[indices1] <= segment_end)[0]
         noise_test = noise_var_prop[indices1][indices2]
-        gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
+        gpr_gp_cv = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
         gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
         #print seasonal_noise
