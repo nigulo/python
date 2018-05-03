@@ -35,7 +35,8 @@ from sklearn.cluster import KMeans
 
 star = sys.argv[1]
     
-
+squared_exp_null = False
+weight_with_segment_len = True
 num_iters = 50
 num_chains = 4
 down_sample_factor = 1
@@ -245,50 +246,56 @@ for downsample_iter in np.arange(0, downsample_iters):
     
     ###########################################################################
     #Squared-exponential GP for model comparison
+    if squared_exp_null:
     
-    initial_param_values = []
-    for i in np.arange(0, num_chains):                    
-        initial_m = orig_mean
-        initial_trend_var = var / duration
-        initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
+	initial_param_values = []
+	for i in np.arange(0, num_chains):
+	    initial_m = orig_mean
+	    initial_trend_var = var / duration
+	    initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
-    sig_var_prior_var=seasonal_means_var
-    inv_length_scale_prior_var = 0.5/3
-    inv_length_scale_max = freq*3.0
+	sig_var_prior_var=seasonal_means_var
+	inv_length_scale_prior_var = 0.5/3
+	inv_length_scale_max = freq*3.0
 
-    #If using only linear model, then do the following:
-    #sig_var_prior_var=seasonal_means_var*1e-10
-    #length_scale_prior_var=1e-10
+	#If using only linear model, then do the following:
+	#sig_var_prior_var=seasonal_means_var*1e-10
+	#length_scale_prior_var=1e-10
 
-    fit_null = model_null.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
-        sig_var_prior_var=sig_var_prior_var, inv_length_scale_prior_var=inv_length_scale_prior_var,
-        inv_length_scale_max=inv_length_scale_max,
-        prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
-        init=initial_param_values,
-        iter=num_iters, chains=num_chains, n_jobs=n_jobs)
-    
+	fit_null = model_null.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
+	sig_var_prior_var=sig_var_prior_var, inv_length_scale_prior_var=inv_length_scale_prior_var,
+	inv_length_scale_max=inv_length_scale_max,
+	prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
+	init=initial_param_values,
+	iter=num_iters, chains=num_chains, n_jobs=n_jobs)
+	    
 
-    results_null = fit_null.extract()
+	results_null = fit_null.extract()
 
-    loglik_samples_null = results_null['lp__']
-    loglik_null = np.mean(loglik_samples_null)
-    
-    length_scale_samples_null = results_null['length_scale'];
-    (length_scale_null, length_scale_se_null) = mw_utils.mean_with_se(length_scale_samples_null)
+	loglik_samples_null = results_null['lp__']
+	loglik_null = np.mean(loglik_samples_null)
+	    
+	length_scale_samples_null = results_null['length_scale'];
+	(length_scale_null, length_scale_se_null) = mw_utils.mean_with_se(length_scale_samples_null)
 
-    sig_var_samples_null = results_null['sig_var']
-    sig_var_null = np.mean(sig_var_samples_null)
-    
-    trend_var_samples_null = results_null['trend_var'];
-    (trend_var_null, trend_var_se_null) = mw_utils.mean_with_se(trend_var_samples_null)
-    m_samples_null = results_null['m'];
-    m_null = np.mean(m_samples_null)
-    
-    print "length_scale_null", length_scale_null
-    print "trend_var_null", trend_var_null
-    print "m_null", m_null
-    
-    gpr_gp_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_var_prop, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
+	sig_var_samples_null = results_null['sig_var']
+	sig_var_null = np.mean(sig_var_samples_null)
+	    
+	trend_var_samples_null = results_null['trend_var'];
+	(trend_var_null, trend_var_se_null) = mw_utils.mean_with_se(trend_var_samples_null)
+	m_samples_null = results_null['m'];
+	m_null = np.mean(m_samples_null)
+	    
+	print "length_scale_null", length_scale_null
+	print "trend_var_null", trend_var_null
+	print "m_null", m_null
+	    
+	gpr_gp_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_var_prop, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
+    else:
+        fit_null = None
+        gpr_gp_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_var_prop, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var, c=0.0)
+        m_null = m
+        
     t_test_null = np.linspace(min(t), max(t), 500)
     gpr_gp_null.init(t, y-m_null)
     (f_mean_null, pred_var_null, loglik_null) = gpr_gp_null.fit(t_test_null)
@@ -318,10 +325,10 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    cv_segment_size = max(min(duration/2.0, period), 1.0)
-    num_segments = round(duration/cv_segment_size)
-    cv_segment_size = duration/num_segments
-    #cv_segment_size = 1.0
+    #cv_segment_size = max(min(duration/2.0, period), 1.0)
+    #num_segments = round(duration/cv_segment_size)
+    #cv_segment_size = duration/num_segments
+    cv_segment_size = 1.0
     print "cv_segment_size", cv_segment_size
     segments = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
     
@@ -380,17 +387,20 @@ for downsample_iter in np.arange(0, downsample_iters):
         indices2 = np.where(t[indices1] <= segment_end)[0]
         noise_test = noise_var_prop[indices1][indices2]
         gpr_gp_cv = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
-        gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
         gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
-        #print seasonal_noise
-        #print dat_test
-        #print m
-        #print m_null
         (_, _, loglik_test) = gpr_gp_cv.cv(dat_test[:,0], dat_test[:,1]-m, noise_test)
-        l_loo += loglik_test#/np.shape(dat_test)[0]
+        if weight_with_segment_len:
+            loglik_test /= np.shape(dat_test)[0]
+        l_loo += loglik_test
+        if squared_exp_null:
+            gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=sig_var_null, length_scale=length_scale_null, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var_null, c=0.0)
+        else:
+            gpr_gp_cv_null = GPR_QP.GPR_QP(sig_var=0.0, length_scale=length_scale, freq=0.0, noise_var=noise_train, rot_freq=0.0, rot_amplitude=0.0, trend_var=trend_var, c=0.0)
         gpr_gp_cv_null.init(dat_train[:,0], dat_train[:,1]-m_null)
         (_, _, loglik_test_null) = gpr_gp_cv_null.cv(dat_test[:,0], dat_test[:,1]-m_null, noise_test)
-        l_loo_null += loglik_test_null#/np.shape(dat_test)[0]
+        if weight_with_segment_len:
+            loglik_test_null /= np.shape(dat_test)[0]
+        l_loo_null += loglik_test_null
         
         fig_cv, ax_cv = plt.subplots(nrows=1, ncols=1)
         fig_cv.set_size_inches(8, 6)
@@ -431,13 +441,14 @@ for downsample_iter in np.arange(0, downsample_iters):
         plt.savefig("results/"+star + downsample_iter_str + "_results.png")
         plt.close()
     
-        with open("results/"+star + downsample_iter_str + "_results_null.txt", "w") as output:
-            output.write(str(fit_null))    
+        if fit_null is not None:
+	    with open("results/"+star + downsample_iter_str + "_results_null.txt", "w") as output:
+	        output.write(str(fit_null))    
     
     
-        fit_null.plot()
-        plt.savefig("results/"+star + downsample_iter_str + "_results_null.png")
-        plt.close()
+	    fit_null.plot()
+	    plt.savefig("results/"+star + downsample_iter_str + "_results_null.png")
+	    plt.close()
     
     
         fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')

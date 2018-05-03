@@ -248,7 +248,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     if squared_exp_null:
 
         initial_param_values = []
-        for i in np.arange(0, num_chains):                    
+        for i in np.arange(0, num_chains):
             initial_m = orig_mean
             initial_trend_var = var / duration
             initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
@@ -324,10 +324,10 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################
     # LOO-CV
 
-    cv_segment_size = max(min(duration/2.0, period), 1.0)
-    num_segments = round(duration/cv_segment_size)
-    cv_segment_size = duration/num_segments
-    #cv_segment_size = 1.0
+    #cv_segment_size = max(min(duration/2.0, period), 1.0)
+    #num_segments = round(duration/cv_segment_size)
+    #cv_segment_size = duration/num_segments
+    cv_segment_size = 1.0
     print "cv_segment_size", cv_segment_size
     segments = mw_utils.get_seasons(zip(t, y), cv_segment_size, True)
     
@@ -347,10 +347,10 @@ for downsample_iter in np.arange(0, downsample_iters):
         if cv_segment_size > 1.0: # Cut the outer segments to half
             seg_duration = segment_end - segment_start
             if segment_index == 0:
-                segment = segment[segment[:,0] > segment_start + seg_duration * 0.5,:]
+                segment = segment[segment[:,0] >= segment_start + seg_duration * 0.5,:]
                 segment_start = segment_start + seg_duration * 0.5
             elif segment_index == len(segments) - 1:
-                segment = segment[segment[:,0] < segment_start + seg_duration * 0.5,:]
+                segment = segment[segment[:,0] <= segment_start + seg_duration * 0.5,:]
                 segment_end = segment_start + seg_duration * 0.5
         print "cv for segment: ", segment_index, segment_start, segment_end
         dat_test = segment#segments[segment_index]
