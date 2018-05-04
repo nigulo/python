@@ -424,7 +424,7 @@ for downsample_iter in np.arange(0, downsample_iters):
     save = True    
     if os.path.isfile("results/results.txt"):
         data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
-        for [star1, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_loo1] in data:
+        for [star1, _, _, _, _, _, _, _, _, _, _, _, _, _, _, delta_loo1] in data:
             star1 = str(star1)
             if star1 == star and delta_loo1 >= delta_loo:
                 save = False
