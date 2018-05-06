@@ -419,10 +419,14 @@ for downsample_iter in np.arange(0, downsample_iters):
 
 
 
-    save = True    
-    if os.path.isfile("results/results.txt"):
+    save = True
+    if length_scale < period:
+        save = False
+    elif os.path.isfile("results/results.txt"):
         data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
-        for [star1, _, _, _, _, _, _, _, _, _, _, _, _, _, _, delta_loo1] in data:
+        for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, delta_loo1] in data:
+            if length_scale1 < cyc1:
+                continue
             star1 = str(star1)
             if star1 == star and delta_loo1 >= delta_loo:
                 save = False
