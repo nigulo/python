@@ -4,6 +4,8 @@ Test of equivalence of general D^2 statistic in original and vector formulation
 @author: nigul
 """
 
+import sys
+sys.path.append('../kalman/')
 import numpy as np
 import scipy
 from scipy import stats
@@ -19,6 +21,7 @@ import matplotlib.ticker as ticker
 from collections import OrderedDict as od
 import numpy.linalg as la
 import GPR_QP
+import kalman_utils as ku
 
 #cov_type = "periodic"
 cov_type = "quasiperiodic"
@@ -57,6 +60,8 @@ def calc_sel_fn_p(t, f, sig_var):
             k[i, j] = 1.0 + 2.0*(np.cos(2 * np.pi*f*(t[i] - t[j])))
             k[j, i] = k[i, j]
     return k
+
+j_max_kalman = 2
 
 n = 50
 time_range = 200
@@ -124,6 +129,14 @@ def calc_gp(k):
         i += 1
     return -d2# / norm / 2.0
 
+kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
+kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)])
+kalman_utils.add_component("white_noise", [np.zeros(1)])
+
+def calc_kalman(t_coh, f):
+    y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 100.0, t_coh, noise_var])
+    return -loglik
+
 num_freqs = 100
 num_cohs = 10
 
@@ -141,6 +154,7 @@ plt.close(fig)
 d2_spec_color = np.zeros((num_cohs, num_freqs, 3))
 gp_spec_color = np.zeros((num_cohs, num_freqs, 3))
 full_gp_spec_color = np.zeros((num_cohs, num_freqs, 3))
+kalman_spec_color = np.zeros((num_cohs, num_freqs, 3))
 coh_ind = 0
 
 t_cohs = np.linspace(length_scale/4.0, length_scale*4.0, num_cohs)
@@ -148,12 +162,19 @@ t_cohs = np.linspace(length_scale/4.0, length_scale*4.0, num_cohs)
 max_loglik_full_gp = None
 max_coh_full_gp = 0
 max_freq_full_gp = 0
+
 max_gp = None
 max_coh_gp = 0
 max_freq_gp = 0
+
 max_d2 = None
 max_coh_d2 = 0
 max_freq_d2 = 0
+
+max_loglik_kalman = None
+max_coh_kalman = 0
+max_freq_kalman = 0
+
 for t_coh in t_cohs:
     fig, (ax1) = plt.subplots(nrows=1, ncols=1)
     fig.set_size_inches(6, 3)
@@ -162,6 +183,7 @@ for t_coh in t_cohs:
     d2a_spec = np.zeros(num_freqs)
     gp_spec = np.zeros(num_freqs)
     full_gp_spec = np.zeros(num_freqs)
+    kalman_spec = np.zeros(num_freqs)
     f_ind = 0
     fs = np.linspace(0.01, 2.0*freq, num_freqs)
     for f in fs:
@@ -183,6 +205,10 @@ for t_coh in t_cohs:
         gpr_gp.init(t, y)
         (_, _, loglik) = gpr_gp.fit(t_test)
         full_gp_spec[f_ind] = -loglik
+        
+        loglik_kalman = calc_kalman(t_coh, f)
+        kalman_spec[f_ind] = -loglik_kalman
+        
         if max_loglik_full_gp is None or loglik > max_loglik_full_gp:
             max_loglik_full_gp = loglik
             max_coh_full_gp = t_coh
@@ -195,6 +221,10 @@ for t_coh in t_cohs:
             max_d2 = -d2
             max_coh_d2 = t_coh
             max_freq_d2 = f
+        if max_loglik_kalman is None or loglik_kalman > max_loglik_kalman:
+            max_loglik_kalman = loglik_kalman
+            max_coh_kalman = t_coh
+            max_freq_kalman = f
         
         f_ind += 1
 
@@ -210,20 +240,27 @@ for t_coh in t_cohs:
     full_gp_spec_color[coh_ind, :, 1] = fs
     full_gp_spec_color[coh_ind, :, 2] = full_gp_spec
 
+    kalman_spec_color[coh_ind, :, 0] = np.repeat(t_coh, len(fs))
+    kalman_spec_color[coh_ind, :, 1] = fs
+    kalman_spec_color[coh_ind, :, 2] = kalman_spec
+
     d2_spec = (d2_spec - min(d2_spec)) / (max(d2_spec) - min(d2_spec))
     d2a_spec = (d2a_spec - min(d2a_spec)) / (max(d2a_spec) - min(d2a_spec))
     gp_spec = (gp_spec - min(gp_spec)) / (max(gp_spec) - min(gp_spec))
     full_gp_spec = (full_gp_spec - min(full_gp_spec)) / (max(full_gp_spec) - min(full_gp_spec))
+    kalman_spec = (kalman_spec - min(kalman_spec)) / (max(kalman_spec) - min(kalman_spec))
 
     opt_freq_d2 = fs[np.argmin(d2_spec)]
     opt_freq_d2a = fs[np.argmin(d2a_spec)]
     opt_freq_gp = fs[np.argmin(gp_spec)]
     opt_freq_full_gp = fs[np.argmin(full_gp_spec)]
+    opt_freq_kalman = fs[np.argmin(kalman_spec)]
 
     ax1.plot(fs, d2_spec, 'b-')
     ax1.plot(fs, d2a_spec, 'b--')
     ax1.plot(fs, gp_spec, 'r-')
     ax1.plot(fs, full_gp_spec, 'g-')
+    ax1.plot(fs, kalman_spec, 'y-')
     min_y = 0.0#min(min(d2_spec), min(gp_spec))
     max_y = 1.0#max(max(d2_spec), max(gp_spec))
     ax1.plot([freq, freq], [min_y, max_y], 'k--')
@@ -269,55 +306,69 @@ if num_cohs > 1:
     
     my_cmap = reverse_colourmap(plt.get_cmap('gnuplot'))
     
-    f, ((ax31, ax32, ax33)) = plt.subplots(1, 3, sharex='col', sharey='row')
+    f, ((ax1, ax2, ax3, ax4)) = plt.subplots(4, 1, sharex='col', sharey='row')
     f.tight_layout()
     f.set_size_inches(10, 2.5)
     
-    ax31.imshow(d2_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
-    ax31.set_title(r'$D^2$')
+    ax1.imshow(d2_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax1.set_title(r'$D^2$')
     #ax31.set_yticklabels(["{:10.1f}".format(1/t) for t in ax31.get_yticks()])
     #ax31.yaxis.labelpad = -16
-    ax31.set_ylabel(r'$f')
+    ax1.set_ylabel(r'$f')
     #start, end = ax31.get_xlim()
     #ax31.xaxis.set_ticks(np.arange(5, end, 4.9999999))
     #ax31.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
     #ax31.xaxis.labelpad = -1
-    ax31.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-    ax31.set_aspect(aspect=plot_aspect)
-    ax31.set_adjustable('box-forced')
-    ax31.scatter([length_scale], [freq], c='r', s=20)
-    ax31.scatter([max_coh_d2], [max_freq_d2], c='b', s=20)
+    #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
+    ax1.set_aspect(aspect=plot_aspect)
+    ax1.set_adjustable('box-forced')
+    ax1.scatter([length_scale], [freq], c='r', s=20)
+    ax1.scatter([max_coh_d2], [max_freq_d2], c='b', s=20)
     
-    ax32.imshow(gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
-    ax32.set_title(r'GP')
+    ax2.imshow(gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax2.set_title(r'Factor graph')
+    ax2.set_ylabel(r'$f')
     #start, end = ax32.get_xlim()
     #ax32.xaxis.set_ticks(np.arange(5, end, 4.9999999))
     #ax32.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
     #ax32.xaxis.labelpad = -1
-    ax32.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-    ax32.set_aspect(aspect=plot_aspect)
-    ax32.set_adjustable('box-forced')
-    ax32.scatter([length_scale], [freq], c='r', s=20)
-    ax32.scatter([max_coh_gp], [max_freq_gp], c='b', s=20)
+    #ax2.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
+    ax2.set_aspect(aspect=plot_aspect)
+    ax2.set_adjustable('box-forced')
+    ax2.scatter([length_scale], [freq], c='r', s=20)
+    ax2.scatter([max_coh_gp], [max_freq_gp], c='b', s=20)
     
-    im33 = ax33.imshow(full_gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
-    ax33.set_title(r'Full GP')
+    ax3.imshow(full_gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax3.set_title(r'Full GP')
+    ax3.set_ylabel(r'$f')
     #start, end = ax33.get_xlim()
     #ax33.xaxis.set_ticks(np.arange(5, end, 4.9999999))
     #ax33.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
     #ax33.xaxis.labelpad = -1
-    ax33.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-    ax33.set_aspect(aspect=plot_aspect)
-    ax33.set_adjustable('box-forced')
-    ax33.scatter([length_scale], [freq], c='r', s=20)
-    ax33.scatter([max_coh_full_gp], [max_freq_full_gp], c='b', s=20)
+    #ax3.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
+    ax3.set_aspect(aspect=plot_aspect)
+    ax3.set_adjustable('box-forced')
+    ax3.scatter([length_scale], [freq], c='r', s=20)
+    ax3.scatter([max_coh_full_gp], [max_freq_full_gp], c='b', s=20)
     
+    im4 = ax4.imshow(kalman_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax4.set_title(r'Kalman filter')
+    ax4.set_ylabel(r'$f')
+    #start, end = ax33.get_xlim()
+    #ax33.xaxis.set_ticks(np.arange(5, end, 4.9999999))
+    #ax33.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
+    #ax33.xaxis.labelpad = -1
+    ax4.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
+    ax4.set_aspect(aspect=plot_aspect)
+    ax4.set_adjustable('box-forced')
+    ax4.scatter([length_scale], [freq], c='r', s=20)
+    ax4.scatter([max_coh_kalman], [max_freq_kalman], c='b', s=20)
     
     l_f = FormatStrFormatter('%1.2f')
     f.subplots_adjust(left=0.05, right=0.91, wspace=0.05)
     
     cbar_ax32 = f.add_axes([0.925, 0.14, 0.02, 0.74])
-    f.colorbar(im33, cax=cbar_ax32, format=l_f, label=r'$D^2$')
+    f.colorbar(im4, cax=cbar_ax32, format=l_f, label=r'Likelihood')
     
     plt.savefig('spec_3d.png')
     plt.close()

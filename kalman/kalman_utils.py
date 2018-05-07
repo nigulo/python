@@ -228,6 +228,9 @@ class kalman_utils():
         self.param_counts[cov_type] = len(param_values)
         self.sampler.add_parameter_values(param_values)
 
+    '''
+    Do the inference of optimal parameter values using the greedy search
+    '''        
     def do_inference(self):
         self.sampler.init()
     
@@ -242,3 +245,11 @@ class kalman_utils():
             params_sample, loglik = self.sampler.sample()
             #print "Sample", params_sample, loglik
         return self.sampler.get_results()
+
+    '''
+    Do filtering for given parameter values
+    '''        
+    def do_filter(self, params):
+        y_means, loglik = self.loglik_fn(params)
+        return y_means, loglik
+
