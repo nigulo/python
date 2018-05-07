@@ -45,7 +45,7 @@ model {
 
     for (i in 1:(N-1)) {
         for (j in (i+1):N) {
-            Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale * freq * freq * pow(x[i] - x[j],2)) * cos(2.0*pi()*freq*(x[i] - x[j])) + trend_var * x[i] * x[j];
+            Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale / 4.0 * freq * freq * pow(x[i] - x[j],2)) * cos(2.0*pi()*freq*(x[i] - x[j])) + trend_var * x[i] * x[j];
             //Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale * pow(x[i] - x[j],2)) * cos(2.0*pi()*freq*(x[i] - x[j])) + trend_var * x[i] * x[j];
             //Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale * pow(x[i] - x[j],2)) * exp(-2.0*sin(pi()*freq*(x[i] - x[j]))^2*inv_length_scale2*inv_length_scale2) + trend_var * x[i] * x[j];
             //Sigma[i, j] = sig_var * exp(-0.5*inv_length_scale * inv_length_scale * freq * freq * pow(x[i] - x[j],2)) * exp(-2.0*sin(pi()*freq*(x[i] - x[j]))^2*inv_length_scale2*inv_length_scale2) + trend_var * x[i] * x[j];

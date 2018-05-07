@@ -199,7 +199,6 @@ for downsample_iter in np.arange(0, downsample_iters):
     ###########################################################################    
     # Find optimum freq 1
 
-
     freq_samples = results['freq'];
     
     freq_freqs = gaussian_kde(freq_samples)
