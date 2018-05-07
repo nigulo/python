@@ -70,6 +70,8 @@ var = 1.0
 sig_var = np.random.uniform(0.2, 0.9)
 noise_var = var - sig_var
 mean = 0.5
+t = np.sort(t)
+t -= np.mean(t)
 
 #p = time_range/12.54321#
 p = np.random.uniform(time_range/200, time_range/5)
@@ -135,7 +137,7 @@ kalman_utils.add_component("white_noise", [np.zeros(1)])
 
 def calc_kalman(t_coh, f):
     y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 100.0, t_coh, noise_var])
-    return -loglik
+    return loglik
 
 num_freqs = 100
 num_cohs = 10
@@ -177,7 +179,7 @@ max_freq_kalman = 0
 
 for t_coh in t_cohs:
     fig, (ax1) = plt.subplots(nrows=1, ncols=1)
-    fig.set_size_inches(6, 3)
+    fig.set_size_inches(3, 6)
 
     d2_spec = np.zeros(num_freqs)
     d2a_spec = np.zeros(num_freqs)
