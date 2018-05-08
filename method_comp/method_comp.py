@@ -61,15 +61,12 @@ def calc_sel_fn_p(t, f, sig_var):
             k[j, i] = k[i, j]
     return k
 
-j_max_kalman = 2
-
 n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 var = 1.0
-sig_var = np.random.uniform(0.2, 0.9)
+sig_var = np.random.uniform(0.7, 0.999)
 noise_var = var - sig_var
-mean = 0.5
 t = np.sort(t)
 t -= np.mean(t)
 
@@ -136,11 +133,11 @@ kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(
 kalman_utils.add_component("white_noise", [np.zeros(1)])
 
 def calc_kalman(t_coh, f):
-    y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 100.0, t_coh, noise_var])
+    y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 500.0, t_coh, noise_var])
     return loglik
 
-num_freqs = 100
-num_cohs = 10
+num_freqs = 25
+num_cohs = 5
 
 if cov_type == "periodic":
     num_cohs = 1
@@ -159,7 +156,7 @@ full_gp_spec_color = np.zeros((num_cohs, num_freqs, 3))
 kalman_spec_color = np.zeros((num_cohs, num_freqs, 3))
 coh_ind = 0
 
-t_cohs = np.linspace(length_scale/4.0, length_scale*4.0, num_cohs)
+t_cohs = np.linspace(length_scale/10, length_scale*2, num_cohs)
 
 max_loglik_full_gp = None
 max_coh_full_gp = 0
@@ -179,7 +176,7 @@ max_freq_kalman = 0
 
 for t_coh in t_cohs:
     fig, (ax1) = plt.subplots(nrows=1, ncols=1)
-    fig.set_size_inches(3, 6)
+    fig.set_size_inches(6, 3)
 
     d2_spec = np.zeros(num_freqs)
     d2a_spec = np.zeros(num_freqs)
@@ -245,12 +242,13 @@ for t_coh in t_cohs:
     kalman_spec_color[coh_ind, :, 0] = np.repeat(t_coh, len(fs))
     kalman_spec_color[coh_ind, :, 1] = fs
     kalman_spec_color[coh_ind, :, 2] = kalman_spec
-
+    
     d2_spec = (d2_spec - min(d2_spec)) / (max(d2_spec) - min(d2_spec))
     d2a_spec = (d2a_spec - min(d2a_spec)) / (max(d2a_spec) - min(d2a_spec))
     gp_spec = (gp_spec - min(gp_spec)) / (max(gp_spec) - min(gp_spec))
     full_gp_spec = (full_gp_spec - min(full_gp_spec)) / (max(full_gp_spec) - min(full_gp_spec))
     kalman_spec = (kalman_spec - min(kalman_spec)) / (max(kalman_spec) - min(kalman_spec))
+
 
     opt_freq_d2 = fs[np.argmin(d2_spec)]
     opt_freq_d2a = fs[np.argmin(d2a_spec)]
@@ -273,7 +271,7 @@ for t_coh in t_cohs:
     else:
         ax1.set_title(r'$t_{coh}$ estimate: ' + str(round(t_coh, 2)) + ", truth: " + str(round(length_scale, 2)) + ", SNR: " + str(round(sig_var/noise_var, 1)))
         fig.savefig('spec' + str(coh_ind) + '.png')
-        print length_scale, t_coh, ";", freq, opt_freq_d2, opt_freq_gp, opt_freq_full_gp
+        print length_scale, t_coh, ";", freq, opt_freq_d2, opt_freq_gp, opt_freq_full_gp, opt_freq_kalman
     plt.close(fig)
 
     coh_ind += 1
@@ -285,20 +283,33 @@ if num_cohs > 1:
     gp_max = max(np.concatenate(gp_spec_color[:, :, 2]))
     full_gp_min = min(np.concatenate(full_gp_spec_color[:, :, 2]))
     full_gp_max = max(np.concatenate(full_gp_spec_color[:, :, 2]))
+    kalman_min = min(np.concatenate(kalman_spec_color[:, :, 2]))
+    kalman_max = max(np.concatenate(kalman_spec_color[:, :, 2]))
     
     d2_spec_color[:, :, 2] = (d2_spec_color[:, :, 2] - d2_min) / (d2_max - d2_min)
     gp_spec_color[:, :, 2] = (gp_spec_color[:, :, 2] - gp_min) / (gp_max - gp_min)
     full_gp_spec_color[:, :, 2] = (full_gp_spec_color[:, :, 2] - full_gp_min) / (full_gp_max - full_gp_min)
+    kalman_spec_color[:, :, 2] = (kalman_spec_color[:, :, 2] - kalman_min) / (kalman_max - kalman_min)
     
+    d2_min = min(np.concatenate(d2_spec_color[:, :, 2]))
+    d2_max = max(np.concatenate(d2_spec_color[:, :, 2]))
+    gp_min = min(np.concatenate(gp_spec_color[:, :, 2]))
+    gp_max = max(np.concatenate(gp_spec_color[:, :, 2]))
+    full_gp_min = min(np.concatenate(full_gp_spec_color[:, :, 2]))
+    full_gp_max = max(np.concatenate(full_gp_spec_color[:, :, 2]))
+    kalman_min = min(np.concatenate(kalman_spec_color[:, :, 2]))
+    kalman_max = max(np.concatenate(kalman_spec_color[:, :, 2]))
     
-    cmin=min(min(np.concatenate(d2_spec_color[:,:,2])), 
-             min(np.concatenate(gp_spec_color[:,:,2])),
-             min(np.concatenate(full_gp_spec_color[:,:,2]))
-             )
-    cmax=max(max(np.concatenate(d2_spec_color[:,:,2])), 
-             max(np.concatenate(gp_spec_color[:,:,2])),
-            max(np.concatenate(full_gp_spec_color[:,:,2]))
-             )
+    #cmin=min(min(np.concatenate(d2_spec_color[:,:,2])), 
+    #         min(np.concatenate(gp_spec_color[:,:,2])),
+    #         min(np.concatenate(full_gp_spec_color[:,:,2])),
+    #         min(np.concatenate(kalman_spec_color[:,:,2]))
+    #         )
+    #cmax=max(max(np.concatenate(d2_spec_color[:,:,2])), 
+    #         max(np.concatenate(gp_spec_color[:,:,2])),
+    #        max(np.concatenate(full_gp_spec_color[:,:,2])),
+    #        max(np.concatenate(kalman_spec_color[:,:,2]))
+    #         )
     
     extent=[d2_spec_color[:, :, 0].min(), d2_spec_color[:, :, 0].max(), d2_spec_color[:, :, 1].min(), d2_spec_color[:, :, 1].max()]
     plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])*2/3 
@@ -310,9 +321,9 @@ if num_cohs > 1:
     
     f, ((ax1, ax2, ax3, ax4)) = plt.subplots(4, 1, sharex='col', sharey='row')
     f.tight_layout()
-    f.set_size_inches(10, 2.5)
+    f.set_size_inches(5, 10)
     
-    ax1.imshow(d2_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax1.imshow(d2_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=d2_min, vmax=d2_max)
     ax1.set_title(r'$D^2$')
     #ax31.set_yticklabels(["{:10.1f}".format(1/t) for t in ax31.get_yticks()])
     #ax31.yaxis.labelpad = -16
@@ -327,7 +338,7 @@ if num_cohs > 1:
     ax1.scatter([length_scale], [freq], c='r', s=20)
     ax1.scatter([max_coh_d2], [max_freq_d2], c='b', s=20)
     
-    ax2.imshow(gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax2.imshow(gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=gp_min, vmax=gp_max)
     ax2.set_title(r'Factor graph')
     ax2.set_ylabel(r'$f')
     #start, end = ax32.get_xlim()
@@ -340,7 +351,7 @@ if num_cohs > 1:
     ax2.scatter([length_scale], [freq], c='r', s=20)
     ax2.scatter([max_coh_gp], [max_freq_gp], c='b', s=20)
     
-    ax3.imshow(full_gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    ax3.imshow(full_gp_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=full_gp_min, vmax=full_gp_max)
     ax3.set_title(r'Full GP')
     ax3.set_ylabel(r'$f')
     #start, end = ax33.get_xlim()
@@ -353,7 +364,7 @@ if num_cohs > 1:
     ax3.scatter([length_scale], [freq], c='r', s=20)
     ax3.scatter([max_coh_full_gp], [max_freq_full_gp], c='b', s=20)
     
-    im4 = ax4.imshow(kalman_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=cmin, vmax=cmax)
+    im4 = ax4.imshow(kalman_spec_color[:,:,2].T,extent=extent,cmap=my_cmap,origin='lower', vmin=kalman_min, vmax=kalman_max)
     ax4.set_title(r'Kalman filter')
     ax4.set_ylabel(r'$f')
     #start, end = ax33.get_xlim()
@@ -369,8 +380,8 @@ if num_cohs > 1:
     l_f = FormatStrFormatter('%1.2f')
     f.subplots_adjust(left=0.05, right=0.91, wspace=0.05)
     
-    cbar_ax32 = f.add_axes([0.925, 0.14, 0.02, 0.74])
-    f.colorbar(im4, cax=cbar_ax32, format=l_f, label=r'Likelihood')
+    cbar_ax = f.add_axes([0.925, 0.14, 0.02, 0.74])
+    f.colorbar(im4, cax=cbar_ax, format=l_f, label=r'Likelihood')
     
     plt.savefig('spec_3d.png')
     plt.close()
