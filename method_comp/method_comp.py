@@ -28,7 +28,7 @@ cov_type = "quasiperiodic"
 
 def calc_cov_qp(t, f, length_scale, sig_var):
     k = np.zeros((len(t), len(t)))
-    inv_l2 = 1.0/length_scale/length_scale
+    inv_l2 = 0.5/length_scale/length_scale
     for i in np.arange(0, len(t)):
         for j in np.arange(i, len(t)):
             k[i, j] = sig_var*np.exp(-inv_l2*(t[i]-t[j])**2)*(np.cos(2 * np.pi*f*(t[i] - t[j])))
@@ -65,7 +65,7 @@ n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 var = 1.0
-sig_var = np.random.uniform(0.7, 0.999)
+sig_var = np.random.uniform(0.999, 0.999)
 noise_var = var - sig_var
 t = np.sort(t)
 t -= np.mean(t)
@@ -133,6 +133,7 @@ kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(
 kalman_utils.add_component("white_noise", [np.zeros(1)])
 
 def calc_kalman(t_coh, f):
+
     y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 500.0, t_coh, noise_var])
     return loglik
 
@@ -243,12 +244,13 @@ for t_coh in t_cohs:
     kalman_spec_color[coh_ind, :, 1] = fs
     kalman_spec_color[coh_ind, :, 2] = kalman_spec
     
+    print kalman_spec
+    
     d2_spec = (d2_spec - min(d2_spec)) / (max(d2_spec) - min(d2_spec))
     d2a_spec = (d2a_spec - min(d2a_spec)) / (max(d2a_spec) - min(d2a_spec))
     gp_spec = (gp_spec - min(gp_spec)) / (max(gp_spec) - min(gp_spec))
     full_gp_spec = (full_gp_spec - min(full_gp_spec)) / (max(full_gp_spec) - min(full_gp_spec))
     kalman_spec = (kalman_spec - min(kalman_spec)) / (max(kalman_spec) - min(kalman_spec))
-
 
     opt_freq_d2 = fs[np.argmin(d2_spec)]
     opt_freq_d2a = fs[np.argmin(d2a_spec)]
