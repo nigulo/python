@@ -32,9 +32,6 @@ from cov_exp_quad import cov_exp_quad
 from cov_matern import cov_matern
 
 
-matern_p = 1
-j_max = 3
-
 def calc_cov_linear_trend(t, trend_var, c = 0.0):
     k = np.zeros((len(t), len(t)))
     for i in np.arange(0, len(t)):
@@ -91,6 +88,7 @@ class kalman_utils():
         self.t = t
         self.y = y
         self.cov_types = []
+        self.cov_settings = dict()
         self.param_counts = dict()
         self.sampler = sampler(self.loglik_fn, condition_fn = condition_fn, initial_indices = initial_indices)
         self.num_iterations = num_iterations
@@ -118,13 +116,13 @@ class kalman_utils():
                     component = component_linear_trend(slope=param_values[index], intercept=param_values[index+1], t=self.t)
                     F_is_A = True
                 elif cov_type == "periodic":
-                    component = component_periodic(j_max, sig_var=param_values[index], omega_0=param_values[index+1], ell=param_values[index+1])
+                    component = component_periodic(self.cov_settings[cov_type]["j_max"], sig_var=param_values[index], omega_0=param_values[index+1], ell=param_values[index+1])
                 elif cov_type == "quasiperiodic":
-                    component = component_quasiperiodic(j_max, sig_var=param_values[index], omega_0=param_values[index+1], ellp=param_values[index+2], ellq=param_values[index+3])
+                    component = component_quasiperiodic(self.cov_settings[cov_type]["j_max"], sig_var=param_values[index], omega_0=param_values[index+1], ellp=param_values[index+2], ellq=param_values[index+3])
                 elif cov_type == "exp_quad":
                     component = component_exp_quad(sig_var=param_values[index], ell=param_values[index+1])
                 elif cov_type == "matern":
-                    component = component_matern(sig_var=param_values[index], ell=param_values[index+1])
+                    component = component_matern(sig_var=param_values[index], ell=param_values[index+1], p=self.cov_settings[cov_type]["p"])
                 else:           
                     assert(True==False)
                 index += self.param_counts[cov_type]
@@ -208,7 +206,7 @@ class kalman_utils():
         y_means, loglik = kf.filter()
         return y_means, loglik
 
-    def add_component(self, cov_type, param_values):
+    def add_component(self, cov_type, param_values, settings = dict()):
         if cov_type == "linear_trend":
             assert(len(param_values) == 2)
             self.has_A = True
@@ -227,6 +225,7 @@ class kalman_utils():
         self.cov_types.append(cov_type)
         self.param_counts[cov_type] = len(param_values)
         self.sampler.add_parameter_values(param_values)
+        self.cov_settings[cov_type] = settings
 
     '''
     Do the inference of optimal parameter values using the greedy search

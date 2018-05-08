@@ -14,9 +14,9 @@ import numpy.linalg as la
 
 import kalman_utils as ku
 
-cov_types = ["periodic"]#, "linear_trend"]
+cov_types = ["quasiperiodic"]#, "linear_trend"]
 var = 200.0
-sig_vars = [np.random.uniform(var*0.9, var*0.9)]#, np.random.uniform(var*0.0009, var*0.0009)]
+sig_vars = [np.random.uniform(var*0.999, var*0.999)]#, np.random.uniform(var*0.0009, var*0.0009)]
 noise_var = var - sum(sig_vars)
 #cov_types = ["linear_trend"]
 #cov_type = "periodic"
@@ -69,8 +69,6 @@ fig, (ax1) = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 3)
 ax1.plot(t, y, 'b+')
 
-j_max = 2
-
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
 print "slope_hat, intercept_hat", slope_hat, intercept_hat
 
@@ -85,19 +83,19 @@ for i in np.arange(0, len(cov_types)):
         kalman_utils.add_component(cov_type, [slopes, intercepts])
     elif cov_type == "periodic":
         ells = np.array([10.0])
-        omegas = np.linspace(2.0*np.pi*freq/2, 2.0*np.pi*freq*2, 10)
-        kalman_utils.add_component(cov_type, [sig_var, omegas, ells])
+        omegas = np.linspace(2.0*np.pi*freq/3, 2.0*np.pi*freq*2, 10)
+        kalman_utils.add_component(cov_type, [sig_var, omegas, ells], {"j_max":2})
     elif cov_type == "quasiperiodic":
         omegas = np.linspace(2.0*np.pi*freq/1.9, 2.0*np.pi*freq*2, 10) 
-        ellps = np.array([10.0])
+        ellps = np.array([1.0])
         ellqs = np.linspace(ellq/2, ellq*2, 10) 
-        kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs])
+        kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs], {"j_max":2})
     elif cov_type == "exp_quad":
         ellqs = np.linspace(ellq/2, ellq*2, 20) 
         kalman_utils.add_component(cov_type, [sig_var, ellqs])
     elif cov_type == "matern":
         ellqs = np.linspace(ellq/2, ellq*2, 20) 
-        kalman_utils.add_component(cov_type, [sig_var, ellqs])
+        kalman_utils.add_component(cov_type, [sig_var, ellqs], {"p":1})
     else:           
         assert(True==False)
 

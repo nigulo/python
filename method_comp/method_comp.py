@@ -71,7 +71,7 @@ t = np.sort(t)
 t -= np.mean(t)
 
 #p = time_range/12.54321#
-p = np.random.uniform(time_range/200, time_range/5)
+p = np.random.uniform(time_range/5, time_range/5)
 freq = 1.0/p
 mean = 0.0
 
@@ -79,11 +79,11 @@ if cov_type == "periodic":
     length_scale = 1e10*p
     k = calc_cov_p(t, freq, sig_var) + np.diag(np.ones(n) * noise_var)
 else:
-    length_scale = np.random.uniform(p/2.0, 4.0*p)
+    length_scale = np.random.uniform(p, 4.0*p)
     k = calc_cov_qp(t, freq, length_scale, sig_var) + np.diag(np.ones(n) * noise_var)
     
 l = la.cholesky(k)
-s = np.random.normal(0, 1, n)
+s = np.random.normal(0.0, 1.0, n)
 
 y = np.repeat(mean, n) + np.dot(l, s)
 y += mean
@@ -129,12 +129,21 @@ def calc_gp(k):
     return -d2# / norm / 2.0
 
 kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
-kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)])
+#kalman_utils.add_component("periodic", [np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
+kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
 kalman_utils.add_component("white_noise", [np.zeros(1)])
 
-def calc_kalman(t_coh, f):
+def calc_kalman(t_coh, f, plot, coh_ind, f_ind):
 
-    y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 500.0, t_coh, noise_var])
+    y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 1.0, t_coh, noise_var])
+    #y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 500, noise_var])
+    if plot:
+        fig, (ax1) = plt.subplots(nrows=1, ncols=1)
+        fig.set_size_inches(6, 3)
+        ax1.plot(t, y, 'b+')
+        ax1.plot(t[1:], y_means, 'r--')
+        fig.savefig('kalman_' + str(coh_ind) + '_' + str(f_ind) + '.png')
+        plt.close(fig)
     return loglik
 
 num_freqs = 25
@@ -157,7 +166,7 @@ full_gp_spec_color = np.zeros((num_cohs, num_freqs, 3))
 kalman_spec_color = np.zeros((num_cohs, num_freqs, 3))
 coh_ind = 0
 
-t_cohs = np.linspace(length_scale/10, length_scale*2, num_cohs)
+t_cohs = np.linspace(length_scale/3, length_scale*2, num_cohs)
 
 max_loglik_full_gp = None
 max_coh_full_gp = 0
@@ -206,7 +215,7 @@ for t_coh in t_cohs:
         (_, _, loglik) = gpr_gp.fit(t_test)
         full_gp_spec[f_ind] = -loglik
         
-        loglik_kalman = calc_kalman(t_coh, f)
+        loglik_kalman = calc_kalman(t_coh, f, plot=f_ind==len(fs)/2-1, coh_ind=coh_ind, f_ind=f_ind)
         kalman_spec[f_ind] = -loglik_kalman
         
         if max_loglik_full_gp is None or loglik > max_loglik_full_gp:
