@@ -95,7 +95,7 @@ for i in np.arange(0, len(cov_types)):
         kalman_utils.add_component(cov_type, [sig_var, ellqs])
     elif cov_type == "matern":
         ellqs = np.linspace(ellq/2, ellq*2, 20) 
-        kalman_utils.add_component(cov_type, [sig_var, ellqs], {"p":1})
+        kalman_utils.add_component(cov_type, [sig_var, ellqs], {"p":matern_p})
     else:           
         assert(True==False)
 
