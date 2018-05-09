@@ -627,8 +627,8 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     return (handles, labels)
     #fig1.subplots_adjust(left=0.1, right=0.97, top=0.98, bottom=0.05, hspace=0.1)
     
-#for type in ["BGLST", "GP_P", "GP_QP"]:
-for type in ["BGLST", "GP_QP"]:
+for type in ["BGLST", "GP_P", "GP_QP"]:
+#for type in ["BGLST", "GP_QP"]:
 
     if type == "BGLST":
         if plot_ro:
@@ -648,7 +648,7 @@ for type in ["BGLST", "GP_QP"]:
             ax11 = ax12            
         ax2 = ax22
         ax4 = ax42
-        input_path = "GP_periodic/results_combined.txt"
+        input_path = "GP_P/processed_with_cycles.txt"
         bglst_or_gp = False
     elif type == "GP_QP":
         if plot_ro:

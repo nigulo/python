@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import mw_utils
 
-use_periodic_gp = False
+use_periodic_gp = True
 
 data = np.genfromtxt("Boro_Saikia.csv", dtype=None, delimiter=';')
 goet_cycles = dict()
@@ -180,13 +180,14 @@ for star in keys:
     output += " & "
 
     ##### Commenting Goettingen out for now
-    if goet_cycles.has_key(star):
-        for cycle in goet_cycles[star]:
-            output += " " + str(round(cycle,2))
-    else:
-        output += "--"
-    output += " & "
+    #if goet_cycles.has_key(star):
+    #    for cycle in goet_cycles[star]:
+    #        output += " " + str(round(cycle,2))
+    #else:
+    #    output += "--"
+    #output += " & "
 
+    ##### Commenting Olah out for now
     #if olah_cycles.has_key(star):
     #    if len(olah_cycles[star]) == 0:
     #        output += "--"

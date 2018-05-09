@@ -16,12 +16,12 @@ import os.path
 import mw_utils
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
-import GPR_QP
+import GPR_per
 
 num_iters = 300
 n_eff_col = 9
 
-do_fits = False
+do_fits = True
 
 prefix = ""
 
@@ -117,7 +117,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         t += offset
         t_mean = np.mean(t)
         t -= t_mean
-        if delta_bic > 0.0 and cyc < (max(t) - min(t)) / 1.5 and cyc > 2.0:
+        if delta_bic >= 6.0 and cyc < (max(t) - min(t)) / 1.5 and cyc > 2.0:
             output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")
         if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
             print cyc, length_scale, sig_var, trend_var, m
@@ -129,7 +129,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     
             # Full fit
             #gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
-            gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
+            gpr_gp = GPR_per.GPR_per(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0)
             t_test = np.linspace(min(t), max(t), 200)
             gpr_gp.init(t, y-m)
             (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
