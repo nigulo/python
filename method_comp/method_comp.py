@@ -65,13 +65,13 @@ n = 50
 time_range = 200
 t = np.random.uniform(0.0, time_range, n)
 var = 1.0
-sig_var = np.random.uniform(0.999, 0.999)
+sig_var = np.random.uniform(0.5, 0.999)
 noise_var = var - sig_var
 t = np.sort(t)
 t -= np.mean(t)
 
 #p = time_range/12.54321#
-p = np.random.uniform(time_range/5, time_range/5)
+p = np.random.uniform(time_range/20, time_range/5)
 freq = 1.0/p
 mean = 0.0
 
@@ -146,8 +146,8 @@ def calc_kalman(t_coh, f, plot, coh_ind, f_ind):
         plt.close(fig)
     return loglik
 
-num_freqs = 25
-num_cohs = 5
+num_freqs = 100
+num_cohs = 10
 
 if cov_type == "periodic":
     num_cohs = 1
