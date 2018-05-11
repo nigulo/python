@@ -21,7 +21,7 @@ import GPR_QP
 num_iters = 300
 n_eff_col = 9
 
-do_fits = False
+do_fits = True
 
 prefix = ""
 
@@ -117,8 +117,9 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         t += offset
         t_mean = np.mean(t)
         t -= t_mean
-        if delta_bic > 0.0 and cyc < (max(t) - min(t)) / 1.5 and cyc > 2.0:
+        if delta_bic >= 6.0 and cyc < (max(t) - min(t)) / 1.5 and cyc > 2.0:
             output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")
+            output_cycles.flush()
         if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
             print cyc, length_scale, sig_var, trend_var, m
     
