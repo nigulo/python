@@ -92,7 +92,7 @@ for [star, f, std, normality, bic] in data:
 #gp_p_cycles = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
 #gp_qp_cycles = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
 
-gp_p_cycles = dict()
+gp_p_cycles = mw_utils.read_gp_cycles("GP_P/processed_with_cycles.txt")
 gp_qp_cycles = mw_utils.read_gp_cycles("GP_QP/processed_with_cycles.txt")
 
 keys = np.asarray(time_ranges.keys())

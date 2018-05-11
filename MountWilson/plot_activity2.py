@@ -21,7 +21,7 @@ from scipy.stats import norm
 import matplotlib.patches as patches
 from scipy import stats
 
-include_non_ms = True
+include_non_ms = False
 fit_with_baliunas = False
 
 use_secondary_clusters = False
@@ -263,7 +263,7 @@ def read_gp_cycles(file):
             if min_bic is None or log_bic < min_bic:
                 min_bic = log_bic
                 
-            if std < cyc:
+            if std < cyc/4:
                 cycles.append((cyc*365.25, std*365.25, log_bic)) # three sigma
                 all_cycles[star] = cycles
     return min_bic, max_bic, all_cycles
@@ -351,10 +351,11 @@ else:
         ax11.set_ylim(-3.0, -1.0)
         ax11.set_xlim(-5.15, -4.4)
 
-        ax12.set_xlim(-5.15, -4.4)
+        ax12.set_xlim(-5.3, -4.2)
+        ax12.set_ylim(-3.5, -0.5)
 
-        ax13.set_xlim(-5.15, -4.4)
-        ax13.set_ylim(-3.0, -0.75)
+        ax13.set_xlim(-5.1, -4.2)
+        ax13.set_ylim(-3.2, -0.75)
 
         ax1a.set_xlim(-5.3, -4.3)
         ax1a.set_ylim(-3.0, -1.0)
@@ -382,6 +383,12 @@ ax22.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax22.transAxe
 ax23.text(0.95, 0.9,'(c)', horizontalalignment='center', transform=ax23.transAxes, fontsize=panel_label_fs)
 #ax23.set_xlabel(r'$P_{\rm rot}$ [d]', fontsize=axis_label_fs)
 ax23.set_xlabel(r'$\log P_{\rm rot}$ [$\log$ d]', fontsize=axis_label_fs)
+
+ax22.set_xlim(0.4, 1.8)
+ax22.set_ylim(0.4, 1.5)
+ax23.set_xlim(0.4, 1.8)
+ax23.set_ylim(0.4, 1.4)
+
 
 fig3, (ax31, ax32) = plt.subplots(nrows=1, ncols=2, sharex=False, sharey=False)
 fig3.set_size_inches(12, 4)
@@ -493,6 +500,7 @@ def fit_data(data, ax):
     ax.text(-4.48, -3.5, 'obs', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "orange")
     ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "teal")
     
+    print "r_hk_middle", r_hk_middle
     ax.add_patch(patches.FancyArrowPatch((fig1b_left, -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20, color="r", linewidth=2))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20))
@@ -596,7 +604,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     
     if not ax2 is None:
         #ax2.set_ylabel(r'$P_{\rm cyc}$ [yr]', fontsize=axis_label_fs)
-        ax2.set_ylabel(r'$\log P_{\rm cyc}$ [$\log$ yr]', fontsize=axis_label_fs)
+        ax2.set_ylabel(r'$\log P_{\rm cyc}$ [$\log$ yr]', fontsize=axis_label_fs, labelpad=-1)
         #ax2.set_xlim(2.0, 4.0)
         #ax2.set_ylim(3, 30)
         #ax2.loglog()
@@ -686,7 +694,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        if type == "BGLST" or type == "GP_QP":
+        if type == "BGLST":# or type == "GP_QP":
             m_temp = m2
             s_temp = s2
             w_temp = w2
@@ -702,7 +710,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         
         # Calculate the postitions of the middle point between distributions
         # and left and right 3sigma levels on RHK axis 
-        xs = np.linspace(-6.0, -4.0, 1000)
+        xs = np.linspace(-5.2, -4.0, 1000)
         pdf1 = norm.pdf(xs, m1[0], np.sqrt(s1[0, 0]))
         pdf2 = norm.pdf(xs, m2[0], np.sqrt(s2[0, 0]))
         last_sign = np.sign(pdf1[0] - pdf2[0])

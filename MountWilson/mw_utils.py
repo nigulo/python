@@ -411,7 +411,7 @@ def read_gp_cycles(file):
             gp_cycles[star] = list()
         all_cycles = gp_cycles[star]
         cycles = list()
-        if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5:
+        if not np.isnan(cyc) and cyc < time_ranges[star] / 1.5 and std < cyc/4:
             cycles.append(cyc)
             cycles.append(std)
             cycles.append(bic)
