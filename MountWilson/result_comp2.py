@@ -12,15 +12,15 @@ import mw_utils
 
 use_periodic_gp = True
 
-data = np.genfromtxt("Boro_Saikia.csv", dtype=None, delimiter=';')
-goet_cycles = dict()
-for [star, cyc1, cyc2] in data:
-    cycles = list()
-    if not np.isnan(cyc1):
-        cycles.append(cyc1)
-    if not np.isnan(cyc2):
-        cycles.append(cyc2)
-    goet_cycles[star] = np.asarray(cycles)
+#data = np.genfromtxt("Boro_Saikia.csv", dtype=None, delimiter=';')
+#goet_cycles = dict()
+#for [star, cyc1, cyc2] in data:
+#    cycles = list()
+#    if not np.isnan(cyc1):
+#        cycles.append(cyc1)
+#    if not np.isnan(cyc2):
+#        cycles.append(cyc2)
+#    goet_cycles[star] = np.asarray(cycles)
 
 data = np.genfromtxt("Olah.csv", dtype=None, delimiter=';')
 olah_cycles = dict()

@@ -160,8 +160,8 @@ for downsample_iter in np.arange(0, downsample_iters):
     
     initial_param_values = []
     for i in np.arange(0, num_chains):                    
-        #initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
-        initial_freq = 0.5*(float(i)+0.5)/num_chains#np.random.uniform(0, 0.5)
+        initial_freq = np.random.uniform(0.25*i/num_chains,0.25*(i+1)/num_chains)
+        #initial_freq = 0.5*(float(i)+0.5)/num_chains#np.random.uniform(0, 0.5)
         #initial_freq = max(0, np.random.normal(prior_freq_mean, prior_freq_std))
         initial_m = orig_mean
         initial_trend_var = var / duration
