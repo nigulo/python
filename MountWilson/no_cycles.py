@@ -34,8 +34,8 @@ rot_periods = mw_utils.load_rot_periods()
 
 min_bic, max_bic, all_cycles = mw_utils.read_bglst_cycles("BGLST_BIC_6/results.txt")
 
-all_cycles_gp_p = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
-all_cycles_gp_qp = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
+all_cycles_gp_p = mw_utils.read_gp_cycles("GP_P/processed_with_cycles.txt")
+all_cycles_gp_qp = mw_utils.read_gp_cycles("GP_QP/processed_with_cycles.txt")
 
 r_hks = mw_utils.load_r_hk()
 min_r_hk = None
@@ -108,7 +108,7 @@ for root, dirs, files in os.walk(input_path):
                 rot_period = rot_periods[star]
             #print star + " period is " + str(rot_period)
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=0)
-            print "Analysing star without cycles: " + star
+            #print "Analysing star without cycles: " + star
             t_orig = data[:,0]
             y_orig = data[:,1]
             indices = np.argsort(t_orig)
@@ -127,6 +127,7 @@ for root, dirs, files in os.walk(input_path):
                 if all_cycles.has_key(star) or all_cycles_gp_p.has_key(star) or all_cycles_gp_qp.has_key(star):
                     r_hks_a.append(r_hk)
                     var_ratios_a.append(total_var/mean_seasonal_var)
+                    #print "Star with cycle:", star, total_var/mean_seasonal_var
                     if star == "SUN":
                         sun_index = len(var_ratios_a) - 1
                         sun_rhk = r_hk
@@ -166,6 +167,8 @@ for root, dirs, files in os.walk(input_path):
                         var_ratios_na_t.append(total_var/mean_seasonal_var)
                     else:
                         r_hks_na_wot.append(r_hk)
+                        print "Irreguar star without trend:", star, total_var/mean_seasonal_var
+                        
                         var_ratios_na_wot.append(total_var/mean_seasonal_var)
                     ############################
 
@@ -308,6 +311,7 @@ for i in np.arange(0, np.shape(rel_d_a_bs)[1]):
 ax2.fill_between(r_hk_bins_values, uppers, lowers, alpha=0.1, facecolor='gray', interpolate=True)
 
 ax1.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
+ax1.set_ylim([0, 18])
 ax2.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
 
 

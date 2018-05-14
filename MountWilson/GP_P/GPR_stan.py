@@ -55,7 +55,9 @@ downsample_iters = 1
 
 print star, num_iters, num_chains, down_sample_factor
 
-data_dir = "../GP_input"
+time_in_days = False
+#data_dir = "../GP_input"
+data_dir = "residues_input"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
@@ -122,8 +124,9 @@ for downsample_iter in np.arange(0, downsample_iters):
     #noise_var_prop = mw_utils.get_seasonal_noise_var(t/365.25, y)
     #np.savetxt("GPR_stan/" + star + ".dat", np.column_stack((t_daily, y_daily)), fmt='%f')
 
-    t /= 365.25
-    t += offset
+    if time_in_days:
+        t /= 365.25
+        t += offset
     
     t_non_ds = np.array(t)
     y_non_ds = np.array(y)
