@@ -21,7 +21,8 @@ import GPR_QP
 num_iters = 300
 n_eff_col = 9
 
-do_fits = False
+do_fits = True
+calc_residues = True
 
 prefix = ""
 
@@ -116,8 +117,10 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         t = t_orig/365.25
         t += offset
         t_mean = np.mean(t)
+        min_t = min(t)
+        max_t = max(t)
         t -= t_mean
-        if delta_bic >= 8.0 and cyc < (max(t) - min(t)) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
+        if delta_bic >= 8.0 and cyc < (max_t - min_t) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
             output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")
             output_cycles.flush()
         if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
@@ -127,27 +130,26 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
     
     
             noise_var = mw_utils.get_seasonal_noise_var(t, y)
+            t_ds, y_ds, noise_var_ds = mw_utils.downsample(t, y, noise_var, 10.0/365.25)
     
             # Full fit
             #gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
-            gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
+            gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=1.0/cyc, noise_var=noise_var_ds, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
             t_test = np.linspace(min(t), max(t), 200)
-            gpr_gp.init(t, y-m)
+            gpr_gp.init(t_ds, y_ds-m)
             (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
-            pred_var = pred_var + mw_utils.get_test_point_noise_var(t, y, t_test, sliding=True)
-            (f_t, _, _) = gpr_gp.fit(t)
+            pred_var = pred_var# + mw_utils.get_test_point_noise_var(t, y, t_test, sliding=True)
             f_mean += m
             
-            t += t_mean
             t_test += t_mean
             
             fig, ax1 = plt.subplots(nrows=1, ncols=1)
             #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
             fig.set_size_inches(9, 5)
             ax1.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
-            ax1.set_xlim([min(t), max(t)])
+            ax1.set_xlim([min_t, max_t])
         
-            ax1.plot(t, y, 'k+', lw=0.5)
+            ax1.plot(t + t_mean, y, 'k+', lw=0.5)
             #ax2.plot(t, y_wo_rot, 'r+')
             ax1.plot(t_test, f_mean, 'r-', lw=2)
             ax1.fill_between(t_test, f_mean + 3.0 * np.sqrt(pred_var), f_mean - 3.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightsalmon', interpolate=True)
@@ -157,8 +159,11 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
       
             fig.savefig("fits/" + prefix + star + '.pdf')
             plt.close()
-    
-
+            
+            if calc_residues:
+                (f_t, _, _) = gpr_gp.fit(t)
+                np.savetxt("residues/" + star + ".dat", np.column_stack((t + t_mean, y - f_t - m)), fmt='%f')
+            
     else:
         print "Omitting " + star + " " + str(index) + " due to too low n_eff"
 

@@ -238,8 +238,8 @@ for downsample_iter in np.arange(0, downsample_iters):
     # Calculate the resiudes for the original data    
     gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop_non_ds, trend_var=trend_var, c=0.0, length_scale2=0.0)
     t_test = np.linspace(min(t), max(t), 500)
-    gpr_gp.init(t_non_ds, y_non_ds-m)
-    (f_non_ds, _, _) = gpr_gp.fit(t_non_ds)
+    gpr_gp.init(t, y-m)
+    (f_non_ds, _, _) = gpr_gp.fit(t_non_ds-t_mean)
     np.savetxt("residues/" + star + ".dat", np.column_stack((t_non_ds, y_non_ds - f_non_ds - m)), fmt='%f')
     #plt.plot(t_non_ds, y_non_ds - f_non_ds - m, 'b+')
     #plt.savefig("residues/" + star + ".png")
@@ -441,6 +441,9 @@ for downsample_iter in np.arange(0, downsample_iters):
         with open("results/"+star + downsample_iter_str + "_results.txt", "w") as output:
             output.write(str(fit))    
     
+
+        fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')
+        plt.close()
     
         fit.plot()
         plt.savefig("results/"+star + downsample_iter_str + "_results.png")
@@ -453,10 +456,6 @@ for downsample_iter in np.arange(0, downsample_iters):
             fit_null.plot()
             plt.savefig("results/"+star + downsample_iter_str + "_results_null.png")
             plt.close()
-    
-    
-        fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')
-        plt.close()
     
         ###########################################################################
     
