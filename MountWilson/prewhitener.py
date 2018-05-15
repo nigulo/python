@@ -205,7 +205,7 @@ class Prewhitener:
         if max_power_ind >= 0:
             max_power = power[max_power_ind]
             best_freq = freqs[max_power_ind]
-            tau, (A, B, alpha, beta), _, y_model, loglik = bglst.model(best_freq)
+            tau, (A, B, alpha, beta), _, y_model, loglik, pred_var = bglst.model(best_freq)
     
             condition = False
             if sig_type == "Seasonal":

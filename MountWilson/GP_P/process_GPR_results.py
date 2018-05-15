@@ -152,7 +152,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             ax1.plot(t + t_mean, y, 'k+', lw=0.5)
             #ax2.plot(t, y_wo_rot, 'r+')
             ax1.plot(t_test, f_mean, 'r-', lw=2)
-            ax1.fill_between(t_test, f_mean + 3.0 * np.sqrt(pred_var), f_mean - 3.0 * np.sqrt(pred_var), alpha=0.1, facecolor='lightsalmon', interpolate=True)
+            ax1.fill_between(t_test, f_mean + 3.0 * np.sqrt(pred_var), f_mean - 3.0 * np.sqrt(pred_var), alpha=0.8, facecolor='lightsalmon', interpolate=True)
         
             ax1.set_ylabel(r'S-index', fontsize=15)
             ax1.set_xlabel(r'$t$ [yr]', fontsize=15)

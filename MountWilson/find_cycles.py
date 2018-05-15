@@ -81,8 +81,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 (rot_period, _) = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            #if star != "190406":
-            #    continue
+            if star != "SUN":
+                continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]
@@ -190,7 +190,7 @@ for root, dirs, files in os.walk(input_path):
                         
                         slope, intercept, _, _, _ = stats.linregress(t, y)
                         duration = max(t) - min(t)
-                        _, (_, _, mu_alpha, mu_beta), _, y_fit, _ = BGLST(t, y, w, 
+                        _, (_, _, mu_alpha, mu_beta), _, y_fit, _, _ = BGLST(t, y, w, 
                                         w_A = 2.0/np.var(y), A_hat = 0.0,
                                         w_B = 2.0/np.var(y), B_hat = 0.0,
                                         w_alpha = duration**2 / np.var(y), alpha_hat = slope, 
@@ -283,7 +283,7 @@ for root, dirs, files in os.walk(input_path):
                             print "Removing too long cycle: ", 1.0/line_freq
                             noise_var = mw_utils.get_seasonal_noise_var(t, y1)
                             w1 = np.ones(len(t))/noise_var
-                            _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq)
+                            _, _, _, y_fit, _, _ = BGLST(t, y1, w1).model(line_freq)
                             y1 = y1 - y_fit
                         
                     for freq_index in np.arange(0, len(line_freqs)):
@@ -295,10 +295,13 @@ for root, dirs, files in os.walk(input_path):
                         line_freq = line_freqs[freq_index]
                         if line_freq > 0:
                             t_fit = np.linspace(min(t), max(t), 1000)
-                            _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq, t_fit)
+                            w_fit = np.ones(len(t_fit))/mw_utils.get_test_point_noise_var(t, y1, t_fit)
+                            _, _, _, y_fit, _, pred_var = BGLST(t, y1, w1).model(line_freq, t_fit, w_fit, calc_pred_var=True)
                             plot2.plot(t_fit, y_fit, '-')
                             ax_pdf.plot(t_fit, y_fit, 'r-', lw=2)
-                            _, _, _, y_fit, _ = BGLST(t, y1, w1).model(line_freq)
+                            std2 = np.sqrt(pred_var)*2.0
+                            ax_pdf.fill_between(t_fit, y_fit-std2, y_fit+std2, alpha=0.8, facecolor='lightsalmon', interpolate=True)
+                            _, _, _, y_fit, _, _ = BGLST(t, y1, w1).model(line_freq)
                             y1 = y1 - y_fit
                         
     
