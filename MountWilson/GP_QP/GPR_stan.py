@@ -386,7 +386,7 @@ for segment in segments:
     (f_mean_cv_null, _, _) = gpr_gp_cv_null.fit(t_test_cv)
     ax_cv.plot(t_test_cv, f_mean_cv+m, 'r-')
     ax_cv.plot(t_test_cv, f_mean_cv_null+m_null, 'b-')
-    fig_cv.savefig("cv/"+star + downsample_iter_str +  '_cv' + str(segment_index) + '.png')
+    fig_cv.savefig("cv/"+star + '_cv' + str(segment_index) + '.png')
 
     segment_index += 1
 
@@ -411,23 +411,23 @@ elif os.path.isfile("results/results.txt"):
     
 if save:
     ###########################################################################
-    with open("results/"+star + downsample_iter_str + "_results.txt", "w") as output:
+    with open("results/"+star + "_results.txt", "w") as output:
         output.write(str(fit))    
 
 
-    fig.savefig("results/"+star + downsample_iter_str +  '_fit.png')
+    fig.savefig("results/"+star + '_fit.png')
     plt.close()
 
     fit.plot()
-    plt.savefig("results/"+star + downsample_iter_str + "_results.png")
+    plt.savefig("results/"+star + "_results.png")
     plt.close()
 
     if fit_null is not None:
-        with open("results/"+star + downsample_iter_str + "_results_null.txt", "w") as output:
+        with open("results/"+star + "_results_null.txt", "w") as output:
             output.write(str(fit_null))    
 
         fit_null.plot()
-        plt.savefig("results/"+star + downsample_iter_str + "_results_null.png")
+        plt.savefig("results/"+star + "_results_null.png")
         plt.close()
 
     ###########################################################################
@@ -445,4 +445,4 @@ if save:
         with open("results/results.txt", "a") as output:
             #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
             #output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    
-            output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    
+            output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    
