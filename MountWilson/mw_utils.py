@@ -183,7 +183,7 @@ def resample_seasons(seasons):
         resampled_seasons.append(resampled_season)
     return resampled_seasons
 
-def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=1, num_days=1.0, t_out=None):
+def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=0, num_days=1.0, t_out=None):
     if t_out is None:
         t_out = t
     total_var = np.var(y)
