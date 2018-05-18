@@ -116,28 +116,43 @@ class kalman():
     def phi(self, tau):
         return la.expm(self.F*tau)
     
+    #def calc_Q(self):
+    #    if self.Q_c_is_not_zero and not self.Q_calculated:
+    #        delta_t = self.t[1:] - self.t[:-1]
+    #        #min_delta_t = np.min(delta_t)
+    #        max_delta_t = np.max(delta_t)
+    #        d_tau = max_delta_t/self.noise_int_prec
+    #        
+    #        Q = np.zeros((self.dimF0, self.dimF0))
+    #        last_tau = 0.0
+    #        filled_count = 0
+    #
+    #        X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
+    #        for tau in np.linspace(0, max_delta_t, num=self.noise_int_prec):
+    #            Phi = self.phi(tau)
+    #            #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))*d_tau
+    #            Q += np.dot(Phi, np.dot(X, Phi.T))
+    #            for i in np.arange(0, len(delta_t)):
+    #                if delta_t[i] > last_tau and delta_t[i] <= tau:
+    #                    self.Q[i] = np.array(Q)*d_tau
+    #                    filled_count += 1
+    #            last_tau = tau
+    #        assert(filled_count == len(delta_t))
+    #    self.Q_calculated = True
+
     def calc_Q(self):
         if self.Q_c_is_not_zero and not self.Q_calculated:
             delta_t = self.t[1:] - self.t[:-1]
-            #min_delta_t = np.min(delta_t)
-            max_delta_t = np.max(delta_t)
-            d_tau = max_delta_t/self.noise_int_prec
-            
-            Q = np.zeros((self.dimF0, self.dimF0))
-            last_tau = 0.0
-            filled_count = 0
-            
-            X = np.dot(self.L, np.dot(self.Q_c, self.L.T))
-            for tau in np.linspace(0, max_delta_t, num=self.noise_int_prec):
-                Phi = self.phi(tau)
-                #Q += np.dot(Phi, np.dot(self.L, np.dot(self.Q_c, np.dot(self.L.T, Phi.T))))*d_tau
-                Q += np.dot(Phi, np.dot(X, Phi.T))
-                for i in np.arange(0, len(delta_t)):
-                    if delta_t[i] > last_tau and delta_t[i] <= tau:
-                        self.Q[i] = np.array(Q)*d_tau
-                        filled_count += 1
-                last_tau = tau
-            assert(filled_count == len(delta_t))
+            for i in np.arange(0, len(delta_t)):
+                if self.F_is_A:
+                    if self.A_filled:
+                        A = self.A[i + 1]
+                    else:
+                        A = self.F
+                else:
+                    A = self.phi(delta_t[i])
+                
+                self.Q[i] = self.P_0 - np.dot(A, np.dot(self.P_0, A.T))
         self.Q_calculated = True
         
     def filter(self):
