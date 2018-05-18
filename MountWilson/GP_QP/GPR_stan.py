@@ -46,13 +46,12 @@ if len(sys.argv) > 4:
 
 n_jobs = num_chains
 n_tries = 1
-downsample_iters = 1
 
 print star, num_iters, num_chains
 
-time_in_days = False
-#data_dir = "../GP_input"
-data_dir = "residues_input"
+time_in_days = True
+data_dir = "../GP_input"
+#data_dir = "residues_input"
 if data_dir == "../cleaned":
     skiprows = 1
 else:

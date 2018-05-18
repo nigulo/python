@@ -63,7 +63,6 @@ std32 = np.zeros(len(coh_lens))
 #indices41 = np.where(quality41 < 1)
 #indices42 = np.where(quality42 < 1)
 
-
 i = 0
 for coh_len in coh_lens:
     #indices = np.where(np.abs(f-f_gp) < np.abs(f-f_ls))
@@ -108,8 +107,6 @@ for coh_len in coh_lens:
         (a, b) = mw_utils.mean_with_se(abs(f-f_gp)/f)
         quality32[i] = a
         std32[i] = b
-        
-            
         
     i += 1    
     

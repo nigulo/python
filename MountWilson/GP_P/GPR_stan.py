@@ -39,14 +39,11 @@ squared_exp_null = False
 weight_with_segment_len = True
 num_iters = 50
 num_chains = 4
-down_sample_factor = 1
 
 if len(sys.argv) > 3:
     num_iters = int(sys.argv[3])
 if len(sys.argv) > 4:
     num_chains = int(sys.argv[4])
-if len(sys.argv) > 5:
-    down_sample_factor = int(sys.argv[5])
 
 n_jobs = num_chains
 n_tries = 1
@@ -407,7 +404,6 @@ if os.path.isfile("results/results.txt"):
             save = False
             break
         
-    
 if save:
     ###########################################################################
     with open("results/"+star + "_results.txt", "w") as output:
