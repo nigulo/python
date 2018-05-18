@@ -60,6 +60,25 @@ def calc_sel_fn_p(t, f, sig_var):
             k[i, j] = 1.0 + 2.0*(np.cos(2 * np.pi*f*(t[i] - t[j])))
             k[j, i] = k[i, j]
     return k
+    
+def calc_g(t, sig_var, k, a=1.0):
+    g_1 = np.zeros((len(t), len(t)))
+    g_2 = np.zeros((len(t), len(t)))
+    g_log = 0
+    for i in np.arange(0, len(t)):
+        for j in np.arange(i, len(t)):
+            if i == j:
+                g_1[i, j] = a
+                g_2[i, j] = a
+            else:
+                det = sig_var**2-k[i, j]**2
+                g_1[i, j] = sig_var/det
+                g_1[j, i] = g_1[i, j]
+                g_2[i, j] = k[i, j]/det
+                g_2[j, i] = g_2[i, j]
+                g_log += np.log(det)
+    return g_1, g_2, g_log
+    
 
 n = 50
 time_range = 200
@@ -106,28 +125,28 @@ def calc_d2(k, normalize):
         return d2
         
 
-def calc_gp(k):
-    d2 = 0.0
-    norm = 0.0
-    i = 0
-    for ti in t:
-        j = 0
-        for tj in t:
-            kij = k[i, j]
-            if i == j:
-                kij = 0.0
-            #assert(sig_var + noise_var > k[i, j])
-            g12 = 1.0 / ((sig_var + noise_var)**2 - kij**2)
-            d2 += -g12 * (sig_var + noise_var) * y[i]**2
-            #d2 += g12 * (sig_var + noise_var) * y[j]**2
-            d2 += +g12 * k[i, j] * y[i] * y[j]
-            d2 += -0.5*np.log((sig_var + noise_var)**2 - kij**2)
-            #d2 += g12 * (y[i] - y[j]) ** 2
-            norm += g12
-            j += 1
-        i += 1
-    return -d2# / norm / 2.0
-
+#def calc_gp(k):
+#    d2 = 0.0
+#    norm = 0.0
+#    i = 0
+#    for ti in t:
+#        j = 0
+#        for tj in t:
+#            kij = k[i, j]
+#            if i == j:
+#                kij = 0.0
+#            #assert(sig_var + noise_var > k[i, j])
+#            g12 = 1.0 / ((sig_var + noise_var)**2 - kij**2)
+#            d2 += -g12 * (sig_var + noise_var) * y[i]**2
+#            #d2 += g12 * (sig_var + noise_var) * y[j]**2
+#            d2 += +g12 * k[i, j] * y[i] * y[j]
+#            d2 += -0.5*np.log((sig_var + noise_var)**2 - kij**2)
+#            #d2 += g12 * (y[i] - y[j]) ** 2
+#            norm += g12
+#            j += 1
+#        i += 1
+#    return -d2# / norm / 2.0
+    
 kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
 #kalman_utils.add_component("periodic", [np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
 kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
@@ -184,6 +203,9 @@ max_loglik_kalman = None
 max_coh_kalman = 0
 max_freq_kalman = 0
 
+o = np.ones(len(t))
+y2 = y * y
+
 for t_coh in t_cohs:
     fig, (ax1) = plt.subplots(nrows=1, ncols=1)
     fig.set_size_inches(6, 3)
@@ -202,7 +224,10 @@ for t_coh in t_cohs:
         else:
             k = calc_cov_qp(t, f, t_coh, sig_var)
             sel_fn = calc_sel_fn_qp(t, f, t_coh, sig_var)
-        gp = calc_gp(k)
+            
+        g_1, g_2, g_log = calc_g(t, sig_var, k)
+        gp = np.dot(o, np.dot(g_1, y2)) - np.dot(y, np.dot(g_2, y)) +0.5*g_log
+        #gp = calc_gp(k)
         k += np.diag(np.ones(n) * noise_var)
         d2 = calc_d2(sel_fn, normalize=True)
         d2a = calc_d2(k, normalize=False)
