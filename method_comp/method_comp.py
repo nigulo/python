@@ -61,7 +61,8 @@ def calc_sel_fn_p(t, f, sig_var):
             k[j, i] = k[i, j]
     return k
     
-def calc_g(t, sig_var, k, a=1.0):
+def calc_g(t, sig_var, noise_var, k, a=1.0):
+    sigma2 = sig_var + noise_var
     g_1 = np.zeros((len(t), len(t)))
     g_2 = np.zeros((len(t), len(t)))
     g_log = 0
@@ -71,8 +72,8 @@ def calc_g(t, sig_var, k, a=1.0):
                 g_1[i, j] = a
                 g_2[i, j] = a
             else:
-                det = sig_var**2-k[i, j]**2
-                g_1[i, j] = sig_var/det
+                det = sigma2**2-k[i, j]**2
+                g_1[i, j] = sigma2/det
                 g_1[j, i] = g_1[i, j]
                 g_2[i, j] = k[i, j]/det
                 g_2[j, i] = g_2[i, j]
@@ -225,10 +226,10 @@ for t_coh in t_cohs:
             k = calc_cov_qp(t, f, t_coh, sig_var)
             sel_fn = calc_sel_fn_qp(t, f, t_coh, sig_var)
             
-        g_1, g_2, g_log = calc_g(t, sig_var, k)
+        k += np.diag(np.ones(n) * noise_var)
+        g_1, g_2, g_log = calc_g(t, sig_var, noise_var, k)
         gp = np.dot(o, np.dot(g_1, y2)) - np.dot(y, np.dot(g_2, y)) +0.5*g_log
         #gp = calc_gp(k)
-        k += np.diag(np.ones(n) * noise_var)
         d2 = calc_d2(sel_fn, normalize=True)
         d2a = calc_d2(k, normalize=False)
         d2_spec[f_ind] = d2
