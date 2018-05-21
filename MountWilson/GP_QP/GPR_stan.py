@@ -46,6 +46,7 @@ if len(sys.argv) > 4:
 
 n_jobs = num_chains
 n_tries = 1
+downsample_iters = 1
 
 print star, num_iters, num_chains
 
@@ -106,7 +107,7 @@ t_non_ds = np.array(t)
 y_non_ds = np.array(y)
 
 seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
-noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y, num_days=1.0)
+noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y, num_days=2.0)
 seasonal_means_var =np.var(mw_utils.get_seasonal_means(t, y)[:,1])
 #noise_var_prop_non_ds = np.ones(len(noise_var_prop_non_ds))*np.mean(noise_var_prop_non_ds)
 
@@ -128,6 +129,8 @@ n = len(t)
 
 var = np.var(y)
 
+noise_var_prop = np.ones(len(t))*max(seasonal_noise)
+
 ###########################################################################
 # Quasiperiodic model
 
@@ -144,8 +147,9 @@ for i in np.arange(0, num_chains):
     initial_m = orig_mean
     initial_trend_var = var / duration
     initial_inv_length_scale = 0.0001#abs(np.random.normal(0, prior_freq_mean))
-    initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, inv_lengh_scale=initial_inv_length_scale))
+    #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, inv_lengh_scale=initial_inv_length_scale))
     #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
+    initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
 fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
     var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 

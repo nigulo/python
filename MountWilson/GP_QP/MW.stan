@@ -21,7 +21,7 @@ transformed data {
 }
 
 parameters {
-    real<lower=0, upper=1> inv_length_scale;
+    real<lower=0> inv_length_scale;
     //real<lower=0> inv_length_scale2;
     real<lower=0> sig_var;
     real<lower=0> freq;

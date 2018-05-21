@@ -21,9 +21,9 @@ import GPR_QP
 num_iters = 300
 n_eff_col = 9
 
-do_fits = True
-calc_residues = True
-save_results = False
+do_fits = False
+calc_residues = False
+save_results = True
 
 prefix = ""
 
@@ -75,8 +75,8 @@ data = pd.read_csv(prefix+"results/"+"results.txt", names=['star', 'index', 'val
 #for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_bic, length_scale2, length_scale2_se, length_scale2_std] in data:
 for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se, length_scale_std, trend_var, trend_var_se, trend_var_std, m, sig_var, fvu, delta_bic] in data:
 
-    if star != "201091":
-        continue
+    #if star != "201091":
+    #    continue
     #if delta_bic < 6:
     #    continue
     star = str(star)
@@ -124,7 +124,7 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         min_t = min(t)
         max_t = max(t)
         t -= t_mean
-        if save_results and delta_bic >= 8.0 and cyc < (max_t - min_t) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
+        if save_results and delta_bic >= 6.0 and cyc < (max_t - min_t) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
             output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")
             output_cycles.flush()
         if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
