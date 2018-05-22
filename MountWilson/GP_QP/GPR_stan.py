@@ -107,7 +107,7 @@ t_non_ds = np.array(t)
 y_non_ds = np.array(y)
 
 seasonal_noise = mw_utils.get_seasonal_noise_var(t, y, per_point=False)
-noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y, num_days=2.0)
+noise_var_prop_non_ds = mw_utils.get_seasonal_noise_var(t, y, num_days=1.0)
 seasonal_means_var =np.var(mw_utils.get_seasonal_means(t, y)[:,1])
 #noise_var_prop_non_ds = np.ones(len(noise_var_prop_non_ds))*np.mean(noise_var_prop_non_ds)
 
@@ -146,8 +146,8 @@ for i in np.arange(0, num_chains):
     initial_trend_var = var / duration
     initial_inv_length_scale = 0.0001#abs(np.random.normal(0, prior_freq_mean))
     #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m, inv_lengh_scale=initial_inv_length_scale))
-    #initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
-    initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
+    initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
+    #initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
 fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=np.ones(len(t))*var, var_y=var,
     var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
