@@ -354,8 +354,8 @@ else:
         ax12.set_xlim(-5.3, -4.2)
         ax12.set_ylim(-3.5, -0.5)
 
-        ax13.set_xlim(-5.2, -4.2)
-        ax13.set_ylim(-3.2, -0.5)
+        ax13.set_xlim(-5.1, -4.2)
+        ax13.set_ylim(-3.2, -1.0)
 
         ax1a.set_xlim(-5.3, -4.3)
         ax1a.set_ylim(-3.0, -1.0)
@@ -694,7 +694,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
         w2, v2 = LA.eig(s2)
         
         # Just swapping the color of custers if incorrect
-        if type == "BGLST" or type == "GP_P" or type == "GP_QP":
+        if type == "BGLST" or type == "GP_P":# or type == "GP_QP":
             m_temp = m2
             s_temp = s2
             w_temp = w2
