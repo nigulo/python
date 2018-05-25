@@ -149,7 +149,7 @@ def calc_d2(sel_fn, normalize):
     
 kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
 #kalman_utils.add_component("periodic", [np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
-kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
+kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":1})
 kalman_utils.add_component("white_noise", [np.zeros(1)])
 
 def calc_kalman(t_coh, f, plot, coh_ind, f_ind):
@@ -165,8 +165,8 @@ def calc_kalman(t_coh, f, plot, coh_ind, f_ind):
         plt.close(fig)
     return loglik
 
-num_freqs = 100
-num_cohs = 20
+num_freqs = 10
+num_cohs = 10
 
 if cov_type == "periodic":
     num_cohs = 1
@@ -185,7 +185,7 @@ full_gp_spec_color = np.zeros((num_cohs, num_freqs, 3))
 kalman_spec_color = np.zeros((num_cohs, num_freqs, 3))
 coh_ind = 0
 
-t_cohs = np.linspace(length_scale/3, length_scale*2, num_cohs)
+t_cohs = np.linspace(0.1, length_scale*2, num_cohs)
 
 max_loglik_full_gp = None
 max_coh_full_gp = 0
@@ -407,7 +407,7 @@ if num_cohs > 1:
     #ax33.xaxis.set_ticks(np.arange(5, end, 4.9999999))
     #ax33.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
     #ax33.xaxis.labelpad = -1
-    ax4.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
+    ax4.set_xlabel(r'$\ell$')#,fontsize=20)
     ax4.set_aspect(aspect=plot_aspect)
     ax4.set_adjustable('box-forced')
     ax4.scatter([length_scale], [freq], c='r', s=20)

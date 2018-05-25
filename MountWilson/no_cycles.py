@@ -26,7 +26,7 @@ output_path = "no_cycles"
 offset = 1979.3452
 num_r_hk_bins = 1000
 num_bootstrap = 1000
-kde_cov_start = 0.01
+kde_cov_start = 0.1
 kde_cov_end = 1.0
 kde_num_covs = 100
 
@@ -311,7 +311,7 @@ for i in np.arange(0, np.shape(rel_d_a_bs)[1]):
 ax2.fill_between(r_hk_bins_values, uppers, lowers, alpha=0.1, facecolor='gray', interpolate=True)
 
 ax1.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
-ax1.set_ylim([0, 18])
+ax1.set_ylim([0.5, 5.5])
 ax2.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
 
 

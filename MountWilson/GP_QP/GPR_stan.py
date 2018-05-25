@@ -34,7 +34,7 @@ from sklearn.cluster import KMeans
 
 star = sys.argv[1]
     
-squared_exp_null = False
+squared_exp_null = True
 weight_with_segment_len = True
 num_iters = 50
 num_chains = 4
@@ -129,6 +129,7 @@ n = len(t)
 
 var = np.var(y)
 
+noise_var_prop = np.ones(len(t))*var
 ###########################################################################
 # Quasiperiodic model
 
@@ -149,7 +150,7 @@ for i in np.arange(0, num_chains):
     initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
     #initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
-fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=np.ones(len(t))*var, var_y=var,
+fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
     var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
     init=initial_param_values,
     iter=num_iters, chains=num_chains, n_jobs=n_jobs)
@@ -163,8 +164,8 @@ loglik = np.mean(loglik_samples)
 length_scale_samples = results['length_scale'];
 (length_scale, length_scale_se) = mw_utils.mean_with_se(length_scale_samples)
 
-#length_scale2_samples = results['length_scale2'];
-#(length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
+length_scale2_samples = results['length_scale2'];
+(length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
 
 sig_var_samples = results['sig_var']
 sig_var = np.mean(sig_var_samples)
@@ -197,12 +198,12 @@ freqs_ = freqs[inds]
 print "var=", var
 print "sig_var=", sig_var
 print "length_scale", length_scale
-#print "length_scale2", length_scale2
+print "length_scale2", length_scale2
 print "freq, freq_se", freq, freq_se
 print "trend_var", trend_var
 print "m", m
 
-gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0, length_scale2=0.0)
+gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_var_prop, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
 t_test = np.linspace(min(t), max(t), 500)
 gpr_gp.init(t, y-m)
 (f_mean, pred_var, loglik) = gpr_gp.fit(t_test)
@@ -361,7 +362,7 @@ for segment in segments:
     indices1 = np.where(t >= segment_start)[0]
     indices2 = np.where(t[indices1] <= segment_end)[0]
     noise_test = noise_var_prop[indices1][indices2]
-    gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=0.0)
+    gpr_gp_cv = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=length_scale, freq=freq, noise_var=noise_train, rot_freq=0, rot_amplitude=0, trend_var=trend_var, c=0.0, length_scale2=length_scale2)
     gpr_gp_cv.init(dat_train[:,0], dat_train[:,1]-m)
     (_, _, loglik_test) = gpr_gp_cv.cv(dat_test[:,0], dat_test[:,1]-m, noise_test)
     if weight_with_segment_len:
@@ -445,5 +446,5 @@ if save:
             f.close()
         with open("results/results.txt", "a") as output:
             #output.write(star + ' ' + str(period/duration < 2.0/3.0 and period > 2) + ' ' + str(period) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(np.std(length_scale_samples)) + " " + str(rot_amplitude) + " " + str(rot_amplitude_std) + " " + str(bic - bic_null) + "\n")    
-            #output.write(star + " " + str(downsample_iter) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(l_loo - l_loo_null) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")    
-            output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    
+            output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + "\n")
+            #output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    

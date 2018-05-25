@@ -372,8 +372,8 @@ ax1a.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_l
 
 fig1b, ax1b = plt.subplots(nrows=1, ncols=1, sharex=False)
 fig1b.set_size_inches(8, 6)
-#ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
-ax1b.set_xlabel(r'Activity index', fontsize=axis_label_fs)
+ax1b.set_xlabel(r'${\rm log} \langle R^\prime_{\rm HK}\rangle$', fontsize=axis_label_fs)
+#ax1b.set_xlabel(r'Activity index', fontsize=axis_label_fs)
 
 
 fig2, (ax21, ax22, ax23) = plt.subplots(nrows=3, ncols=1, sharex=False)
@@ -426,8 +426,8 @@ def fit_data(data, ax):
     ys = np.asarray(ys)
     
     ws = np.ones(len(xs))
-    inactive_indices = np.where(xs < -4.738)[0]
-    active_and_tran_indices = np.where(xs >= -4.738)[0]   
+    inactive_indices = np.where(xs < -4.8)[0]
+    active_and_tran_indices = np.where(xs >= -4.8)[0]   
     
 
     xs_inactive = xs[inactive_indices]
@@ -436,6 +436,8 @@ def fit_data(data, ax):
     xs_active_and_tran = xs[active_and_tran_indices]
     ys_active_and_tran = ys[active_and_tran_indices]
     
+    print "ys_inactive", ys_inactive
+    print "xs_inactive", xs_inactive
     slope, intercept, r_value, p_value, std_err = stats.linregress(xs_inactive, ys_inactive)
     fit_inactive = xs_inactive * slope + intercept
     xs_for_gp = np.linspace(fig1b_left, fig1b_right, 20)
@@ -982,8 +984,8 @@ plt.close(fig1)
 
 ax1b.set_ylim(-3.8, -1.2)
 ax1b.set_xlim(fig1b_left, fig1b_right)
-#ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
-ax1b.set_ylabel(r'Rotation to cycle ratio', fontsize=axis_label_fs)
+ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
+#ax1b.set_ylabel(r'Rotation to cycle ratio', fontsize=axis_label_fs)
 ax1b.tick_params(axis='x', labelsize=axis_unit_fs)
 ax1b.tick_params(axis='y', labelsize=axis_unit_fs)
 fig1b.savefig("activity_diagram_cmp2.pdf")

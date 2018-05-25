@@ -39,7 +39,7 @@ class component_periodic():
         m_0 = np.zeros(2*self.j_max) # zeroth state mean
         P_0 = np.zeros((2*self.j_max, 2*self.j_max)) # zeroth state covariance
         
-        for j in np.arange(0, self.j_max):
+        for j in np.arange(0, self.j_max+1):
             Fpj, Lpj, P0pj, Hpj, _ = self.get_params_j(j)
             F[2*j:2*j+2, 2*j:2*j+2] = Fpj
             L[2*j:2*j+2, 2*j:2*j+2] = Lpj
