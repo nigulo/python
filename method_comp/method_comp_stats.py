@@ -40,7 +40,7 @@ for _ in np.arange(0, num_experiments):
             file.write("%s\n" % (experiment_index+1))
             file.close()
    
-    n = np.random.randint(10, 200)
+    n = np.random.randint(5, 100)
     time_range = 200
     t = np.random.uniform(0.0, time_range, n)
     var = 1.0
@@ -102,7 +102,7 @@ for _ in np.arange(0, num_experiments):
     y2 = y * y
     
     for t_coh in t_cohs:
-    
+        print coh_ind
         f_ind = 0
         fs = np.linspace(0.01, 2.0*freq, num_freqs)
         for f in fs:
@@ -148,4 +148,4 @@ for _ in np.arange(0, num_experiments):
     index = group_no * num_experiments + experiment_index
     with FileLock("GPRLock"):
         with open("results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s %s %s %s %s\n" % (index, f, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  
+            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, f, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  

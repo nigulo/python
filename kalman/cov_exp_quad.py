@@ -25,7 +25,7 @@ class cov_exp_quad():
         for n in np.arange(0, self.N + 1):
             P_coefs[2*n] *= (4.0 * kappa)**(self.N-n)
         
-        P_coefs = np.flip(P_coefs, axis=0) # np.roots takes the coefs in the opposite order
+        P_coefs = P_coefs[::-1]#np.flip(P_coefs, axis=0) # np.roots takes the coefs in the opposite order
 
         roots = np.roots(P_coefs)
         positive_roots = []
