@@ -128,7 +128,7 @@ for experiment_index in np.arange(0, num_experiments):
             gpr_gp.init(t, y)
             (_, _, loglik) = gpr_gp.fit(t_test)
             
-            loglik_kalman = mcu.calc_kalman(kalman_utils, t, y, sig_var, noise_var, t_coh, f, plot=f_ind==len(fs)/2-1, coh_ind=coh_ind, f_ind=f_ind)
+            loglik_kalman = mcu.calc_kalman(kalman_utils, t, y, sig_var, noise_var, t_coh, f, plot=False, coh_ind=coh_ind, f_ind=f_ind)
             
             if max_loglik_full_gp is None or loglik > max_loglik_full_gp:
                 max_loglik_full_gp = loglik
@@ -154,4 +154,4 @@ for experiment_index in np.arange(0, num_experiments):
     index = group_no * num_experiments + experiment_index
     with FileLock("GPRLock"):
         with open("results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, f, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  
+            output.write("%s %s %s %s %s %s %s %s %s %s %s\n" % (index, f, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  

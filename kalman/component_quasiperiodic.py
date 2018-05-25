@@ -7,7 +7,7 @@ from component_periodic import component_periodic
 class component_quasiperiodic():
     
     def __init__(self, j_max, sig_var, omega_0, ellp, ellq):
-        self.j_max = j_max
+        self.num_j = j_max+1
         self.omega_0 = omega_0
         self.ellp = ellp
         self.ellq = ellq
@@ -28,16 +28,16 @@ class component_quasiperiodic():
         #Hq = np.ones(1) # observatioanl matrix
         #P0q = np.ones(1)
         
-        F = np.zeros((2*self.Nq*self.j_max, 2*self.Nq*self.j_max))
-        L = np.zeros((2*self.Nq*self.j_max, 2*self.j_max))
-        Q_c = np.zeros((2*self.j_max, 2*self.j_max)) # process noise
-        H = np.zeros(2*self.Nq*self.j_max) # observatioanl matrix
+        F = np.zeros((2*self.Nq*self.num_j, 2*self.Nq*self.num_j))
+        L = np.zeros((2*self.Nq*self.num_j, 2*self.num_j))
+        Q_c = np.zeros((2*self.num_j, 2*self.num_j)) # process noise
+        H = np.zeros(2*self.Nq*self.num_j) # observatioanl matrix
         
-        m_0 = np.zeros(2*self.Nq*self.j_max) # zeroth state mean
-        P_0 = np.zeros((2*self.Nq*self.j_max, 2*self.Nq*self.j_max)) # zeroth state covariance
+        m_0 = np.zeros(2*self.Nq*self.num_j) # zeroth state mean
+        P_0 = np.zeros((2*self.Nq*self.num_j, 2*self.Nq*self.num_j)) # zeroth state covariance
         
         I2 = np.diag(np.ones(2))
-        for j in np.arange(0, self.j_max):
+        for j in np.arange(0, self.num_j):
             Fpj, Lpj, P0pj, Hpj, qj = self.periodic.get_params_j(j)
             #Fpj = np.array([[0.0, -omega_0*j], [omega_0*j, 0.0]])
         
