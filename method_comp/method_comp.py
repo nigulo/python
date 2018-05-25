@@ -106,7 +106,6 @@ for t_coh in t_cohs:
     fig.set_size_inches(6, 3)
 
     d2_spec = np.zeros(num_freqs)
-    d2a_spec = np.zeros(num_freqs)
     fg_spec = np.zeros(num_freqs)
     full_gp_spec = np.zeros(num_freqs)
     kalman_spec = np.zeros(num_freqs)
@@ -123,11 +122,8 @@ for t_coh in t_cohs:
         k += np.diag(np.ones(n) * noise_var)
         g_1, g_2, g_log = mcu.calc_g(t, sig_var, noise_var, k)
         fg = np.dot(o, np.dot(g_1, y2)) - np.dot(y, np.dot(g_2, y)) +0.5*g_log
-        #gp = calc_gp(k)
         d2 = mcu.calc_d2(t, y, sel_fn, normalize=True)
-        d2a = mcu.calc_d2(t, y, k, normalize=False)
         d2_spec[f_ind] = d2
-        d2a_spec[f_ind] = d2a
         fg_spec[f_ind] = fg
         gpr_gp = GPR_QP.GPR_QP(sig_var=sig_var, length_scale=t_coh, freq=f, noise_var=noise_var, rot_freq=0.0, rot_amplitude=0.0, trend_var=0.0, c=0.0)
         t_test = np.linspace(min(t), max(t), 2)
@@ -173,22 +169,17 @@ for t_coh in t_cohs:
     kalman_spec_color[coh_ind, :, 1] = fs
     kalman_spec_color[coh_ind, :, 2] = kalman_spec
     
-    print kalman_spec
-    
     d2_spec = (d2_spec - min(d2_spec)) / (max(d2_spec) - min(d2_spec))
-    d2a_spec = (d2a_spec - min(d2a_spec)) / (max(d2a_spec) - min(d2a_spec))
     fg_spec = (fg_spec - min(fg_spec)) / (max(fg_spec) - min(fg_spec))
     full_gp_spec = (full_gp_spec - min(full_gp_spec)) / (max(full_gp_spec) - min(full_gp_spec))
     kalman_spec = (kalman_spec - min(kalman_spec)) / (max(kalman_spec) - min(kalman_spec))
 
     opt_freq_d2 = fs[np.argmin(d2_spec)]
-    opt_freq_d2a = fs[np.argmin(d2a_spec)]
     opt_freq_fg = fs[np.argmin(fg_spec)]
     opt_freq_full_gp = fs[np.argmin(full_gp_spec)]
     opt_freq_kalman = fs[np.argmin(kalman_spec)]
 
     ax1.plot(fs, d2_spec, 'b-')
-    #ax1.plot(fs, d2a_spec, 'b--')
     ax1.plot(fs, fg_spec, 'r-')
     ax1.plot(fs, full_gp_spec, 'g-')
     ax1.plot(fs, kalman_spec, 'y-')

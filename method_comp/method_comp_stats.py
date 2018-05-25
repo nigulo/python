@@ -7,24 +7,16 @@ Test of equivalence of general D^2 statistic in original and vector formulation
 import sys
 sys.path.append('../kalman/')
 import numpy as np
-import scipy
 from scipy import stats
-import random
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import matplotlib.colorbar as cb
-from matplotlib import cm
-from matplotlib.colors import LogNorm, SymLogNorm
-from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
-import matplotlib.colors as colors
-import matplotlib.ticker as ticker
 from collections import OrderedDict as od
 import numpy.linalg as la
 import GPR_QP
 import kalman_utils as ku
 import method_comp_utils as mcu
 from filelock import FileLock
+import os
 
+print np.version.version
 #cov_type = "periodic"
 cov_type = "quasiperiodic"
 
@@ -32,10 +24,22 @@ group_no = 0
 if len(sys.argv) > 1:
     group_no = int(sys.argv[1])
 
-num_experiments = 40
+num_experiments = 100
 
-for experiment_index in np.arange(0, num_experiments):
+for _ in np.arange(0, num_experiments):
 
+    with FileLock("GPRLock"):
+        if not os.path.isfile("exp_no.txt"):
+            with open("exp_no.txt", "w") as fp:
+               experiment_index = 0
+               fp.write("%s\n" % 1)
+        else:
+            with open("exp_no.txt", "r") as fp:
+               experiment_index = int(fp.readline())
+            file = open("exp_no.txt", "w") 
+            file.write("%s\n" % (experiment_index+1))
+            file.close()
+   
     n = np.random.randint(10, 200)
     time_range = 200
     t = np.random.uniform(0.0, time_range, n)
@@ -68,20 +72,12 @@ for experiment_index in np.arange(0, num_experiments):
     kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":1})
     kalman_utils.add_component("white_noise", [np.zeros(1)])
     
-    num_freqs = 10
-    num_cohs = 10
+    num_freqs = 100
+    num_cohs = 20
     
     if cov_type == "periodic":
         num_cohs = 1
         
-    fig, (ax1) = plt.subplots(nrows=1, ncols=1)
-    fig.set_size_inches(6, 3)
-    ax1.plot(t, y, 'b+')
-    fig.savefig('data.png')
-    plt.close(fig)
-    
-    #print freq, length_scale
-    
     coh_ind = 0
     
     t_cohs = np.linspace(0.1, length_scale*2, num_cohs)
@@ -106,8 +102,6 @@ for experiment_index in np.arange(0, num_experiments):
     y2 = y * y
     
     for t_coh in t_cohs:
-        fig, (ax1) = plt.subplots(nrows=1, ncols=1)
-        fig.set_size_inches(6, 3)
     
         f_ind = 0
         fs = np.linspace(0.01, 2.0*freq, num_freqs)

@@ -58,21 +58,16 @@ def calc_g(t, sig_var, noise_var, k, a=1.0):
 def calc_d2(t, y, sel_fn, normalize):
     d2 = 0.0
     norm = 0.0
-    i = 0
-    for ti in t:
-        j = 0
-        for tj in t:
+    for i in np.arange(0, len(t)):
+        for j in np.arange(i + 1, len(t)):
             d2 += sel_fn[i, j] * (y[i] - y[j]) ** 2
             norm += sel_fn[i, j]
-            j += 1
-        i += 1
     if normalize:
-        return d2 / norm / 2.0
+        return d2 / norm
     else:
         return d2
 
 def calc_kalman(kalman_utils, t, y, sig_var, noise_var, t_coh, f, plot, coh_ind, f_ind):
-
     y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 1.0, t_coh, noise_var])
     #y_means, loglik = kalman_utils.do_filter([sig_var, 2.0*np.pi*f, 500, noise_var])
     if plot:
