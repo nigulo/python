@@ -57,7 +57,7 @@ print num_stars
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
 fig.set_size_inches(6, 12)
 ax1.set_ylabel(r'$\sigma^2/\overline{\sigma}^2_{\rm s}$', fontsize=15)
-ax2.set_ylabel(r'$p_{\rm cyc}/p$', fontsize=15)
+#ax2.set_ylabel(r'$p_{\rm cyc}/p$', fontsize=15)
 ax2.set_xlabel(r'$\log \langle R^\prime_{\rm HK}\rangle$', fontsize=15)
 ax1.text(0.95, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes, fontsize=15)
 ax2.text(0.95, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes, fontsize=15)
@@ -230,8 +230,8 @@ d_a_and_na_t = density_a_and_na_t(r_hk_bins_values)
 
 #ax2.plot(r_hk_bins_values, r_hk_bin_counts_na/(r_hk_bin_counts_a+r_hk_bin_counts_na), "k-")
 #ax2.plot(r_hk_bins_values, d_a/(d_a+d_na), "k-")
-ax2.plot(r_hk_bins_values, d_all, "k--")
-ax2.plot(r_hk_bins_values, d_na_t, "g-.")
+ax2.plot(r_hk_bins_values, d_all, "k--", label=r'$p$')
+ax2.plot(r_hk_bins_values, d_na_t, "g-.", label=r'$p_{\rm T}$')
 #ax2.plot(r_hk_bins_values, d_a_and_na_t, ":", color="saddlebrown")
 
 r_hks_a = np.asarray(r_hks_a)
@@ -296,7 +296,7 @@ for i in np.arange(0, num_bootstrap):
 rel_d_a_bs = np.asarray(rel_d_a_bs)
 rel_d_a_bs_mean = np.mean(rel_d_a_bs, axis=0)
 rel_d_a_bs_std = np.std(rel_d_a_bs, axis=0)
-ax2.plot(r_hk_bins_values, rel_d_a_bs_mean, "k-")
+ax2.plot(r_hk_bins_values, rel_d_a_bs_mean, "k-", label=r'$p_{\rm C}/p$')
 #ax2.plot(r_hk_bins_values, d_a*len(r_hks_a)/(len(r_hks_a) + len(r_hks_na)), "r-")
 #ax2.plot(r_hk_bins_values, d_na*len(r_hks_na)/(len(r_hks_a) + len(r_hks_na)), "b-")
 
@@ -313,6 +313,11 @@ ax2.fill_between(r_hk_bins_values, uppers, lowers, alpha=0.1, facecolor='gray', 
 ax1.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
 ax1.set_ylim([0.5, 5.5])
 ax2.set_xlim([min(r_hk_bins_values), max(r_hk_bins_values)])
+
+ax2.legend(numpoints = 1,
+            scatterpoints=1,
+            loc='upper left', ncol=1,
+            fontsize=11, labelspacing=0.7)
 
 
 fig.savefig("cyc_vs_act.pdf")

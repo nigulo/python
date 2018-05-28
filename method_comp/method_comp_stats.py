@@ -40,7 +40,9 @@ for _ in np.arange(0, num_experiments):
             file.write("%s\n" % (experiment_index+1))
             file.close()
    
-    n = np.random.randint(5, 100)
+    print "experiment_index", experiment_index
+    sys.stdout.flush()
+    n = np.random.randint(5, 50)
     time_range = 200
     t = np.random.uniform(0.0, time_range, n)
     var = 1.0
@@ -66,7 +68,6 @@ for _ in np.arange(0, num_experiments):
     
     y = np.repeat(mean, n) + np.dot(l, s)
     y += mean
-    
     kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
     #kalman_utils.add_component("periodic", [np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":2})
     kalman_utils.add_component("quasiperiodic", [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)], {"j_max":1})
@@ -103,6 +104,7 @@ for _ in np.arange(0, num_experiments):
     
     for t_coh in t_cohs:
         print coh_ind
+        sys.stdout.flush()
         f_ind = 0
         fs = np.linspace(0.01, 2.0*freq, num_freqs)
         for f in fs:
