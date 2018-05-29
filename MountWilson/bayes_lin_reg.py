@@ -17,12 +17,12 @@ def bayes_lin_reg(t, y, w, t_test=None, y_test=None, w_test=None):
     sigma_beta = 1.0 / W
     mu_beta = Y * sigma_beta - mu_alpha * tau
 
-    norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
-
     if t_test is None or y_test is None or w_test is None:
         t_test = t
         y_test = y
         w_test = w
+
+    norm_term = sum(np.log(np.sqrt(w_test)) - np.log(np.sqrt(2.0*np.pi)))
 
     y_model = t_test * mu_alpha + mu_beta
     loglik = norm_term - 0.5 * sum(w_test * (y_test - y_model)**2)

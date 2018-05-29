@@ -401,7 +401,8 @@ save = True
 if length_scale < period:
     save = False
 elif os.path.isfile("results/results.txt"):
-    data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+    #data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'length_scale2', 'length_scale2_se', 'length_scale2_std', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
     #for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, delta_loo1] in data:
     for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, length_scale21, length_scale2_se1, length_scale2_std1, delta_loo1] in data:
         if length_scale1 < cyc1:

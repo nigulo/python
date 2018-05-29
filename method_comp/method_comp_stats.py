@@ -26,6 +26,9 @@ if len(sys.argv) > 1:
 
 num_experiments = 100
 
+n_fixed = 50
+sig_var_fixed = 0.9
+
 for _ in np.arange(0, num_experiments):
 
     with FileLock("GPRLock"):
@@ -42,11 +45,17 @@ for _ in np.arange(0, num_experiments):
    
     print "experiment_index", experiment_index
     sys.stdout.flush()
-    n = np.random.randint(5, 50)
+    if n_fixed is not None:
+        n = n_fixed
+    else:
+        n = np.random.randint(5, 50)
     time_range = 200
     t = np.random.uniform(0.0, time_range, n)
     var = 1.0
-    sig_var = np.random.uniform(0.01, 0.99)
+    if sig_var_fixed is not None:
+        sig_var = sig_var_fixed
+    else:
+        sig_var = np.random.uniform(0.01, 0.99)
     noise_var = var - sig_var
     t = np.sort(t)
     t -= np.mean(t)
@@ -150,4 +159,4 @@ for _ in np.arange(0, num_experiments):
     index = group_no * num_experiments + experiment_index
     with FileLock("GPRLock"):
         with open("results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, f, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  
+            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, freq, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  

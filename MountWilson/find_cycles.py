@@ -53,7 +53,7 @@ def constant_model(y, w, y_test, w_test):
     sigma_beta = 1.0 / W
     mu_beta = Y * sigma_beta
 
-    norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
+    norm_term = sum(np.log(np.sqrt(w_test)) - np.log(np.sqrt(2.0*np.pi)))
 
     y_model = mu_beta
     loglik = norm_term - 0.5 * sum(w_test * (y_test - y_model)**2)
@@ -81,8 +81,8 @@ for root, dirs, files in os.walk(input_path):
             if (rot_periods.has_key(star)):
                 (rot_period, _) = rot_periods[star]
             #print star + " period is " + str(rot_period)
-            if star != "201091":
-                continue
+            #if star != "114710":
+            #    continue
             data = np.loadtxt(input_path+"/"+file, usecols=(0,1), skiprows=skiprows)
             print "Finding cycles for " + star
             normval = data.shape[0]
@@ -205,13 +205,16 @@ for root, dirs, files in os.walk(input_path):
                         y_model = seasonal_means[:,0] * mu_alpha + mu_beta
                         loglik_seasons = norm_term - 0.5 * sum(seasonal_weights * (seasonal_means[:,1] - y_model)**2)
                         
+                        #norm_term = sum(np.log(np.sqrt(w)) - np.log(np.sqrt(2.0*np.pi)))
+                        #loglik = norm_term - 0.5 * sum(w_test * (y_test - y_model)**2)
+                        
                         (mu_alpha_null, mu_beta_null), _, _, loglik_seasons_null = bayes_lin_reg(t, y, w, seasonal_means[:,0], seasonal_means[:,1], seasonal_weights)
                         mu_beta_null2, _, _, loglik_seasons_null2 = constant_model(y, w, seasonal_means[:,1], seasonal_weights)
                         
                         log_n = np.log(np.shape(seasonal_means)[0])
                         bic = log_n * 2 - 2.0*loglik_seasons
-                        bic_null = log_n  - 2.0*loglik_seasons_null
-                        bic_null2 = log_n  - 2.0*loglik_seasons_null2
+                        bic_null = log_n * 2 - 2.0*loglik_seasons_null
+                        bic_null2 = log_n - 2.0*loglik_seasons_null2
                         
                         #print bic_null, bic
                         #print "trend delta_bic:", star, delta_bic, bic_null, bic, mu_alpha, mu_alpha_null, mu_beta, mu_beta_null
@@ -225,11 +228,7 @@ for root, dirs, files in os.walk(input_path):
 
                         delta_bic1 = bic_null - bic
                         delta_bic2 = bic_null2 - bic
-                        if abs(delta_bic1) >= 6.0 and abs(delta_bic2) >= 6.0:
-                            # Significant trend
-                            f_trend.write(star + "\n")
-                        else:
-                            f_trend.write("-" + star + "\n")
+                        f_trend.write(star + " " + str(delta_bic1) + " " + str(delta_bic2) + "\n")
                         f_trend.flush()
                         
                 ###############################################################                
