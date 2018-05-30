@@ -27,7 +27,7 @@ if len(sys.argv) > 1:
 num_experiments = 100
 
 n_fixed = 50
-sig_var_fixed = 0.9
+sig_var_fixed = 0.8
 
 for _ in np.arange(0, num_experiments):
 

@@ -50,9 +50,9 @@ downsample_iters = 1
 
 print star, num_iters, num_chains
 
-time_in_days = True
-data_dir = "../GP_input"
-#data_dir = "residues_input"
+time_in_days = False
+#data_dir = "../GP_input"
+data_dir = "residues_input"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
@@ -164,8 +164,9 @@ loglik = np.mean(loglik_samples)
 length_scale_samples = results['length_scale'];
 (length_scale, length_scale_se) = mw_utils.mean_with_se(length_scale_samples)
 
-length_scale2_samples = results['length_scale2'];
-(length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
+#length_scale2_samples = results['length_scale2'];
+#(length_scale2, length_scale2_se) = mw_utils.mean_with_se(length_scale2_samples)
+length_scale2 = 0
 
 sig_var_samples = results['sig_var']
 sig_var = np.mean(sig_var_samples)
@@ -401,10 +402,10 @@ save = True
 if length_scale < period:
     save = False
 elif os.path.isfile("results/results.txt"):
-    #data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
-    data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'length_scale2', 'length_scale2_se', 'length_scale2_std', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
-    #for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, delta_loo1] in data:
-    for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, length_scale21, length_scale2_se1, length_scale2_std1, delta_loo1] in data:
+    data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+    #data = pd.read_csv("results/results.txt", names=['star', 'index', 'validity', 'cyc', 'cyc_se', 'cyc_std', 'length_scale', 'length_scale_se', 'length_scale_std', 'trend_var', 'trend_var_se', 'trend_var_std', 'm', 'sig_var', 'fvu', 'length_scale2', 'length_scale2_se', 'length_scale2_std', 'delta_bic'], dtype=None, sep='\s+', engine='python').as_matrix()
+    for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, delta_loo1] in data:
+    #for [star1, index1, validity1, cyc1, cyc_se1, cyc_std1, length_scale1, length_scale_se1, length_scale_std1, trend_var1, trend_var_se1, trend_var_std1, m1, sig_var1, fvu1, length_scale21, length_scale2_se1, length_scale2_std1, delta_loo1] in data:
         if length_scale1 < cyc1:
             continue
         star1 = str(star1)
@@ -447,5 +448,5 @@ if save:
                 f.write(line)
             f.close()
         with open("results/results.txt", "a") as output:
-            output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + str(delta_loo) + " " + "\n")
-            #output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    
+            #output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(length_scale2) + " " + str(length_scale2_se) + " " + str(np.std(length_scale2_samples)) + " " + str(delta_loo) + " " + "\n")
+            output.write(star + " " + str(0) + " " + str(period/duration < 2.0/3.0 and period > 2.0) + " " + str(period) + " " + str(period_se) + ' ' + str(np.std(period_samples)) + " " + str(length_scale) + " " + str(length_scale_se) + " " + str(np.std(length_scale_samples)) + " " + str(trend_var) + " " + str(trend_var_se)+ " " + str(np.std(trend_var_samples)) + " " + str(m) + " " + str(sig_var) + " " + str(fvu) + " " + str(delta_loo) + "\n")    

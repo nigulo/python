@@ -112,9 +112,10 @@ sim_data_mariangela = [
     #[r'J$^{W}$', 15.5, 0.786, 0.9, 4.05],
     [r'K1', 21.4, 2.325, 0.426, 1.24],
     [r'K2', 21.4, 1.549, 1.029, 5.1],
-    #[r'L$^{a}$', 23.3, 0.708, 1.928, 3.13],
+    [r'L$^{a}$', 23.3, 0.708, 1.928, 3.13],
     #[r'L$^{W}$ ', 23.3, 0.415, 1.102, 5.68],
     [r'M', 28.5, 2.053, 0.967, 6.64],
+    [r'M$^{a}$', 28.5, 0.393, 2.793, 16.45]
     #[r'M$^{W}$', 31, 0.328, 1.024, 4.1]
     ]
 
@@ -144,9 +145,10 @@ sim_data_mariangela = [
     #[r'J$^{W}$', 15.5, 0.786, 0.421, 4.05],
     [r'K1', 21.4, 2.325, 0.025, 1.24],
     [r'K2', 21.4, 1.549, 0.193, 5.1],
-    #[r'L$^{a}$', 23.3, 0.708, 0.475, 3.13],
+    [r'L$^{a}$', 23.3, 0.708, 0.475, 3.13],
     #[r'L$^{W}$ ', 23.3, 0.415, 0.509, 5.68],
     [r'M', 28.5, 2.053, 0.133, 6.64],
+    [r'M$^{a}$', 28.5, 0.393, 0.907, 16.45]
     #[r'M$^{W}$', 31, 0.328, 0.462, 4.1]
     ]
 '''
@@ -614,7 +616,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
     if not ax4 is None:
         ax4.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
 
-    if star_FeH_dR.has_key(star) and not ax31 is None and not ax32 is None:
+    if not ax31 is None and not ax32 is None:
         ax31.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
         ax32.set_ylabel(r'$\Delta_i$', fontsize=axis_label_fs)
         
