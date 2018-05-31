@@ -34,7 +34,7 @@ from sklearn.cluster import KMeans
 
 star = sys.argv[1]
     
-squared_exp_null = True
+squared_exp_null = False
 weight_with_segment_len = True
 num_iters = 50
 num_chains = 4
@@ -150,7 +150,8 @@ for i in np.arange(0, num_chains):
     initial_param_values.append(dict(freq=initial_freq, trend_var=initial_trend_var, m=initial_m))
     #initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
-fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
+#fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
+fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=np.ones(len(t))*var, var_y=var,
     var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
     init=initial_param_values,
     iter=num_iters, chains=num_chains, n_jobs=n_jobs)
