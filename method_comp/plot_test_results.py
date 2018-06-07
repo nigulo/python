@@ -31,6 +31,15 @@ freq_errs_se_fg = np.ones(len(sig_vars_plot))
 freq_errs_se_d2 = np.ones(len(sig_vars_plot))
 freq_errs_se_kalman = np.ones(len(sig_vars_plot))
 
+ell_errs_gp = np.ones(len(sig_vars_plot))
+ell_errs_fg = np.ones(len(sig_vars_plot))
+ell_errs_d2 = np.ones(len(sig_vars_plot))
+ell_errs_kalman = np.ones(len(sig_vars_plot))
+ell_errs_se_gp = np.ones(len(sig_vars_plot))
+ell_errs_se_fg = np.ones(len(sig_vars_plot))
+ell_errs_se_d2 = np.ones(len(sig_vars_plot))
+ell_errs_se_kalman = np.ones(len(sig_vars_plot))
+
 #quality41 = abs(f_orig-f_ls_orig)/f_orig        
 #quality42 = abs(f_orig-f_gp_orig)/f_orig
 #indices41 = np.where(quality41 < 1)
@@ -80,15 +89,33 @@ for sig_var_plot in sig_vars_plot:
     (freq_err, freq_err_se) = mean_with_se(abs(freq-freq_kalman)/freq)
     freq_errs_kalman[i] = freq_err
     freq_errs_se_kalman[i] = freq_err_se
-    
+
+    ###########################################################################
+ 
+    (ell_err, ell_err_se) = mean_with_se(abs(length_scale-length_scale_gp)/length_scale)
+    ell_errs_gp[i] = ell_err
+    ell_errs_se_gp[i] = ell_err_se
+
+    (ell_err, ell_err_se) = mean_with_se(abs(length_scale-length_scale_fg)/length_scale)
+    ell_errs_fg[i] = ell_err
+    ell_errs_se_fg[i] = ell_err_se
+
+    indices_d2 = np.where(length_scale_d2 > 0.1)[0]
+    (ell_err, ell_err_se) = mean_with_se(abs(length_scale[indices_d2]-length_scale_d2[indices_d2])/length_scale[indices_d2])
+    ell_errs_d2[i] = ell_err
+    ell_errs_se_d2[i] = ell_err_se
+
+    (ell_err, ell_err_se) = mean_with_se(abs(length_scale-length_scale_kalman)/length_scale)
+    ell_errs_kalman[i] = ell_err
+    ell_errs_se_kalman[i] = ell_err_se
+   
     i += 1    
     
 
 fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True)
 fig.set_size_inches(6, 4)
-#fig.tight_layout(pad=2.5)
 
-ax.text(0.05, 0.9,'(c)', horizontalalignment='center', transform=ax.transAxes, fontsize=panel_label_fs)
+ax.text(0.05, 0.9,'(a)', horizontalalignment='center', transform=ax.transAxes, fontsize=panel_label_fs)
 
 snr = -sig_vars_plot/(sig_vars_plot-1.0)
 
@@ -96,10 +123,10 @@ handles_gp = ax.plot(snr, freq_errs_gp, 'r--', alpha=0.9)
 handles_fg = ax.plot(snr, freq_errs_fg, 'g-', alpha=0.9)
 handles_d2 = ax.plot(snr, freq_errs_d2, 'k-.', alpha=0.9)
 handles_kalman = ax.plot(snr, freq_errs_kalman, 'b:', alpha=0.9)
-ax.fill_between(snr, freq_errs_gp + freq_errs_se_gp, freq_errs_gp - freq_errs_se_gp, alpha=0.1, facecolor='lightsalmon', interpolate=True)
-ax.fill_between(snr, freq_errs_fg + freq_errs_se_fg, freq_errs_fg - freq_errs_se_fg, alpha=0.1, facecolor='lightgreen', interpolate=True)
-ax.fill_between(snr, freq_errs_d2 + freq_errs_se_d2, freq_errs_d2 - freq_errs_se_d2, alpha=0.1, facecolor='gray', interpolate=True)
-ax.fill_between(snr, freq_errs_kalman + freq_errs_se_kalman, freq_errs_kalman - freq_errs_se_kalman, alpha=0.1, facecolor='lightblue', interpolate=True)
+ax.fill_between(snr, freq_errs_gp + freq_errs_se_gp, freq_errs_gp - freq_errs_se_gp, alpha=0.5, facecolor='lightsalmon', interpolate=True)
+ax.fill_between(snr, freq_errs_fg + freq_errs_se_fg, freq_errs_fg - freq_errs_se_fg, alpha=0.5, facecolor='lightgreen', interpolate=True)
+ax.fill_between(snr, freq_errs_d2 + freq_errs_se_d2, freq_errs_d2 - freq_errs_se_d2, alpha=0.5, facecolor='gray', interpolate=True)
+ax.fill_between(snr, freq_errs_kalman + freq_errs_se_kalman, freq_errs_kalman - freq_errs_se_kalman, alpha=0.5, facecolor='lightblue', interpolate=True)
 
 ax.legend(handles_gp + handles_fg + handles_d2 + handles_kalman, ["Gaussian process", "Factor graph", "$D^2$", "Kalman filter"],
             numpoints = 1,
@@ -109,21 +136,40 @@ ax.legend(handles_gp + handles_fg + handles_d2 + handles_kalman, ["Gaussian proc
             ncol=1,
             fontsize=10, labelspacing=0.7)
 
-ax.set_ylabel(r'$\overline{\Delta}$', fontsize=axis_label_fs)#,fontsize=20)
+ax.set_ylabel(r'$\overline{\Delta f}$', fontsize=axis_label_fs)#,fontsize=20)
 ax.set_xlabel(r'$S/N$', fontsize=axis_label_fs)#,fontsize=20)
 ax.set_xlim(min(snr), max(snr))
 
-fig.savefig("stats.pdf")
+fig.savefig("stats_freq.pdf")
 
+###############################################################################
 
-#fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=False)
-#fig.set_size_inches(6, 8)
+fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True)
+fig.set_size_inches(6, 4)
 
-#ax1.text(0.9, 0.9,'(a)', horizontalalignment='center', transform=ax1.transAxes)
-#ax2.text(0.9, 0.9,'(b)', horizontalalignment='center', transform=ax2.transAxes)
+ax.text(0.05, 0.9,'(b)', horizontalalignment='center', transform=ax.transAxes, fontsize=panel_label_fs)
 
-#ax1.scatter(f_orig[indices41], quality41[indices41], color = 'b', s=1)
-#ax1.scatter(f_orig[indices42], quality42[indices42], color = 'r', s=1)
-#ax2.scatter(sig_var_orig[indices41], quality41[indices41], color = 'b', s=1)
-#ax2.scatter(sig_var_orig[indices42], quality42[indices42], color = 'r', s=1)
-#fig.savefig("test/diagnostics2.png")
+snr = -sig_vars_plot/(sig_vars_plot-1.0)
+
+handles_gp = ax.plot(snr, ell_errs_gp, 'r--', alpha=0.9)
+handles_fg = ax.plot(snr, ell_errs_fg, 'g-', alpha=0.9)
+handles_d2 = ax.plot(snr, ell_errs_d2, 'k-.', alpha=0.9)
+handles_kalman = ax.plot(snr, ell_errs_kalman, 'b:', alpha=0.9)
+ax.fill_between(snr, ell_errs_gp + ell_errs_se_gp, ell_errs_gp - ell_errs_se_gp, alpha=0.5, facecolor='lightsalmon', interpolate=True)
+ax.fill_between(snr, ell_errs_fg + ell_errs_se_fg, ell_errs_fg - ell_errs_se_fg, alpha=0.5, facecolor='lightgreen', interpolate=True)
+ax.fill_between(snr, ell_errs_d2 + ell_errs_se_d2, ell_errs_d2 - ell_errs_se_d2, alpha=0.5, facecolor='gray', interpolate=True)
+ax.fill_between(snr, ell_errs_kalman + ell_errs_se_kalman, ell_errs_kalman - ell_errs_se_kalman, alpha=0.5, facecolor='lightblue', interpolate=True)
+
+#ax.legend(handles_gp + handles_fg + handles_d2 + handles_kalman, ["Gaussian process", "Factor graph", "$D^2$", "Kalman filter"],
+#            numpoints = 1,
+#            scatterpoints=1,
+#            bbox_to_anchor=(0., 0.9, 1., .1),
+#            #loc='upper right', 
+#            ncol=1,
+#            fontsize=10, labelspacing=0.7)
+
+ax.set_ylabel(r'$\overline{\Delta \ell}$', fontsize=axis_label_fs)#,fontsize=20)
+ax.set_xlabel(r'$S/N$', fontsize=axis_label_fs)#,fontsize=20)
+ax.set_xlim(min(snr), max(snr))
+
+fig.savefig("stats_ell.pdf")
