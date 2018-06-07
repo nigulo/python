@@ -27,9 +27,16 @@ import method_comp_utils as mcu
 #cov_type = "periodic"
 cov_type = "quasiperiodic"
 
+uniform_sampling = False
+
 n = 50
 time_range = 200
-t = np.random.uniform(0.0, time_range, n)
+if uniform_sampling:
+    t = np.random.uniform(0.0, time_range, n)
+else:
+    num_seasons = 5
+    season_length = float(time_range)/num_seasons
+    t = season_length*np.random.randint(num_seasons, size = n) + np.random.uniform(0.0, season_length/2, n)
 var = 1.0
 sig_var = np.random.uniform(0.91, 0.91)
 noise_var = var - sig_var

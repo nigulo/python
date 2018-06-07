@@ -20,14 +20,20 @@ print np.version.version
 #cov_type = "periodic"
 cov_type = "quasiperiodic"
 
-group_no = 0
+n_fixed = 50
+sig_var_fixed = 0.1
+
 if len(sys.argv) > 1:
-    group_no = int(sys.argv[1])
+    sig_var_fixed = float(sys.argv[1])
+
+uniform_sampling = True
+
+if len(sys.argv) > 2:
+    uniform_sampling = int(sys.argv[2]) == 1
 
 num_experiments = 100
 
-n_fixed = 50
-sig_var_fixed = 0.1
+print num_experiments, n_fixed, sig_var_fixed, uniform_sampling
 
 for _ in np.arange(0, num_experiments):
 
@@ -50,7 +56,13 @@ for _ in np.arange(0, num_experiments):
     else:
         n = np.random.randint(5, 50)
     time_range = 200
-    t = np.random.uniform(0.0, time_range, n)
+    if uniform_sampling:
+        t = np.random.uniform(0.0, time_range, n)
+    else:
+        num_seasons = 5
+        season_length = float(time_range)/num_seasons
+        t = season_length*np.random.randint(num_seasons, size = n) + np.random.uniform(0.0, season_length/2, n)
+    
     var = 1.0
     if sig_var_fixed is not None:
         sig_var = sig_var_fixed
@@ -156,7 +168,7 @@ for _ in np.arange(0, num_experiments):
     
         coh_ind += 1
     
-    index = group_no * num_experiments + experiment_index
+    index = experiment_index
     with FileLock("GPRLock"):
         with open("results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, freq, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))  
+            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, freq, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))

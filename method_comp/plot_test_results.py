@@ -15,7 +15,7 @@ import stat
 axis_label_fs = 15
 panel_label_fs = 15
 
-dat_orig = np.loadtxt("results1.txt")
+dat_orig = np.loadtxt("results_uniform.txt")
 
 #0 is the inde, but not unique
 
@@ -46,6 +46,8 @@ ell_errs_se_kalman = np.ones(len(sig_vars_plot))
 #indices42 = np.where(quality42 < 1)
 
 i = 0
+total_d2_filtered_out = 0.0
+total = 0.0
 
 for sig_var_plot in sig_vars_plot:
     print sig_var_plot
@@ -82,6 +84,9 @@ for sig_var_plot in sig_vars_plot:
     freq_errs_se_fg[i] = freq_err_se
 
     indices_d2 = np.where(length_scale_d2 > 0.1)[0]
+    print "D2 filtered out", len(indices_d2)
+    total_d2_filtered_out += len(indices_d2)
+    total += len(sig_var)
     (freq_err, freq_err_se) = mean_with_se(abs(freq[indices_d2]-freq_d2[indices_d2])/freq[indices_d2])
     freq_errs_d2[i] = freq_err
     freq_errs_se_d2[i] = freq_err_se
@@ -110,7 +115,8 @@ for sig_var_plot in sig_vars_plot:
     ell_errs_se_kalman[i] = ell_err_se
    
     i += 1    
-    
+
+print "total_d2_filtered_out", total_d2_filtered_out/total
 
 fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True)
 fig.set_size_inches(6, 4)
