@@ -170,5 +170,6 @@ for _ in np.arange(0, num_experiments):
     
     index = experiment_index
     with FileLock("GPRLock"):
-        with open("results.txt", "a") as output:
-            output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, freq, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))
+        output = open("results.txt", "a") 
+        output.write("%s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (index, n, sig_var, freq, max_freq_full_gp, max_freq_fg, max_freq_d2, max_freq_kalman, length_scale, max_coh_full_gp, max_coh_fg, max_coh_d2, max_coh_kalman))
+        output.close()
