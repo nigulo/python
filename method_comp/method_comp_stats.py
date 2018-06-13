@@ -32,6 +32,9 @@ if len(sys.argv) > 2:
     uniform_sampling = int(sys.argv[2]) == 1
 
 num_experiments = 100
+if len(sys.argv) > 3:
+    num_experiments = int(sys.argv[3])
+
 
 print num_experiments, n_fixed, sig_var_fixed, uniform_sampling
 
