@@ -100,9 +100,10 @@ class Prewhitener:
         if self.type == "LS":
             (best_freq, max_power, power, residue, y_fit) = ls(self.t, y, self.freqs, z0, peak_index)
             sigma = 0
+            spread = 0
             z0_or_bic = z0
         elif self.type == "BGLST":
-            (best_freq, max_power, power, residue, y_fit, bic, sigma) = self.bglst(self.t, y, self.freqs, p_value, peak_index, iter_index)
+            (best_freq, max_power, power, residue, y_fit, bic, sigma, spread) = self.bglst(self.t, y, self.freqs, p_value, peak_index, iter_index)
             total_bic += bic
             z0_or_bic = bic
         else:
@@ -132,7 +133,7 @@ class Prewhitener:
                             
                 significant_lines.append((best_freq, max_power, np.std(bs_freqs), normality, z0_or_bic))
             else:
-                significant_lines.append((best_freq, max_power, sigma, 0, z0_or_bic))
+                significant_lines.append((best_freq, max_power, sigma, 0, z0_or_bic, spread))
             specs.append(power)
             if iter_index + 1 < self.max_iters:
                 if self.type == "LS" :
@@ -149,7 +150,7 @@ class Prewhitener:
                 
         else:
             specs = [power]
-            significant_lines = [(0, 0, 0, 0, z0_or_bic)]
+            significant_lines = [(0, 0, 0, 0, z0_or_bic, 0)]
             results[str(peak_index)] = (specs, significant_lines, residue, total_bic)
         return results
     
@@ -328,6 +329,10 @@ class Prewhitener:
             if condition:
                 bglst_m = BGLST(t, y_model, np.ones(len(t))/np.var(y))
                 (freqs_m, log_probs_m) = bglst_m.calc_all(freqs_in[0], freqs_in[-1], len(freqs_in))
+                normalized_log_probs_m = log_probs_m - min(log_probs_m)
+                normalized_log_probs_m /= sum(normalized_log_probs_m)
+                spread = np.sqrt(sum((freqs_m-best_freq)**2 * normalized_log_probs_m))
+                
                 log_probs_m -= scipy.misc.logsumexp(log_probs_m)
                 probs_m = np.exp(log_probs_m)
                 probs_m /= sum(probs_m)
@@ -342,13 +347,13 @@ class Prewhitener:
                 plt.close()
                 
                 #mean = sum(freqs_m*probs_m)/sum(probs_m)
-                print "Maximum:", peak_index, best_freq, max_power, delta_bic, sigma, mean
-                return (best_freq, max_power, power, y - y_model, y_model, delta_bic, sigma)
+                print "Maximum:", peak_index, best_freq, max_power, delta_bic, sigma, mean, spread
+                return (best_freq, max_power, power, y - y_model, y_model, delta_bic, sigma, spread)
             else:
                 print "Insignificant maximum:", peak_index, best_freq, max_power, delta_bic
-                return (0, 0, power, y, np.array([]), 0, 0)
+                return (0, 0, power, y, np.array([]), 0, 0, 0)
         else:
-            return (0, 0, power, y, np.array([]), 0, 0)
+            return (0, 0, power, y, np.array([]), 0, 0, 0)
 
 def get_max_power_ind(power, peak_index):
     local_maxima_inds = mw_utils.find_local_maxima(power)

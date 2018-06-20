@@ -34,7 +34,7 @@ from sklearn.cluster import KMeans
 
 star = sys.argv[1]
     
-squared_exp_null = False
+squared_exp_null = True
 weight_with_segment_len = True
 num_iters = 50
 num_chains = 4
@@ -50,9 +50,9 @@ downsample_iters = 1
 
 print star, num_iters, num_chains
 
-time_in_days = False
-#data_dir = "../GP_input"
-data_dir = "residues_input"
+time_in_days = True
+data_dir = "../GP_input"
+#data_dir = "residues_input"
 if data_dir == "../cleaned":
     skiprows = 1
 else:
@@ -128,6 +128,8 @@ t, y, noise_var_prop = mw_utils.downsample(t, y, noise_var_prop_non_ds, 10.0/365
 n = len(t)
 
 var = np.var(y)
+# Use total noise var in parameter inference
+const_noise_var = np.ones(len(t))*var
 
 #noise_var_prop = np.ones(len(t))*var
 ###########################################################################
@@ -151,7 +153,7 @@ for i in np.arange(0, num_chains):
     #initial_param_values.append(dict(trend_var=initial_trend_var, m=initial_m))
 
 #fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
-fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=np.ones(len(t))*var, var_y=var,
+fit = model.sampling(data=dict(x=t,N=n,y=y,noise_var=const_noise_var, var_y=var,
     var_seasonal_means=seasonal_means_var, prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 
     init=initial_param_values,
     iter=num_iters, chains=num_chains, n_jobs=n_jobs)
@@ -240,7 +242,7 @@ if squared_exp_null:
     #sig_var_prior_var=seasonal_means_var*1e-10
     #length_scale_prior_var=1e-10
 
-    fit_null = model_null.sampling(data=dict(x=t,N=n,y=y,noise_var=noise_var_prop, var_y=var,
+    fit_null = model_null.sampling(data=dict(x=t,N=n,y=y,noise_var=const_noise_var, var_y=var,
         sig_var_prior_var=sig_var_prior_var, inv_length_scale_prior_var=inv_length_scale_prior_var,
         inv_length_scale_max=inv_length_scale_max,
         prior_freq_mean=prior_freq_mean, prior_freq_std=prior_freq_std), 

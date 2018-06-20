@@ -165,18 +165,20 @@ for root, dirs, files in os.walk(input_path):
 
             for (powers, found_lines, _, _), f1, f2, f_trend, p_value in zip(res, f1s, f2s, f_trends, p_values):
                 if len(found_lines) > 0:
-                    line_freqs, line_powers, line_freq_stds, line_freq_normalities, z0s = zip(*found_lines)
+                    line_freqs, line_powers, line_freq_stds, line_freq_normalities, z0s, line_freq_spreads = zip(*found_lines)
                     line_freqs = np.asarray(line_freqs)
                     line_powers = np.asarray(line_powers)
                     line_freq_stds = np.asarray(line_freq_stds)
                     line_freq_normalities = np.asarray(line_freq_normalities)
                     z0s = np.asarray(z0s)
+                    line_freq_spreads = np.asarray(line_freq_spreads)
                 else:
                     line_freqs = np.array([])
                     line_powers = np.array([])
                     line_freq_stds = np.array([])
                     line_freq_normalities = np.array([])
                     z0s = np.array([])
+                    line_freq_spreads = np.array([])
                 
                 
                 ###############################################################
@@ -308,8 +310,8 @@ for root, dirs, files in os.walk(input_path):
                 plt.close(fig)
                 fig_pdf.savefig(spectra_path+str(p_value)+"/" + star + '.pdf')
                 plt.close(fig_pdf)
-                for f, p, std, normality, z0 in found_lines:
-                    f1.write(star + ' %s %s %s %s' % (f, std, normality, z0) + "\n")
+                for f, p, std, normality, z0, spread in found_lines:
+                    f1.write(star + ' %s %s %s %s %s' % (f, std, normality, z0, spread) + "\n")
                     
                 #f1.write(star + " " + ('\n'.join(['%s %s %s %s' % (f, std, normality, z0) for f, p, std, normality, z0 in found_lines])) + "\n")
                 #f1.write(star + " " + (' '.join(['%s %s %s %s' % (1.0/f, std/f/f, normality, z0) for f, p, std, normality, z0 in found_lines])) + "\n")
