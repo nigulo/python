@@ -17,13 +17,15 @@ import mw_utils
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import GPR_QP
+from astropy.stats import LombScargle
 
 num_iters = 300
 n_eff_col = 9
 
-do_fits = False
+do_fits = True
 calc_residues = False
 save_results = True
+calc_spread = True
 
 prefix = ""
 
@@ -124,9 +126,6 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         min_t = min(t)
         max_t = max(t)
         t -= t_mean
-        if save_results and delta_bic >= 6.0 and cyc < (max_t - min_t) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
-            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + "\n")
-            output_cycles.flush()
         if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
             print cyc, length_scale, sig_var, trend_var, m
     
@@ -167,9 +166,28 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             if calc_residues:
                 (f_t, _, _) = gpr_gp.fit(t)
                 np.savetxt("residues/" + star + ".dat", np.column_stack((t + t_mean, y - f_t - m)), fmt='%f')
+            spread = 0
+            if calc_spread:
+                min_freq = 0.001
+                max_freq = 0.5
+                n_out = 1000
+                freqs = np.linspace(min_freq, max_freq, n_out)
+                power = LombScargle(t_test, f_mean, nterms=1).power(freqs, normalization='psd')#/np.var(y)
+                
+                normalized_power = power - min(power)
+                normalized_power /= sum(normalized_power)
+                spread = np.sqrt(sum((freqs-1.0/cyc)**2 * normalized_power))
+                
+                spread -= 1.0/(max(t) - min(t))
+                
+        if save_results and delta_bic >= 6.0 and cyc < (max_t - min_t) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
+            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + " " + str(spread*cyc**2) +  "\n")
+            output_cycles.flush()
+                
             
     else:
         print "Omitting " + star + " " + str(index) + " due to too low n_eff"
 
 if save_results:
     output_cycles.close()
+

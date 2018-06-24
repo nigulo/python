@@ -333,6 +333,8 @@ class Prewhitener:
                 normalized_log_probs_m /= sum(normalized_log_probs_m)
                 spread = np.sqrt(sum((freqs_m-best_freq)**2 * normalized_log_probs_m))
                 
+                spread -= 1.0/(max(t) - min(t))
+                
                 log_probs_m -= scipy.misc.logsumexp(log_probs_m)
                 probs_m = np.exp(log_probs_m)
                 probs_m /= sum(probs_m)
