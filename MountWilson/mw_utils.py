@@ -401,10 +401,10 @@ def read_bglst_cycles(file):
 
 def read_gp_cycles(file):
     time_ranges = load_time_ranges()
-    data = pd.read_csv(file, names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv(file, names=['star', 'validity', 'cyc', 'sigma', 'bic', 'spread', 'ell'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
     gp_cycles = dict()
     #for [star, count, count_used, validity, cyc, std, normality, bic, bic_diff] in data:
-    for [star, validity, cyc, std, bic] in data:
+    for [star, validity, cyc, std, bic, spread, ell] in data:
         if star == 'SUN':
             star = 'Sun'
         if not gp_cycles.has_key(star):
@@ -415,6 +415,7 @@ def read_gp_cycles(file):
             cycles.append(cyc)
             cycles.append(std)
             cycles.append(bic)
+            cycles.append(spread)
         all_cycles.append(np.asarray(cycles))
     return gp_cycles
 

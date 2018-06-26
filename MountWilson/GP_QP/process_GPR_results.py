@@ -18,6 +18,8 @@ import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import GPR_QP
 from astropy.stats import LombScargle
+import scipy.integrate as integrate
+from scipy.integrate import simps
 
 num_iters = 300
 n_eff_col = 9
@@ -25,7 +27,7 @@ n_eff_col = 9
 do_fits = True
 calc_residues = False
 save_results = True
-calc_spread = True
+#calc_spread = True
 
 prefix = ""
 
@@ -126,6 +128,11 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
         min_t = min(t)
         max_t = max(t)
         t -= t_mean
+        
+        spread = 0
+        spread_theor = 0
+        spread_theor2 = 0
+        
         if do_fits and not os.path.isfile("fits/" + prefix + star + '.pdf'):
             print cyc, length_scale, sig_var, trend_var, m
     
@@ -166,22 +173,53 @@ for [star, index, validity, cyc, cyc_se, cyc_std, length_scale, length_scale_se,
             if calc_residues:
                 (f_t, _, _) = gpr_gp.fit(t)
                 np.savetxt("residues/" + star + ".dat", np.column_stack((t + t_mean, y - f_t - m)), fmt='%f')
-            spread = 0
-            if calc_spread:
-                min_freq = 0.001
-                max_freq = 0.5
-                n_out = 1000
-                freqs = np.linspace(min_freq, max_freq, n_out)
-                power = LombScargle(t_test, f_mean, nterms=1).power(freqs, normalization='psd')#/np.var(y)
+            #if calc_spread:
+            #    freq = 1.0/cyc
+            #    min_freq = 0.001
+            #    max_freq = 0.5
+            #    n_out = 1000
+            #    freqs = np.linspace(min_freq, max_freq, n_out)
+            #    power = LombScargle(t_test, f_mean, nterms=1).power(freqs, normalization='psd')#/np.var(y)
+            #    
+            #    normalized_power = power - min(power)
+            #    normalized_power /= simps(normalized_power, freqs)
+            #    #spread = np.sqrt(sum((freqs-freq)**2 * normalized_power))
+            #    spread = np.sqrt(simps((freqs-freq)**2 * normalized_power, freqs))
+            #    
+            #    spread -= 1.0/(max(t) - min(t)) # subtract the approx. spread of the window function
+
+
+            #    fig, ax1 = plt.subplots(nrows=1, ncols=1)
+            #    #fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+            #    fig.set_size_inches(9, 5)
+            
+            #    ax1.plot(freqs, power, 'b-')
+          
+            #    #Now try it theoretically
+            #    power = np.zeros(n_out)
+            #    tau = np.linspace(-500, 500, num=10000)
+            #    i = 0
+            #    for f in freqs:
+            #        r = sig_var * np.exp(-0.5 * tau**2/length_scale/length_scale-2.0j*np.pi*f*tau) * np.cos(2.0 * np.pi*freq*tau)
+            #        #r = sig_var * np.exp(-2.0j*np.pi*f*tau) * np.cos(2.0 * np.pi*freq*tau)
+            #        #print r
+            #        #power[i] = np.fft.fft(r)
+            #        power[i] = simps(r, tau)
+            #        i += 1
+            #    normalized_power = power - min(power)
+            #    normalized_power /= simps(normalized_power, freqs)
+            #    #spread_theor = np.sqrt(sum((freqs-freq)**2 * normalized_power))
+            #    spread_theor = np.sqrt(simps((freqs-freq)**2 * normalized_power, freqs))
+            #    ax1.plot(freqs, power, 'r-')
                 
-                normalized_power = power - min(power)
-                normalized_power /= sum(normalized_power)
-                spread = np.sqrt(sum((freqs-1.0/cyc)**2 * normalized_power))
+            #    fig.savefig("fits/" + prefix + star + '_power.pdf')
+            #    plt.close()
+
+        spread_theor2 = 1.0/(2.0*np.pi*length_scale)
                 
-                spread -= 1.0/(max(t) - min(t))
                 
         if save_results and delta_bic >= 6.0 and cyc < (max_t - min_t) / 1.5 and cyc > 2.0 and cyc_std < cyc/4:
-            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + " " + str(spread*cyc**2) +  "\n")
+            output_cycles.write(star + " " + str(validity) + " " + str(cyc) + " " + str(cyc_std) + " " + str(delta_bic) + " " + str(spread_theor2*cyc**2) + " " + str(length_scale) + "\n")
             output_cycles.flush()
                 
             

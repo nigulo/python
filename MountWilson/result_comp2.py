@@ -89,6 +89,14 @@ for [star, f, std, normality, bic] in data:
     all_cycles.append(np.asarray(cycles))
 
 
+sig_wrt_red_noise_data = np.genfromtxt("GP_QP/significant_wrt_red_noise.txt", usecols=(0), dtype=None)
+sig_wrt_red_noise = dict()
+for star in sig_wrt_red_noise_data:
+    if star == 'SUN':
+        star = 'Sun'
+    sig_wrt_red_noise[star] = 0
+
+
 #gp_p_cycles = mw_utils.read_gp_cycles("GP_periodic/results_combined.txt")
 #gp_qp_cycles = mw_utils.read_gp_cycles("GP_quasiperiodic/results_combined.txt")
 
@@ -168,7 +176,10 @@ for star in keys:
         cycle_output = ""
         for cycles in gp_qp_cycles[star]:
             if len(cycles) > 0:
-                cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")"
+                if sig_wrt_red_noise.has_key(star):
+                    cycle_output += r"{\bf " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")" + ", " + str(round(cycles[3]/cycles[0]*100,1)) + r"\%}"
+                else:
+                    cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")" + ", " + str(round(cycles[3]/cycles[0]*100,1)) + "\%"
                 if i < np.shape(gp_qp_cycles[star])[0] - 1:        
                     cycle_output += r"\\ "
             i += 1        
