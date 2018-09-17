@@ -23,6 +23,12 @@ from scipy import stats
 
 include_non_ms = False
 fit_with_baliunas = False
+plot_models = False
+
+#models_color = [0.25, 0.75, 0.25] 
+models_color = [0.5, 0.5, 0.5] 
+#jyris_color_mask = [False, False, False] 
+jyris_color_mask = [False, True, False] 
 
 use_secondary_clusters = False
 plot_ro = False
@@ -190,35 +196,36 @@ data_jyri = [
     ['SAO51891', -4.327, 2.4179, 0.0041, 0, '', 0, '']
     ]
 
-for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
-    omega *= 365.25/26.09
-    r_hk = e_mag_div_e_kin-4.911-0.16
-    #r_hk = np.log10(e_mag_div_e_kin)-4.911+0.795
-    r = 0.5
-    g = 0.5
-    b = 0.5
-    #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 150, 0, "Warnecke 2018"]]
-
-for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
-    size = 150
-    if sim[-4:] == r"{a}$":
-        # Make points of high resulution runs bigger
-        size = 300
-    omega *= 365.25/26.09
-    #global
-    r_hk =  e_mag/e_kin-4.911-0.197
-    #r_hk =  np.log10(e_mag/e_kin)-4.911+0.704
-    #r_hk =  np.log10(e_mag/e_kin)/4.0-4.911+0.330481289227
-
-    #surface
-    #r_hk =  np.log10(e_mag/e_kin)-4.911+0.70370350603
-    #r_hk = np.sqrt(np.sqrt(e_mag/e_kin))/(0.633057100075-0.322017343435)-4.911-1.5
-    r = 0.5
-    g = 0.5
-    b = 0.5
-    print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-    ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2018"]]
+if plot_models:
+    for sim, omega, p_cyc, e_mag_div_e_kin in sim_data_joern:
+        omega *= 365.25/26.09
+        r_hk = e_mag_div_e_kin-4.911-0.16
+        #r_hk = np.log10(e_mag_div_e_kin)-4.911+0.795
+        r = models_color[0]
+        g = models_color[1]
+        b = models_color[2]
+        #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+        ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 150, 0, "Warnecke 2018"]]
+    
+    for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
+        size = 150
+        if sim[-4:] == r"{a}$":
+            # Make points of high resulution runs bigger
+            size = 300
+        omega *= 365.25/26.09
+        #global
+        r_hk =  e_mag/e_kin-4.911-0.197
+        #r_hk =  np.log10(e_mag/e_kin)-4.911+0.704
+        #r_hk =  np.log10(e_mag/e_kin)/4.0-4.911+0.330481289227
+    
+        #surface
+        #r_hk =  np.log10(e_mag/e_kin)-4.911+0.70370350603
+        #r_hk = np.sqrt(np.sqrt(e_mag/e_kin))/(0.633057100075-0.322017343435)-4.911-1.5
+        r = models_color[0]
+        g = models_color[1]
+        b = models_color[2]
+        print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
+        ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2018"]]
 
 for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
     p_rot /= 365.25
@@ -229,17 +236,29 @@ for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
         if grade1 >= min_jyris_grade:
             c = 0.5*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
             r = c
-            g = 0.75
-            b = c  
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
+            g = c
+            b = c        
+            if jyris_color_mask[0]:
+                r = 0.75
+            if jyris_color_mask[1]:
+                g = 0.75
+            if jyris_color_mask[2]:
+                b = 0.75
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
     if p_cyc_2 > 0:
         grade2 = get_jyris_grade(grade2)
         if grade2 >= min_jyris_grade:
             c = 0.5*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
             r = c
-            g = 0.75
+            g = c
             b = c        
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', 1/omega, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
+            if jyris_color_mask[0]:
+                r = 0.75
+            if jyris_color_mask[1]:
+                g = 0.75
+            if jyris_color_mask[2]:
+                b = 0.75
+            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
     if len(cycles) > 0:
         ext_data_for_plot["Jyri_" + star] = cycles
         data_for_fit[star[2:]] = cycles
@@ -248,10 +267,10 @@ def read_gp_cycles(file):
     max_bic = None
     min_bic = None
     all_cycles = dict()
-    data = pd.read_csv(file, names=['star', 'validity', 'cyc', 'sigma', 'bic'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
+    data = pd.read_csv(file, names=['star', 'validity', 'cyc', 'sigma', 'bic', 'spread', 'ell'], header=None, dtype=None, sep='\s+', engine='python').as_matrix()
     
     #data = np.genfromtxt(file, dtype=None, skip_header=1)
-    for [star, validity, cyc, std, bic] in data:
+    for [star, validity, cyc, std, bic, spread, ell] in data:
         #if star == 'SUNALL':
         #    star = 'SUN'
         #print star, cyc, std_2
@@ -440,6 +459,7 @@ def fit_data(data, ax):
     
     print "ys_inactive", ys_inactive
     print "xs_inactive", xs_inactive
+    print xs
     slope, intercept, r_value, p_value, std_err = stats.linregress(xs_inactive, ys_inactive)
     fit_inactive = xs_inactive * slope + intercept
     xs_for_gp = np.linspace(fig1b_left, fig1b_right, 20)
@@ -498,11 +518,12 @@ def fit_data(data, ax):
     #ys_err = 2.0 * np.sqrt(ys_var)
     #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
 
-    # Active longitude vs non active longitude
-    ax.plot([-4.46, -4.46], [-3.7, -1.2], '-.', lw=3.0, color='orange')
-    ax.plot([-4.97, -4.97], [-3.7, -1.2], '-.', lw=3.0, color='teal')
-    ax.text(-4.48, -3.5, 'obs', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "orange")
-    ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "teal")
+    if plot_models:
+        # Active longitude vs non active longitude
+        ax.plot([-4.46, -4.46], [-3.7, -1.2], '-.', lw=3.0, color='orange')
+        ax.plot([-4.97, -4.97], [-3.7, -1.2], '-.', lw=3.0, color='teal')
+        ax.text(-4.48, -3.5, 'obs', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "orange")
+        ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "teal")
     
     print "r_hk_middle", r_hk_middle
     ax.add_patch(patches.FancyArrowPatch((fig1b_left, -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20, color="r", linewidth=2))
@@ -681,6 +702,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     else:
         min_bic, max_bic, cycles = read_gp_cycles(input_path)
 
+    print "Cycles", cycles
     clustered = False
     ###############################################################################
     suffix = ""
@@ -960,6 +982,7 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
     # Calculate trend lines for the branches
     
     active = np.asarray(active)
+    print clustered
     inactive = np.asarray(inactive)
     ((mu_alpha, mu_beta), (sigma_alpha, sigma_beta), y_model, loglik) = bayes_lin_reg(active[:,0], active[:,1], np.ones(len(active[:,2]))/active[:,2])
     rhks = np.linspace(min(active[:,0]), max(active[:,0]), 100)
