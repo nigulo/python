@@ -23,22 +23,23 @@ from scipy import stats
 
 include_non_ms = False
 fit_with_baliunas = False
-plot_models = True
+unify_obs = True
+plot_models = False
 unify_models = True
-plot_jyris_points = False
+plot_jyris_points = True
 plot_axi_to_naxi = False
 
-active_color = [0.5, 0.5, 0.5]
-#active_color = None
-#active_sym = "*"
-active_sym = "x"
-inactive_color = [0.5, 0.5, 0.5] 
-#inactive_color = None 
-#inactive_sym = "*"
-inactive_sym = "+"
+#active_color = [0.5, 0.5, 0.5]
+active_color = None
+active_sym = "*"
+#active_sym = "x"
+#inactive_color = [0.5, 0.5, 0.5] 
+inactive_color = None 
+inactive_sym = "*"
+#inactive_sym = "+"
 models_color = [0.0, 0.0, 1.0] 
-#models_color = [0.5, 0.5, 0.5] 
-jyris_color_mask = [False, False, False] 
+#models_color = [0.5, 0.5, 0.5]
+jyris_color_mask = [False, False, True] 
 #jyris_color_mask = [False, True, False] 
 
 use_secondary_clusters = False
@@ -278,12 +279,15 @@ if plot_jyris_points:
                 g = c
                 b = c        
                 if jyris_color_mask[0]:
-                    r = 0.75
+                    r = 1.0
                 if jyris_color_mask[1]:
-                    g = 0.75
+                    g = 1.0
                 if jyris_color_mask[2]:
-                    b = 0.75
-                cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
+                    b = 1.0
+                if unify_obs:
+                    cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, active_sym, p_rot, p_cyc_1, 0, 0, 250, d_p_rot, None])
+                else:
+                    cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])                    
         if p_cyc_2 > 0:
             grade2 = get_jyris_grade(grade2)
             if grade2 >= min_jyris_grade:
@@ -292,12 +296,15 @@ if plot_jyris_points:
                 g = c
                 b = c        
                 if jyris_color_mask[0]:
-                    r = 0.75
+                    r = 1.0
                 if jyris_color_mask[1]:
-                    g = 0.75
+                    g = 1.0
                 if jyris_color_mask[2]:
-                    b = 0.75
-                cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
+                    b = 1.0
+                if unify_obs:
+                    cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, active_sym, p_rot, p_cyc_2, 0, 0, 250, d_p_rot, None])
+                else:
+                    cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])                    
         if len(cycles) > 0:
             ext_data_for_plot["Jyri_" + star] = cycles
             data_for_fit[star[2:]] = cycles
@@ -643,7 +650,7 @@ def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
                         ax4.errorbar(np.log(1.0/p_rot), y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
                     if plot_ro and not ax12 is None:
                         ax12.errorbar(ro, y, yerr=[[err1], [err2]], fmt=sym, lw=1.5, capsize=3, capthick=1.5, color=[r, g, b, alpha], markersize=np.sqrt(size), mew=1.5, mfc=facecolor, fillstyle=fillstyle, mec=[r, g, b, alpha])
-                if (star != "SUN" and handle is not None and not used_labels.has_key(label)):
+                if (star != "SUN" and handle is not None and label is not None and not used_labels.has_key(label)):
                     used_labels[label] = None
                     handles.append(handle)
                     labels.append(label)
