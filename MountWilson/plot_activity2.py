@@ -23,12 +23,23 @@ from scipy import stats
 
 include_non_ms = False
 fit_with_baliunas = False
-plot_models = False
+plot_models = True
+unify_models = True
+plot_jyris_points = False
+plot_axi_to_naxi = False
 
-#models_color = [0.25, 0.75, 0.25] 
-models_color = [0.5, 0.5, 0.5] 
-#jyris_color_mask = [False, False, False] 
-jyris_color_mask = [False, True, False] 
+active_color = [0.5, 0.5, 0.5]
+#active_color = None
+#active_sym = "*"
+active_sym = "x"
+inactive_color = [0.5, 0.5, 0.5] 
+#inactive_color = None 
+#inactive_sym = "*"
+inactive_sym = "+"
+models_color = [0.0, 0.0, 1.0] 
+#models_color = [0.5, 0.5, 0.5] 
+jyris_color_mask = [False, False, False] 
+#jyris_color_mask = [False, True, False] 
 
 use_secondary_clusters = False
 plot_ro = False
@@ -39,8 +50,29 @@ legend_fs = 11
 branch_label_fs = 15
 axis_unit_fs = 15
 
-fig1b_left = -5.1
-fig1b_right = -4.0
+if plot_jyris_points:
+    fig1b_bottom = -3.8
+    fig1b_top = -1.2
+    fig1b_left = -5.1
+    fig1b_right = -4.0
+    arrow_y = -3.72
+    arrow_text_y = -3.67
+else:
+    if plot_models:
+        fig1b_bottom = -3.8
+        fig1b_top = -1.2
+        fig1b_left = -5.1
+        fig1b_right = -4.2
+        arrow_y = -3.72
+        arrow_text_y = -3.67
+    else:
+        fig1b_bottom = -3.45
+        fig1b_top = -1.75
+        fig1b_left = -5.1
+        fig1b_right = -4.2
+        arrow_y = -3.4
+        arrow_text_y = -3.35
+    
 
 try:
     from itertools import izip_longest  # added in Py 2.6
@@ -205,10 +237,13 @@ if plot_models:
         g = models_color[1]
         b = models_color[2]
         #print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-        ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 150, 0, "Warnecke 2018"]]
+        if unify_models:
+            ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, 300, 0, "Models"]]
+        else:
+            ext_data_for_plot["Joern_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, 's', 1/omega, p_cyc, 0, 0, 300, 0, "Warnecke 2018"]]
     
     for sim, omega, e_kin, e_mag, p_cyc in sim_data_mariangela:
-        size = 150
+        size = 300
         if sim[-4:] == r"{a}$":
             # Make points of high resulution runs bigger
             size = 300
@@ -225,43 +260,47 @@ if plot_models:
         g = models_color[1]
         b = models_color[2]
         print sim, r_hk, -np.log10(p_cyc * omega), p_cyc, 1.0/omega
-        ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2018"]]
+        if unify_models:
+            ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Models"]]
+        else:
+            ext_data_for_plot["Mariangela_" + sim] = [[r_hk, -np.log10(p_cyc * omega), 0.0, 0.0, r, g, b, 1.0, 0, '^', 1/omega, p_cyc, 0, 0, size, 0, "Viviani et al. 2018"]]
 
-for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
-    p_rot /= 365.25
-    err = d_p_rot/p_rot/np.log(10)
-    cycles = []
-    if p_cyc_1 > 0:
-        grade1 = get_jyris_grade(grade1)
-        if grade1 >= min_jyris_grade:
-            c = 0.5*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
-            r = c
-            g = c
-            b = c        
-            if jyris_color_mask[0]:
-                r = 0.75
-            if jyris_color_mask[1]:
-                g = 0.75
-            if jyris_color_mask[2]:
-                b = 0.75
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
-    if p_cyc_2 > 0:
-        grade2 = get_jyris_grade(grade2)
-        if grade2 >= min_jyris_grade:
-            c = 0.5*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
-            r = c
-            g = c
-            b = c        
-            if jyris_color_mask[0]:
-                r = 0.75
-            if jyris_color_mask[1]:
-                g = 0.75
-            if jyris_color_mask[2]:
-                b = 0.75
-            cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
-    if len(cycles) > 0:
-        ext_data_for_plot["Jyri_" + star] = cycles
-        data_for_fit[star[2:]] = cycles
+if plot_jyris_points:
+    for star, r_hk, p_rot, d_p_rot, p_cyc_1, grade1, p_cyc_2, grade2 in data_jyri:
+        p_rot /= 365.25
+        err = d_p_rot/p_rot/np.log(10)
+        cycles = []
+        if p_cyc_1 > 0:
+            grade1 = get_jyris_grade(grade1)
+            if grade1 >= min_jyris_grade:
+                c = 0.5#*(1.0 - (grade1 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
+                r = c
+                g = c
+                b = c        
+                if jyris_color_mask[0]:
+                    r = 0.75
+                if jyris_color_mask[1]:
+                    g = 0.75
+                if jyris_color_mask[2]:
+                    b = 0.75
+                cycles.append([r_hk, np.log10(p_rot/p_cyc_1), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_1, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
+        if p_cyc_2 > 0:
+            grade2 = get_jyris_grade(grade2)
+            if grade2 >= min_jyris_grade:
+                c = 0.5#0.5*(1.0 - (grade2 - min_jyris_grade)/(max_jyris_grade - min_jyris_grade))
+                r = c
+                g = c
+                b = c        
+                if jyris_color_mask[0]:
+                    r = 0.75
+                if jyris_color_mask[1]:
+                    g = 0.75
+                if jyris_color_mask[2]:
+                    b = 0.75
+                cycles.append([r_hk, np.log10(p_rot/p_cyc_2), 0.0, 0.0, r, g, b, 1.0, 0, '*', p_rot, p_cyc_2, 0, 0, 250, d_p_rot, "Lehtinen et al. 2016"])
+        if len(cycles) > 0:
+            ext_data_for_plot["Jyri_" + star] = cycles
+            data_for_fit[star[2:]] = cycles
 
 def read_gp_cycles(file):
     max_bic = None
@@ -514,11 +553,12 @@ def fit_data(data, ax):
     gpr.init(xs_for_gp, ys_for_gp)
     xs_fit = np.linspace(fig1b_left, fig1b_right, 500)
     (ys_fit, ys_var, log_lik) = gpr.fit(xs_fit)
-    ax.plot(xs_fit, ys_fit+y_mean, 'k--', lw=3.0)
+    if plot_jyris_points:
+        ax.plot(xs_fit, ys_fit+y_mean, 'k--', lw=3.0)
     #ys_err = 2.0 * np.sqrt(ys_var)
     #ax.fill_between(xs_fit, ys_fit + ys_err, ys_fit - ys_err, alpha=0.1, facecolor='gray', interpolate=True)
 
-    if plot_models:
+    if plot_axi_to_naxi:
         # Active longitude vs non active longitude
         ax.plot([-4.46, -4.46], [-3.7, -1.2], '-.', lw=3.0, color='orange')
         ax.plot([-4.97, -4.97], [-3.7, -1.2], '-.', lw=3.0, color='teal')
@@ -526,16 +566,16 @@ def fit_data(data, ax):
         ax.text(-4.99, -3.5, 'models', {'ha': 'center', 'va': 'bottom'}, rotation=90, size=branch_label_fs, color = "teal")
     
     print "r_hk_middle", r_hk_middle
-    ax.add_patch(patches.FancyArrowPatch((fig1b_left, -3.72), (r_hk_middle, -3.72), arrowstyle='<->', mutation_scale=20, color="r", linewidth=2))
+    ax.add_patch(patches.FancyArrowPatch((fig1b_left, arrow_y), (r_hk_middle, arrow_y), arrowstyle='<->', mutation_scale=20, color="r", linewidth=2))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (r_hk_right, -3.72), arrowstyle='<->', mutation_scale=20))
     #ax.add_patch(patches.FancyArrowPatch((r_hk_right, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20))
-    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, -3.72), (fig1b_right, -3.72), arrowstyle='<->', mutation_scale=20, color="b", linewidth=2))
+    ax.add_patch(patches.FancyArrowPatch((r_hk_middle, arrow_y), (fig1b_right, arrow_y), arrowstyle='<->', mutation_scale=20, color="b", linewidth=2))
     #ax.annotate(s='Arrow', xy=(r_hk_middle, -3.5), xytext=(max(r_hk_left, -5.1), -3.5), arrowprops=dict(arrowstyle='<->'))
     #ax.arrow(max(r_hk_left, -5.1), -3.5, r_hk_middle-max(r_hk_left, -5.1), 0, head_width=0.05, head_length=0.1, fc='k', ec='k')
-    ax.text((fig1b_left + r_hk_middle)/2, -3.67, 'I', size=branch_label_fs, ha='center', va='center', color = "r")
+    ax.text((fig1b_left + r_hk_middle)/2, arrow_text_y, 'I', size=branch_label_fs, ha='center', va='center', color = "r")
     #ax.text((r_hk_middle+ r_hk_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center')
     #ax.text((r_hk_right + fig1b_right)/2, -3.67, 'T', size=branch_label_fs, ha='center', va='center')
-    ax.text((r_hk_middle+ fig1b_right)/2, -3.67, 'A', size=branch_label_fs, ha='center', va='center', color = "b")
+    ax.text((r_hk_middle+ fig1b_right)/2, arrow_text_y, 'A', size=branch_label_fs, ha='center', va='center', color = "b")
 
 
 def plot_data(data, save, ax11, ax12, ax2, ax31, ax32, ax4):
@@ -876,9 +916,9 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                             #print val - val1, val2 - val, err
                             delta_i = None
                             if primary_cycle:
-                                size = 200
+                                size = 400
                             else:
-                                size = 100
+                                size = 200
                             primary_cycle = False
                             if baliunas:
                                 alpha = 0.7
@@ -911,22 +951,32 @@ for type in ["BGLST", "GP_P", "GP_QP"]:
                                         c = 0.5 - 0.5 * (bic - min_bic)/(max_bic - min_bic)
                                     if dist1 < dist2:
                                         label = "Active"
-                                        sym = "+"
+                                        sym = active_sym
                                         delta_i = val - (a1 * r_hk + b1)
-                                        r = c
-                                        g = c
-                                        b = 1.0
+                                        if active_color is not None:
+                                            r = active_color[0]
+                                            g = active_color[0]
+                                            b = active_color[0]
+                                        else:
+                                            r = c
+                                            g = c
+                                            b = 1.0
                                         active_cyc_mean += p_cyc/365.25
                                         num_active += 1
                                         active.append([r_hk, val, err])
                                     else:
                                         size /= np.sqrt(2)
                                         label = "Inactive"
-                                        sym = "x"
+                                        sym = inactive_sym
                                         delta_i = val - (a2 * r_hk + b2)
-                                        r = 1.0
-                                        g = c
-                                        b = c
+                                        if inactive_color is not None:
+                                            r = inactive_color[0]
+                                            g = inactive_color[0]
+                                            b = inactive_color[0]
+                                        else:
+                                            r = 1.0
+                                            g = c
+                                            b = c
                                         inactive_cyc_mean += p_cyc/365.25
                                         num_inactive += 1
                                         inactive.append([r_hk, val, err])
@@ -1007,7 +1057,7 @@ plt.close(fig1)
 #plt.close(fig1a)
 
 
-ax1b.set_ylim(-3.8, -1.2)
+ax1b.set_ylim(fig1b_bottom, fig1b_top)
 ax1b.set_xlim(fig1b_left, fig1b_right)
 ax1b.set_ylabel(r'${\rm log}P_{\rm rot}/P_{\rm cyc}$', fontsize=axis_label_fs)
 #ax1b.set_ylabel(r'Rotation to cycle ratio', fontsize=axis_label_fs)
