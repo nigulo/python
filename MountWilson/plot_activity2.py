@@ -6,6 +6,8 @@ Created on Thu Mar 30 09:35:24 2017
 """
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import colors as mcolors

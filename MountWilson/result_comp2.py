@@ -177,9 +177,10 @@ for star in keys:
         for cycles in gp_qp_cycles[star]:
             if len(cycles) > 0:
                 if sig_wrt_red_noise.has_key(star):
-                    cycle_output += r"{\bf " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")" + ", " + str(round(cycles[3]/cycles[0]*100,1)) + r"\%}"
+                    cycle_output += r"{\bf " + str(round(cycles[0],2)) + r"}"
                 else:
-                    cycle_output += " " + str(round(cycles[0],2)) + " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")" + ", " + str(round(cycles[3]/cycles[0]*100,1)) + "\%"
+                    cycle_output += " " + str(round(cycles[0],2))
+                cycle_output += " $\pm$ " + str(round(cycles[1],2)) + " (" + str(round(cycles[2],1)) + ")" + " & " + str(round(cycles[3],1))
                 if i < np.shape(gp_qp_cycles[star])[0] - 1:        
                     cycle_output += r"\\ "
             i += 1        
@@ -187,7 +188,7 @@ for star in keys:
             cycle_output = r"\begin{tabular}[t]{@{}l@{}}" + cycle_output + "\end{tabular}"
         output += cycle_output
     else:
-        output += "--"
+        output += "-- & --"
     output += " & "
 
     ##### Commenting Goettingen out for now
