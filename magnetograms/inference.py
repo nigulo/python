@@ -19,7 +19,7 @@ import numpy.random as random
 import numpy.linalg as la
 
 num_iters = 50
-num_chains = 4
+num_chains = 1
 
 if len(sys.argv) > 3:
     num_iters = int(sys.argv[3])
@@ -27,8 +27,6 @@ if len(sys.argv) > 4:
     num_chains = int(sys.argv[4])
 
 n_jobs = num_chains
-n_tries = 1
-downsample_iters = 1
 
 model = pickle.load(open('model.pkl', 'rb'))
 
@@ -65,6 +63,11 @@ noise_var = 0.1
 loglik = 0
 last_loglik = None
 eps = 0.1
+
+
+print np.shape(x)
+print np.shape(y)
+print n
 
 while last_loglik is None or (abs(loglik - loglik) > eps):
 
