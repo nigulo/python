@@ -6,15 +6,18 @@ mpl.use('Agg')
 mpl.rcParams['figure.figsize'] = (20, 30)
 import pickle
 import numpy as np
-import pylab as plt
-from filelock import FileLock
-import pandas as pd
+#import pylab as plt
+#import pandas as pd
+import GPR_div_free as GPR_div_free
+import scipy.misc
+import numpy.random as random
 
-import os
-import os.path
-from scipy.stats import gaussian_kde
-from sklearn.cluster import KMeans
-    
+#import os
+#import os.path
+#from scipy.stats import gaussian_kde
+#from sklearn.cluster import KMeans
+import numpy.linalg as la
+
 num_iters = 50
 num_chains = 4
 
@@ -29,13 +32,33 @@ downsample_iters = 1
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n = 100
-x = np.zeros((n, 2))
-y = np.array((n, 2))
+n1 = 10
+n2 = 10
+n = n1*n2
+x1_range = 10.0
+x2_range = 10.0
+x = np.dstack(np.meshgrid(np.linspace(0, x1_range, n1), np.linspace(0, x2_range, n2))).reshape(-1, 2)
 
-thetas = np.zeros(n)
+print x
 
-m = 0
+sig_var_train = 0.2
+length_scale_train = 0.01
+noise_var_train = 0.1
+m_train = 0.0
+
+gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+K = gp_train.calc_cov(x, x, True)
+
+L = la.cholesky(K)
+s = np.random.normal(0.0, 1.0, 2*n)
+
+y = np.repeat(m_train, 2*n) + np.dot(L, s)
+y = np.reshape(y, (n, 2))
+
+print y
+thetas = random.uniform(size=n)
+
+m = 0.0
 length_scale = 0.01
 noise_var = 0.1
 
@@ -73,3 +96,19 @@ while last_loglik is None or (abs(loglik - loglik) > eps):
     print "m", m
     
     last_loglik = loglik
+    
+    gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+    for i in np.arange(0, n):
+        loglik1 = gp.init(x, y)
+        y[i][0] = -y[i][0]
+        y[i][1] = -y[i][1]
+        loglik2 = gp.init(x, y)
+        y[i][0] = -y[i][0]
+        y[i][1] = -y[i][1]
+        
+        thetas[i] = thetas[i] + loglik1 - scipy.misc.logsumexp([loglik1, loglik2], b=[thetas[i], 1.0-thetas[i]])
+        
+    for i in np.arange(0, n):
+        if thetas[i] < 0.5:
+            y[i][0] = -y[i][0]
+            y[i][1] = -y[i][1]

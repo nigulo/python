@@ -17,37 +17,25 @@ class GPR_div_free:
         self.noise_var = noise_var
 
     def calc_cov(self, x1, x2, data_or_test):
-        K = np.zeros((np.shape(x1)[0]*np.shape(x1)[1], np.shape(x2)[0]*np.shape(x2)[1]))
+        K = np.zeros((np.size(x1), np.size(x2)))
         for i in np.arange(0, np.shape(x1)[0], step=2):
             for j in np.arange(0, np.shape(x2)[0], step=2):
                 x_diff = x1[i] - x2[j]
                 x_diff_sq = np.dot(x_diff, x_diff)
                 for i1 in np.arange(0, np.shape(x1)[1]):
                     i_abs = 2*i + i1
-                    for j1 in np.arange(0, np.shape(x2)[1]:
+                    for j1 in np.arange(0, np.shape(x2)[1]):
                         j_abs = 2*j + j1
                         K[i_abs, j_abs] = x_diff[i1]*x_diff[j1]
-                        if (i1 == j1) {
+                        if (i1 == j1):
                             K[i_abs, j_abs] += 1-x_diff_sq
-                        }
-                        K[i_abs, j_abs] *= inv_length_scale_sq
-                        K[i_abs, j_abs] *= sig_var * exp(-0.5 * inv_length_scale_sq * x_diff_sq)
+                        K[i_abs, j_abs] *= self.inv_length_scale_sq
+                        K[i_abs, j_abs] *= self.sig_var * np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
                 
-                if self.sig_var > 0 and self.freq > 0:
-                    if self.length_scale2 > 0:
-                        K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale) * np.exp(-2.0 * np.sin(np.pi*self.freq*(t1[i] - t2[j]))**2/self.length_scale2/self.length_scale2)
-                    else:
-                        K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale) * np.cos(2.0 * np.pi*self.freq*(t1[i] - t2[j]))
-                elif self.sig_var > 0 and self.freq == 0:
-                    K[i, j] = self.sig_var * np.exp(-0.5 * (t1[i] - t2[j])**2/self.length_scale/self.length_scale)
-                if self.trend_var > 0:
-                    K[i, j] += self.trend_var * (t1[i] - self.c)*(t2[j] - self.c)
-                if self.rot_freq > 0 and self.rot_amplitude > 0:
-                    K[i, j] += self.rot_amplitude * np.cos(2.0 * np.pi*self.rot_freq*(t1[i] - t2[j]))
         if data_or_test:
-            assert(len(t1) == len(t2))
+            assert(np.size(x1) == np.size(x2))
             if (np.isscalar(self.noise_var)):
-                K += np.identity(len(t1))*self.noise_var
+                K += np.identity(np.size(x1))*self.noise_var
             else:
                 K += np.diag(self.noise_var)
         return K
@@ -64,6 +52,8 @@ class GPR_div_free:
         self.K = self.calc_cov(x, x, True)
         self.L = la.cholesky(self.K)
         self.alpha = la.solve(self.L.T, la.solve(self.L, self.y_flat))
+        self.loglik = -0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+        return self.loglik
 
     def fit(self, x_test):
         K_test = self.calc_cov(x_test, self.x, False)
@@ -71,8 +61,7 @@ class GPR_div_free:
         v = la.solve(self.L, K_test.T)
         covar = self.calc_cov(x_test, x_test, False) - np.dot(v.T, v)
         var = np.diag(covar)
-        loglik = -0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)
-        return (f_mean, var, loglik)
+        return (f_mean, var)
     
     def cv(self, x_test, y_test, noise_test):
         if np.isscalar(x_test):
@@ -86,7 +75,7 @@ class GPR_div_free:
             k_test = np.shape(x_test)[1]
         y_test_flat = np.reshape(y_test, (k_test*n_test, -1))
         
-        K_test = self.calc_cov(t_test, self.t, False)
+        K_test = self.calc_cov(x_test, self.t, False)
         f_mean = np.dot(K_test, self.alpha)
         v = la.solve(self.L, K_test.T)
         covar = self.calc_cov(x_test, x_test, False) - np.dot(v.T, v)
