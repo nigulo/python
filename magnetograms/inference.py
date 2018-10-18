@@ -40,12 +40,16 @@ x = np.dstack(np.meshgrid(np.linspace(0, x1_range, n1), np.linspace(0, x2_range,
 print x
 
 sig_var_train = 0.2
-length_scale_train = 0.01
+length_scale_train = 1.0
 noise_var_train = 0.1
 m_train = 0.0
 
 gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
 K = gp_train.calc_cov(x, x, True)
+
+for i in np.arange(0, n1):
+    for j in np.arange(0, n2):
+        assert(K[i, j]==K[j, i])
 
 L = la.cholesky(K)
 s = np.random.normal(0.0, 1.0, 2*n)

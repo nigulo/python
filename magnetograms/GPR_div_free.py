@@ -26,10 +26,9 @@ class GPR_div_free:
                     i_abs = 2*i + i1
                     for j1 in np.arange(0, np.shape(x2)[1]):
                         j_abs = 2*j + j1
-                        K[i_abs, j_abs] = x_diff[i1]*x_diff[j1]
+                        K[i_abs, j_abs] = x_diff[i1]*x_diff[j1]*self.inv_length_scale_sq
                         if (i1 == j1):
-                            K[i_abs, j_abs] += 1-x_diff_sq
-                        K[i_abs, j_abs] *= self.inv_length_scale_sq
+                            K[i_abs, j_abs] += 1-x_diff_sq*self.inv_length_scale_sq
                         K[i_abs, j_abs] *= self.sig_var * np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
                 
         if data_or_test:
