@@ -29,30 +29,47 @@ downsample_iters = 1
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-initial_param_values = []
-for i in np.arange(0, num_chains):                    
-    initial_m = orig_mean
-    initial_inv_length_scale = 0.0001
-    initial_param_values.append(dict(m=initial_m))
+n = 100
+x = np.zeros((n, 2))
+y = np.array((n, 2))
 
-fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=const_noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
+thetas = np.zeros(n)
 
-results = fit.extract()
+m = 0
+length_scale = 0.01
+noise_var = 0.1
 
-loglik_samples = results['lp__']
-loglik = np.mean(loglik_samples)
+loglik = 0
+last_loglik = None
+eps = 0.1
 
-length_scale_samples = results['length_scale'];
-length_scale = np.mean(length_scale_samples)
+while last_loglik is None or (abs(loglik - loglik) > eps):
 
-sig_var_samples = results['sig_var']
-sig_var = np.mean(sig_var_samples)
-
-m_samples = results['m'];
-m = np.mean(m_samples)
-
-print "sig_var=", sig_var
-print "length_scale", length_scale
-print "m", m
-
-
+    initial_param_values = []
+    for i in np.arange(0, num_chains):                    
+        initial_m = m
+        initial_length_scale = length_scale
+        initial_param_values.append(dict(m=initial_m))
+    
+    fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
+    
+    results = fit.extract()
+    
+    loglik_samples = results['lp__']
+    loglik = np.mean(loglik_samples)
+    
+    length_scale_samples = results['length_scale'];
+    length_scale = np.mean(length_scale_samples)
+    
+    sig_var_samples = results['sig_var']
+    sig_var = np.mean(sig_var_samples)
+    
+    m_samples = results['m'];
+    m = np.mean(m_samples)
+    
+    print "loglik=", loglik, "last_loglik=", last_loglik
+    print "sig_var=", sig_var
+    print "length_scale", length_scale
+    print "m", m
+    
+    last_loglik = loglik
