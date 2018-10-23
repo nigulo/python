@@ -18,8 +18,8 @@ parameters {
     real<lower=0> length_scale;
     real<lower=0> sig_var;
     real m;
-    vector[N*2] z;
-    simplex[2] theta[N];
+    //vector[N*2] z;
+    //simplex[2] theta[N];
 }
 
 transformed parameters {

@@ -42,16 +42,16 @@ class GPR_div_free:
     def init(self, x, y):
         self.n = np.shape(x)[0]
         if (len(np.shape(x)) > 1):
-            self.k = 1
-        else:
             self.k = np.shape(x)[1]
+        else:
+            self.k = 1
         self.x = x
         self.y = y
         self.y_flat = np.reshape(y, (self.k*self.n, -1))
         self.K = self.calc_cov(x, x, True)
         self.L = la.cholesky(self.K)
         self.alpha = la.solve(self.L.T, la.solve(self.L, self.y_flat))
-        self.loglik = -0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+        self.loglik = np.asscalar(-0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi))
         return self.loglik
 
     def fit(self, x_test):
@@ -69,9 +69,9 @@ class GPR_div_free:
             noise_test = np.array([noise_test])
         n_test = np.shape(x_test)[0]
         if (len(np.shape(x_test)) > 1):
-            k_test = 1
-        else:
             k_test = np.shape(x_test)[1]
+        else:
+            k_test = 1
         y_test_flat = np.reshape(y_test, (k_test*n_test, -1))
         
         K_test = self.calc_cov(x_test, self.t, False)
