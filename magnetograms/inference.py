@@ -65,8 +65,7 @@ print y_orig
 
 for i in np.arange(0, n):
     if np.random.uniform() < 0.5:
-        y[i][0] = -y[i][0]
-        y[i][1] = -y[i][1]
+        y[i] = y[i]*-1
 
 
 
@@ -75,7 +74,7 @@ length_scale = 0.01
 noise_var = 0.1
 
 eps = 0.001
-learning_rate = 0.5
+learning_rate = 1.0
 
 
 print np.shape(x)
@@ -83,6 +82,7 @@ print np.shape(y)
 print n
 
 def algorithm_a(x, y, y_orig):
+    y_in = np.array(y)
     loglik = None
     max_loglik = None
 
@@ -133,54 +133,64 @@ def algorithm_a(x, y, y_orig):
         print "loglik=", loglik, "max_loglik=", max_loglik
         
         if max_loglik is None or loglik > max_loglik:
+            num_tries = 1
             max_loglik = loglik
         
         gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
-        flipped_count = 0
+
+        y_last = np.array(y)
         for i in np.random.choice(n, size=1, replace=False):
-            loglik1 = gp.init(x, y)
             js = []
             for j in np.arange(0, n):
                 x_diff = x[j] - x[i]
                 if (np.dot(x_diff, x_diff) < length_scale**2/4):
-                    y[j][0] = -y[j][0]
-                    y[j][1] = -y[j][1]
                     js.append(j)
+            for j in js:
+                y[j] = np.array(y_in[j])
+            loglik1 = gp.init(x, y)
+            for j in js:
+                y[j] = np.array(y_in[j])*-1
             loglik2 = gp.init(x, y)
-            #print loglik1, loglik2
-            print js
+
+            if (loglik1 > loglik or loglik2 > loglik):    
+                thetas_i = thetas[i]
+                exp_theta = np.exp(thetas_i)
+                #new_theta = loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]))
+                #thetas[i] = new_theta
+                new_theta = thetas_i + loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]), b=np.array([exp_theta, 1.0-exp_theta]))
+                thetas[i] += learning_rate * (new_theta - thetas_i)
     
-            exp_theta = np.exp(thetas[i])
-            new_theta = thetas[i] + loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]), b=np.array([exp_theta, 1.0-exp_theta]))
-            thetas[i] += learning_rate * (new_theta - thetas[i])
-    
-            r = np.log(random.uniform())
-            thetas_i = thetas[i]
-            if r < thetas[i]:
+                thetas_i = thetas[i]
+        
+                print np.exp(thetas_i), loglik1, loglik2
+                #r = np.log(random.uniform())
                 for j in js:
                     thetas[j] = thetas_i
-                    y[j][0] = -y[j][0]
-                    y[j][1] = -y[j][1]
+                    if thetas_i > np.log(0.5):#r < thetas_i
+                        #assert(loglik1 >= loglik2)
+                        y[j] = np.array(y_in[j])
+                    else:
+                        #assert(loglik2 >= loglik1)
+                        y[j] = np.array(y_in[j])*-1
+                        
+                #if thetas_i > np.log(0.5):#r < thetas_i
+                #    for j in js:
+                #        thetas[j] = thetas_i
+                #        y[j][0] = -y[j][0]
+                #        y[j][1] = -y[j][1]
+                #else:
+                #    for j in js:
+                #        thetas[j] = np.log(1.0 - np.exp(thetas_i))
             else:
-                for j in js:
-                    thetas[j] = np.log(1.0 - np.exp(thetas_i))
-                
+                y = y_last
             
-        print "Flipped", flipped_count
     
-    mse = 0.0
-    sq_sum = 0.0
+    num_guessed = 0.0
     for i in np.arange(0, n):
-        diff = y[i] - y_orig[i]
-        mse += np.dot(diff, diff)
-        sq_sum += np.dot(y_orig[i], y_orig[i])
-    mse /= sq_sum
-    print mse
-    print y-y_orig
-    print y_orig
-    print np.exp(thetas)
+        if np.array_equal(y[i], y_orig[i]):
+            num_guessed += 1.0
 
-    return mse, np.exp(thetas)
+    return num_guessed/n, np.exp(thetas), y
     
 def algorithm_b(x, y, y_orig):
     loglik = None
@@ -229,51 +239,38 @@ def algorithm_b(x, y, y_orig):
         print "loglik=", loglik, "max_loglik=", max_loglik
         
         if max_loglik is None or loglik > max_loglik:
+            num_tries = 1
             max_loglik = loglik
         
         gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
-        flipped_count = 0
         for i in np.random.choice(n, size=1, replace=False):
-            loglik1 = gp.init(x, y)
+            loglik1 = loglik#gp.init(x, y)
             js = []
             for j in np.arange(0, n):
                 x_diff = x[j] - x[i]
                 if (np.dot(x_diff, x_diff) < length_scale**2/4):
-                    y[j][0] = -y[j][0]
-                    y[j][1] = -y[j][1]
+                    y[j] = y[j]*-1
                     js.append(j)
             loglik2 = gp.init(x, y)
-            #print loglik1, loglik2
-            print js
-    
             for j in js:
                 if loglik1 > loglik2:        
-                    y[j][0] = -y[j][0]
-                    y[j][1] = -y[j][1]
-                else:
-                    flipped_count += 1
+                    y[j] = y[j]*-1
     
         
-        print "Flipped", flipped_count
     
-    mse = 0.0
-    sq_sum = 0.0
+    num_guessed = 0.0
     for i in np.arange(0, n):
-        diff = y[i] - y_orig[i]
-        mse += np.dot(diff, diff)
-        sq_sum += np.dot(y_orig[i], y_orig[i])
-    mse /= sq_sum
-    print mse
-    print y-y_orig
-    print y_orig
+        if np.array_equal(y[i], y_orig[i]):
+            num_guessed += 1.0
     
-    return mse
+    return num_guessed/n, y
 
 
-res_a = algorithm_a(x, np.array(y), y_orig)
+print "******************** Algorithm a ********************"
+#res_a = algorithm_a(x, np.array(y), y_orig)
+print "******************** Algorithm b ********************"
 res_b = algorithm_b(x, np.array(y), y_orig)
 
-
 print "Results:"
-print res_a
+#print res_a
 print res_b
