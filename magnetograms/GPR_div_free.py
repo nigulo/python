@@ -18,8 +18,8 @@ class GPR_div_free:
 
     def calc_cov(self, x1, x2, data_or_test):
         K = np.zeros((np.size(x1), np.size(x2)))
-        for i in np.arange(0, np.shape(x1)[0], step=2):
-            for j in np.arange(0, np.shape(x2)[0], step=2):
+        for i in np.arange(0, np.shape(x1)[0]):
+            for j in np.arange(0, np.shape(x2)[0]):
                 x_diff = x1[i] - x2[j]
                 x_diff_sq = np.dot(x_diff, x_diff)
                 for i1 in np.arange(0, np.shape(x1)[1]):

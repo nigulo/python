@@ -17,10 +17,15 @@ import numpy.random as random
 #from scipy.stats import gaussian_kde
 #from sklearn.cluster import KMeans
 import numpy.linalg as la
+import matplotlib.pyplot as plt
 
 num_iters = 50
 num_chains = 1
 inference = False
+
+eps = 0.001
+learning_rate = 1.0
+max_num_tries = 20
 
 
 if len(sys.argv) > 3:
@@ -35,15 +40,16 @@ model = pickle.load(open('model.pkl', 'rb'))
 n1 = 10
 n2 = 10
 n = n1*n2
-x1_range = 3.0
-x2_range = 3.0
-x = np.dstack(np.meshgrid(np.linspace(0, x1_range, n1), np.linspace(0, x2_range, n2))).reshape(-1, 2)
+x1_range = 1.0
+x2_range = 1.0
+x_mesh = np.meshgrid(np.linspace(0, x1_range, n1), np.linspace(0, x2_range, n2))
+x = np.dstack(x_mesh).reshape(-1, 2)
 
 print x
 
 sig_var_train = 0.2
-length_scale_train = 1.0
-noise_var_train = 0.0001
+length_scale_train = 0.3
+noise_var_train = 0.000001
 m_train = 0.0
 
 gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
@@ -57,25 +63,35 @@ L = la.cholesky(K)
 s = np.random.normal(0.0, 1.0, 2*n)
 
 y = np.repeat(m_train, 2*n) + np.dot(L, s)
+
 y = np.reshape(y, (n, 2))
-
 y_orig = np.array(y)
-
 print y_orig
 
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
+fig.set_size_inches(6, 8)
+
+ax1.set_title('Probabilistic')
+ax2.set_title('Non-probabilistic')
+
+y1 = np.cos(x_mesh[0])
+y2 = np.sin(x_mesh[1])
+
+ax1.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
+ax2.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
+#qk = ax.quiverkey(Q, 0.9, 0.9, 2, r'$2 \frac{m}{s}$', labelpos='E',
+#                   coordinates='figure')
+
+perf_null = 0.0
 for i in np.arange(0, n):
     if np.random.uniform() < 0.5:
         y[i] = y[i]*-1
-
-
+        perf_null += 1.0
+perf_null /=n
 
 m = 0.0
-length_scale = 0.01
-noise_var = 0.1
-
-eps = 0.001
-learning_rate = 1.0
-
+length_scale = 1.0
+noise_var = 0.0001
 
 print np.shape(x)
 print np.shape(y)
@@ -89,10 +105,9 @@ def algorithm_a(x, y, y_orig):
     #thetas = random.uniform(size=n)
     thetas = np.ones(n)/2
     thetas = np.log(thetas)
-    print thetas
     num_tries = 0
     
-    while (max_loglik is None or num_tries % (n1*n2) != 0 or (loglik < max_loglik) or (loglik > max_loglik + eps)):
+    while (max_loglik is None or num_tries % max_num_tries != 0 or (loglik < max_loglik) or (loglik > max_loglik + eps)):
         print "num_tries", num_tries
     
         num_tries += 1
@@ -100,10 +115,10 @@ def algorithm_a(x, y, y_orig):
         initial_param_values = []
         
         if inference:
-            for i in np.arange(0, num_chains):
-                initial_m = m
-                initial_length_scale = length_scale
-                initial_param_values.append(dict(m=initial_m))
+            #for i in np.arange(0, num_chains):
+            #    initial_m = m
+            #    initial_length_scale = length_scale
+            #    initial_param_values.append(dict(m=initial_m))
             
             fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
             
@@ -162,7 +177,7 @@ def algorithm_a(x, y, y_orig):
     
                 thetas_i = thetas[i]
         
-                print np.exp(thetas_i), loglik1, loglik2
+                print thetas_i, np.exp(thetas_i), loglik1, loglik2
                 #r = np.log(random.uniform())
                 for j in js:
                     thetas[j] = thetas_i
@@ -190,7 +205,13 @@ def algorithm_a(x, y, y_orig):
         if np.array_equal(y[i], y_orig[i]):
             num_guessed += 1.0
 
-    return num_guessed/n, np.exp(thetas), y
+    exp_thetas = np.exp(thetas)
+    if num_guessed < n/2:
+        num_guessed = n - num_guessed
+        y *= -1
+        exp_thetas = np.ones(n) - exp_thetas
+
+    return num_guessed/n, exp_thetas, y
     
 def algorithm_b(x, y, y_orig):
     loglik = None
@@ -198,7 +219,7 @@ def algorithm_b(x, y, y_orig):
 
     num_tries = 0
     
-    while (max_loglik is None or num_tries % (n1*n2) != 0 or (loglik > max_loglik + eps)):
+    while (max_loglik is None or num_tries % max_num_tries != 0 or (loglik > max_loglik + eps)):
         print "num_tries", num_tries
     
         num_tries += 1
@@ -262,15 +283,25 @@ def algorithm_b(x, y, y_orig):
     for i in np.arange(0, n):
         if np.array_equal(y[i], y_orig[i]):
             num_guessed += 1.0
-    
+
+    if num_guessed < n/2:
+        num_guessed = n - num_guessed
+        y *= -1
+   
     return num_guessed/n, y
 
 
 print "******************** Algorithm a ********************"
-#res_a = algorithm_a(x, np.array(y), y_orig)
+perf_a, prob_a, field_a = algorithm_a(x, np.array(y), y_orig)
 print "******************** Algorithm b ********************"
-res_b = algorithm_b(x, np.array(y), y_orig)
+perf_b, field_b = algorithm_b(x, np.array(y), y_orig)
 
 print "Results:"
-#print res_a
-print res_b
+print perf_null
+print perf_a, prob_a#np.mean(np.abs(np.ones(n)/2 - prob_a)*2)
+print perf_b
+
+Q_a = ax1.quiver(x_mesh[0], x_mesh[1], field_a[:,0], field_a[:,1], units='width', color='r', linestyle=':')
+Q_b = ax2.quiver(x_mesh[0], x_mesh[1], field_b[:,0], field_b[:,1], units='width', color='r', linestyle=':')
+
+fig.savefig("field.png")
