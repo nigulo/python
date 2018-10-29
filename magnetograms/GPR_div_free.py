@@ -7,14 +7,17 @@ Created on Tue May 16 10:54:30 2017
 
 import numpy as np
 import numpy.linalg as la
+from toeplitz_cholesky import toeplitz_cholesky_lower
+from toeplitz_cholesky import toeplitz_cholesky_upper
 
 class GPR_div_free:
     
-    def __init__(self, sig_var, length_scale, noise_var):
+    def __init__(self, sig_var, length_scale, noise_var, toeplitz = False):
         self.sig_var = sig_var
         self.length_scale = length_scale
         self.inv_length_scale_sq = 1.0/(length_scale*length_scale)
         self.noise_var = noise_var
+        self.toeplitz = toeplitz
 
     def calc_cov(self, x1, x2, data_or_test):
         K = np.zeros((np.size(x1), np.size(x2)))
@@ -49,7 +52,18 @@ class GPR_div_free:
         self.y = y
         self.y_flat = np.reshape(y, (self.k*self.n, -1))
         self.K = self.calc_cov(x, x, True)
-        self.L = la.cholesky(self.K)
+        if self.toeplitz:
+            L1 = toeplitz_cholesky_lower(np.shape(self.K)[0], self.K)
+            L2 = toeplitz_cholesky_upper(np.shape(self.K)[0], self.K)
+            self.L = la.cholesky(self.K)
+            print "Comparison:"
+            print self.K
+            print self.L
+            print np.dot(self.L, self.L.T)-self.K
+            print np.dot(L1, L1.T)/2-self.K
+            #print L2
+        else:
+            self.L = la.cholesky(self.K)
         self.alpha = la.solve(self.L.T, la.solve(self.L, self.y_flat))
         self.loglik = np.asscalar(-0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi))
         return self.loglik

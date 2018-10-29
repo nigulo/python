@@ -37,8 +37,8 @@ n_jobs = num_chains
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 10
-n2 = 10
+n1 = 2
+n2 = 2
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -139,7 +139,7 @@ def algorithm_a(x, y, y_orig):
             sig_var=sig_var_train
             m=m_train
             length_scale=length_scale_train
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
             loglik = gp.init(x, y)
         
         print "sig_var=", sig_var
@@ -151,7 +151,7 @@ def algorithm_a(x, y, y_orig):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
 
         y_last = np.array(y)
         for i in np.random.choice(n, size=1, replace=False):
@@ -251,7 +251,7 @@ def algorithm_b(x, y, y_orig):
             sig_var=sig_var_train
             m=m_train
             length_scale=length_scale_train
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
             loglik = gp.init(x, y)
         
         print "sig_var=", sig_var
@@ -263,7 +263,7 @@ def algorithm_b(x, y, y_orig):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
         for i in np.random.choice(n, size=1, replace=False):
             loglik1 = loglik#gp.init(x, y)
             js = []
