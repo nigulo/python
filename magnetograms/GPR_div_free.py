@@ -7,8 +7,8 @@ Created on Tue May 16 10:54:30 2017
 
 import numpy as np
 import numpy.linalg as la
-from toeplitz_cholesky import toeplitz_cholesky_lower
-from toeplitz_cholesky import toeplitz_cholesky_upper
+#from toeplitz_cholesky import toeplitz_cholesky_lower
+#from toeplitz_cholesky import toeplitz_cholesky_upper
 
 class GPR_div_free:
     
@@ -20,10 +20,12 @@ class GPR_div_free:
         self.toeplitz = toeplitz
 
     def calc_cov(self, x1, x2, data_or_test):
+        print x1
         K = np.zeros((np.size(x1), np.size(x2)))
         for i in np.arange(0, np.shape(x1)[0]):
             for j in np.arange(0, np.shape(x2)[0]):
                 x_diff = x1[i] - x2[j]
+                print i - j,  x_diff
                 x_diff_sq = np.dot(x_diff, x_diff)
                 for i1 in np.arange(0, np.shape(x1)[1]):
                     i_abs = 2*i + i1
@@ -53,14 +55,14 @@ class GPR_div_free:
         self.y_flat = np.reshape(y, (self.k*self.n, -1))
         self.K = self.calc_cov(x, x, True)
         if self.toeplitz:
-            L1 = toeplitz_cholesky_lower(np.shape(self.K)[0], self.K)
-            L2 = toeplitz_cholesky_upper(np.shape(self.K)[0], self.K)
+            #L1 = toeplitz_cholesky_lower(np.shape(self.K)[0], self.K)
+            #L2 = toeplitz_cholesky_upper(np.shape(self.K)[0], self.K)
             self.L = la.cholesky(self.K)
-            print "Comparison:"
-            print self.K
-            print self.L
-            print np.dot(self.L, self.L.T)-self.K
-            print np.dot(L1, L1.T)/2-self.K
+            #print "Comparison:"
+            #print self.K
+            #print self.L
+            #print np.dot(self.L, self.L.T)-self.K
+            #print np.dot(L1, L1.T)/2-self.K
             #print L2
         else:
             self.L = la.cholesky(self.K)
