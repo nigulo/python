@@ -11,6 +11,7 @@ import numpy as np
 import GPR_div_free as GPR_div_free
 import scipy.misc
 import numpy.random as random
+import scipy.interpolate.RectBivariateSpline as RBS
 
 #import os
 #import os.path
@@ -37,18 +38,20 @@ n_jobs = num_chains
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 2
-n2 = 2
+n1 = 20
+n2 = 20
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
-x_mesh = np.meshgrid(np.linspace(0, x1_range, n1), np.linspace(0, x2_range, n2))
+x1 = np.linspace(0, x1_range, n1)
+x2 = np.linspace(0, x2_range, n2)
+x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
 
 print x
 
 sig_var_train = 0.2
-length_scale_train = 0.3
+length_scale_train = 0.2
 noise_var_train = 0.000001
 m_train = 0.0
 
@@ -68,17 +71,18 @@ y = np.reshape(y, (n, 2))
 y_orig = np.array(y)
 print y_orig
 
-fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
-fig.set_size_inches(6, 8)
+fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
+fig.set_size_inches(6, 12)
 
-ax1.set_title('Probabilistic')
-ax2.set_title('Non-probabilistic')
+ax1.set_title('True field')
+ax2.set_title('Probabilistic')
+ax3.set_title('Non-probabilistic')
 
 y1 = np.cos(x_mesh[0])
 y2 = np.sin(x_mesh[1])
 
-ax1.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
-ax2.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
+ax1.quiver(x_mesh[0], x_mesh[1], y_orig[:,0], y_orig[:,1], units='width', color = 'k')
+#ax2.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
 #qk = ax.quiverkey(Q, 0.9, 0.9, 2, r'$2 \frac{m}{s}$', labelpos='E',
 #                   coordinates='figure')
 
@@ -96,6 +100,12 @@ noise_var = 0.0001
 print np.shape(x)
 print np.shape(y)
 print n
+
+def get_W(x1, x2, u, K):
+    rbs = RBS.RectBivariateSpline(x1, y1, K)
+    w = rbs.ev(u[:,0], u[:,1])
+    W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
+    return W
 
 def algorithm_a(x, y, y_orig):
     y_in = np.array(y)
@@ -139,7 +149,7 @@ def algorithm_a(x, y, y_orig):
             sig_var=sig_var_train
             m=m_train
             length_scale=length_scale_train
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
+            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
             loglik = gp.init(x, y)
         
         print "sig_var=", sig_var
@@ -151,7 +161,7 @@ def algorithm_a(x, y, y_orig):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
+        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
 
         y_last = np.array(y)
         for i in np.random.choice(n, size=1, replace=False):
@@ -251,7 +261,7 @@ def algorithm_b(x, y, y_orig):
             sig_var=sig_var_train
             m=m_train
             length_scale=length_scale_train
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
+            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
             loglik = gp.init(x, y)
         
         print "sig_var=", sig_var
@@ -263,7 +273,7 @@ def algorithm_b(x, y, y_orig):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var, toeplitz=True)
+        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
         for i in np.random.choice(n, size=1, replace=False):
             loglik1 = loglik#gp.init(x, y)
             js = []
@@ -301,7 +311,24 @@ print perf_null
 print perf_a, prob_a#np.mean(np.abs(np.ones(n)/2 - prob_a)*2)
 print perf_b
 
-Q_a = ax1.quiver(x_mesh[0], x_mesh[1], field_a[:,0], field_a[:,1], units='width', color='r', linestyle=':')
-Q_b = ax2.quiver(x_mesh[0], x_mesh[1], field_b[:,0], field_b[:,1], units='width', color='r', linestyle=':')
+indices = np.unique(np.where(field_a - y_orig == np.array([0, 0]))[0])
+x_a_correct = x[indices]
+field_a_correct = field_a[indices]
+indices = np.unique(np.where(field_a - y_orig != np.array([0, 0]))[0])
+x_a_incorrect = x[indices]
+field_a_incorrect = field_a[indices]
+
+Q_a_1 = ax2.quiver(x_a_correct[:,0], x_a_correct[:,1], field_a_correct[:,0], field_a_correct[:,1], units='width', color='g', linestyle=':')
+Q_a_2 = ax2.quiver(x_a_incorrect[:,0], x_a_incorrect[:,1], field_a_incorrect[:,0], field_a_incorrect[:,1], units='width', color='r', linestyle=':')
+
+indices = np.unique(np.where(field_b - y_orig == np.array([0, 0]))[0])
+x_b_correct = x[indices]
+field_b_correct = field_b[indices]
+indices = np.unique(np.where(field_b - y_orig != np.array([0, 0]))[0])
+x_b_incorrect = x[indices]
+field_b_incorrect = field_b[indices]
+
+Q_a_1 = ax3.quiver(x_b_correct[:,0], x_b_correct[:,1], field_b_correct[:,0], field_b_correct[:,1], units='width', color='g', linestyle=':')
+Q_a_2 = ax3.quiver(x_b_incorrect[:,0], x_b_incorrect[:,1], field_b_incorrect[:,0], field_b_incorrect[:,1], units='width', color='r', linestyle=':')
 
 fig.savefig("field.png")

@@ -20,12 +20,10 @@ class GPR_div_free:
         self.toeplitz = toeplitz
 
     def calc_cov(self, x1, x2, data_or_test):
-        print x1
         K = np.zeros((np.size(x1), np.size(x2)))
         for i in np.arange(0, np.shape(x1)[0]):
             for j in np.arange(0, np.shape(x2)[0]):
                 x_diff = x1[i] - x2[j]
-                print i - j,  x_diff
                 x_diff_sq = np.dot(x_diff, x_diff)
                 for i1 in np.arange(0, np.shape(x1)[1]):
                     i_abs = 2*i + i1
