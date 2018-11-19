@@ -11,7 +11,7 @@ import numpy as np
 import GPR_div_free as GPR_div_free
 import scipy.misc
 import numpy.random as random
-import scipy.interpolate.RectBivariateSpline as RBS
+import scipy.interpolate as interp
 
 #import os
 #import os.path
@@ -38,8 +38,8 @@ n_jobs = num_chains
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 20
-n2 = 20
+n1 = 2
+n2 = 3
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -48,7 +48,7 @@ x2 = np.linspace(0, x2_range, n2)
 x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
 
-print x
+print x_mesh[0][0,:]
 
 sig_var_train = 0.2
 length_scale_train = 0.2
@@ -101,11 +101,17 @@ print np.shape(x)
 print np.shape(y)
 print n
 
-def get_W(x1, x2, u, K):
-    rbs = RBS.RectBivariateSpline(x1, y1, K)
+def get_W(x_mesh, u, K):
+    rbs = interp.RectBivariateSpline(x_mesh[0][0,:], x_mesh[1][:,0], K)
     w = rbs.ev(u[:,0], u[:,1])
     W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
     return W
+    
+gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+K = gp.calc_cov(x, x, data_or_test=True)
+print K
+
+print get_W(x_mesh, np.array([[0.15, 0.15], [0.55, 0.55]]), K)
 
 def algorithm_a(x, y, y_orig):
     y_in = np.array(y)
