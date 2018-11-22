@@ -48,8 +48,8 @@ x2 = np.linspace(0, x2_range, n2)
 x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
 
-nu1 = 2
-nu2 = 2
+nu1 = 4
+nu2 = 4
 u1 = np.linspace(0, x1_range, nu1)
 u2 = np.linspace(0, x2_range, nu2)
 u_mesh = np.meshgrid(u1, u2)
@@ -108,39 +108,61 @@ print np.shape(x)
 print np.shape(y)
 print n
 
+
+
 def get_w(x_mesh, u, K):
     #print K
     #print np.shape(K), np.shape(x_mesh[0][0,:]), np.shape(x_mesh[1][:,0])
-    rbs = interp.RectBivariateSpline(x_mesh[0][0,:], x_mesh[1][:,0], K)
-    w = rbs.ev(u[:,0], u[:,1])
+    rbs = interp.RectBivariateSpline(x_mesh[0][0,:], x_mesh[1][:,0], K, kx=3, ky=3)
+    #w = rbs.ev(u[:,0], u[:,1])
+    w = rbs.get_coeffs()
+    print "w=", w
+    print rbs.ev(u[:,0], u[:,1])
+    for i in np.arange(0, np.shape(u)[0]):
+        val = 0
+        for j in np.arange(0, len(w)):
+            val += (u[i,0] - x[j,0])*w[j]*(u[i,1] - x[j,1])
+        print val
     #W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
     return w
     
 gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
 K = gp.calc_cov(x, x, data_or_test=True)
+U = gp.calc_cov(u, u, data_or_test=True)
 print K
+print "x=", x
 print "u=", u
 
-U1 = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
-for i in np.arange(0, np.shape(K)[0]):
-    w1 = get_w(x_mesh, u, np.reshape(K[i,0::2], (len(x1), len(x2))))
-    w2 = get_w(x_mesh, u, np.reshape(K[i,1::2], (len(x1), len(x2))))
-    print np.shape(U1), np.shape(w1)
+W = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
+for i in np.arange(0, np.shape(W)[0]):
+    w1 = get_w(u_mesh, x, np.reshape(U[i,0::2], (len(u1), len(u2))))
+    w2 = get_w(u_mesh, x, np.reshape(U[i,1::2], (len(u1), len(u2))))
+    print np.shape(W), np.shape(w1)
     for j in np.arange(0, np.shape(w1)[0]):
-        U1[i,2*j] = w1[j]
-        U1[i,2*j+1] = w2[j]
+        W[i,2*j] = w1[j]
+        W[i,2*j+1] = w2[j]
 
-U1 = U1.T
-U = np.zeros((len(u1)*len(u2)*2, len(u1)*len(u2)*2))
-for i in np.arange(0, np.shape(U1)[0]):
-    w1 = get_w(x_mesh, u, np.reshape(U1[i,0::2], (len(x1), len(x2))))
-    w2 = get_w(x_mesh, u, np.reshape(U1[i,1::2], (len(x1), len(x2))))
-    print np.shape(U1), np.shape(w1)
-    for j in np.arange(0, np.shape(w1)[0]):
-        U[i,2*j] = w1[j]
-        U[i,2*j+1] = w2[j]
 
-print U
+#U1 = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
+#for i in np.arange(0, np.shape(K)[0]):
+#    w1 = get_w(x_mesh, u, np.reshape(K[i,0::2], (len(x1), len(x2))))
+#    w2 = get_w(x_mesh, u, np.reshape(K[i,1::2], (len(x1), len(x2))))
+#    print np.shape(U1), np.shape(w1)
+#    for j in np.arange(0, np.shape(w1)[0]):
+#        U1[i,2*j] = w1[j]
+#        U1[i,2*j+1] = w2[j]
+
+#U1 = U1.T
+#U = np.zeros((len(u1)*len(u2)*2, len(u1)*len(u2)*2))
+#for i in np.arange(0, np.shape(U1)[0]):
+#    w1 = get_w(x_mesh, u, np.reshape(U1[i,0::2], (len(x1), len(x2))))
+#    w2 = get_w(x_mesh, u, np.reshape(U1[i,1::2], (len(x1), len(x2))))
+#    print np.shape(U1), np.shape(w1)
+#    for j in np.arange(0, np.shape(w1)[0]):
+#        U[i,2*j] = w1[j]
+#        U[i,2*j+1] = w2[j]
+
+#print U
 
 def algorithm_a(x, y, y_orig):
     y_in = np.array(y)
