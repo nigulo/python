@@ -190,14 +190,16 @@ print K
 print "x=", x
 print "u=", u
 
-W = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
-for i in np.arange(0, np.shape(W)[0]):
-    w1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
-    w2 = get_W(u_mesh, u, x)#, np.reshape(U[i,1::2], (len(u1), len(u2))))
-    print np.shape(w1), np.shape(w1)
-    for j in np.arange(0, np.shape(w1)[0]):
-        W[i,2*j] = w1[j]
-        W[i,2*j+1] = w2[j]
+W = np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+for i in np.arange(0, len(x1)*len(x2)):
+    W1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
+    W2 = get_W(u_mesh, u, x)#, np.reshape(U[i,1::2], (len(u1), len(u2))))
+    print np.shape(W), np.shape(W1), np.shape(W1)
+    for j in np.arange(0, np.shape(W1)[1]):
+        W[2*i,2*j] = W1[i, j]
+        W[2*i,2*j+1] = W2[i, j]
+        W[2*i+1,2*j] = W1[i, j]
+        W[2*i+1,2*j+1] = W2[i, j]
 
 
 #U1 = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
