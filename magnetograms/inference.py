@@ -109,22 +109,79 @@ print np.shape(y)
 print n
 
 
+def bilinear_interp(xs, ys, x, y):
+    coefs = np.zeros(len(xs)*len(ys))
+    h = 0
+    for i in np.arange(0, len(xs)):
+        num = 1.0
+        denom = 1.0
+        for j in np.arange(0, len(xs)):
+            if i != j:
+                for k in np.arange(0, len(ys)):
+                    for l in np.arange(0, len(ys)):
+                        if k != l:
+                            num *= (x - xs[j])*(y - ys[l])
+                            denom *= (xs[i] - xs[j])*(ys[k] - ys[l])
+        coefs[h] = num/denom
+        h += 1
+    return coefs
 
-def get_w(x_mesh, u, K):
-    #print K
-    #print np.shape(K), np.shape(x_mesh[0][0,:]), np.shape(x_mesh[1][:,0])
-    rbs = interp.RectBivariateSpline(x_mesh[0][0,:], x_mesh[1][:,0], K, kx=3, ky=3)
-    #w = rbs.ev(u[:,0], u[:,1])
-    w = rbs.get_coeffs()
-    print "w=", w
-    print rbs.ev(u[:,0], u[:,1])
-    for i in np.arange(0, np.shape(u)[0]):
-        val = 0
-        for j in np.arange(0, len(w)):
-            val += (u[i,0] - x[j,0])*w[j]*(u[i,1] - x[j,1])
-        print val
-    #W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
-    return w
+def get_closest(xs, ys, x, y, count_x=2, count_y=2):
+    dists_x = np.abs(xs - x)
+    dists_y = np.abs(ys - y)
+    indices_x = np.argsort(dists_x)
+    indices_y = np.argsort(dists_y)
+    xs_c = np.zeros(count_x)
+    ys_c = np.zeros(count_y)
+    for i in np.arange(0, count_x):
+        xs_c[i] = xs[indices_x[i]]
+    for i in np.arange(0, count_y):
+        ys_c[i] = ys[indices_y[i]]
+    return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
+
+
+def get_W(u_mesh, us, xys):
+    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
+    i = 0
+    for (x, y) in xys:
+        (u1s, u2s), (indices_x, indices_y) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
+        coefs = bilinear_interp(u1s, u2s, x, y)
+        for j in np.arange(0, len(us)):
+            found = True
+            coef_ind = 0
+            for u1 in u1s:
+                if us[j][0] != u1:
+                    found = False
+                    break
+                for u2 in u2s:
+                    if us[j][1] != u2:
+                        found = False
+                        break
+                    coef_ind += 1
+            if found:
+                W[i, j] = coefs[coef_ind]
+        i += 1
+    return W
+
+#def get_w(x_mesh, u, K):
+#    #print K
+#    #print np.shape(K), np.shape(x_mesh[0][0,:]), np.shape(x_mesh[1][:,0])
+#    rbs = interp.RectBivariateSpline(x_mesh[0][0,:], x_mesh[1][:,0], K, kx=3, ky=3)
+#    #w = rbs.ev(u[:,0], u[:,1])
+#    w = rbs.get_coeffs()
+#    r = rbs.get_residual()
+#    k = rbs.get_knots()
+#    print "w=", w
+#    print "r=", r
+#    print "k=", k
+#    print rbs.ev(u[:,0], u[:,1])
+#    for i in np.arange(0, np.shape(u)[0]):
+#        val = 0
+#        for j in np.arange(0, len(w)):
+#            val += (u[i,0] - x[j,0])*w[j]*(u[i,1] - x[j,1])
+#        print val
+#    #W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
+#    return w
     
 gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
 K = gp.calc_cov(x, x, data_or_test=True)
@@ -135,9 +192,9 @@ print "u=", u
 
 W = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
 for i in np.arange(0, np.shape(W)[0]):
-    w1 = get_w(u_mesh, x, np.reshape(U[i,0::2], (len(u1), len(u2))))
-    w2 = get_w(u_mesh, x, np.reshape(U[i,1::2], (len(u1), len(u2))))
-    print np.shape(W), np.shape(w1)
+    w1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
+    w2 = get_W(u_mesh, u, x)#, np.reshape(U[i,1::2], (len(u1), len(u2))))
+    print np.shape(w1), np.shape(w1)
     for j in np.arange(0, np.shape(w1)[0]):
         W[i,2*j] = w1[j]
         W[i,2*j+1] = w2[j]
