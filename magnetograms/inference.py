@@ -61,7 +61,7 @@ u = np.dstack(u_mesh).reshape(-1, 2)
 print x_mesh
 
 sig_var_train = 0.2
-length_scale_train = 3.5
+length_scale_train = 0.2
 noise_var_train = 0.000001
 mean_train = 0.0
 
@@ -225,7 +225,7 @@ for test_no in np.arange(0, len(length_scales)):
         #print x
         L = la.cholesky(U)
         #print L
-        v = la.solve(L.T, x)
+        v = la.solve(L, x)
         return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
         
     def calc_loglik(K, y):
