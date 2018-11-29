@@ -39,8 +39,8 @@ n_jobs = num_chains
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 5
-n2 = 6
+n1 = 10
+n2 = 10
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -48,11 +48,13 @@ x1 = np.linspace(0, x1_range, n1)
 x2 = np.linspace(0, x2_range, n2)
 x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
+x_flat = np.reshape(x, (2*n, -1))
 
-nu1 = 4
-nu2 = 4
-u1 = np.linspace(0, x1_range, nu1)
-u2 = np.linspace(0, x2_range, nu2)
+m1 = 5
+m2 = 5
+m = m1 * m2
+u1 = np.linspace(0, x1_range, m1)
+u2 = np.linspace(0, x2_range, m2)
 u_mesh = np.meshgrid(u1, u2)
 u = np.dstack(u_mesh).reshape(-1, 2)
 
@@ -61,7 +63,7 @@ print x_mesh
 sig_var_train = 0.2
 length_scale_train = 0.2
 noise_var_train = 0.000001
-m_train = 0.0
+mean_train = 0.0
 
 gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
 K = gp_train.calc_cov(x, x, True)
@@ -73,7 +75,7 @@ for i in np.arange(0, n1):
 L = la.cholesky(K)
 s = np.random.normal(0.0, 1.0, 2*n)
 
-y = np.repeat(m_train, 2*n) + np.dot(L, s)
+y = np.repeat(mean_train, 2*n) + np.dot(L, s)
 
 y = np.reshape(y, (n, 2))
 y_orig = np.array(y)
@@ -101,7 +103,7 @@ for i in np.arange(0, n):
         perf_null += 1.0
 perf_null /=n
 
-m = 0.0
+mean = 0.0
 length_scale = 1.0
 noise_var = 0.0001
 
@@ -148,19 +150,22 @@ def get_W(u_mesh, us, xys):
         (u1s, u2s), (indices_x, indices_y) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
         coefs = bilinear_interp(u1s, u2s, x, y)
         for j in np.arange(0, len(us)):
-            found = True
+            found = False
             coef_ind = 0
             for u1 in u1s:
-                if us[j][0] != u1:
-                    found = False
-                    break
-                for u2 in u2s:
-                    if us[j][1] != u2:
-                        found = False
+                if us[j][0] == u1:
+                    for u2 in u2s:
+                        if us[j][1] == u2:
+                            found = True
+                            break
+                        coef_ind += 1
+                    if found:
                         break
-                    coef_ind += 1
+                else:
+                    coef_ind += len(u2s)
             if found:
                 W[i, j] = coefs[coef_ind]
+                #print "W=", W
         i += 1
     return W
 
@@ -183,40 +188,57 @@ def get_W(u_mesh, us, xys):
 #        print val
 #    #W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
 #    return w
+
+test_fig, ax_test = plt.subplots(nrows=1, ncols=1, sharex=True)
+test_fig.set_size_inches(4, 6)
+
+length_scales = np.linspace(length_scale_train/2, length_scale_train*2, 10)
+logliks_approx = np.zeros(len(length_scales))
+logliks_true = np.zeros(len(length_scales))
+for test_no in np.arange(0, len(length_scales)):
+    length_scale = length_scales[test_no]
+    gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale, noise_var_train)
+    K = gp.calc_cov(x, x, data_or_test=True)
+    U = gp.calc_cov(u, u, data_or_test=True)
+    #print K
+    #print "x=", x
+    #print "u=", u
     
-gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
-K = gp.calc_cov(x, x, data_or_test=True)
-U = gp.calc_cov(u, u, data_or_test=True)
-print K
-print "x=", x
-print "u=", u
-
-W = np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-for i in np.arange(0, len(x1)*len(x2)):
-    W1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
-    W2 = get_W(u_mesh, u, x)#, np.reshape(U[i,1::2], (len(u1), len(u2))))
-    print np.shape(W), np.shape(W1), np.shape(W1)
-    for j in np.arange(0, np.shape(W1)[1]):
-        W[2*i,2*j] = W1[i, j]
-        W[2*i,2*j+1] = W2[i, j]
-        W[2*i+1,2*j] = W1[i, j]
-        W[2*i+1,2*j+1] = W2[i, j]
-
-def calc_loglik_approx(U, W, y):
-    x, info = sparse.cg(W, y, x0=None, tol=1e-05, maxiter=None, M=None, callback=None, atol=None)
-    L = la.cholesky(U)
-    v = la.solve(L.T, x)
-    return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+    W = np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+    for i in np.arange(0, len(x1)*len(x2)):
+        W1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
+        #print np.shape(W), np.shape(W1), np.shape(W1)
+        for j in np.arange(0, np.shape(W1)[1]):
+            W[2*i,2*j] = W1[i, j]
+            W[2*i,2*j+1] = W1[i, j]
+            W[2*i+1,2*j] = W1[i, j]
+            W[2*i+1,2*j+1] = W1[i, j]
     
-def calc_loglik(K, y):
-    L = la.cholesky(K)
-    v = la.solve(L.T, y)
-    return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+    #for i in np.arange(0, np.shape(W)[0]):
+    #    for j in np.arange(0, np.shape(W)[1]):
+    #        print "W=", W[i,j]
+    
+    def calc_loglik_approx(U, W, y):
+        #print np.shape(W), np.shape(y)
+        (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+        #print x
+        L = la.cholesky(U)
+        #print L
+        v = la.solve(L.T, x)
+        return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L)*m/n)) - 0.5 * n * np.log(2.0 * np.pi)
+        
+    def calc_loglik(K, y):
+        L = la.cholesky(K)
+        v = la.solve(L.T, y)
+        return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+        
+    logliks_approx[test_no] = calc_loglik_approx(U, W, x_flat)
+    logliks_true[test_no] = calc_loglik(K, x_flat)
     
 
-print "Approx: ", calc_loglik_approx(U, W, x)
-print "True:", calc_loglik(K, x)
-
+ax_test.plot(length_scales, logliks_approx, "b-")
+ax_test.plot(length_scales, logliks_true, "r-")
+test_fig.savefig("test.png")
 #U1 = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
 #for i in np.arange(0, np.shape(K)[0]):
 #    w1 = get_w(x_mesh, u, np.reshape(K[i,0::2], (len(x1), len(x2))))
@@ -274,18 +296,18 @@ def algorithm_a(x, y, y_orig):
             sig_var_samples = results['sig_var']
             sig_var = np.mean(sig_var_samples)
             
-            m_samples = results['m'];
-            m = np.mean(m_samples)
+            mean_samples = results['m'];
+            mean = np.mean(mean_samples)
         else:
             sig_var=sig_var_train
-            m=m_train
+            mean=mean_train
             length_scale=length_scale_train
             gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
             loglik = gp.init(x, y)
         
         print "sig_var=", sig_var
         print "length_scale", length_scale
-        print "m", m
+        print "mean", mean
         print "loglik=", loglik, "max_loglik=", max_loglik
         
         if max_loglik is None or loglik > max_loglik:
@@ -369,7 +391,7 @@ def algorithm_b(x, y, y_orig):
         
         if inference:
             for i in np.arange(0, num_chains):
-                initial_m = m
+                initial_m = mean
                 initial_length_scale = length_scale
                 initial_param_values.append(dict(m=initial_m))
             
@@ -386,18 +408,18 @@ def algorithm_b(x, y, y_orig):
             sig_var_samples = results['sig_var']
             sig_var = np.mean(sig_var_samples)
             
-            m_samples = results['m'];
-            m = np.mean(m_samples)
+            mean_samples = results['m'];
+            mean = np.mean(mean_samples)
         else:
             sig_var=sig_var_train
-            m=m_train
+            mean=mean_train
             length_scale=length_scale_train
             gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
             loglik = gp.init(x, y)
         
         print "sig_var=", sig_var
         print "length_scale", length_scale
-        print "m", m
+        print "mean", mean
         print "loglik=", loglik, "max_loglik=", max_loglik
         
         if max_loglik is None or loglik > max_loglik:
