@@ -39,8 +39,8 @@ n_jobs = num_chains
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 10
-n2 = 10
+n1 = 6
+n2 = 6
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -61,7 +61,7 @@ u = np.dstack(u_mesh).reshape(-1, 2)
 print x_mesh
 
 sig_var_train = 0.2
-length_scale_train = 0.2
+length_scale_train = 3.5
 noise_var_train = 0.000001
 mean_train = 0.0
 
@@ -102,6 +102,7 @@ for i in np.arange(0, n):
         y[i] = y[i]*-1
         perf_null += 1.0
 perf_null /=n
+y_flat = np.reshape(y, (2*n, -1))
 
 mean = 0.0
 length_scale = 1.0
@@ -192,7 +193,7 @@ def get_W(u_mesh, us, xys):
 test_fig, ax_test = plt.subplots(nrows=1, ncols=1, sharex=True)
 test_fig.set_size_inches(4, 6)
 
-length_scales = np.linspace(length_scale_train/2, length_scale_train*2, 10)
+length_scales = np.linspace(length_scale_train/100, length_scale_train*2, 20)
 logliks_approx = np.zeros(len(length_scales))
 logliks_true = np.zeros(len(length_scales))
 for test_no in np.arange(0, len(length_scales)):
@@ -225,16 +226,19 @@ for test_no in np.arange(0, len(length_scales)):
         L = la.cholesky(U)
         #print L
         v = la.solve(L.T, x)
-        return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L)*m/n)) - 0.5 * n * np.log(2.0 * np.pi)
+        return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
         
     def calc_loglik(K, y):
         L = la.cholesky(K)
-        v = la.solve(L.T, y)
+        v = la.solve(L, y)
         return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
         
-    logliks_approx[test_no] = calc_loglik_approx(U, W, x_flat)
-    logliks_true[test_no] = calc_loglik(K, x_flat)
     
+    logliks_approx[test_no] = calc_loglik_approx(U, W, y_flat)
+    logliks_true[test_no] = calc_loglik(K, y_flat)
+
+logliks_approx = (logliks_approx - np.min(logliks_approx))/(np.max(logliks_approx) - np.min(logliks_approx))
+logliks_true = (logliks_true - np.min(logliks_true))/(np.max(logliks_true) - np.min(logliks_true))
 
 ax_test.plot(length_scales, logliks_approx, "b-")
 ax_test.plot(length_scales, logliks_true, "r-")
