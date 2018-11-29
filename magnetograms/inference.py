@@ -12,6 +12,7 @@ import GPR_div_free as GPR_div_free
 import scipy.misc
 import numpy.random as random
 import scipy.interpolate as interp
+import scipy.sparse.linalg as sparse
 
 #import os
 #import os.path
@@ -201,6 +202,20 @@ for i in np.arange(0, len(x1)*len(x2)):
         W[2*i+1,2*j] = W1[i, j]
         W[2*i+1,2*j+1] = W2[i, j]
 
+def calc_loglik_approx(U, W, y):
+    x, info = sparse.cg(W, y, x0=None, tol=1e-05, maxiter=None, M=None, callback=None, atol=None)
+    L = la.cholesky(U)
+    v = la.solve(L.T, x)
+    return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+    
+def calc_loglik(K, y):
+    L = la.cholesky(K)
+    v = la.solve(L.T, y)
+    return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+    
+
+print "Approx: ", calc_loglik_approx(U, W, x)
+print "True:", calc_loglik(K, x)
 
 #U1 = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
 #for i in np.arange(0, np.shape(K)[0]):
