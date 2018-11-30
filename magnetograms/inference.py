@@ -39,8 +39,8 @@ n_jobs = num_chains
 
 model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 25
-n2 = 25
+n1 = 100
+n2 = 100
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -50,14 +50,16 @@ x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
-m1 = 5
-m2 = 5
+m1 = 10
+m2 = 10
 m = m1 * m2
 u1 = np.linspace(0, x1_range, m1)
 u2 = np.linspace(0, x2_range, m2)
 u_mesh = np.meshgrid(u1, u2)
 u = np.dstack(u_mesh).reshape(-1, 2)
 
+print "u_mesh=", u_mesh
+print "u=", u
 
 def bilinear_interp(xs, ys, x, y):
     coefs = np.zeros(len(xs)*len(ys))
@@ -90,42 +92,60 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
     return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
 
 #Optimeerida
-def get_W(u_mesh, us, xys):
-    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
+#def get_W(u_mesh, us, xys):
+#    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
+#    i = 0
+#    for (x, y) in xys:
+#        (u1s, u2s), (indices_x, indices_y) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
+#        coefs = bilinear_interp(u1s, u2s, x, y)
+#        for j in np.arange(0, len(us)):
+#            found = False
+#            coef_ind = 0
+#            for u1 in u1s:
+#                if us[j][0] == u1:
+#                    for u2 in u2s:
+#                        if us[j][1] == u2:
+#                            found = True
+#                            break
+#                        coef_ind += 1
+#                    if found:
+#                        break
+#                else:
+#                    coef_ind += len(u2s)
+#            if found:
+#                W[i, j] = coefs[coef_ind]
+#                #print "W=", W
+#        i += 1
+#    return W
+
+#def calc_W(u_mesh, u, x):
+#    W = np.zeros((np.shape(x)[0]*2, np.shape(u)[0]*2))
+#    for i in np.arange(0, np.shape(x)[0]):
+#        W1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
+#        #print np.shape(W), np.shape(W1), np.shape(W1)
+#        for j in np.arange(0, np.shape(W1)[1]):
+#            W[2*i,2*j] = W1[i, j]
+#            W[2*i,2*j+1] = W1[i, j]
+#            W[2*i+1,2*j] = W1[i, j]
+#            W[2*i+1,2*j+1] = W1[i, j]
+#    return W
+
+def calc_W(u_mesh, us, xys):
+    W = np.zeros((np.shape(xys)[0]*2, np.shape(us)[0]*2))
     i = 0
     for (x, y) in xys:
-        (u1s, u2s), (indices_x, indices_y) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
+        (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
         coefs = bilinear_interp(u1s, u2s, x, y)
-        for j in np.arange(0, len(us)):
-            found = False
-            coef_ind = 0
-            for u1 in u1s:
-                if us[j][0] == u1:
-                    for u2 in u2s:
-                        if us[j][1] == u2:
-                            found = True
-                            break
-                        coef_ind += 1
-                    if found:
-                        break
-                else:
-                    coef_ind += len(u2s)
-            if found:
-                W[i, j] = coefs[coef_ind]
-                #print "W=", W
+        coef_ind = 0
+        for u1_index in indices_u1:
+            for u2_index in indices_u2:
+                j = u2_index * m1 + u1_index
+                W[2*i,2*j] = coefs[coef_ind]
+                W[2*i,2*j+1] = coefs[coef_ind]
+                W[2*i+1,2*j] = coefs[coef_ind]
+                W[2*i+1,2*j+1] = coefs[coef_ind]
+                coef_ind += 1
         i += 1
-    return W
-
-def calc_W(u_mesh, u, x):
-    W = np.zeros((np.shape(x)[0]*2, np.shape(u)[0]*2))
-    for i in np.arange(0, np.shape(x)[0]):
-        W1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
-        #print np.shape(W), np.shape(W1), np.shape(W1)
-        for j in np.arange(0, np.shape(W1)[1]):
-            W[2*i,2*j] = W1[i, j]
-            W[2*i,2*j+1] = W1[i, j]
-            W[2*i+1,2*j] = W1[i, j]
-            W[2*i+1,2*j+1] = W1[i, j]
     return W
 
 print x_mesh
@@ -279,6 +299,8 @@ def test():
     #        U[i,2*j+1] = w2[j]
     
     #print U
+
+#test()
 
 def algorithm_a(x, y, y_orig):
     y_in = np.array(y)
