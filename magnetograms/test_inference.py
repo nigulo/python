@@ -182,7 +182,6 @@ fig, ((ax11, ax12), (ax21, ax22)) = plt.subplots(nrows=2, ncols=2, sharex=True)
 fig.set_size_inches(12, 12)
 
 extent=[x1.min(), x1.max(), x2.min(), x2.max()]
-plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])*2/3 
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -204,12 +203,17 @@ W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
 K1 = np.dot(W, np.dot(U, W.T))
 
-print W[0,0::2]
+#im11 = ax11.imshow(np.reshape(K1[0,0::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+#im12 = ax12.imshow(np.reshape(K1[0,1::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+#im21 = ax21.imshow(np.reshape(K1[1,0::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+#im22 = ax22.imshow(np.reshape(K1[1,1::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
 
-im11 = ax11.imshow(np.reshape(K1[0,0::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
-im12 = ax12.imshow(np.reshape(K1[0,1::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
-im21 = ax21.imshow(np.reshape(K1[1,0::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
-im22 = ax22.imshow(np.reshape(K1[1,1::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+extent=[u1.min(), u1.max(), u2.min(), u2.max()]
+
+im11 = ax11.imshow(np.reshape(U[0,0::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+im12 = ax12.imshow(np.reshape(U[0,1::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+im21 = ax21.imshow(np.reshape(U[1,0::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+im22 = ax22.imshow(np.reshape(U[1,1::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
 
 fig.savefig("cov_approx.png")
 
