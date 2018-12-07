@@ -52,8 +52,8 @@ x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
-m1 = 5
-m2 = 5
+m1 = 10
+m2 = 10
 m = m1 * m2
 u1 = np.linspace(0, x1_range, m1)
 u2 = np.linspace(0, x2_range, m2)
@@ -67,17 +67,17 @@ def bilinear_interp(xs, ys, x, y):
     coefs = np.zeros(len(xs)*len(ys))
     h = 0
     for i in np.arange(0, len(xs)):
-        num = 1.0
-        denom = 1.0
-        for j in np.arange(0, len(xs)):
-            if i != j:
-                for k in np.arange(0, len(ys)):
+        for k in np.arange(0, len(ys)):
+            num = 1.0
+            denom = 1.0
+            for j in np.arange(0, len(xs)):
+                if i != j:
                     for l in np.arange(0, len(ys)):
                         if k != l:
                             num *= (x - xs[j])*(y - ys[l])
                             denom *= (xs[i] - xs[j])*(ys[k] - ys[l])
-        coefs[h] = num/denom
-        h += 1
+            coefs[h] = num/denom
+            h += 1
     return coefs
 
 def get_closest(xs, ys, x, y, count_x=2, count_y=2):
@@ -147,6 +147,7 @@ def calc_W(u_mesh, us, xys):
                 W[2*i+1,2*j] = coefs[coef_ind]
                 W[2*i+1,2*j+1] = coefs[coef_ind]
                 coef_ind += 1
+        assert(coef_ind == len(coefs))
         i += 1
     return W
 
@@ -202,6 +203,8 @@ U = gp_train.calc_cov(u, u, data_or_test=True)
 W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
 K1 = np.dot(W, np.dot(U, W.T))
+
+print W[0,0::2]
 
 im11 = ax11.imshow(np.reshape(K1[0,0::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
 im12 = ax12.imshow(np.reshape(K1[0,1::2], (len(x1), len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
