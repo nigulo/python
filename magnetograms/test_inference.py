@@ -52,8 +52,8 @@ x_mesh = np.meshgrid(x1, x2)
 x = np.dstack(x_mesh).reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
-m1 = 10
-m2 = 10
+m1 = 7
+m2 = 7
 m = m1 * m2
 u1 = np.linspace(0, x1_range, m1)
 u2 = np.linspace(0, x2_range, m2)
