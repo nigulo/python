@@ -160,28 +160,28 @@ for i in np.arange(0, np.shape(W)[0]):
             print j
     print "SUM:", i, np.sum(W_row)
 
-#K1 = np.dot(W, np.dot(U, W.T))
+K1 = np.dot(W, np.dot(U, W.T))
 
-#im11 = ax11.imshow(np.reshape(K1[0::2,0::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
-#im12 = ax12.imshow(np.reshape(K1[0::2,1::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
-#im21 = ax21.imshow(np.reshape(K1[1::2,0::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
-#im22 = ax22.imshow(np.reshape(K1[1::2,1::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+im11 = ax11.imshow(np.reshape(K1[0::2,0::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+im12 = ax12.imshow(np.reshape(K1[0::2,1::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+im21 = ax21.imshow(np.reshape(K1[1::2,0::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
+im22 = ax22.imshow(np.reshape(K1[1::2,1::2], (len(x1)*len(x2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(K1), vmax=np.max(K1))
 
 #extent=[u1.min(), u1.max(), u2.min(), u2.max()]
 
-#im11 = ax11.imshow(np.reshape(U[0,0::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
-#im12 = ax12.imshow(np.reshape(U[0,1::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
-#im21 = ax21.imshow(np.reshape(U[1,0::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
-#im22 = ax22.imshow(np.reshape(U[1,1::2], (len(u1), len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+#im11 = ax11.imshow(np.reshape(U[0::2,0::2], (len(u1)*len(u2), len(u1)*len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+#im12 = ax12.imshow(np.reshape(U[0::2,1::2], (len(u1)*len(u2), len(u1)*len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+#im21 = ax21.imshow(np.reshape(U[1::2,0::2], (len(u1)*len(u2), len(u1)*len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
+#im22 = ax22.imshow(np.reshape(U[1::2,1::2], (len(u1)*len(u2), len(u1)*len(u2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(U), vmax=np.max(U))
 
-extent=[u1.min(), u1.max(), u2.min(), u2.max()]
+#extent=[u1.min(), u1.max(), u2.min(), u2.max()]
 
 #print "SHAPE:", np.shape(W[0,0::2]), len(x1), len(u2)
 
-im11 = ax11.imshow(np.reshape(W[0::2,0::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
-im12 = ax12.imshow(np.reshape(W[0::2,1::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
-im21 = ax21.imshow(np.reshape(W[1::2,0::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
-im22 = ax22.imshow(np.reshape(W[1::2,1::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
+#im11 = ax11.imshow(np.reshape(W[0::2,0::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
+#im12 = ax12.imshow(np.reshape(W[0::2,1::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
+#im21 = ax21.imshow(np.reshape(W[1::2,0::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
+#im22 = ax22.imshow(np.reshape(W[1::2,1::2], (len(u1)*len(u2), len(x1)*len(x2))),extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(W), vmax=np.max(W))
 
 fig.savefig("cov_approx.png")
 

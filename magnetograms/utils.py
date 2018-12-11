@@ -43,12 +43,12 @@ def calc_W(u_mesh, us, xys):
         (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
         coefs = bilinear_interp(u1s, u2s, x, y)
         coef_ind = 0
-        for u1_index in indices_u1:
-            for u2_index in indices_u2:
+        for u2_index in indices_u2:
+            for u1_index in indices_u1:
                 j = u2_index * len(u_mesh[0]) + u1_index
                 W[2*i,2*j] = coefs[coef_ind]
-                W[2*i,2*j+1] = coefs[coef_ind]
-                W[2*i+1,2*j] = coefs[coef_ind]
+                W[2*i,2*j+1] = 0.0#coefs[coef_ind]
+                W[2*i+1,2*j] = 0.0#coefs[coef_ind]
                 W[2*i+1,2*j+1] = coefs[coef_ind]
                 coef_ind += 1
         assert(coef_ind == len(coefs))
