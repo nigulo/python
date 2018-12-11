@@ -14,6 +14,7 @@ import numpy.random as random
 import scipy.interpolate as interp
 import scipy.sparse.linalg as sparse
 from matplotlib import cm
+import unittest
 
 
 #import os
@@ -93,6 +94,17 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
         ys_c[i] = ys[indices_y[i]]
     return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
 
+
+class test_get_closest(unittest.TestCase):
+
+    def test(self):
+        xs = np.array([0.0, 1.0, 2.0, 3.0])
+        ys = np.array([-1.0, -0.5, 0.0, 0.5, 1.0])
+        (xs_c, ys_c), (index_x, index_y) = get_closest(xs, ys, 0.0, 0.0)
+        np.testing.assert_equal(xs_c , 0.0)
+        
+if __name__ == '__main__':
+    unittest.main()        
 #Optimeerida
 #def get_W(u_mesh, us, xys):
 #    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
@@ -200,6 +212,13 @@ fig.set_size_inches(12, 12)
 
 U = gp_train.calc_cov(u, u, data_or_test=True)
 W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+
+for i in np.arange(0, np.shape(W)[0]):
+    W_row = W[i, 0::2]
+    for j in np.arange(0, np.shape(W_row)[0]):
+        if W_row[j] != 0:
+            print j
+    print "SUM:", i, np.sum(W_row)
 
 #K1 = np.dot(W, np.dot(U, W.T))
 
