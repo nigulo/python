@@ -13,6 +13,7 @@ import scipy.misc
 import numpy.random as random
 import scipy.interpolate as interp
 import scipy.sparse.linalg as sparse
+import utils
 
 #import os
 #import os.path
@@ -61,36 +62,6 @@ u = np.dstack(u_mesh).reshape(-1, 2)
 print "u_mesh=", u_mesh
 print "u=", u
 
-def bilinear_interp(xs, ys, x, y):
-    coefs = np.zeros(len(xs)*len(ys))
-    h = 0
-    for i in np.arange(0, len(xs)):
-        num = 1.0
-        denom = 1.0
-        for j in np.arange(0, len(xs)):
-            if i != j:
-                for k in np.arange(0, len(ys)):
-                    for l in np.arange(0, len(ys)):
-                        if k != l:
-                            num *= (x - xs[j])*(y - ys[l])
-                            denom *= (xs[i] - xs[j])*(ys[k] - ys[l])
-        coefs[h] = num/denom
-        h += 1
-    return coefs
-
-def get_closest(xs, ys, x, y, count_x=2, count_y=2):
-    dists_x = np.abs(xs - x)
-    dists_y = np.abs(ys - y)
-    indices_x = np.argsort(dists_x)
-    indices_y = np.argsort(dists_y)
-    xs_c = np.zeros(count_x)
-    ys_c = np.zeros(count_y)
-    for i in np.arange(0, count_x):
-        xs_c[i] = xs[indices_x[i]]
-    for i in np.arange(0, count_y):
-        ys_c[i] = ys[indices_y[i]]
-    return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
-
 #Optimeerida
 #def get_W(u_mesh, us, xys):
 #    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
@@ -129,24 +100,6 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
 #            W[2*i+1,2*j] = W1[i, j]
 #            W[2*i+1,2*j+1] = W1[i, j]
 #    return W
-
-def calc_W(u_mesh, us, xys):
-    W = np.zeros((np.shape(xys)[0]*2, np.shape(us)[0]*2))
-    i = 0
-    for (x, y) in xys:
-        (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
-        coefs = bilinear_interp(u1s, u2s, x, y)
-        coef_ind = 0
-        for u1_index in indices_u1:
-            for u2_index in indices_u2:
-                j = u2_index * m1 + u1_index
-                W[2*i,2*j] = coefs[coef_ind]
-                W[2*i,2*j+1] = coefs[coef_ind]
-                W[2*i+1,2*j] = coefs[coef_ind]
-                W[2*i+1,2*j+1] = coefs[coef_ind]
-                coef_ind += 1
-        i += 1
-    return W
 
 print x_mesh
 
@@ -206,6 +159,8 @@ print np.shape(x)
 print np.shape(y)
 print n
 
+# Using KISS-GP
+# https://arxiv.org/pdf/1503.01057.pdf
 def calc_loglik_approx(U, W, y):
     #print np.shape(W), np.shape(y)
     (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
@@ -220,87 +175,6 @@ def calc_loglik(K, y):
     v = la.solve(L, y)
     return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
-#def get_w(x_mesh, u, K):
-#    #print K
-#    #print np.shape(K), np.shape(x_mesh[0][0,:]), np.shape(x_mesh[1][:,0])
-#    rbs = interp.RectBivariateSpline(x_mesh[0][0,:], x_mesh[1][:,0], K, kx=3, ky=3)
-#    #w = rbs.ev(u[:,0], u[:,1])
-#    w = rbs.get_coeffs()
-#    r = rbs.get_residual()
-#    k = rbs.get_knots()
-#    print "w=", w
-#    print "r=", r
-#    print "k=", k
-#    print rbs.ev(u[:,0], u[:,1])
-#    for i in np.arange(0, np.shape(u)[0]):
-#        val = 0
-#        for j in np.arange(0, len(w)):
-#            val += (u[i,0] - x[j,0])*w[j]*(u[i,1] - x[j,1])
-#        print val
-#    #W = np.reshape(w, (len(x1)*len(x2), np.shape(u)[0]))
-#    return w
-
-def test():
-    test_fig, ax_test = plt.subplots(nrows=1, ncols=1, sharex=True)
-    test_fig.set_size_inches(4, 6)
-    
-    length_scales = np.linspace(length_scale_train/100, length_scale_train*2, 20)
-    logliks_approx = np.zeros(len(length_scales))
-    logliks_true = np.zeros(len(length_scales))
-    for test_no in np.arange(0, len(length_scales)):
-        length_scale = length_scales[test_no]
-        gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale, noise_var_train)
-        K = gp.calc_cov(x, x, data_or_test=True)
-        U = gp.calc_cov(u, u, data_or_test=True)
-        #print K
-        #print "x=", x
-        #print "u=", u
-        
-        W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-        #for i in np.arange(0, len(x1)*len(x2)):
-        #    W1 = get_W(u_mesh, u, x)#, np.reshape(U[i,0::2], (len(u1), len(u2))))
-        #    #print np.shape(W), np.shape(W1), np.shape(W1)
-        #    for j in np.arange(0, np.shape(W1)[1]):
-        #        W[2*i,2*j] = W1[i, j]
-        #        W[2*i,2*j+1] = W1[i, j]
-        #        W[2*i+1,2*j] = W1[i, j]
-        #        W[2*i+1,2*j+1] = W1[i, j]
-        
-        #for i in np.arange(0, np.shape(W)[0]):
-        #    for j in np.arange(0, np.shape(W)[1]):
-        #        print "W=", W[i,j]
-        
-        logliks_approx[test_no] = calc_loglik_approx(U, W, y_flat)
-        logliks_true[test_no] = calc_loglik(K, y_flat)
-    
-    logliks_approx = (logliks_approx - np.min(logliks_approx))/(np.max(logliks_approx) - np.min(logliks_approx))
-    logliks_true = (logliks_true - np.min(logliks_true))/(np.max(logliks_true) - np.min(logliks_true))
-    
-    ax_test.plot(length_scales, logliks_approx, "b-")
-    ax_test.plot(length_scales, logliks_true, "r-")
-    test_fig.savefig("test.png")
-    #U1 = np.zeros((np.shape(K)[0], len(u1)*len(u2)*2))
-    #for i in np.arange(0, np.shape(K)[0]):
-    #    w1 = get_w(x_mesh, u, np.reshape(K[i,0::2], (len(x1), len(x2))))
-    #    w2 = get_w(x_mesh, u, np.reshape(K[i,1::2], (len(x1), len(x2))))
-    #    print np.shape(U1), np.shape(w1)
-    #    for j in np.arange(0, np.shape(w1)[0]):
-    #        U1[i,2*j] = w1[j]
-    #        U1[i,2*j+1] = w2[j]
-    
-    #U1 = U1.T
-    #U = np.zeros((len(u1)*len(u2)*2, len(u1)*len(u2)*2))
-    #for i in np.arange(0, np.shape(U1)[0]):
-    #    w1 = get_w(x_mesh, u, np.reshape(U1[i,0::2], (len(x1), len(x2))))
-    #    w2 = get_w(x_mesh, u, np.reshape(U1[i,1::2], (len(x1), len(x2))))
-    #    print np.shape(U1), np.shape(w1)
-    #    for j in np.arange(0, np.shape(w1)[0]):
-    #        U[i,2*j] = w1[j]
-    #        U[i,2*j+1] = w2[j]
-    
-    #print U
-
-#test()
 
 def algorithm_a(x, y, y_orig):
     y_in = np.array(y)
