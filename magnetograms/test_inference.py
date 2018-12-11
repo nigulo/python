@@ -14,7 +14,7 @@ import numpy.random as random
 import scipy.interpolate as interp
 import scipy.sparse.linalg as sparse
 from matplotlib import cm
-import unittest
+import utils
 
 
 #import os
@@ -64,47 +64,6 @@ u = np.dstack(u_mesh).reshape(-1, 2)
 print "u_mesh=", u_mesh
 print "u=", u
 
-def bilinear_interp(xs, ys, x, y):
-    coefs = np.zeros(len(xs)*len(ys))
-    h = 0
-    for i in np.arange(0, len(xs)):
-        for k in np.arange(0, len(ys)):
-            num = 1.0
-            denom = 1.0
-            for j in np.arange(0, len(xs)):
-                if i != j:
-                    for l in np.arange(0, len(ys)):
-                        if k != l:
-                            num *= (x - xs[j])*(y - ys[l])
-                            denom *= (xs[i] - xs[j])*(ys[k] - ys[l])
-            coefs[h] = num/denom
-            h += 1
-    return coefs
-
-def get_closest(xs, ys, x, y, count_x=2, count_y=2):
-    dists_x = np.abs(xs - x)
-    dists_y = np.abs(ys - y)
-    indices_x = np.argsort(dists_x)
-    indices_y = np.argsort(dists_y)
-    xs_c = np.zeros(count_x)
-    ys_c = np.zeros(count_y)
-    for i in np.arange(0, count_x):
-        xs_c[i] = xs[indices_x[i]]
-    for i in np.arange(0, count_y):
-        ys_c[i] = ys[indices_y[i]]
-    return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
-
-
-class test_get_closest(unittest.TestCase):
-
-    def test(self):
-        xs = np.array([0.0, 1.0, 2.0, 3.0])
-        ys = np.array([-1.0, -0.5, 0.0, 0.5, 1.0])
-        (xs_c, ys_c), (index_x, index_y) = get_closest(xs, ys, 0.0, 0.0)
-        np.testing.assert_equal(xs_c , 0.0)
-        
-if __name__ == '__main__':
-    unittest.main()        
 #Optimeerida
 #def get_W(u_mesh, us, xys):
 #    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
@@ -143,25 +102,6 @@ if __name__ == '__main__':
 #            W[2*i+1,2*j] = W1[i, j]
 #            W[2*i+1,2*j+1] = W1[i, j]
 #    return W
-
-def calc_W(u_mesh, us, xys):
-    W = np.zeros((np.shape(xys)[0]*2, np.shape(us)[0]*2))
-    i = 0
-    for (x, y) in xys:
-        (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
-        coefs = bilinear_interp(u1s, u2s, x, y)
-        coef_ind = 0
-        for u1_index in indices_u1:
-            for u2_index in indices_u2:
-                j = u2_index * m1 + u1_index
-                W[2*i,2*j] = coefs[coef_ind]
-                W[2*i,2*j+1] = coefs[coef_ind]
-                W[2*i+1,2*j] = coefs[coef_ind]
-                W[2*i+1,2*j+1] = coefs[coef_ind]
-                coef_ind += 1
-        assert(coef_ind == len(coefs))
-        i += 1
-    return W
 
 print x_mesh
 
@@ -211,7 +151,7 @@ fig, ((ax11, ax12), (ax21, ax22)) = plt.subplots(nrows=2, ncols=2, sharex=True)
 fig.set_size_inches(12, 12)
 
 U = gp_train.calc_cov(u, u, data_or_test=True)
-W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
 for i in np.arange(0, np.shape(W)[0]):
     W_row = W[i, 0::2]

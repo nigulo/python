@@ -9,14 +9,14 @@ import numpy as np
 def bilinear_interp(xs, ys, x, y):
     coefs = np.zeros(len(xs)*len(ys))
     h = 0
-    for i in np.arange(0, len(xs)):
-        for k in np.arange(0, len(ys)):
+    for k in np.arange(0, len(ys)):
+        for i in np.arange(0, len(xs)):
             num = 1.0
             denom = 1.0
-            for j in np.arange(0, len(xs)):
-                if i != j:
-                    for l in np.arange(0, len(ys)):
-                        if k != l:
+            for l in np.arange(0, len(ys)):
+                if k != l:
+                    for j in np.arange(0, len(xs)):
+                        if i != j:
                             num *= (x - xs[j])*(y - ys[l])
                             denom *= (xs[i] - xs[j])*(ys[k] - ys[l])
             coefs[h] = num/denom
