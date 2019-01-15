@@ -9,7 +9,7 @@ class zernike():
         self.m = m
         self.abs_m = abs(m)
         self.n = n
-        
+
     def get_value(self, rho, phi):
         assert(rho >= 0 and rho <= 1)
         if (self.n - self.abs_m) % 2 != 0:
@@ -39,12 +39,12 @@ class zernike():
             Z = R*np.cos(phi*self.abs_m)
         return Z
 
-def get_mn(l):
-    assert(l  > 0)
+def get_mn(index):
+    assert(index  > 0)
     i = 1
-    for n in np.arange(0, l):
-        if  i + n + 1 > l:
+    for n in np.arange(0, index):
+        if  i + n + 1 > index:
             break
         i += n + 1
-    m = -n + 2*(l - i)
+    m = -n + 2*(index - i)
     return m, n
