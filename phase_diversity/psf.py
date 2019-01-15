@@ -36,7 +36,7 @@ class psf():
         for x in np.arange(0, nx):
             for y in np.arange(0, ny):
                 coh_vals[x, y] = coh_trans_func.get_value([np.sqrt(2)*(float(x) - nx/2) / nx, np.sqrt(2)*(float(y) - ny/2) / ny])
-        vals = fft.fft2(coh_vals)
+        vals = np.roll(np.roll(fft.fft2(coh_vals), nx/2, axis=0), ny/2, axis=1)
         self.incoh_vals = vals.real**2 + vals.imag**2
         
     def get_incoh_vals(self):

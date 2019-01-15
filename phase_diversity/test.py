@@ -28,8 +28,8 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = plt.get_cmap('winter')
 
 
-num_rows = 3
-num_cols = 3
+num_rows = 5
+num_cols = 5
 num_tests = num_rows * num_cols
 fig1, (axes1) = plt.subplots(nrows=num_rows, ncols=num_cols)
 fig1.set_size_inches(30, 30)
@@ -70,8 +70,10 @@ for index in np.arange(0, num_tests):
     ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
 
     psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+    
+    psf_vals = np.log(psf_vals)
     ax = axes2[index]
-    ax.imshow(psf_vals.T,extent=extent,cmap=my_cmap,origin='lower', vmin=np.min(vals), vmax=np.max(vals))
+    ax.imshow(psf_vals.T,extent=extent,cmap=my_cmap)#,origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))
     #ax1.set_title(r'Factor graph')
     #ax1.set_ylabel(r'$f$')
     #start, end = ax32.get_xlim()
