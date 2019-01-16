@@ -12,11 +12,8 @@ from matplotlib import cm
 #Z = opticspy.zernike.Coefficient(Z11=1) 
 #Z.zernikesurface()
 
-
 nx = 100
 ny = 100
-
-
 
 extent=[0., 1., 0., 1.]
 plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
@@ -47,8 +44,10 @@ for index in np.arange(0, num_tests):
     vals = np.zeros((nx, ny))
     for x in np.arange(0, nx):
         for y in np.arange(0, ny):
-            x1 = np.sqrt(2)*(float(x) - nx/2) / nx
-            y1 = np.sqrt(2)*(float(y) - ny/2) / ny
+            #x1 = np.sqrt(2)*(float(x) - nx/2) / nx
+            #y1 = np.sqrt(2)*(float(y) - ny/2) / ny
+            x1 = 2.0*(float(x) - nx/2) / nx
+            y1 = 2.0*(float(y) - ny/2) / ny
             if x1**2+y1**2 <= 1:
                 vals[x, y] = pa.get_value([x1, y1])
             else:
