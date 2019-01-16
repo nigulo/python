@@ -13,7 +13,7 @@ nx = 124
 ny = 124
 
 n_coefs = 10
-n_data = 3
+n_data = 100
 n_train = int(n_data*0.75)
 
 def create_model():
@@ -32,7 +32,7 @@ def create_model():
     output = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(hidden8)
 
     model = keras.models.Model(input=coefs, output=output)
-    optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+    optimizer = keras.optimizers.RMSprop(lr=0.000025, rho=0.95, epsilon=0.01)
     model.compile(optimizer, loss='mse')
     #model.compile(optimizer='adadelta', loss='binary_crossentropy')
     return model
@@ -53,14 +53,13 @@ def test(model):
         n_test_data = 10
         coefs = np.random.normal(size=(n_test_data, n_coefs))
         psf_vals = np.zeros((n_test_data, nx, ny))
-        for i in np.arange(0, n_data):
+        for i in np.arange(0, n_test_data):
             pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
             ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
             psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()
-        return coefs, psf_vals
     
         predicted_psfs = model.predict(coefs)
-        
+        predicted_psfs = np.reshape(predicted_psfs, (n_test_data, nx, ny))
         
         extent=[0., 1., 0., 1.]
         plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
@@ -72,13 +71,14 @@ def test(model):
         my_cmap = plt.get_cmap('winter')
         
         
-        fig, (axes) = plt.subplots(nrows=n_test_data, ncols=2)
+        fig, axes = plt.subplots(nrows=n_test_data, ncols=2)
         fig.set_size_inches(30, 30)
         
+        print np.shape(axes)
        
         for i in np.arange(0, n_test_data):
         
-            ax = axes[i, 0]
+            ax = axes[i][0]
             ax.imshow(np.log(psf_vals[i].T),extent=extent,cmap=my_cmap,origin='lower')
             #ax1.set_title(r'Factor graph')
             #ax1.set_ylabel(r'$f$')
@@ -88,9 +88,8 @@ def test(model):
             #ax1.xaxis.labelpad = -1
             #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
             ax.set_aspect(aspect=plot_aspect)
-            ax.set_adjustable('box-forced')
 
-            ax = axes[i, 1]
+            ax = axes[i][1]
             ax.imshow(np.log(predicted_psfs[i].T),extent=extent,cmap=my_cmap,origin='lower')
             #ax1.set_title(r'Factor graph')
             #ax1.set_ylabel(r'$f$')
@@ -100,7 +99,6 @@ def test(model):
             #ax1.xaxis.labelpad = -1
             #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
             ax.set_aspect(aspect=plot_aspect)
-            ax.set_adjustable('box-forced')
 
         fig.savefig('psf_nn.png')
         plt.close(fig)
