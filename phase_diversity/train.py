@@ -9,12 +9,14 @@ import matplotlib as mpl
 import matplotlib.colorbar as cb
 from matplotlib import cm
 
-nx = 124
-ny = 124
+nx = 114
+ny = 114
 
 n_coefs = 10
 n_data = 100
 n_train = int(n_data*0.75)
+
+n_epochs = 500
 
 def create_model():
     
@@ -23,18 +25,19 @@ def create_model():
     
     hidden1 = keras.layers.Dense(256, activation='relu')(coefs)
     hidden2 = keras.layers.Reshape((16, 16, 1))(hidden1)
-    hidden3 = keras.layers.Conv2D(8, (3, 3), activation='relu', padding='same')(hidden2)
+    hidden3 = keras.layers.Conv2D(18, (4, 4), activation='relu', padding='same')(hidden2)
     hidden4 = keras.layers.UpSampling2D((2, 2))(hidden3)
-    hidden5 = keras.layers.Conv2D(8, (3, 3), activation='relu', padding='same')(hidden4)
+    hidden5 = keras.layers.Conv2D(8, (6, 6), activation='relu', padding='same')(hidden4)
     hidden6 = keras.layers.UpSampling2D((2, 2))(hidden5)
-    hidden7 = keras.layers.Conv2D(16, (3, 3), activation='relu')(hidden6)
+    hidden7 = keras.layers.Conv2D(4, (8, 8), activation='relu')(hidden6)
     hidden8 = keras.layers.UpSampling2D((2, 2))(hidden7)
-    output = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(hidden8)
+    output = keras.layers.Conv2D(1, (10, 10), activation='sigmoid', padding='same')(hidden8)
 
     model = keras.models.Model(input=coefs, output=output)
-    optimizer = keras.optimizers.RMSprop(lr=0.000025, rho=0.95, epsilon=0.01)
-    model.compile(optimizer, loss='mse')
+    optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+    #model.compile(optimizer, loss='mse')
     #model.compile(optimizer='adadelta', loss='binary_crossentropy')
+    model.compile(optimizer='adadelta', loss='mse')
     return model
 
 
@@ -42,7 +45,7 @@ def train(coefs_train, coefs_test, psf_train, psf_test):
     print("Training")
     model = create_model()
     model.fit(coefs_train, psf_train,
-                epochs=50,
+                epochs=n_epochs,
                 batch_size=128,
                 shuffle=True,
                 validation_data=(coefs_test, psf_test),
@@ -50,13 +53,17 @@ def train(coefs_train, coefs_test, psf_train, psf_test):
     return model
 
 def test(model):
+    
         n_test_data = 10
-        coefs = np.random.normal(size=(n_test_data, n_coefs))
-        psf_vals = np.zeros((n_test_data, nx, ny))
-        for i in np.arange(0, n_test_data):
-            pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
-            ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
-            psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()
+        
+        print("Generating test data")
+        coefs, psf_vals = gen_data(n_test_data)
+        #coefs = np.random.normal(size=(n_test_data, n_coefs))
+        #psf_vals = np.zeros((n_test_data, nx, ny))
+        #for i in np.arange(0, n_test_data):
+        #    pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
+        #    ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
+        #    psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()
     
         predicted_psfs = model.predict(coefs)
         predicted_psfs = np.reshape(predicted_psfs, (n_test_data, nx, ny))
@@ -72,14 +79,13 @@ def test(model):
         
         
         fig, axes = plt.subplots(nrows=n_test_data, ncols=2)
-        fig.set_size_inches(30, 30)
+        fig.set_size_inches(6, 3*n_test_data)
         
-        print np.shape(axes)
-       
         for i in np.arange(0, n_test_data):
         
             ax = axes[i][0]
-            ax.imshow(np.log(psf_vals[i].T),extent=extent,cmap=my_cmap,origin='lower')
+            #ax.imshow(np.log(psf_vals[i].T),extent=extent,cmap=my_cmap,origin='lower')
+            ax.imshow(psf_vals[i].T,extent=extent,cmap=my_cmap,origin='lower')
             #ax1.set_title(r'Factor graph')
             #ax1.set_ylabel(r'$f$')
             #start, end = ax32.get_xlim()
@@ -90,7 +96,8 @@ def test(model):
             ax.set_aspect(aspect=plot_aspect)
 
             ax = axes[i][1]
-            ax.imshow(np.log(predicted_psfs[i].T),extent=extent,cmap=my_cmap,origin='lower')
+            #ax.imshow(np.log(predicted_psfs[i].T),extent=extent,cmap=my_cmap,origin='lower')
+            ax.imshow(predicted_psfs[i].T,extent=extent,cmap=my_cmap,origin='lower')
             #ax1.set_title(r'Factor graph')
             #ax1.set_ylabel(r'$f$')
             #start, end = ax32.get_xlim()
@@ -103,8 +110,7 @@ def test(model):
         fig.savefig('psf_nn.png')
         plt.close(fig)
 
-def gen_data():
-    print("Generating data")
+def gen_data(n_data, normalize=True, log=True):
     #coefs = np.zeros((n_data, n_coefs))
     coefs = np.random.normal(size=(n_data, n_coefs))
     psf_vals = np.zeros((n_data, nx, ny))
@@ -112,10 +118,17 @@ def gen_data():
         pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
         ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
         psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()
+        if log:
+            psf_vals[i] = np.log(psf_vals[i])
+        if normalize:
+            min_val = np.min(psf_vals[i])
+            max_val = np.max(psf_vals[i])
+            psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
     return coefs, psf_vals
 
 
-coefs, psf_vals = gen_data()
+print("Generating training data")
+coefs, psf_vals = gen_data(n_data)
 psf_vals = np.reshape(psf_vals, (len(psf_vals), nx, ny, 1))
 coefs_train = coefs[:n_train] 
 coefs_test = coefs[n_train:]
