@@ -3,7 +3,7 @@ import scipy.misc as misc
 
 class zernike():
     
-    def __init__(self, m, n):
+    def __init__(self, n, m):
         assert(n >= 0)
         assert(n >= abs(m))
         self.m = m
@@ -39,12 +39,20 @@ class zernike():
             Z = R*np.cos(phi*self.abs_m)
         return Z
 
-def get_mn(index):
-    assert(index  > 0)
-    i = 1
-    for n in np.arange(0, index):
-        if  i + n + 1 > index:
-            break
-        i += n + 1
-    m = -n + 2*(index - i)
-    return m, n
+
+def get_noll(n, m):
+    j = n*(n+1)/2 + abs(m)
+    nmod4 = n % 4
+    if (m >= 0 and nmod4 >= 2) or (m <= 0 and nmod4 <= 1):
+        j += 1
+    return j
+
+def get_nm(noll_index):
+    assert(noll_index  > 0)
+    for n in np.arange(0, noll_index):
+        for m in np.arange(-n, n+1, step = 2):
+            j = get_noll(n, m)
+            if j == noll_index:
+                return (n, m)
+    raise Exception("Should never happen")
+    

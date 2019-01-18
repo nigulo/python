@@ -8,8 +8,8 @@ class phase_aberration():
     def __init__(self, coefs):
         self.terms = []
         for index, coef in coefs:
-            m, n = zernike.get_mn(index)
-            z = zernike.zernike(m, n)
+            n, m = zernike.get_nm(index)
+            z = zernike.zernike(n, m)
             self.terms.append((coef, z))
             
     def get_value(self, u):
