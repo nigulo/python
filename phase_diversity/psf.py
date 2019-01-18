@@ -28,6 +28,10 @@ class coh_trans_func():
         self.phase_div = phase_div
        
     def get_value(self, u):
+        #if self.pupil_func(u) == 0:
+        #    return 0.0
+        #else:
+        #    return np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
         return self.pupil_func(u)*np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
 
 class psf():
@@ -35,10 +39,16 @@ class psf():
         coh_vals = np.zeros((nx, ny))
         for x in np.arange(0, nx):
             for y in np.arange(0, ny):
-                coh_vals[x, y] = coh_trans_func.get_value([np.sqrt(2)*(float(x) - nx/2) / nx, np.sqrt(2)*(float(y) - ny/2) / ny])
+                coh_vals[x, y] = coh_trans_func.get_value(np.array([np.sqrt(2)*(float(x) - nx/2) / nx, np.sqrt(2)*(float(y) - ny/2) / ny]))
         vals = np.roll(np.roll(fft.fft2(coh_vals), nx/2, axis=0), ny/2, axis=1)
         self.incoh_vals = vals.real**2 + vals.imag**2
         
     def get_incoh_vals(self):
         return self.incoh_vals
 
+
+def aperture_circ(u, r=1.0):
+    if np.sum(u**2) <=r: 
+        return 1.0 
+    else: 
+        return 0.0    

@@ -4,6 +4,7 @@ import opticspy.test.test_surface
 import opticspy.aperture
 
 import psf
+import utils
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.colorbar as cb
@@ -40,7 +41,10 @@ axes2 = axes2.flatten()
 index = 1
         
 for index in np.arange(0, num_tests):
-    pa = psf.phase_aberration([(index + 1, 1.0)])
+    if index == 0:
+        pa = psf.phase_aberration([])
+    else:
+        pa = psf.phase_aberration([(index, 0.1)])
     vals = np.zeros((nx, ny))
     for x in np.arange(0, nx):
         for y in np.arange(0, ny):
@@ -49,7 +53,7 @@ for index in np.arange(0, num_tests):
             x1 = 2.0*(float(x) - nx/2) / nx
             y1 = 2.0*(float(y) - ny/2) / ny
             if x1**2+y1**2 <= 1:
-                vals[x, y] = pa.get_value([x1, y1])
+                vals[x, y] = pa.get_value(np.array([x1, y1]))
             else:
                 vals[x, y] = 0.0
 
@@ -66,13 +70,17 @@ for index in np.arange(0, num_tests):
     ax.set_adjustable('box-forced')
 
 
-    ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
+    #ctf = psf.coh_trans_func(lambda u: psf.aperture_circ(u, 1.0), pa, lambda u: 0)#np.sum(u**2))
+    ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)#np.sum(u**2))
 
     psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+    print(np.min(psf_vals), np.max(psf_vals))
+    psf_vals = utils.trunc(psf_vals, 1e-3)
     
-    psf_vals = np.log(psf_vals)
+    #psf_vals = psf_vals[40:60,40:60]
+    #psf_vals = np.log(psf_vals)
     ax = axes2[index]
-    ax.imshow(psf_vals.T,extent=extent,cmap=my_cmap)#,origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))
+    ax.imshow(psf_vals.T,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))
     #ax1.set_title(r'Factor graph')
     #ax1.set_ylabel(r'$f$')
     #start, end = ax32.get_xlim()
