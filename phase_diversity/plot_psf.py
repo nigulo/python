@@ -26,8 +26,8 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = plt.get_cmap('winter')
 
 
-num_rows = 5
-num_cols = 5
+num_rows = 2
+num_cols = 2
 num_tests = num_rows * num_cols
 fig1, (axes1) = plt.subplots(nrows=num_rows, ncols=num_cols)
 fig1.set_size_inches(30, 30)
@@ -44,7 +44,7 @@ for index in np.arange(0, num_tests):
     if index == 0:
         pa = psf.phase_aberration([])
     else:
-        pa = psf.phase_aberration([(index, 0.1)])
+        pa = psf.phase_aberration([(index, 1.0)])
     vals = np.zeros((nx, ny))
     for x in np.arange(0, nx):
         for y in np.arange(0, ny):
@@ -70,12 +70,21 @@ for index in np.arange(0, num_tests):
     ax.set_adjustable('box-forced')
 
 
-    #ctf = psf.coh_trans_func(lambda u: psf.aperture_circ(u, 1.0), pa, lambda u: 0)#np.sum(u**2))
-    ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)#np.sum(u**2))
+    ctf = psf.coh_trans_func(lambda u: psf.aperture_circ(u, 1.0), pa, lambda u: 0)#np.sum(u**2))
+    #ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)#np.sum(u**2))
+
+    fig3, (ax31, ax32) = plt.subplots(nrows=2, ncols=1)
+    fig3.set_size_inches(4, 6)
 
     psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
-    print(np.min(psf_vals), np.max(psf_vals))
+    ax31.hist(psf_vals.flatten(), bins=100)
+    print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
     psf_vals = utils.trunc(psf_vals, 1e-3)
+    ax32.hist(psf_vals.flatten(), bins=100)
+    print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
+
+    fig3.savefig('hist' + str(index) + '.png')
+    plt.close(fig3)
     
     #psf_vals = psf_vals[40:60,40:60]
     #psf_vals = np.log(psf_vals)
@@ -91,7 +100,6 @@ for index in np.arange(0, num_tests):
     ax.set_aspect(aspect=plot_aspect)
     ax.set_adjustable('box-forced')
 
-
     index += 1
 
 fig1.savefig('zernike.png')
@@ -99,3 +107,4 @@ plt.close(fig1)
 
 fig2.savefig('psf.png')
 plt.close(fig2)
+

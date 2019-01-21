@@ -13,7 +13,7 @@ def polar_to_cart(rho, phi):
 def trunc(ds, perc):
     p1 = np.percentile(ds, perc*100)
     p2 = np.percentile(ds, (1.0-perc)*100)
-    print(perc*100, (1.0-perc)*100, p1, p2)
+    #print(perc*100, (1.0-perc)*100, p1, p2)
     ds_out = np.array(ds)
     if perc < 0.5:
         p1a = p1

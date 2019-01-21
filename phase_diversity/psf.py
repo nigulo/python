@@ -2,6 +2,7 @@ import numpy as np
 import numpy.fft as fft
 import zernike
 import utils
+import scipy.special as special
 
 class phase_aberration():
     
@@ -32,6 +33,8 @@ class coh_trans_func():
         #    return 0.0
         #else:
         #    return np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
+        #a = np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
+        #b = np.cos(self.phase_aberr.get_value(u) + self.phase_div(u)) + 1.j * np.sin(self.phase_aberr.get_value(u) + self.phase_div(u))
         return self.pupil_func(u)*np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
 
 class psf():
@@ -39,7 +42,7 @@ class psf():
         coh_vals = np.zeros((nx, ny))
         for x in np.arange(0, nx):
             for y in np.arange(0, ny):
-                coh_vals[x, y] = coh_trans_func.get_value(np.array([np.sqrt(2)*(float(x) - nx/2) / nx, np.sqrt(2)*(float(y) - ny/2) / ny]))
+                coh_vals[x, y] = coh_trans_func.get_value(np.array([np.sqrt(1.0)*(float(x) - nx/2) / nx, np.sqrt(1.0)*(float(y) - ny/2) / ny]))
         vals = np.roll(np.roll(fft.fft2(coh_vals), nx/2, axis=0), ny/2, axis=1)
         self.incoh_vals = vals.real**2 + vals.imag**2
         
@@ -47,8 +50,12 @@ class psf():
         return self.incoh_vals
 
 
-def aperture_circ(u, r=1.0):
-    if np.sum(u**2) <=r: 
-        return 1.0 
-    else: 
-        return 0.0    
+def aperture_circ(u, r=1.0, coef=5.0):
+    if coef > 0.0:
+        return 0.5+0.5*special.erf(coef*(r-np.sqrt(np.sum(u**2))))
+    else:
+        if np.sum(u**2) <= r*r: 
+            return 1.0 
+        else: 
+            return 0.0
+    
