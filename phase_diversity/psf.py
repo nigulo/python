@@ -18,11 +18,11 @@ class phase_aberration():
         if len(np.shape(us)) == 1:
             scalar = True
             us = np.array([us])
-        vals = np.zeros(np.shape(us))
+        vals = np.zeros(np.shape(us)[0])
         rhos_phis = utils.cart_to_polar(us)
         for coef, z in self.terms:
             #TODO vectorize zernike
-            vals += coef * z.get_value(rhos_phis)
+            vals += z.get_value(rhos_phis) * coef
         if scalar:
             vals = vals[0]
         return vals
@@ -58,6 +58,7 @@ class psf():
         #        norm_y = np.sqrt(2.0)*(float(y) - ny/2) / ny
         #        coh_vals[x, y] = coh_trans_func.get_value(np.array([norm_x, norm_y]))
         coh_vals = coh_trans_func.get_value(us)
+        coh_vals = np.reshape(coh_vals, (nx, ny))
         vals = fft.fft2(coh_vals)
         vals = vals.real**2 + vals.imag**2
         #vals = fft.ifft2(vals)

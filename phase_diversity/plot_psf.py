@@ -69,7 +69,7 @@ for index in np.arange(0, num_tests):
             #y1 = np.sqrt(2)*(float(y) - ny/2) / ny
             x1 = 2.0*(float(x) - nx/2) / nx
             y1 = 2.0*(float(y) - ny/2) / ny
-            if x1**2+y1**2 <= 1:
+            if x1**2+y1**2 <= 1.0:
                 vals[x, y] = pa.get_value(np.array([x1, y1]))
             else:
                 vals[x, y] = 0.0

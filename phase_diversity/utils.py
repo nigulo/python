@@ -7,7 +7,7 @@ def cart_to_polar(us):
         us = np.array([us])
     rhos = np.sqrt(np.sum(us**2, axis=1))
     phis = np.arctan2(us[:,1], us[:,0])
-    ret_val = np.columnstack((rhos, phis))
+    ret_val = np.column_stack((rhos, phis))
     if scalar:
         ret_val = ret_val[0]
     return ret_val
