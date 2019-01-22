@@ -13,12 +13,19 @@ class phase_aberration():
             z = zernike.zernike(n, m)
             self.terms.append((coef, z))
             
-    def get_value(self, u):
-        val = 0.0
-        rho, phi = utils.cart_to_polar(u[0], u[1])
+    def get_value(self, us):
+        scalar = False
+        if len(np.shape(us)) == 1:
+            scalar = True
+            us = np.array([us])
+        vals = np.zeros(np.shape(us))
+        rhos_phis = utils.cart_to_polar(us)
         for coef, z in self.terms:
-            val += coef * z.get_value(rho, phi)
-        return val
+            #TODO vectorize zernike
+            vals += coef * z.get_value(rhos_phis)
+        if scalar:
+            vals = vals[0]
+        return vals
 
 
 class coh_trans_func():

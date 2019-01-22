@@ -1,9 +1,16 @@
 import numpy as np
 
-def cart_to_polar(x, y):
-    rho = np.sqrt(x**2 + y**2)
-    phi = np.arctan2(y, x)
-    return (rho, phi)
+def cart_to_polar(us):
+    scalar = False
+    if len(np.shape(us)) == 1:
+        scalar = True
+        us = np.array([us])
+    rhos = np.sqrt(np.sum(us**2, axis=1))
+    phis = np.arctan2(us[:,1], us[:,0])
+    ret_val = np.columnstack((rhos, phis))
+    if scalar:
+        ret_val = ret_val[0]
+    return ret_val
 
 def polar_to_cart(rho, phi):
     x = rho * np.cos(phi)
