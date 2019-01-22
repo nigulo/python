@@ -13,8 +13,8 @@ from matplotlib import cm
 #Z = opticspy.zernike.Coefficient(Z11=1) 
 #Z.zernikesurface()
 
-nx = 100
-ny = 100
+nx = 320
+ny = 320
 
 extent=[0., 1., 0., 1.]
 plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
@@ -26,11 +26,11 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = plt.get_cmap('winter')
 
 
-num_rows = 2
-num_cols = 2
+num_rows = 5
+num_cols = 5
 num_tests = num_rows * num_cols
 
-aperture_func = lambda u: psf.aperture_circ(u, 1.0, 5.0)
+aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 6)
@@ -57,13 +57,11 @@ fig2.set_size_inches(30, 30)
 axes1 = axes1.flatten()
 axes2 = axes2.flatten()
 
-index = 1
-        
 for index in np.arange(0, num_tests):
     if index == 0:
         pa = psf.phase_aberration([])
     else:
-        pa = psf.phase_aberration([(index, 1.0)])
+        pa = psf.phase_aberration([(index, 10.0)])
     vals = np.zeros((nx, ny))
     for x in np.arange(0, nx):
         for y in np.arange(0, ny):
@@ -105,7 +103,7 @@ for index in np.arange(0, num_tests):
     fig3.savefig('hist' + str(index) + '.png')
     plt.close(fig3)
     
-    #psf_vals = psf_vals[40:60,40:60]
+    psf_vals = psf_vals[int(0.4*nx):int(0.6*nx),int(0.4*ny):int(0.6*ny)]
     #psf_vals = np.log(psf_vals)
     ax = axes2[index]
     ax.imshow(psf_vals.T,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))

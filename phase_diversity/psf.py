@@ -47,9 +47,9 @@ class psf():
                 coh_vals[x, y] = coh_trans_func.get_value(np.array([norm_x, norm_y]))
         vals = fft.fft2(coh_vals)
         vals = vals.real**2 + vals.imag**2
+        #vals = fft.ifft2(vals)
+        #vals = fft.ifft2(vals).real
         vals = np.roll(np.roll(vals, nx/2, axis=0), ny/2, axis=1)
-        #vals = fft.ifft2(vals)
-        #vals = fft.ifft2(vals)
         self.incoh_vals = vals
         #assert(np.all(self.incoh_vals == np.conjugate(vals)*vals))
         
