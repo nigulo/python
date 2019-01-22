@@ -21,14 +21,40 @@ class test_zernike(unittest.TestCase):
                             expected = 0.0
                         else:
                             expected = radial_polynomial(rho, abs(m), n)*np.sin(phi*abs(m))
-                        np.testing.assert_approx_equal(z.get_value(rho, phi), expected, significant=7)
+                        np.testing.assert_approx_equal(z.get_value(np.array([rho, phi])), expected, significant=7)
                     for m in np.arange(0, n + 1):
                         z = zernike(n, m)
                         if (n-m) % 2 != 0:
                             expected = 0.0
                         else:
                             expected = radial_polynomial(rho, m, n)*np.cos(phi*m)
-                        np.testing.assert_approx_equal(z.get_value(rho, phi), expected, significant=7)
+                        np.testing.assert_approx_equal(z.get_value(np.array([rho, phi])), expected, significant=7)
+        
+        # Test vector form
+        rhos = np.linspace(0.0, 1.0, 10)
+        phis = np.linspace(0.0, 2.0*np.pi, 10)
+        rhos_phis = np.transpose([np.tile(rhos, 10), np.repeat(phis, 10)])
+        expected = np.zeros(np.shape(rhos_phis)[0])
+            
+        for n in np.arange(0, 27):
+            for m in np.arange(-n, 0):
+                expected = np.zeros(np.shape(rhos_phis)[0])
+                for i in np.arange(0, len(expected)):
+                    if (n-m) % 2 != 0:
+                        expected[i] = 0.0
+                    else:
+                        expected[i] = radial_polynomial(rhos_phis[i,0], abs(m), n)*np.sin(rhos_phis[i,1]*abs(m))
+                z = zernike(n, m)
+                np.testing.assert_array_almost_equal(z.get_value(rhos_phis), expected, decimal=7)
+            for m in np.arange(0, n + 1):
+                expected = np.zeros(np.shape(rhos_phis)[0])
+                for i in np.arange(0, len(expected)):
+                    if (n-m) % 2 != 0:
+                        expected[i] = 0.0
+                    else:
+                        expected[i] = radial_polynomial(rhos_phis[i,0], m, n)*np.cos(rhos_phis[i,1]*m)
+                z = zernike(n, m)
+                np.testing.assert_array_almost_equal(z.get_value(rhos_phis), expected, decimal=7)
 
 
 class test_get_noll(unittest.TestCase):

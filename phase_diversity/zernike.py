@@ -10,11 +10,17 @@ class zernike():
         self.abs_m = abs(m)
         self.n = n
 
-    def get_value(self, rho, phi):
-        assert(rho >= 0 and rho <= 1)
+    def get_value(self, rhos_phis):
+        scalar = False
+        if len(np.shape(rhos_phis)) == 1:
+            scalar = True
+            rhos_phis = np.array([rhos_phis])
+        rhos = rhos_phis[:,0]
+        phis = rhos_phis[:,1]
+        assert(all(rhos >= 0) and all(rhos <= 1))
         if (self.n - self.abs_m) % 2 != 0:
             return 0.0
-        R = 0.0
+        R = np.zeros(np.shape(rhos)[0])
         nmm2 = (self.n-self.abs_m)/2
         npm2 = (self.n+self.abs_m)/2
         k_fac = 1.0
@@ -22,7 +28,7 @@ class zernike():
         npm2_fac = misc.factorial(npm2)
         nmm2_fac = misc.factorial(nmm2)
         for k in np.arange(0, nmm2+1):
-            R1 = np.power(rho, self.n-2*k) * nmk_fac / k_fac / npm2_fac / nmm2_fac
+            R1 = np.power(rhos, self.n-2*k) * nmk_fac / k_fac / npm2_fac / nmm2_fac
             if k % 2 != 0:
                 R1 = -R1
             R += R1
@@ -34,9 +40,11 @@ class zernike():
             if nmm2 - k > 0:
                 nmm2_fac /=  nmm2 - k
         if self.m < 0:
-            Z = R*np.sin(phi*self.abs_m)
+            Z = R*np.sin(phis*self.abs_m)
         else:
-            Z = R*np.cos(phi*self.abs_m)
+            Z = R*np.cos(phis*self.abs_m)
+        if scalar:
+            Z = Z[0]
         return Z
 
 
