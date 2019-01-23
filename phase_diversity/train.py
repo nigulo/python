@@ -3,6 +3,7 @@ import numpy.random as random
 import keras
 
 import psf
+import utils
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -12,20 +13,20 @@ from matplotlib import cm
 nx = 320
 ny = 320
 
-zoomin_start = nx/2 - 37
-zoomin_end = ny/2 + 37
+zoomin_start = nx/2 - 32
+zoomin_end = ny/2 + 32
 
-psf_vals_nx = 74
-psf_vals_ny = 74
+psf_vals_nx = 64
+psf_vals_ny = 64
 
 
 aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 10
-n_data = 20
+n_data = 100
 n_train = int(n_data*0.75)
 
-n_epochs = 1000
+n_epochs = 500
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -37,24 +38,37 @@ def create_model():
     coefs = keras.layers.Input((n_coefs,), name='coefs')
     #psf = keras.layers.Input(IMAGE_SHAPE, name='psf')
     
-    start_nx = 10#(((psf_vals_nx + 1)/2 + 1)/2 + 1)/2 + 2
-    start_ny = 10#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
+    start_nx = 8#(((psf_vals_nx + 1)/2 + 1)/2 + 1)/2 + 2
+    start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
     
-    hidden1 = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
-    hidden2 = keras.layers.Reshape((start_nx, start_ny, 1))(hidden1)
-    hidden3 = keras.layers.Conv2D(18, (3, 3), activation='relu', padding='same')(hidden2)
-    hidden4 = keras.layers.UpSampling2D((2, 2))(hidden3)
-    hidden5 = keras.layers.Conv2D(8, (3, 3), activation='relu', padding='same')(hidden4)
-    hidden6 = keras.layers.UpSampling2D((2, 2))(hidden5)
-    hidden7 = keras.layers.Conv2D(4, (4, 4), activation='relu')(hidden6)
-    hidden8 = keras.layers.UpSampling2D((2, 2))(hidden7)
-    output = keras.layers.Conv2D(1, (4, 4), activation='sigmoid', padding='same')(hidden8)
+    hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
+    hidden = keras.layers.Reshape((start_nx, start_ny, 1))(hidden)
+    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    hidden = keras.layers.core.Flatten()(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
+    hidden = keras.layers.Reshape((start_nx*8, start_ny*8, 1))(hidden)
+    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
+    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu')(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu')(hidden)
+    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
+    #hidden = keras.layers.Conv2D(40, (5, 5), activation='relu')(hidden)
+    #hidden = keras.layers.Conv2D(40, (5, 5), activation='relu')(hidden)
+    output = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(hidden)
 
     model = keras.models.Model(input=coefs, output=output)
-    optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+    optimizer = keras.optimizers.RMSprop(lr=0.0025, rho=0.95, epsilon=0.01)
     #model.compile(optimizer, loss='mse')
+    #model.compile(optimizer='adadelta', loss='binary_crossentropy')
+    #model.compile(optimizer=optimizer, loss='binary_crossentropy')
     model.compile(optimizer='adadelta', loss='binary_crossentropy')
-    #model.compile(optimizer='adadelta', loss='mse')
     return model
 
 
@@ -168,9 +182,12 @@ def gen_data(n_data, normalize=True, log=False):
     coefs = np.random.normal(size=(n_data, n_coefs))*10
     psf_vals = np.zeros((n_data, psf_vals_nx, psf_vals_ny))
     for i in np.arange(0, n_data):
+        #i_max = np.argmax(np.abs(coefs[i]))
+        #pa = psf.phase_aberration([(4 + i_max, coefs[i_max])])
         pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
         ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
         psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()[zoomin_start:zoomin_end,zoomin_start:zoomin_end]
+        #psf_vals[i] = utils.trunc(psf_vals[i], 1e-2)
         if log:
             psf_vals[i] = np.log(psf_vals[i])
         if normalize:
