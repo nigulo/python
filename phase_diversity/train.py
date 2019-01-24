@@ -23,10 +23,10 @@ psf_vals_ny = 64
 aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 10
-n_data = 100
+n_data = 10000
 n_train = int(n_data*0.75)
 
-n_epochs = 500
+n_epochs = 1000
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -42,12 +42,22 @@ def create_model():
     start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
     
     hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
-    hidden = keras.layers.Reshape((start_nx, start_ny, 1))(hidden)
-    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    hidden = keras.layers.core.Flatten()(hidden)
+    #hidden = keras.layers.Reshape((start_nx, start_ny, 1))(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.core.Flatten()(hidden)
+
     hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
+    #hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.core.Flatten()(hidden)
+
     hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+    #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
+    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    #hidden = keras.layers.core.Flatten()(hidden)
+
     hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
+    #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
     hidden = keras.layers.Reshape((start_nx*8, start_ny*8, 1))(hidden)
     #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
     hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
@@ -64,11 +74,12 @@ def create_model():
     output = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(hidden)
 
     model = keras.models.Model(input=coefs, output=output)
-    optimizer = keras.optimizers.RMSprop(lr=0.0025, rho=0.95, epsilon=0.01)
-    #model.compile(optimizer, loss='mse')
+    optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
+    #optimizer = keras.optimizers.RMSprop(lr=0.0025, rho=0.95, epsilon=0.01)
+    #model.compile(optimizer, loss='mean_absolute_error')
     #model.compile(optimizer='adadelta', loss='binary_crossentropy')
     #model.compile(optimizer=optimizer, loss='binary_crossentropy')
-    model.compile(optimizer='adadelta', loss='binary_crossentropy')
+    model.compile(optimizer='adadelta', loss='mean_absolute_error')
     return model
 
 
@@ -77,7 +88,7 @@ def train(coefs_train, coefs_test, psf_train, psf_test):
     model = create_model()
     model.fit(coefs_train, psf_train,
                 epochs=n_epochs,
-                batch_size=128,
+                batch_size=10,
                 shuffle=True,
                 validation_data=(coefs_test, psf_test),
                 callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')])
@@ -188,9 +199,13 @@ def gen_data(n_data, normalize=True, log=False):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
         psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()[zoomin_start:zoomin_end,zoomin_start:zoomin_end]
         #psf_vals[i] = utils.trunc(psf_vals[i], 1e-2)
-        if log:
-            psf_vals[i] = np.log(psf_vals[i])
         if normalize:
+            min_val = np.min(psf_vals[i])
+            max_val = np.max(psf_vals[i])
+            psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
+        if log:
+            psf_vals[i] += 1.0
+            psf_vals[i] = np.log(psf_vals[i])
             min_val = np.min(psf_vals[i])
             max_val = np.max(psf_vals[i])
             psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
