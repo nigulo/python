@@ -22,9 +22,10 @@ import theano.tensor as tt
 #from sklearn.cluster import KMeans
 import numpy.linalg as la
 import matplotlib.pyplot as plt
+import warnings
 
-num_iters = 50
-num_chains = 1
+num_samples = 1
+num_chains = 3
 inference = True
 
 eps = 0.001
@@ -167,6 +168,127 @@ print(n)
 # define the parameters with their associated priors
 
 
+def gradients(vals, func, releps=1e-3, abseps=None, mineps=1e-9, reltol=1e-3,
+              epsscale=0.5):
+    """
+    Calculate the partial derivatives of a function at a set of values. The
+    derivatives are calculated using the central difference, using an iterative
+    method to check that the values converge as step size decreases.
+
+    Parameters
+    ----------
+    vals: array_like
+        A set of values, that are passed to a function, at which to calculate
+        the gradient of that function
+    func:
+        A function that takes in an array of values.
+    releps: float, array_like, 1e-3
+        The initial relative step size for calculating the derivative.
+    abseps: float, array_like, None
+        The initial absolute step size for calculating the derivative.
+        This overrides `releps` if set.
+        `releps` is set then that is used.
+    mineps: float, 1e-9
+        The minimum relative step size at which to stop iterations if no
+        convergence is achieved.
+    epsscale: float, 0.5
+        The factor by which releps if scaled in each iteration.
+
+    Returns
+    -------
+    grads: array_like
+        An array of gradients for each non-fixed value.
+    """
+
+    grads = np.zeros(len(vals))
+
+    # maximum number of times the gradient can change sign
+    flipflopmax = 10.
+
+    # set steps
+    if abseps is None:
+        if isinstance(releps, float):
+            eps = np.abs(vals)*releps
+            eps[eps == 0.] = releps  # if any values are zero set eps to releps
+            teps = releps*np.ones(len(vals))
+        elif isinstance(releps, (list, np.ndarray)):
+            if len(releps) != len(vals):
+                raise ValueError("Problem with input relative step sizes")
+            eps = np.multiply(np.abs(vals), releps)
+            eps[eps == 0.] = np.array(releps)[eps == 0.]
+            teps = releps
+        else:
+            raise RuntimeError("Relative step sizes are not a recognised type!")
+    else:
+        if isinstance(abseps, float):
+            eps = abseps*np.ones(len(vals))
+        elif isinstance(abseps, (list, np.ndarray)):
+            if len(abseps) != len(vals):
+                raise ValueError("Problem with input absolute step sizes")
+            eps = np.array(abseps)
+        else:
+            raise RuntimeError("Absolute step sizes are not a recognised type!")
+        teps = eps
+
+    # for each value in vals calculate the gradient
+    count = 0
+    for i in range(len(vals)):
+        # initial parameter diffs
+        leps = eps[i]
+        cureps = teps[i]
+
+        flipflop = 0
+
+        # get central finite difference
+        fvals = np.copy(vals)
+        bvals = np.copy(vals)
+
+        # central difference
+        fvals[i] += 0.5*leps  # change forwards distance to half eps
+        bvals[i] -= 0.5*leps  # change backwards distance to half eps
+        cdiff = (func(fvals)-func(bvals))/leps
+
+        while 1:
+            fvals[i] -= 0.5*leps  # remove old step
+            bvals[i] += 0.5*leps
+
+            # change the difference by a factor of two
+            cureps *= epsscale
+            if cureps < mineps or flipflop > flipflopmax:
+                # if no convergence set flat derivative (TODO: check if there is a better thing to do instead)
+                warnings.warn("Derivative calculation did not converge: setting flat derivative.")
+                grads[count] = 0.
+                break
+            leps *= epsscale
+
+            # central difference
+            fvals[i] += 0.5*leps  # change forwards distance to half eps
+            bvals[i] -= 0.5*leps  # change backwards distance to half eps
+            cdiffnew = (func(fvals)-func(bvals))/leps
+
+            if cdiffnew == cdiff:
+                grads[count] = cdiff
+                break
+
+            # check whether previous diff and current diff are the same within reltol
+            rat = (cdiff/cdiffnew)
+            if np.isfinite(rat) and rat > 0.:
+                # gradient has not changed sign
+                if np.abs(1.-rat) < reltol:
+                    grads[count] = cdiffnew
+                    break
+                else:
+                    cdiff = cdiffnew
+                    continue
+            else:
+                cdiff = cdiffnew
+                flipflop += 1
+                continue
+
+        count += 1
+
+    return grads
+
 # define a theano Op for our likelihood function
 class LogLike(tt.Op):
 
@@ -201,6 +323,7 @@ class LogLike(tt.Op):
         self.likelihood = loglike
         self.noise_var = noise_var
         self.y = y
+        self.logpgrad = LogLikeGrad(self.likelihood, self.noise_var, self.y)
 
     def perform(self, node, inputs, outputs):
         # the method that is used when calling the Op
@@ -211,6 +334,55 @@ class LogLike(tt.Op):
 
         outputs[0][0] = np.array(logl) # output the log-likelihood
 
+    def grad(self, inputs, g):
+        # the method that calculates the gradients - it actually returns the
+        # vector-Jacobian product - g[0] is a vector of parameter values
+        theta, = inputs  # our parameters
+        return [g[0]*self.logpgrad(theta)]
+
+class LogLikeGrad(tt.Op):
+
+    """
+    This Op will be called with a vector of values and also return a vector of
+    values - the gradients in each dimension.
+    """
+    itypes = [tt.dvector]
+    otypes = [tt.dvector]
+
+    def __init__(self, loglike, noise_var, y):
+        """
+        Initialise with various things that the function requires. Below
+        are the things that are needed in this particular example.
+
+        Parameters
+        ----------
+        loglike:
+            The log-likelihood (or whatever) function we've defined
+        data:
+            The "observed" data that our log-likelihood function takes in
+        x:
+            The dependent variable (aka 'x') that our model requires
+        sigma:
+            The noise standard deviation that out function requires.
+        """
+
+        # add inputs as class attributes
+        self.likelihood = loglike
+        self.noise_var = noise_var
+        self.y = y
+
+    def perform(self, node, inputs, outputs):
+        theta, = inputs
+
+        # define version of likelihood function to pass to derivative function
+        def lnlike(values):
+            return self.likelihood(values, self.noise_var, self.y)
+
+        # calculate gradients
+        grads = gradients(theta, lnlike)
+
+        outputs[0][0] = grads
+        
 def sample(x, y):
     W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
     #(x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
@@ -218,7 +390,6 @@ def sample(x, y):
     def likelihood(theta, noise_var, y):
         ell = theta[0]
         sig_var = theta[1]
-        print(sig_var, ell)
         gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
         #loglik = gp.init(x, y)
         
@@ -245,10 +416,11 @@ def sample(x, y):
         #                        scales={ell:1.0, sig_var:1.0, noise_var:1.0})
         
         step = pm.NUTS()
-        trace = pm.sample(2000, tune=1000, init=None, step=step, cores=3)
+        trace = pm.sample(num_samples, tune=int(num_samples/2), init=None, step=step, cores=num_chains)
 
-        m_ell = median(ell.trace())
-        m_sig_var = median(sig_var.trace())
+        #print(trace['model_logp'])
+        m_ell = np.mean(trace['ell'])
+        m_sig_var = np.mean(trace['sig_var'])
         return m_ell, m_sig_var
 
 def calc_loglik_approx(U, W, y):
@@ -306,21 +478,22 @@ def algorithm_a(x, y, y_orig):
             #mean_samples = results['m'];
             #mean = np.mean(mean_samples)
             
-            length_scale, sig_var = sample(x, y)
+            length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
         else:
             sig_var=sig_var_train
-            mean=mean_train
+            #mean=mean_train
             length_scale=length_scale_train
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
-            #loglik = gp.init(x, y)
-            U = gp.calc_cov(u, u, data_or_test=True)
-            W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+
+        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        #loglik = gp.init(x, y)
+        U = gp.calc_cov(u, u, data_or_test=True)
+        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
             
         
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
-        print("mean", mean)
+        #print("mean", mean)
         print("loglik=", loglik, "max_loglik=", max_loglik)
         
         if max_loglik is None or loglik > max_loglik:
@@ -404,7 +577,7 @@ def algorithm_b(x, y, y_orig):
     
         num_tries += 1
     
-        initial_param_values = []
+        #initial_param_values = []
         
         if inference:
             #for i in np.arange(0, num_chains):
@@ -428,21 +601,22 @@ def algorithm_b(x, y, y_orig):
             #mean_samples = results['m'];
             #mean = np.mean(mean_samples)
             
-            length_scale, sig_var = sample(x, y)
+            length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
             
         else:
             sig_var=sig_var_train
-            mean=mean_train
+            #mean=mean_train
             length_scale=length_scale_train
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
-            #loglik = gp.init(x, y)
-            U = gp.calc_cov(u, u, data_or_test=True)
-            W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+
+        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        #loglik = gp.init(x, y)
+        U = gp.calc_cov(u, u, data_or_test=True)
+        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
         
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
-        print("mean", mean)
+        #print("mean", mean)
         print("loglik=", loglik, "max_loglik=", max_loglik)
         
         if max_loglik is None or loglik > max_loglik:
