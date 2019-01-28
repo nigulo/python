@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use('Agg')
 import numpy as np
 import numpy.random as random
 import keras
@@ -6,9 +8,10 @@ import psf
 import utils
 
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import matplotlib.colorbar as cb
 from matplotlib import cm
+
+import time
 
 nx = 320
 ny = 320
@@ -22,7 +25,7 @@ psf_vals_ny = 64
 
 aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
-n_coefs = 10
+n_coefs = 50
 n_data = 10000
 n_train = int(n_data*0.75)
 
@@ -46,16 +49,19 @@ def create_model():
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
-    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*2, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
-    hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
+    hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*32, activation='relu')(hidden)
     hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
     #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
     hidden = keras.layers.Reshape((start_nx*8, start_ny*8, 1))(hidden)
@@ -96,7 +102,7 @@ def train(coefs_train, coefs_test, psf_train, psf_test):
     ############################
     # Plot training data results
     n_test = 5
-    print np.shape(psf_train)
+    print(np.shape(psf_train))
     predicted_psfs = model.predict(coefs_train[0:n_test])
     predicted_psfs = np.reshape(predicted_psfs, (n_test, psf_vals_nx, psf_vals_ny))
     
@@ -139,7 +145,7 @@ def train(coefs_train, coefs_test, psf_train, psf_test):
 
 def test(model):
     
-        n_test_data = 10
+        n_test_data = 5
         
         print("Generating test data")
         coefs, psf_vals = gen_data(n_test_data)
@@ -150,7 +156,10 @@ def test(model):
         #    ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
         #    psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()
     
+        start = time.time()    
         predicted_psfs = model.predict(coefs)
+        end = time.time()
+        print("Prediction time", end - start)
         predicted_psfs = np.reshape(predicted_psfs, (n_test_data, psf_vals_nx, psf_vals_ny))
         
         extent=[0., 1., 0., 1.]
@@ -192,6 +201,7 @@ def gen_data(n_data, normalize=True, log=False):
     #coefs = np.zeros((n_data, n_coefs))
     coefs = np.random.normal(size=(n_data, n_coefs))*10
     psf_vals = np.zeros((n_data, psf_vals_nx, psf_vals_ny))
+    start = time.time()
     for i in np.arange(0, n_data):
         #i_max = np.argmax(np.abs(coefs[i]))
         #pa = psf.phase_aberration([(4 + i_max, coefs[i_max])])
@@ -209,6 +219,8 @@ def gen_data(n_data, normalize=True, log=False):
             min_val = np.min(psf_vals[i])
             max_val = np.max(psf_vals[i])
             psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
+    end = time.time()
+    print("Generation time", end - start)
     return coefs, psf_vals
 
 

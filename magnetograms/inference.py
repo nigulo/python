@@ -4,7 +4,7 @@ import matplotlib as mpl
 
 mpl.use('Agg')
 mpl.rcParams['figure.figsize'] = (20, 30)
-import pickle
+#import pickle
 import numpy as np
 #import pylab as plt
 #import pandas as pd
@@ -14,7 +14,8 @@ import numpy.random as random
 import scipy.interpolate as interp
 import scipy.sparse.linalg as sparse
 import utils
-
+import pymc3 as pm
+import theano.tensor as tt
 #import os
 #import os.path
 #from scipy.stats import gaussian_kde
@@ -24,12 +25,13 @@ import matplotlib.pyplot as plt
 
 num_iters = 50
 num_chains = 1
-inference = False
+inference = True
 
 eps = 0.001
 learning_rate = 1.0
 max_num_tries = 20
-
+import theano
+import theano.tensor as tt
 
 if len(sys.argv) > 3:
     num_iters = int(sys.argv[3])
@@ -38,10 +40,10 @@ if len(sys.argv) > 4:
 
 n_jobs = num_chains
 
-model = pickle.load(open('model.pkl', 'rb'))
+#model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 100
-n2 = 100
+n1 = 10
+n2 = 10
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -59,8 +61,8 @@ u2 = np.linspace(0, x2_range, m2)
 u_mesh = np.meshgrid(u1, u2)
 u = np.dstack(u_mesh).reshape(-1, 2)
 
-print "u_mesh=", u_mesh
-print "u=", u
+print("u_mesh=", u_mesh)
+print("u=", u)
 
 #Optimeerida
 #def get_W(u_mesh, us, xys):
@@ -83,7 +85,7 @@ print "u=", u
 #                        break
 #                else:
 #                    coef_ind += len(u2s)
-#            if found:
+#            if found:print
 #                W[i, j] = coefs[coef_ind]
 #                #print "W=", W
 #        i += 1
@@ -101,7 +103,7 @@ print "u=", u
 #            W[2*i+1,2*j+1] = W1[i, j]
 #    return W
 
-print x_mesh
+print(x_mesh)
 
 sig_var_train = 0.2
 length_scale_train = 0.2
@@ -114,7 +116,7 @@ K = gp_train.calc_cov(x, x, True)
 #W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 #K = np.dot(W.T, np.dot(U, W))
 
-print "SIIN"
+print("SIIN")
 for i in np.arange(0, n1):
     for j in np.arange(0, n2):
         assert(K[i, j]==K[j, i])
@@ -126,7 +128,7 @@ y = np.repeat(mean_train, 2*n) + np.dot(L, s)
 
 y = np.reshape(y, (n, 2))
 y_orig = np.array(y)
-print y_orig
+print(y_orig)
 
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
 fig.set_size_inches(6, 12)
@@ -155,12 +157,100 @@ mean = 0.0
 length_scale = 1.0
 noise_var = 0.0001
 
-print np.shape(x)
-print np.shape(y)
-print n
+print(np.shape(x))
+print(np.shape(y))
+print(n)
 
 # Using KISS-GP
 # https://arxiv.org/pdf/1503.01057.pdf
+
+# define the parameters with their associated priors
+
+
+# define a theano Op for our likelihood function
+class LogLike(tt.Op):
+
+    """
+    Specify what type of object will be passed and returned to the Op when it is
+    called. In our case we will be passing it a vector of values (the parameters
+    that define our model) and returning a single "scalar" value (the
+    log-likelihood)
+    """
+    itypes = [tt.dvector] # expects a vector of parameter values when called
+    otypes = [tt.dscalar] # outputs a single scalar value (the log likelihood)
+
+    def __init__(self, loglike, noise_var, y):
+        """
+        Initialise the Op with various things that our log-likelihood function
+        requires. Below are the things that are needed in this particular
+        example.
+
+        Parameters
+        ----------
+        loglike:
+            The log-likelihood (or whatever) function we've defined
+        data:
+            The "observed" data that our log-likelihood function takes in
+        x:
+            The dependent variable (aka 'x') that our model requires
+        sigma:
+            The noise standard deviation that our function requires.
+        """
+
+        # add inputs as class attributes
+        self.likelihood = loglike
+        self.noise_var = noise_var
+        self.y = y
+
+    def perform(self, node, inputs, outputs):
+        # the method that is used when calling the Op
+        theta, = inputs  # this will contain my variables
+
+        # call the log-likelihood function
+        logl = self.likelihood(theta, self.noise_var, self.y)
+
+        outputs[0][0] = np.array(logl) # output the log-likelihood
+
+def sample(x, y):
+    W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+    #(x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+    
+    def likelihood(theta, noise_var, y):
+        ell = theta[0]
+        sig_var = theta[1]
+        print(sig_var, ell)
+        gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
+        #loglik = gp.init(x, y)
+        
+        U = gp.calc_cov(u, u, data_or_test=True)
+        (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+        #print x
+        L = la.cholesky(U)
+        #print L
+        v = la.solve(L, x)
+        return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+
+    with pm.Model() as model:
+        ell = pm.Uniform('ell', 0.0, 1.0)
+        sig_var = pm.Uniform('sig_var', 0.0, 1.0)
+
+        logl = LogLike(likelihood, noise_var_train, y)
+
+        theta = tt.as_tensor_variable([ell, sig_var])
+        #data = pymc.MvNormal('data', mu=np.zeros(N), tau=tau, value=y, observed=True)
+        like = pm.DensityDist('like', lambda v: logl(v), observed={'v': theta})
+        
+        #sampler = pymc.MCMC([ell, sig_var, noise_var, x_train, y_train])
+        #sampler.use_step_method(pymc.AdaptiveMetropolis, [ell, sig_var, noise_var],
+        #                        scales={ell:1.0, sig_var:1.0, noise_var:1.0})
+        
+        step = pm.NUTS()
+        trace = pm.sample(2000, tune=1000, init=None, step=step, cores=3)
+
+        m_ell = median(ell.trace())
+        m_sig_var = median(sig_var.trace())
+        return m_ell, m_sig_var
+
 def calc_loglik_approx(U, W, y):
     #print np.shape(W), np.shape(y)
     (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
@@ -187,7 +277,7 @@ def algorithm_a(x, y, y_orig):
     num_tries = 0
     
     while (max_loglik is None or num_tries % max_num_tries != 0 or (loglik < max_loglik) or (loglik > max_loglik + eps)):
-        print "num_tries", num_tries
+        print("num_tries", num_tries)
     
         num_tries += 1
     
@@ -195,25 +285,28 @@ def algorithm_a(x, y, y_orig):
         
         if inference:
             #for i in np.arange(0, num_chains):
-            #    initial_m = m
-            #    initial_length_scale = length_scale
-            #    initial_param_values.append(dict(m=initial_m))
+            #    #initial_m = m
+            #    #initial_length_scale = length_scale
+            #    #initial_param_values.append(dict(m=initial_m))
+            #    initial_param_values.append(dict())
+            #
+            #fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
+            #
+            #results = fit.extract()
+            #loglik_samples = results['lp__']
+            #print loglik_samples 
+            #loglik = np.mean(loglik_samples)
+            #
+            #length_scale_samples = results['length_scale'];
+            #length_scale = np.mean(length_scale_samples)
+            #
+            #sig_var_samples = results['sig_var']
+            #sig_var = np.mean(sig_var_samples)
+            #
+            #mean_samples = results['m'];
+            #mean = np.mean(mean_samples)
             
-            fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
-            
-            results = fit.extract()
-            loglik_samples = results['lp__']
-            print loglik_samples 
-            loglik = np.mean(loglik_samples)
-            
-            length_scale_samples = results['length_scale'];
-            length_scale = np.mean(length_scale_samples)
-            
-            sig_var_samples = results['sig_var']
-            sig_var = np.mean(sig_var_samples)
-            
-            mean_samples = results['m'];
-            mean = np.mean(mean_samples)
+            length_scale, sig_var = sample(x, y)
         else:
             sig_var=sig_var_train
             mean=mean_train
@@ -221,14 +314,14 @@ def algorithm_a(x, y, y_orig):
             gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
-            W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+            W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
             loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
             
         
-        print "sig_var=", sig_var
-        print "length_scale", length_scale
-        print "mean", mean
-        print "loglik=", loglik, "max_loglik=", max_loglik
+        print("sig_var=", sig_var)
+        print("length_scale", length_scale)
+        print("mean", mean)
+        print("loglik=", loglik, "max_loglik=", max_loglik)
         
         if max_loglik is None or loglik > max_loglik:
             num_tries = 1
@@ -236,7 +329,7 @@ def algorithm_a(x, y, y_orig):
         
         gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
-        W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
         y_last = np.array(y)
         for i in np.random.choice(n, size=1, replace=False):
@@ -264,7 +357,7 @@ def algorithm_a(x, y, y_orig):
     
                 thetas_i = thetas[i]
         
-                print thetas_i, np.exp(thetas_i), loglik1, loglik2
+                print(thetas_i, np.exp(thetas_i), loglik1, loglik2)
                 #r = np.log(random.uniform())
                 for j in js:
                     thetas[j] = thetas_i
@@ -307,33 +400,36 @@ def algorithm_b(x, y, y_orig):
     num_tries = 0
     
     while (max_loglik is None or num_tries % max_num_tries != 0 or (loglik > max_loglik + eps)):
-        print "num_tries", num_tries
+        print("num_tries", num_tries)
     
         num_tries += 1
     
         initial_param_values = []
         
         if inference:
-            for i in np.arange(0, num_chains):
-                initial_m = mean
-                initial_length_scale = length_scale
-                initial_param_values.append(dict(m=initial_m))
+            #for i in np.arange(0, num_chains):
+            #    initial_m = mean
+            #    initial_length_scale = length_scale
+            #    initial_param_values.append(dict(m=initial_m))
+            #
+            #fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
+            #
+            #results = fit.extract()
+            #loglik_samples = results['lp__']
+            #print loglik_samples 
+            #loglik = np.mean(loglik_samples)
+            #
+            #length_scale_samples = results['length_scale'];
+            #length_scale = np.mean(length_scale_samples)
+            #
+            #sig_var_samples = results['sig_var']
+            #sig_var = np.mean(sig_var_samples)
+            #
+            #mean_samples = results['m'];
+            #mean = np.mean(mean_samples)
             
-            fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
+            length_scale, sig_var = sample(x, y)
             
-            results = fit.extract()
-            loglik_samples = results['lp__']
-            print loglik_samples 
-            loglik = np.mean(loglik_samples)
-            
-            length_scale_samples = results['length_scale'];
-            length_scale = np.mean(length_scale_samples)
-            
-            sig_var_samples = results['sig_var']
-            sig_var = np.mean(sig_var_samples)
-            
-            mean_samples = results['m'];
-            mean = np.mean(mean_samples)
         else:
             sig_var=sig_var_train
             mean=mean_train
@@ -341,13 +437,13 @@ def algorithm_b(x, y, y_orig):
             gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
-            W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+            W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
             loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
         
-        print "sig_var=", sig_var
-        print "length_scale", length_scale
-        print "mean", mean
-        print "loglik=", loglik, "max_loglik=", max_loglik
+        print("sig_var=", sig_var)
+        print("length_scale", length_scale)
+        print("mean", mean)
+        print("loglik=", loglik, "max_loglik=", max_loglik)
         
         if max_loglik is None or loglik > max_loglik:
             num_tries = 1
@@ -355,7 +451,7 @@ def algorithm_b(x, y, y_orig):
         
         gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
-        W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         for i in np.random.choice(n, size=1, replace=False):
             loglik1 = loglik#gp.init(x, y)
             js = []
@@ -384,15 +480,15 @@ def algorithm_b(x, y, y_orig):
     return num_guessed/n, y
 
 
-print "******************** Algorithm a ********************"
+print("******************** Algorithm a ********************")
 perf_a, prob_a, field_a = algorithm_a(x, np.array(y), y_orig)
-print "******************** Algorithm b ********************"
+print("******************** Algorithm b ********************")
 perf_b, field_b = algorithm_b(x, np.array(y), y_orig)
 
-print "Results:"
-print perf_null
-print perf_a, prob_a#np.mean(np.abs(np.ones(n)/2 - prob_a)*2)
-print perf_b
+print("Results:")
+print(perf_null)
+print(perf_a, prob_a)#np.mean(np.abs(np.ones(n)/2 - prob_a)*2)
+print(perf_b)
 
 indices = np.unique(np.where(field_a - y_orig == np.array([0, 0]))[0])
 x_a_correct = x[indices]

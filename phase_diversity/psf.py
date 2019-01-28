@@ -63,7 +63,7 @@ class psf():
         vals = vals.real**2 + vals.imag**2
         #vals = fft.ifft2(vals)
         #vals = fft.ifft2(vals).real
-        vals = np.roll(np.roll(vals, nx/2, axis=0), ny/2, axis=1)
+        vals = np.roll(np.roll(vals, int(nx/2), axis=0), int(ny/2), axis=1)
         self.incoh_vals = vals
         #assert(np.all(self.incoh_vals == np.conjugate(vals)*vals))
         

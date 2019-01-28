@@ -4,7 +4,7 @@ import matplotlib as mpl
 
 mpl.use('Agg')
 mpl.rcParams['figure.figsize'] = (20, 30)
-import pickle
+#import pickle
 import numpy as np
 #import pylab as plt
 #import pandas as pd
@@ -40,7 +40,7 @@ if len(sys.argv) > 4:
 
 n_jobs = num_chains
 
-model = pickle.load(open('model.pkl', 'rb'))
+#model = pickle.load(open('model.pkl', 'rb'))
 
 n1 = 10
 n2 = 10
