@@ -26,10 +26,11 @@ psf_vals_ny = 64
 aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 50
-n_data = 10000
+n_data = 100
 n_train = int(n_data*0.75)
 
-n_epochs = 1000
+n_epochs = 200
+num_sets = 100
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -37,6 +38,8 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 def create_model():
+    
+    print("Creating model")
     
     coefs = keras.layers.Input((n_coefs,), name='coefs')
     #psf = keras.layers.Input(IMAGE_SHAPE, name='psf')
@@ -50,22 +53,25 @@ def create_model():
     #hidden = keras.layers.core.Flatten()(hidden)
 
     hidden = keras.layers.Dense(start_nx*start_ny*2, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*3, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
     hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*6, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
     hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*12, activation='relu')(hidden)
     hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*32, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
-    #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='relu')(hidden)
-    hidden = keras.layers.Reshape((start_nx*8, start_ny*8, 1))(hidden)
-    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
+    #hidden = keras.layers.Dense(start_nx*start_ny*32, activation='relu')(hidden)
+    #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='sigmoid')(hidden)
+    hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
+    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    hidden = keras.layers.UpSampling2D((2, 2))(hidden)
     hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
@@ -89,20 +95,32 @@ def create_model():
     return model
 
 
-def train(coefs_train, coefs_test, psf_train, psf_test):
-    print("Training")
-    model = create_model()
-    model.fit(coefs_train, psf_train,
-                epochs=n_epochs,
+validation_losses = []
+
+def train(model, coefs_train, coefs_test, psf_train, psf_test):
+    #print("Training")
+    history = model.fit(coefs_train, psf_train,
+                epochs=int(n_epochs*n_train/n_data),
                 batch_size=10,
                 shuffle=True,
                 validation_data=(coefs_test, psf_test),
-                callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')])
+                callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                verbose=1)
     
+    validation_losses.append(history.history['val_loss'])
+    print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
+
+    history = model.fit(coefs_test, psf_test,
+                epochs=int(n_epochs*(n_data-n_train)/n_data),
+                batch_size=10,
+                shuffle=True,
+                #validation_data=(coefs_test, psf_test),
+                callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                verbose=1)
+
     ############################
     # Plot training data results
     n_test = 5
-    print(np.shape(psf_train))
     predicted_psfs = model.predict(coefs_train[0:n_test])
     predicted_psfs = np.reshape(predicted_psfs, (n_test, psf_vals_nx, psf_vals_ny))
     
@@ -147,7 +165,7 @@ def test(model):
     
         n_test_data = 5
         
-        print("Generating test data")
+        #print("Generating test data")
         coefs, psf_vals = gen_data(n_test_data)
         #coefs = np.random.normal(size=(n_test_data, n_coefs))
         #psf_vals = np.zeros((n_test_data, nx, ny))
@@ -159,7 +177,7 @@ def test(model):
         start = time.time()    
         predicted_psfs = model.predict(coefs)
         end = time.time()
-        print("Prediction time", end - start)
+        #print("Prediction time" + (end - start))
         predicted_psfs = np.reshape(predicted_psfs, (n_test_data, psf_vals_nx, psf_vals_ny))
         
         extent=[0., 1., 0., 1.]
@@ -219,18 +237,30 @@ def gen_data(n_data, normalize=True, log=False):
             min_val = np.min(psf_vals[i])
             max_val = np.max(psf_vals[i])
             psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
+        print(str(float(i)*100/n_data) + "%")
     end = time.time()
-    print("Generation time", end - start)
+    #print("Generation time: " + str(end - start))
     return coefs, psf_vals
 
 
-print("Generating training data")
-coefs, psf_vals = gen_data(n_data)
-psf_vals = np.reshape(psf_vals, (len(psf_vals), psf_vals_nx, psf_vals_ny, 1))
-coefs_train = coefs[:n_train] 
-coefs_test = coefs[n_train:]
-psf_train = psf_vals[:n_train]
-psf_test = psf_vals[n_train:]
+model = create_model()
 
-model = train(coefs_train, coefs_test, psf_train, psf_test)
-test(model)
+huge_set_size = min(1000, n_data*num_sets)
+for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
+
+    print("Generating training data: " +  str(huge_set_num))
+    huge_coefs, huge_psf_vals = gen_data(huge_set_size)
+    
+    for rep in np.arange(0, 10):
+        for set_num in np.arange(0, num_sets):
+            coefs = huge_coefs[set_num*n_data:(set_num+1)*n_data]
+            psf_vals = huge_psf_vals[set_num*n_data:(set_num+1)*n_data]
+            psf_vals = np.reshape(psf_vals, (len(psf_vals), psf_vals_nx, psf_vals_ny, 1))
+            coefs_train = coefs[:n_train] 
+            coefs_test = coefs[n_train:]
+            psf_train = psf_vals[:n_train]
+            psf_test = psf_vals[n_train:]
+            
+            train(model, coefs_train, coefs_test, psf_train, psf_test)
+        
+            test(model)
