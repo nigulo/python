@@ -168,6 +168,12 @@ print(n)
 # define the parameters with their associated priors
 
 
+"""
+# The codef for user-defined likelihood function and 
+# it's derivateives taken from:
+# https://docs.pymc.io/notebooks/blackbox_external_likelihood.html
+"""
+
 def gradients(vals, func, releps=1e-3, abseps=None, mineps=1e-9, reltol=1e-3,
               epsscale=0.5):
     """
