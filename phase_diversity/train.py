@@ -29,7 +29,7 @@ n_coefs = 50
 n_data = 100
 n_train = int(n_data*0.75)
 
-n_epochs = 200
+n_epochs = 100
 num_sets = 100
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
@@ -99,24 +99,25 @@ validation_losses = []
 
 def train(model, coefs_train, coefs_test, psf_train, psf_test):
     #print("Training")
-    history = model.fit(coefs_train, psf_train,
-                epochs=int(n_epochs*n_train/n_data),
-                batch_size=10,
-                shuffle=True,
-                validation_data=(coefs_test, psf_test),
-                callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                verbose=1)
-    
-    validation_losses.append(history.history['val_loss'])
-    print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
+    if np.shape(coefs_test)[0] > 0:
+        history = model.fit(coefs_train, psf_train,
+                    epochs=n_epochs,
+                    batch_size=10,
+                    shuffle=True,
+                    validation_data=(coefs_test, psf_test),
+                    callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                    verbose=1)
+        
+        validation_losses.append(history.history['val_loss'])
+        print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
 
-    history = model.fit(coefs_test, psf_test,
-                epochs=int(n_epochs*(n_data-n_train)/n_data),
-                batch_size=10,
-                shuffle=True,
-                #validation_data=(coefs_test, psf_test),
-                callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                verbose=1)
+    else:
+        history = model.fit(coefs_train, psf_train,
+                    epochs=n_epochs,
+                    batch_size=10,
+                    shuffle=True,
+                    callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                    verbose=1)
 
     ############################
     # Plot training data results
@@ -251,7 +252,8 @@ for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
     print("Generating training data: " +  str(huge_set_num))
     huge_coefs, huge_psf_vals = gen_data(huge_set_size)
     
-    for rep in np.arange(0, 10):
+    num_reps = 10
+    for rep in np.arange(0, num_reps):
         for set_num in np.arange(0, num_sets):
             coefs = huge_coefs[set_num*n_data:(set_num+1)*n_data]
             psf_vals = huge_psf_vals[set_num*n_data:(set_num+1)*n_data]
@@ -261,6 +263,10 @@ for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
             psf_train = psf_vals[:n_train]
             psf_test = psf_vals[n_train:]
             
-            train(model, coefs_train, coefs_test, psf_train, psf_test)
+            if rep == num_reps-1:
+                # In the laast iteration train on the full set
+                train(model, coefs, np.array([]), psf_vals, np.array([]))
+            else:
+                train(model, coefs_train, coefs_test, psf_train, psf_test)
         
             test(model)
