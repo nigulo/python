@@ -26,7 +26,7 @@ import warnings
 
 num_samples = 1
 num_chains = 3
-inference = True
+inference = False
 
 eps = 0.001
 learning_rate = 1.0
@@ -632,19 +632,44 @@ def algorithm_b(x, y, y_orig):
         gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-        for i in np.random.choice(n, size=1, replace=False):
-            loglik1 = loglik#gp.init(x, y)
-            js = []
-            for j in np.arange(0, n):
-                x_diff = x[j] - x[i]
-                if (np.dot(x_diff, x_diff) < length_scale**2/4):
-                    y[j] = y[j]*-1
-                    js.append(j)
-            #loglik2 = gp.init(x, y)
+        
+        
+        if False:
+            # Select n/2 random indices and filter out those too close to each other
+            random_indices = np.random.choice(n, size=n/2, replace=False)
+            i = 0
+            while i < len(random_indices):
+                random_index_filter = np.ones_as(random_indices, dtype=bool)
+                ri = random_indices[i]
+                for j in np.arange(i + 1, len(random_indices)):
+                    rj = random_indices[j]
+                    x_diff = x[rj] - x[ri]
+                    if (np.dot(x_diff, x_diff) < length_scale**2/4):
+                        random_index_filter[j] = False
+                random_indices = random_indices[random_index_filter]
+                i += 1
+    
+            loglik1 = loglik
+            y_saved = np.array(y)
+            for ri in random_indices:
+                y[ri] = y[ri]*-1
             loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-            for j in js:
-                if loglik1 > loglik2:        
-                    y[j] = y[j]*-1
+            if loglik1 > loglik2:
+                y = y_saved
+        else:
+            for i in np.random.choice(n, size=1, replace=False):
+                loglik1 = loglik#gp.init(x, y)
+                js = []
+                for j in np.arange(0, n):
+                    x_diff = x[j] - x[i]
+                    if (np.dot(x_diff, x_diff) < length_scale**2/4):
+                        y[j] = y[j]*-1
+                        js.append(j)
+                #loglik2 = gp.init(x, y)
+                loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+                for j in js:
+                    if loglik1 > loglik2:        
+                        y[j] = y[j]*-1
     
         
     

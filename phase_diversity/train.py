@@ -27,10 +27,13 @@ aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 50
 n_data = 100
+max_huge_set_size = 1000
+assert(n_data <= max_huge_set_size and (max_huge_set_size % n_data) == 0)
 n_train = int(n_data*0.75)
 
-n_epochs = 100
 num_sets = 100
+
+n_epochs = 100
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -105,7 +108,7 @@ def train(model, coefs_train, coefs_test, psf_train, psf_test):
                     batch_size=10,
                     shuffle=True,
                     validation_data=(coefs_test, psf_test),
-                    callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                    #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                     verbose=1)
         
         validation_losses.append(history.history['val_loss'])
@@ -116,7 +119,7 @@ def train(model, coefs_train, coefs_test, psf_train, psf_test):
                     epochs=n_epochs,
                     batch_size=10,
                     shuffle=True,
-                    callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                    #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                     verbose=1)
 
     ############################
@@ -246,7 +249,8 @@ def gen_data(n_data, normalize=True, log=False):
 
 model = create_model()
 
-huge_set_size = min(1000, n_data*num_sets)
+huge_set_size = min(max_huge_set_size, n_data*num_sets)
+num_small_sets = huge_set_size / n_data
 for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
 
     print("Generating training data: " +  str(huge_set_num))
@@ -254,9 +258,10 @@ for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
     
     num_reps = 10
     for rep in np.arange(0, num_reps):
-        for set_num in np.arange(0, num_sets):
+        for set_num in np.arange(0, num_small_sets):
             coefs = huge_coefs[set_num*n_data:(set_num+1)*n_data]
             psf_vals = huge_psf_vals[set_num*n_data:(set_num+1)*n_data]
+            
             psf_vals = np.reshape(psf_vals, (len(psf_vals), psf_vals_nx, psf_vals_ny, 1))
             coefs_train = coefs[:n_train] 
             coefs_test = coefs[n_train:]
