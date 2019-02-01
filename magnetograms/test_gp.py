@@ -19,7 +19,7 @@ import pymc3 as pm
 #import os.path
 #from scipy.stats import gaussian_kde
 #from sklearn.cluster import KMeans
-import numpy.linalg as la
+import scipy.linalg as la
 import matplotlib.pyplot as plt
 import warnings
 import pyhdust.triangle as triangle
@@ -41,8 +41,8 @@ n_jobs = num_chains
 
 #model = pickle.load(open('model.pkl', 'rb'))
 
-n1 = 20
-n2 = 20
+n1 = 10
+n2 = 10
 n = n1*n2
 x1_range = 1.0
 x2_range = 1.0
@@ -62,7 +62,6 @@ u = np.dstack(u_mesh).reshape(-1, 2)
 
 print("u_mesh=", u_mesh)
 print("u=", u)
-
 #Optimeerida
 #def get_W(u_mesh, us, xys):
 #    W = np.zeros((np.shape(xys)[0], np.shape(us)[0]))
@@ -165,15 +164,46 @@ def sample(x, y):
         #print x
         L = la.cholesky(U)
         #print L
-        v = la.solve(L, x)
+        #v = la.solve(L, x)
+        v = la.solve_triangular(L, x)
         return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
     s = sampling.Sampling()
     with s.get_model():
         ell = pm.Uniform('ell', 0.0, 1.0)
         sig_var = pm.Uniform('sig_var', 0.0, 1.0)
+        
+    def likelihood_grad(theta, data):
+        ell = theta[0]
+        sig_var = theta[1]
+        noise_var = data[0]
+        y = data[1]
+        
+        gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
+        #loglik = gp.init(x, y)
+        
+        U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
+        (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+        #print x
+        L = la.cholesky(U)
+        #print L
+        v = la.solve_triangular(L, x)
+        T_T_inv = la.solve_triangular(L.T, np.identity(np.size(x)))
+        
+        ret_val = np.zeros(2)
 
-    trace = s.sample(likelihood, [ell, sig_var], [noise_var_train, y], num_samples, num_chains)
+        # The indices of parameters are different in U_grads that in the return value of this function        
+        exp_part = -0.5 * np.dot(v.T, np.dot(T_T_inv.T, np.dot(U_grads[0,:,:], np.dot(T_T_inv, v))))
+        det_part = -sum(np.diag(np.dot(np.dot(T_T_inv, T_T_inv.T), U_grads[0,:,:])))
+        ret_val[1] = exp_part + det_part
+
+        exp_part = -0.5 * np.dot(v.T, np.dot(T_T_inv.T, np.dot(U_grads[1,:,:], np.dot(T_T_inv, v))))
+        det_part = -sum(np.diag(np.dot(np.dot(T_T_inv, T_T_inv.T), U_grads[1,:,:])))
+        ret_val[0] = exp_part + det_part
+
+        return ret_val
+
+    trace = s.sample(likelihood, [ell, sig_var], [noise_var_train, y], num_samples, num_chains, likelihood_grad)
 
     return trace
 

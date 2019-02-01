@@ -16,11 +16,17 @@ class GPR_div_free:
         self.sig_var = sig_var
         self.length_scale = length_scale
         self.inv_length_scale_sq = 1.0/(length_scale*length_scale)
+        self.inv_length_scale_qb = self.inv_length_scale_sq/length_scale
         self.noise_var = noise_var
         self.toeplitz = toeplitz
 
-    def calc_cov(self, x1, x2, data_or_test):
+    def calc_cov(self, x1, x2, data_or_test, calc_grad = False):
+        if calc_grad:
+            # We only calculate gradients in the constant noise case
+            assert(np.isscalar(self.noise_var))
         K = np.zeros((np.size(x1), np.size(x2)))
+        # Gradients for sigvar, length_scale and noise_var
+        K_grads = np.zeros((3, np.size(x1), np.size(x2)))
         for i in np.arange(0, np.shape(x1)[0]):
             for j in np.arange(0, np.shape(x2)[0]):
                 x_diff = x1[i] - x2[j]
@@ -29,10 +35,17 @@ class GPR_div_free:
                     i_abs = 2*i + i1
                     for j1 in np.arange(0, np.shape(x2)[1]):
                         j_abs = 2*j + j1
-                        K[i_abs, j_abs] = x_diff[i1]*x_diff[j1]*self.inv_length_scale_sq
+                        K[i_abs, j_abs] = x_diff[i1] * x_diff[j1] * self.inv_length_scale_sq
+                        K_grads[1, i_abs, j_abs] = -2.0 * x_diff[i1] * x_diff[j1] * self.inv_length_scale_qb
                         if (i1 == j1):
-                            K[i_abs, j_abs] += 1-x_diff_sq*self.inv_length_scale_sq
-                        K[i_abs, j_abs] *= self.sig_var * np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
+                            K[i_abs, j_abs] += 1 - x_diff_sq * self.inv_length_scale_sq
+                            K_grads[1, i_abs, j_abs] += 1 + 2.0 * x_diff_sq * self.inv_length_scale_qb
+                        exp_fact = np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
+                        K_grads[0, i_abs, j_abs] *= K[i_abs, j_abs] * exp_fact
+                        K_grads[1, i_abs, j_abs] *= self.sig_var
+                        K_grads[1, i_abs, j_abs] += K[i_abs, j_abs] * x_diff_sq * self.inv_length_scale_qb
+                        K_grads[1, i_abs, j_abs] *= exp_fact
+                        K[i_abs, j_abs] *= self.sig_var * exp_fact
                 
         if data_or_test:
             assert(np.size(x1) == np.size(x2))
@@ -40,7 +53,11 @@ class GPR_div_free:
                 K += np.identity(np.size(x1))*self.noise_var
             else:
                 K += np.diag(self.noise_var)
-        return K
+            K_grads[2, :, :] += np.identity(np.size(x1))
+        if calc_grad:
+            return K, K_grads
+        else:
+            return K
 
     def init(self, x, y):
         self.n = np.shape(x)[0]

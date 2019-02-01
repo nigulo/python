@@ -141,7 +141,7 @@ class LogLike(tt.Op):
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value (the log likelihood)
 
-    def __init__(self, loglike, data):
+    def __init__(self, loglike, data, gradfunc = None):
         """
         Initialise the Op with various things that our log-likelihood function
         requires. Below are the things that are needed in this particular
@@ -162,7 +162,8 @@ class LogLike(tt.Op):
         # add inputs as class attributes
         self.likelihood = loglike
         self.data = data
-        self.logpgrad = LogLikeGrad(self.likelihood, self.data)
+        self.gradfunc = gradfunc
+        self.logpgrad = LogLikeGrad(self.likelihood, self.data, gradfunc)
 
     def perform(self, node, inputs, outputs):
         # the method that is used when calling the Op
@@ -188,7 +189,7 @@ class LogLikeGrad(tt.Op):
     itypes = [tt.dvector]
     otypes = [tt.dvector]
 
-    def __init__(self, loglike, data):
+    def __init__(self, loglike, data, gradfunc = None):
         """
         Initialise with various things that the function requires. Below
         are the things that are needed in this particular example.
@@ -208,6 +209,7 @@ class LogLikeGrad(tt.Op):
         # add inputs as class attributes
         self.likelihood = loglike
         self.data = data
+        self.gradfunc = gradfunc
 
     def perform(self, node, inputs, outputs):
         theta, = inputs
@@ -216,8 +218,15 @@ class LogLikeGrad(tt.Op):
         def lnlike(values):
             return self.likelihood(values, self.data)
 
+        grads1 = gradients(theta, lnlike)
+        grads2 = self.gradfunc(theta, self.data)
+        np.testing.assert_almost_equal(grads1, grads2, 10)
+
         # calculate gradients
-        grads = gradients(theta, lnlike)
+        if self.gradfunc is None:
+            grads = gradients(theta, lnlike)
+        else:
+            grads = self.gradfunc(theta, self.data)
 
         outputs[0][0] = grads
 
@@ -242,11 +251,11 @@ class Sampling():
         num_chains:
             Number od chains to run
     """
-    def sample(self, loglik_func, params, data, num_samples, num_chains):
+    def sample(self, loglik_func, params, data, num_samples, num_chains, loglik_grad_func = None):
     
         with self.model:
     
-            logl = LogLike(loglik_func, data)
+            logl = LogLike(loglik_func, data, loglik_grad_func)
     
             theta = tt.as_tensor_variable(params)
             #data = pymc.MvNormal('data', mu=np.zeros(N), tau=tau, value=y, observed=True)
