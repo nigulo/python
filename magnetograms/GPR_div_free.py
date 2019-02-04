@@ -39,12 +39,11 @@ class GPR_div_free:
                         K_grads[1, i_abs, j_abs] = -2.0 * x_diff[i1] * x_diff[j1] * self.inv_length_scale_qb
                         if (i1 == j1):
                             K[i_abs, j_abs] += 1 - x_diff_sq * self.inv_length_scale_sq
-                            K_grads[1, i_abs, j_abs] += 1 + 2.0 * x_diff_sq * self.inv_length_scale_qb
+                            K_grads[1, i_abs, j_abs] += 2.0 * x_diff_sq * self.inv_length_scale_qb
                         exp_fact = np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
-                        K_grads[0, i_abs, j_abs] *= K[i_abs, j_abs] * exp_fact
-                        K_grads[1, i_abs, j_abs] *= self.sig_var
+                        K_grads[0, i_abs, j_abs] = K[i_abs, j_abs] * exp_fact
                         K_grads[1, i_abs, j_abs] += K[i_abs, j_abs] * x_diff_sq * self.inv_length_scale_qb
-                        K_grads[1, i_abs, j_abs] *= exp_fact
+                        K_grads[1, i_abs, j_abs] *= self.sig_var * exp_fact
                         K[i_abs, j_abs] *= self.sig_var * exp_fact
                 
         if data_or_test:
