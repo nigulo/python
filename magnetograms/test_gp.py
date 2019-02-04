@@ -19,7 +19,7 @@ import pymc3 as pm
 #import os.path
 #from scipy.stats import gaussian_kde
 #from sklearn.cluster import KMeans
-import scipy.linalg as la
+import numpy.linalg as la
 import matplotlib.pyplot as plt
 import warnings
 import pyhdust.triangle as triangle
@@ -214,7 +214,7 @@ def sample(x, y):
         U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
         return  U, U_grads
     
-    kgp = kiss_gp.kiss_gp(x, u_mesh, u, y, cov_func)
+    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func)
     
     trace = s.sample(kgp.likelihood, [ell, sig_var], [noise_var_train, y], num_samples, num_chains, kgp.likelihood_grad)
 

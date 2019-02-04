@@ -48,7 +48,7 @@ class test_GPR_div_feee(unittest.TestCase):
 
 
 
-        kgp = kiss_gp.kiss_gp(x, u_mesh, u, y, cov_func)
+        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func)
 
         sig_var = 0.5
         ell = 0.2
@@ -57,24 +57,24 @@ class test_GPR_div_feee(unittest.TestCase):
         loglik = kgp.likelihood([ell, sig_var], [noise_var, y])
         loglik_grads = kgp.likelihood_grad([ell, sig_var], [noise_var, y])
         
-        delta_sig_var = sig_var*1.0e-5
-        delta_ell = ell * 1.0e-10
+        delta_sig_var = sig_var*1.0e-7
+        delta_ell = ell * 1.0e-7
 
         loglik1 = kgp.likelihood([ell + delta_ell, sig_var], [noise_var, y])
         loglik_grad_expected = (loglik1 - loglik) / delta_ell
-        np.testing.assert_almost_equal(loglik_grads[0], loglik_grad_expected, 10)
+        np.testing.assert_approx_equal(loglik_grads[0], loglik_grad_expected, 5)
         
         loglik1 = kgp.likelihood([ell - delta_ell, sig_var], [noise_var, y])
         loglik_grad_expected = -(loglik1 - loglik) / delta_ell
-        np.testing.assert_almost_equal(loglik_grads[0], loglik_grad_expected, 10)
+        np.testing.assert_approx_equal(loglik_grads[0], loglik_grad_expected, 5)
 
         loglik1 = kgp.likelihood([ell, sig_var + delta_sig_var], [noise_var, y])
         loglik_grad_expected = (loglik1 - loglik) / delta_sig_var
-        np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 10)
+        np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 5)
 
         loglik1 = kgp.likelihood([ell, sig_var - delta_sig_var], [noise_var, y])
         loglik_grad_expected = -(loglik1 - loglik) / delta_sig_var
-        np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 10)
+        np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 5)
         
 if __name__ == '__main__':
     unittest.main()
