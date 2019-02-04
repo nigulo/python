@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import warnings
 import pyhdust.triangle as triangle
 import sampling
+import kiss_gp
 
 num_samples = 20
 num_chains = 10
@@ -188,22 +189,34 @@ def sample(x, y):
         L = la.cholesky(U)
         #print L
         v = la.solve_triangular(L, x)
-        T_T_inv = la.solve_triangular(L.T, np.identity(np.size(x)))
+        L_inv = la.inv(L)
+        #L_T_inv = la.solve_triangular(L.T, np.identity(np.shape(L)[0]))
+        #np.testing.assert_almost_equal(L_T_inv, la.inv(L.T), 10)
         
+        np.testing.assert_almost_equal(np.dot(L_inv, L_inv.T), la.inv(U), 4)
         ret_val = np.zeros(2)
 
         # The indices of parameters are different in U_grads that in the return value of this function        
-        exp_part = -0.5 * np.dot(v.T, np.dot(T_T_inv.T, np.dot(U_grads[0,:,:], np.dot(T_T_inv, v))))
-        det_part = -sum(np.diag(np.dot(np.dot(T_T_inv, T_T_inv.T), U_grads[0,:,:])))
+        exp_part = 0.5 * np.dot(x.T, np.dot(np.dot(L_inv, L_inv.T), np.dot(U_grads[0,:,:], np.dot(np.dot(L_inv, L_inv.T), x))))
+        #exp_part = 0.5 * np.dot(v.T, np.dot(L_inv.T, np.dot(U_grads[0,:,:], np.dot(L_inv, v))))
+        det_part = -0.5 * sum(np.diag(np.dot(np.dot(L_inv, L_inv.T), U_grads[0,:,:])))
         ret_val[1] = exp_part + det_part
 
-        exp_part = -0.5 * np.dot(v.T, np.dot(T_T_inv.T, np.dot(U_grads[1,:,:], np.dot(T_T_inv, v))))
-        det_part = -sum(np.diag(np.dot(np.dot(T_T_inv, T_T_inv.T), U_grads[1,:,:])))
+        exp_part = 0.5 * np.dot(x.T, np.dot(np.dot(L_inv, L_inv.T), np.dot(U_grads[1,:,:], np.dot(np.dot(L_inv, L_inv.T), x))))
+        #exp_part = 0.5 * np.dot(v.T, np.dot(L_inv.T, np.dot(U_grads[1,:,:], np.dot(L_inv, v))))
+        det_part = -0.5 * sum(np.diag(np.dot(np.dot(L_inv, L_inv.T), U_grads[1,:,:])))
         ret_val[0] = exp_part + det_part
 
         return ret_val
-
-    trace = s.sample(likelihood, [ell, sig_var], [noise_var_train, y], num_samples, num_chains, likelihood_grad)
+    
+    def cov_func(sig_var, ell, noise_var, u):
+        gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
+        U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
+        return  U, U_grads
+    
+    kgp = kiss_gp.kiss_gp(x, u_mesh, u, y, cov_func)
+    
+    trace = s.sample(kgp.likelihood, [ell, sig_var], [noise_var_train, y], num_samples, num_chains, kgp.likelihood_grad)
 
     return trace
 

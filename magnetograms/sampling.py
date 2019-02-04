@@ -230,7 +230,7 @@ class LogLikeGrad(tt.Op):
 
         outputs[0][0] = grads
 
-class Sampling():
+class Sampling:
 
     def __init__(self):
         self.model = pm.Model()
