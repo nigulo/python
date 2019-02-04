@@ -218,9 +218,9 @@ class LogLikeGrad(tt.Op):
         def lnlike(values):
             return self.likelihood(values, self.data)
 
-        grads1 = gradients(theta, lnlike)
-        grads2 = self.gradfunc(theta, self.data)
-        np.testing.assert_almost_equal(grads1, grads2, 10)
+        #grads1 = gradients(theta, lnlike)
+        #grads2 = self.gradfunc(theta, self.data)
+        #np.testing.assert_almost_equal(grads1, grads2, 10)
 
         # calculate gradients
         if self.gradfunc is None:

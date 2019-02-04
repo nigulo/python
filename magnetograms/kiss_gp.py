@@ -15,15 +15,14 @@ class kiss_gp:
 
     
     def likelihood(self, theta, data):
-        ell = theta[0]
-        sig_var = theta[1]
-        noise_var = data[0]
-        y = data[1]
-        U, U_grads = self.cov_func(sig_var, ell, noise_var, self.u)
-        self.U = U
+        self.ell = theta[0]
+        self.sig_var = theta[1]
+        self.noise_var = data[0]
+        self.y = data[1]
+        U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u)
         self.U_grads = U_grads
 
-        (x, istop, itn, normr) = sparse.lsqr(self.W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+        (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
         self.x = x
         #print x
         L = la.cholesky(U)
@@ -46,7 +45,20 @@ class kiss_gp:
         
 
     def likelihood_grad(self, theta, data):
-        assert(self.U is not None)
+        if self.ell != theta[0] or self.sig_var != theta[1] or self.noise_var != data[0] or not all(self.y == data[1]):
+            self.ell = theta[0]
+            self.sig_var = theta[1]
+            self.noise_var = data[0]
+            self.y = data[1]
+            U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u)
+            self.U_grads = U_grads
+
+            (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]
+            self.x = x
+            L = la.cholesky(U)
+            self.L = L
+            self.alpha = la.solve(self.L.T, la.solve(self.L, x))
+            
         L_inv = la.inv(self.L)
         #np.testing.assert_almost_equal(L_T_inv, la.inv(L.T), 10)
         
