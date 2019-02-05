@@ -26,7 +26,7 @@ import pyhdust.triangle as triangle
 import sampling
 import kiss_gp
 
-num_samples = 20
+num_samples = 100
 num_chains = 10
 
 eps = 0.001
