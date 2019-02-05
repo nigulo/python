@@ -25,7 +25,7 @@ import warnings
 import sampling
 import kiss_gp
 
-num_samples = 1
+num_samples = 5
 num_chains = 3
 inference = False
 
@@ -355,7 +355,7 @@ def algorithm_a(x, y, y_orig):
                     #        thetas[j] = np.log(1.0 - np.exp(thetas_i))
                 else:
                     y = y_last
-        temp += 0.1*temp    
+        temp += 0.01*temp    
     
     num_guessed = 0.0
     for i in np.arange(0, n):
@@ -371,7 +371,7 @@ def algorithm_a(x, y, y_orig):
     return num_guessed/n, exp_thetas, y
 
 def get_random_indices(x, n, length_scale):
-    random_indices = np.random.choice(n, size=n/2, replace=False)
+    random_indices = np.random.choice(n, size=int(n/2), replace=False)
     i = 0
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
@@ -475,7 +475,7 @@ def algorithm_b(x, y, y_orig):
                     if loglik1 > loglik2:        
                         y[j] = y[j]*-1
     
-        temp += 0.1*temp    
+        temp += 0.01*temp    
         
     
     num_guessed = 0.0
