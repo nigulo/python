@@ -288,31 +288,33 @@ def algorithm_a(x, y, y_orig):
         y_sign_last = np.array(y_sign)
         
         if MODE == 0:
+            if ((iteration - 1) % n) == 0:
+                random_indices = np.random.choice(n, size=n, replace=False)
+
             #random_indices = np.arange(0, n)
-            i = get_random_indices(x, n, length_scale)[0]
-            random_indices  = []
+            #i = get_random_indices(x, n, length_scale)[0]
+            i = random_indices[(iteration - 1) % n]
+            indices  = []
             for j in np.arange(0, n):
                 x_diff = x[j] - x[i]
                 if (np.dot(x_diff, x_diff) < length_scale**2):
-                    random_indices .append(j)
+                    indices.append(j)
                 
             #sign_change = np.zeros(n, dtype=bool)
 
-            for ri in random_indices:
-                r = random.uniform()
+            r = random.uniform()
+            for ri in indices:
                 #r = np.log(random.uniform())
-                if num_positive[ri] + num_negative[ri] == 0:
+                if num_positive[ri] + num_negative[ri] <= 10:
                     theta = 0.5
                 else:
                     theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
                 thetas[ri] = np.log(theta)
                 th = theta
-                if num_positive[ri] + num_negative[ri] <= 10:
-                    th = 0.5
-                if th < 0.1:
-                    th = 0.1
-                if th > 0.9:
-                    th = 0.9
+                if th < 0.2:
+                    th = 0.2
+                if th > 0.8:
+                    th = 0.8
                 if r < th:
                     if y_sign[ri] < 0:
                         y[ri] = np.array(y[ri])*-1
@@ -352,7 +354,7 @@ def algorithm_a(x, y, y_orig):
                 y = y_last
                 y_sign = y_sign_last
                 
-            for ri in random_indices:
+            for ri in indices:
                 if y_sign[ri] > 0:
                     num_positive[ri] += 1.0
                 else:
