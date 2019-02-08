@@ -31,7 +31,7 @@ max_huge_set_size = 1000
 assert(n_data <= max_huge_set_size and (max_huge_set_size % n_data) == 0)
 n_train = int(n_data*0.75)
 
-num_sets = 100
+num_sets = 1000
 
 n_epochs = 100
 
@@ -51,24 +51,32 @@ def create_model():
     start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
     
     hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
+    hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx, start_ny, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
     hidden = keras.layers.Dense(start_nx*start_ny*2, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*2, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*3, activation='relu')(hidden)
     hidden = keras.layers.Dense(start_nx*start_ny*3, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
     hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*6, activation='relu')(hidden)
     hidden = keras.layers.Dense(start_nx*start_ny*6, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
     hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
     hidden = keras.layers.Dense(start_nx*start_ny*12, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*12, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
     hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
     #hidden = keras.layers.Dense(start_nx*start_ny*32, activation='relu')(hidden)
     #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='sigmoid')(hidden)
@@ -256,8 +264,9 @@ for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
     print("Generating training data: " +  str(huge_set_num))
     huge_coefs, huge_psf_vals = gen_data(huge_set_size)
     
-    num_reps = 10
+    num_reps = 3
     for rep in np.arange(0, num_reps):
+        print("Rep no: " + str(rep))
         for set_num in np.arange(0, num_small_sets):
             coefs = huge_coefs[set_num*n_data:(set_num+1)*n_data]
             psf_vals = huge_psf_vals[set_num*n_data:(set_num+1)*n_data]

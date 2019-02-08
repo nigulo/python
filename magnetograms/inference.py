@@ -29,12 +29,11 @@ num_samples = 5
 num_chains = 3
 inference = False
 
-MODE = 0
+MODE = 1
 
 eps = 0.001
 learning_rate = 0.1
-max_num_tries = 100
-
+max_num_tries = 20
 initial_temp = 0.5
 temp_delta = 0.01
 
@@ -226,7 +225,7 @@ def algorithm_a(x, y, y_orig):
     
     temp = initial_temp
     
-    while (temp < 1.0 or max_loglik is None or num_tries % max_num_tries != 0 or (loglik < max_loglik) or (loglik > max_loglik + eps)):
+    while temp < 1.0 or max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
     
@@ -443,7 +442,8 @@ def algorithm_a(x, y, y_orig):
                 else:
                     y = y_last
             loglik = None
-        temp += temp_delta*temp    
+        if temp <= 1.0:
+            temp += temp_delta*temp    
     
     num_guessed = 0.0
     for i in np.arange(0, n):
@@ -564,7 +564,8 @@ def algorithm_b(x, y, y_orig):
                     if loglik1 > loglik2:        
                         y[j] = y[j]*-1
     
-        temp += temp_delta*temp
+        if temp <= 1.0:
+            temp += temp_delta*temp    
         
     
     num_guessed = 0.0
