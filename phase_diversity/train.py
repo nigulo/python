@@ -10,6 +10,8 @@ import utils
 import matplotlib.pyplot as plt
 import matplotlib.colorbar as cb
 from matplotlib import cm
+import pickle
+import os.path
 
 import time
 
@@ -28,10 +30,26 @@ aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 n_coefs = 50
 n_data = 100
 max_huge_set_size = 1000
+if os.path.isfile("config.txt"):
+    with open("config.txt", "r") as f:
+        lines = f.readlines()
+        n_coefs1 = int(lines[0])
+        n_data1 = int(lines[1])
+        max_huge_set_size1 = int(lines[2])
+        assert(n_coefs == n_coefs1 and n_data == n_data1 and max_huge_set_size == max_huge_set_size1)
+        print("Using old configuraton")
+    read_data = True
+else:
+    with open('config.txt', 'w') as f:
+        f.write(str(n_coefs) + "\n")
+        f.write(str(n_data) + "\n")
+        f.write(str(max_huge_set_size) + "\n")
+    read_data = False
+
 assert(n_data <= max_huge_set_size and (max_huge_set_size % n_data) == 0)
 n_train = int(n_data*0.75)
 
-num_sets = 1000
+num_sets = 10000
 
 n_epochs = 100
 
@@ -51,36 +69,28 @@ def create_model():
     start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
     
     hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
-    hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx, start_ny, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
+    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
 
-    hidden = keras.layers.Dense(start_nx*start_ny*2, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*2, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*3, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*3, activation='relu')(hidden)
+    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
     #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
-    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*6, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*6, activation='relu')(hidden)
+    #hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
     #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
+    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    hidden = keras.layers.UpSampling2D((2, 2))(hidden)
     #hidden = keras.layers.core.Flatten()(hidden)
 
-    hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*12, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*12, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
-    hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+    #hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
+    #hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
     #hidden = keras.layers.Dense(start_nx*start_ny*32, activation='relu')(hidden)
     #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='sigmoid')(hidden)
-    hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
+    #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
     hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
     hidden = keras.layers.UpSampling2D((2, 2))(hidden)
     hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
@@ -255,14 +265,32 @@ def gen_data(n_data, normalize=True, log=False):
     return coefs, psf_vals
 
 
+def load_data(huge_set_num):
+    data_file = 'data' + str(huge_set_num) + '.pkl'
+    if load_data and os.path.isfile(data_file):
+        return pickle.load(open(data_file, 'rb'))
+    else:
+        return None
+
+def save_data(data, huge_set_num):
+    with open('data' + str(huge_set_num) + '.pkl', 'wb') as f:
+        pickle.dump(data, f)
+
+
+
 model = create_model()
 
 huge_set_size = min(max_huge_set_size, n_data*num_sets)
 num_small_sets = huge_set_size / n_data
 for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
 
-    print("Generating training data: " +  str(huge_set_num))
-    huge_coefs, huge_psf_vals = gen_data(huge_set_size)
+    data = load_data(huge_set_num)
+    if data is None:
+        print("Generating training data: " +  str(huge_set_num))
+        huge_coefs, huge_psf_vals = gen_data(huge_set_size)
+        save_data((huge_coefs, huge_psf_vals), huge_set_num)
+    else:
+        huge_coefs, huge_psf_vals = data
     
     num_reps = 3
     for rep in np.arange(0, num_reps):
