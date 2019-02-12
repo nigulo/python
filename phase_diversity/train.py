@@ -21,6 +21,8 @@ ny = 320
 zoomin_start = nx/2 - 32
 zoomin_end = ny/2 + 32
 
+otf_or_psf = True
+
 psf_vals_nx = 64
 psf_vals_ny = 64
 
@@ -28,15 +30,18 @@ psf_vals_ny = 64
 aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 50
-n_data = 100
-max_huge_set_size = 1000
+n_data = 10
+max_huge_set_size = 100
 if os.path.isfile("config.txt"):
     with open("config.txt", "r") as f:
         lines = f.readlines()
         n_coefs1 = int(lines[0])
         n_data1 = int(lines[1])
         max_huge_set_size1 = int(lines[2])
-        assert(n_coefs == n_coefs1 and n_data == n_data1 and max_huge_set_size == max_huge_set_size1)
+        otf_or_psf1 = False
+        if len(lines) > 3:
+            otf_or_psf1 = bool(lines[3])
+        assert(n_coefs == n_coefs1 and max_huge_set_size == max_huge_set_size1 and otf_or_psf1 == otf_or_psf)
         print("Using old configuraton")
     read_data = True
 else:
@@ -44,13 +49,13 @@ else:
         f.write(str(n_coefs) + "\n")
         f.write(str(n_data) + "\n")
         f.write(str(max_huge_set_size) + "\n")
+        f.write(str(otf_or_psf) + "\n")
     read_data = False
 
 assert(n_data <= max_huge_set_size and (max_huge_set_size % n_data) == 0)
 n_train = int(n_data*0.75)
 
 num_sets = 10000
-
 n_epochs = 100
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
@@ -61,50 +66,53 @@ my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 def create_model():
     
     print("Creating model")
-    
     coefs = keras.layers.Input((n_coefs,), name='coefs')
-    #psf = keras.layers.Input(IMAGE_SHAPE, name='psf')
+
+    if otf_or_psf:
+        #psf = keras.layers.Input(IMAGE_SHAPE, name='psf')
+        
+        start_nx = 8#(((psf_vals_nx + 1)/2 + 1)/2 + 1)/2 + 2
+        start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
+        
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(coefs)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(2*start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(2*start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(2*start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(2*start_nx*8*start_ny*8, activation='relu')(hidden)
+        #hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+        #hidden = keras.layers.core.Flatten()(hidden)
     
-    start_nx = 8#(((psf_vals_nx + 1)/2 + 1)/2 + 1)/2 + 2
-    start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
+        output = keras.layers.Reshape((2, start_nx*8, start_ny*8, 1))(hidden)
     
-    hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
-    #hidden = keras.layers.Reshape((start_nx, start_ny, 1))(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    #hidden = keras.layers.core.Flatten()(hidden)
-    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
-
-    hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
-    #hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    #hidden = keras.layers.core.Flatten()(hidden)
-
-    #hidden = keras.layers.Dense(start_nx*start_ny*4, activation='relu')(hidden)
-    #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
-    hidden = keras.layers.Reshape((start_nx*2, start_ny*2, 1))(hidden)
-    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    hidden = keras.layers.UpSampling2D((2, 2))(hidden)
-    #hidden = keras.layers.core.Flatten()(hidden)
-
-    #hidden = keras.layers.Dense(start_nx*start_ny*8, activation='relu')(hidden)
-    #hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
-    #hidden = keras.layers.Dense(start_nx*start_ny*32, activation='relu')(hidden)
-    #hidden = keras.layers.Dense(start_nx*start_ny*64, activation='sigmoid')(hidden)
-    #hidden = keras.layers.Reshape((start_nx*4, start_ny*4, 1))(hidden)
-    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    hidden = keras.layers.UpSampling2D((2, 2))(hidden)
-    hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
-    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu')(hidden)
-    #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu')(hidden)
-    #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
-    #hidden = keras.layers.Conv2D(40, (5, 5), activation='relu')(hidden)
-    #hidden = keras.layers.Conv2D(40, (5, 5), activation='relu')(hidden)
-    output = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(hidden)
+    
+    else:
+    
+        start_nx = 8#(((psf_vals_nx + 1)/2 + 1)/2 + 1)/2 + 2
+        start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
+        
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(coefs)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(start_nx*16*start_ny*16, activation=None)(hidden)
+        hidden = keras.layers.Dense(start_nx*8*start_ny*8, activation='relu')(hidden)
+        #hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
+        #hidden = keras.layers.core.Flatten()(hidden)
+    
+        hidden = keras.layers.Reshape((start_nx*8, start_ny*8, 1))(hidden)
+    
+        #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+        #hidden = keras.layers.UpSampling2D((2, 2))(hidden)
+        #hidden = keras.layers.Conv2D(20, (3, 3), activation='relu', padding='same')(hidden)
+    
+        #hidden = keras.layers.Conv2D(20, (3, 3), subsample=(2, 2), activation='relu', padding='same')(hidden)
+    
+        output = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(hidden)
+    
 
     model = keras.models.Model(input=coefs, output=output)
     optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
@@ -117,6 +125,53 @@ def create_model():
 
 
 validation_losses = []
+
+def plot_data(psf_vals, predicted_psfs, n_test, fig_name):
+    
+    extent=[0., 1., 0., 1.]
+    plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
+
+    if otf_or_psf:
+        fig, axes = plt.subplots(nrows=n_test, ncols=4)
+        fig.set_size_inches(6, 3*n_test)
+        psf_vals = np.reshape(psf_vals[:n_test], (n_test, 2, psf_vals_nx, psf_vals_ny))
+        predicted_psfs = np.reshape(predicted_psfs, (n_test, 2, psf_vals_nx, psf_vals_ny))
+    else:
+        fig, axes = plt.subplots(nrows=n_test, ncols=2)
+        fig.set_size_inches(12, 3*n_test)
+        psf_vals = np.reshape(psf_vals[:n_test], (n_test, psf_vals_nx, psf_vals_ny))
+        predicted_psfs = np.reshape(predicted_psfs, (n_test, psf_vals_nx, psf_vals_ny))
+    
+    print(np.shape(psf_vals))
+    for i in np.arange(0, n_test):
+    
+        if otf_or_psf:
+            ax = axes[i][0]
+            ax.imshow(psf_vals[i,0].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+    
+            ax = axes[i][1]
+            ax.imshow(predicted_psfs[i,0].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+
+            ax = axes[i][2]
+            ax.imshow(psf_vals[i,1].T, extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+    
+            ax = axes[i][3]
+            ax.imshow(predicted_psfs[i,1].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+        else:
+            ax = axes[i][0]
+            ax.imshow(psf_vals[i].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+    
+            ax = axes[i][1]
+            ax.imshow(predicted_psfs[i].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+
+    fig.savefig(fig_name)
+    plt.close(fig)
 
 def train(model, coefs_train, coefs_test, psf_train, psf_test):
     #print("Training")
@@ -144,42 +199,51 @@ def train(model, coefs_train, coefs_test, psf_train, psf_test):
     # Plot training data results
     n_test = 5
     predicted_psfs = model.predict(coefs_train[0:n_test])
-    predicted_psfs = np.reshape(predicted_psfs, (n_test, psf_vals_nx, psf_vals_ny))
     
+    
+    plot_data(psf_train, predicted_psfs, n_test, 'psf_train.png')
+    
+    '''
     extent=[0., 1., 0., 1.]
     plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
 
-    fig, axes = plt.subplots(nrows=n_test, ncols=2)
-    fig.set_size_inches(6, 3*n_test)
+    if otf_or_psf:
+        fig, axes = plt.subplots(nrows=n_test, ncols=4)
+        fig.set_size_inches(6, 3*n_test)
+    else:
+        fig, axes = plt.subplots(nrows=n_test, ncols=2)
+        fig.set_size_inches(12, 3*n_test)
     
     for i in np.arange(0, n_test):
     
-        ax = axes[i][0]
-        #ax.imshow(np.log(psf_vals[i].T),extent=extent,cmap=my_cmap,origin='lower')
-        ax.imshow(np.reshape(psf_train[i], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
-        #ax1.set_title(r'Factor graph')
-        #ax1.set_ylabel(r'$f$')
-        #start, end = ax32.get_xlim()
-        #ax1.xaxis.set_ticks(np.arange(5, end, 4.9999999))
-        #ax1.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
-        #ax1.xaxis.labelpad = -1
-        #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-        ax.set_aspect(aspect=plot_aspect)
+        if otf_or_psf:
+            ax = axes[i][0]
+            ax.imshow(np.reshape(psf_train[i,0], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+    
+            ax = axes[i][1]
+            ax.imshow(predicted_psfs[i,0].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
 
-        ax = axes[i][1]
-        #ax.imshow(np.log(predicted_psfs[i].T),extent=extent,cmap=my_cmap,origin='lower')
-        ax.imshow(predicted_psfs[i].T,extent=extent,cmap=my_cmap,origin='lower')
-        #ax1.set_title(r'Factor graph')
-        #ax1.set_ylabel(r'$f$')
-        #start, end = ax32.get_xlim()
-        #ax1.xaxis.set_ticks(np.arange(5, end, 4.9999999))
-        #ax1.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
-        #ax1.xaxis.labelpad = -1
-        #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-        ax.set_aspect(aspect=plot_aspect)
+            ax = axes[i][2]
+            ax.imshow(np.reshape(psf_train[i,1], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+    
+            ax = axes[i][3]
+            ax.imshow(predicted_psfs[i,1].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+        else:
+            ax = axes[i][0]
+            ax.imshow(np.reshape(psf_train[i], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
+    
+            ax = axes[i][1]
+            ax.imshow(predicted_psfs[i].T,extent=extent,cmap=my_cmap,origin='lower')
+            ax.set_aspect(aspect=plot_aspect)
 
     fig.savefig('psf_train.png')
     plt.close(fig)
+    '''
     
     return model
 
@@ -194,14 +258,17 @@ def test(model):
         #for i in np.arange(0, n_test_data):
         #    pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
         #    ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)
-        #    psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()
+        #    psf_vals[i] = psf.psf(ctf, ValueError: cannot reshape array of size 81920 into shape (10,64,64,1)
     
         start = time.time()    
         predicted_psfs = model.predict(coefs)
         end = time.time()
         #print("Prediction time" + (end - start))
-        predicted_psfs = np.reshape(predicted_psfs, (n_test_data, psf_vals_nx, psf_vals_ny))
+
         
+        plot_data(psf_vals, predicted_psfs, n_test_data, 'psf_test.png')
+        
+        '''
         extent=[0., 1., 0., 1.]
         plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         
@@ -236,28 +303,48 @@ def test(model):
 
         fig.savefig('psf_test.png')
         plt.close(fig)
+        '''
 
 def gen_data(n_data, normalize=True, log=False):
     #coefs = np.zeros((n_data, n_coefs))
     coefs = np.random.normal(size=(n_data, n_coefs))*10
-    psf_vals = np.zeros((n_data, psf_vals_nx, psf_vals_ny))
+    if otf_or_psf:
+        psf_vals = np.zeros((n_data, 2, psf_vals_nx, psf_vals_ny))
+    else:
+        psf_vals = np.zeros((n_data, psf_vals_nx, psf_vals_ny))
+        
     start = time.time()
     for i in np.arange(0, n_data):
         #i_max = np.argmax(np.abs(coefs[i]))
         #pa = psf.phase_aberration([(4 + i_max, coefs[i_max])])
         pa = psf.phase_aberration(zip(np.arange(4, n_coefs + 4), coefs[i]))
         ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
-        psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()[zoomin_start:zoomin_end,zoomin_start:zoomin_end]
+        
+        if otf_or_psf:
+            psf_vals[i] = psf.psf(ctf, nx, ny).get_otf_vals()[:,zoomin_start:zoomin_end,zoomin_start:zoomin_end]
+        else:
+            psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()[zoomin_start:zoomin_end,zoomin_start:zoomin_end]
+            
         #psf_vals[i] = utils.trunc(psf_vals[i], 1e-2)
+        
         if normalize:
-            min_val = np.min(psf_vals[i])
-            max_val = np.max(psf_vals[i])
-            psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
+            if otf_or_psf:
+                min_val = np.reshape(np.min(psf_vals[i], axis=(1,2)), (2,1,1))
+                max_val = np.reshape(np.max(psf_vals[i], axis=(1,2)), (2,1,1))
+            else:    
+                min_val = np.min(psf_vals[i])
+                max_val = np.max(psf_vals[i])
+            
+            psf_vals[i,:] = (psf_vals[i,:] - min_val)/(max_val - min_val)
         if log:
             psf_vals[i] += 1.0
             psf_vals[i] = np.log(psf_vals[i])
-            min_val = np.min(psf_vals[i])
-            max_val = np.max(psf_vals[i])
+            if otf_or_psf:
+                min_val = np.reshape(np.min(psf_vals[i], axis=(1,2)), (2,1,1))
+                max_val = np.reshape(np.max(psf_vals[i], axis=(1,2)), (2,1,1))
+            else:    
+                min_val = np.min(psf_vals[i])
+                max_val = np.max(psf_vals[i])
             psf_vals[i] = (psf_vals[i] - min_val)/(max_val - min_val)
         print(str(float(i)*100/n_data) + "%")
     end = time.time()
@@ -299,7 +386,10 @@ for huge_set_num in np.arange(0, n_data*num_sets/huge_set_size):
             coefs = huge_coefs[set_num*n_data:(set_num+1)*n_data]
             psf_vals = huge_psf_vals[set_num*n_data:(set_num+1)*n_data]
             
-            psf_vals = np.reshape(psf_vals, (len(psf_vals), psf_vals_nx, psf_vals_ny, 1))
+            if otf_or_psf:
+                psf_vals = np.reshape(psf_vals, (len(psf_vals), 2, psf_vals_nx, psf_vals_ny, 1))
+            else:
+                psf_vals = np.reshape(psf_vals, (len(psf_vals), psf_vals_nx, psf_vals_ny, 1))
             coefs_train = coefs[:n_train] 
             coefs_test = coefs[n_train:]
             psf_train = psf_vals[:n_train]

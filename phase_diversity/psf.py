@@ -46,6 +46,8 @@ class coh_trans_func():
 
 class psf():
     def __init__(self, coh_trans_func, nx, ny):
+        self.nx = nx
+        self.ny = ny
         #coh_vals = np.zeros((nx, ny))
         xs = np.linspace(-1.0, 1.0, nx)/np.sqrt(2)
         ys = np.linspace(-1.0, 1.0, ny)/np.sqrt(2)
@@ -69,6 +71,11 @@ class psf():
         
     def get_incoh_vals(self):
         return self.incoh_vals
+
+    def get_otf_vals(self):
+        vals = fft.fft2(self.incoh_vals)
+        vals = np.roll(np.roll(vals, int(self.nx/2), axis=0), int(self.ny/2), axis=1)
+        return np.array([vals.real, vals.imag])
 
 
 def aperture_circ(us, r=1.0, coef=5.0):
