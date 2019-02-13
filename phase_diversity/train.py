@@ -30,8 +30,8 @@ psf_vals_ny = 64
 aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 50
-n_data = 10
-max_huge_set_size = 100
+n_data = 200
+max_huge_set_size = 1000
 if os.path.isfile("config.txt"):
     with open("config.txt", "r") as f:
         lines = f.readlines()
@@ -74,12 +74,15 @@ def create_model():
         start_nx = 8#(((psf_vals_nx + 1)/2 + 1)/2 + 1)/2 + 2
         start_ny = 8#(((psf_vals_ny + 1)/2 + 1)/2 + 1)/2 + 2
         
+        hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
+        hidden = keras.layers.Dense(start_nx*start_ny, activation='relu')(coefs)
         hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(coefs)
         hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
         hidden = keras.layers.Dense(start_nx*4*start_ny*4, activation='relu')(hidden)
         hidden = keras.layers.Dense(2*start_nx*4*start_ny*4, activation='relu')(hidden)
         hidden = keras.layers.Dense(2*start_nx*4*start_ny*4, activation='relu')(hidden)
         hidden = keras.layers.Dense(2*start_nx*4*start_ny*4, activation='relu')(hidden)
+        hidden = keras.layers.Dense(2*start_nx*8*start_ny*8, activation='relu')(hidden)
         hidden = keras.layers.Dense(2*start_nx*8*start_ny*8, activation='relu')(hidden)
         #hidden = keras.layers.Dense(start_nx*start_ny*16, activation='relu')(hidden)
         #hidden = keras.layers.core.Flatten()(hidden)
@@ -133,16 +136,15 @@ def plot_data(psf_vals, predicted_psfs, n_test, fig_name):
 
     if otf_or_psf:
         fig, axes = plt.subplots(nrows=n_test, ncols=4)
-        fig.set_size_inches(6, 3*n_test)
+        fig.set_size_inches(10, 2.5*n_test)
         psf_vals = np.reshape(psf_vals[:n_test], (n_test, 2, psf_vals_nx, psf_vals_ny))
         predicted_psfs = np.reshape(predicted_psfs, (n_test, 2, psf_vals_nx, psf_vals_ny))
     else:
         fig, axes = plt.subplots(nrows=n_test, ncols=2)
-        fig.set_size_inches(12, 3*n_test)
+        fig.set_size_inches(20, 2.5*n_test)
         psf_vals = np.reshape(psf_vals[:n_test], (n_test, psf_vals_nx, psf_vals_ny))
         predicted_psfs = np.reshape(predicted_psfs, (n_test, psf_vals_nx, psf_vals_ny))
     
-    print(np.shape(psf_vals))
     for i in np.arange(0, n_test):
     
         if otf_or_psf:
@@ -203,48 +205,6 @@ def train(model, coefs_train, coefs_test, psf_train, psf_test):
     
     plot_data(psf_train, predicted_psfs, n_test, 'psf_train.png')
     
-    '''
-    extent=[0., 1., 0., 1.]
-    plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
-
-    if otf_or_psf:
-        fig, axes = plt.subplots(nrows=n_test, ncols=4)
-        fig.set_size_inches(6, 3*n_test)
-    else:
-        fig, axes = plt.subplots(nrows=n_test, ncols=2)
-        fig.set_size_inches(12, 3*n_test)
-    
-    for i in np.arange(0, n_test):
-    
-        if otf_or_psf:
-            ax = axes[i][0]
-            ax.imshow(np.reshape(psf_train[i,0], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
-            ax.set_aspect(aspect=plot_aspect)
-    
-            ax = axes[i][1]
-            ax.imshow(predicted_psfs[i,0].T,extent=extent,cmap=my_cmap,origin='lower')
-            ax.set_aspect(aspect=plot_aspect)
-
-            ax = axes[i][2]
-            ax.imshow(np.reshape(psf_train[i,1], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
-            ax.set_aspect(aspect=plot_aspect)
-    
-            ax = axes[i][3]
-            ax.imshow(predicted_psfs[i,1].T,extent=extent,cmap=my_cmap,origin='lower')
-            ax.set_aspect(aspect=plot_aspect)
-        else:
-            ax = axes[i][0]
-            ax.imshow(np.reshape(psf_train[i], (psf_vals_nx, psf_vals_ny)).T,extent=extent,cmap=my_cmap,origin='lower')
-            ax.set_aspect(aspect=plot_aspect)
-    
-            ax = axes[i][1]
-            ax.imshow(predicted_psfs[i].T,extent=extent,cmap=my_cmap,origin='lower')
-            ax.set_aspect(aspect=plot_aspect)
-
-    fig.savefig('psf_train.png')
-    plt.close(fig)
-    '''
-    
     return model
 
 def test(model):
@@ -268,42 +228,6 @@ def test(model):
         
         plot_data(psf_vals, predicted_psfs, n_test_data, 'psf_test.png')
         
-        '''
-        extent=[0., 1., 0., 1.]
-        plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
-        
-        fig, axes = plt.subplots(nrows=n_test_data, ncols=2)
-        fig.set_size_inches(6, 3*n_test_data)
-        
-        for i in np.arange(0, n_test_data):
-        
-            ax = axes[i][0]
-            #ax.imshow(np.log(psf_vals[i].T),extent=extent,cmap=my_cmap,origin='lower')
-            ax.imshow(psf_vals[i].T,extent=extent,cmap=my_cmap,origin='lower')
-            #ax1.set_title(r'Factor graph')
-            #ax1.set_ylabel(r'$f$')
-            #start, end = ax32.get_xlim()
-            #ax1.xaxis.set_ticks(np.arange(5, end, 4.9999999))
-            #ax1.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
-            #ax1.xaxis.labelpad = -1
-            #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-            ax.set_aspect(aspect=plot_aspect)
-
-            ax = axes[i][1]
-            #ax.imshow(np.log(predicted_psfs[i].T),extent=extent,cmap=my_cmap,origin='lower')
-            ax.imshow(predicted_psfs[i].T,extent=extent,cmap=my_cmap,origin='lower')
-            #ax1.set_title(r'Factor graph')
-            #ax1.set_ylabel(r'$f$')
-            #start, end = ax32.get_xlim()
-            #ax1.xaxis.set_ticks(np.arange(5, end, 4.9999999))
-            #ax1.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0f'))
-            #ax1.xaxis.labelpad = -1
-            #ax1.set_xlabel(r'$l_{\rm coh}$')#,fontsize=20)
-            ax.set_aspect(aspect=plot_aspect)
-
-        fig.savefig('psf_test.png')
-        plt.close(fig)
-        '''
 
 def gen_data(n_data, normalize=True, log=False):
     #coefs = np.zeros((n_data, n_coefs))
