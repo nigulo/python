@@ -13,6 +13,7 @@ import scipy.misc
 import numpy.random as random
 import scipy.interpolate as interp
 import scipy.sparse.linalg as sparse
+import scipy.stats as stats
 import utils
 import pymc3 as pm
 #import os
@@ -32,7 +33,7 @@ data_file = "data"
 
 num_samples = 5
 num_chains = 3
-inference = False
+inference = True
 
 MODE = 0
 
@@ -248,7 +249,6 @@ def algorithm_a(x, y, y_orig):
             W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
             loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
             
-        
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
         #print("mean", mean)
@@ -266,22 +266,10 @@ def algorithm_a(x, y, y_orig):
         y_sign_last = np.array(y_sign)
         
         if MODE == 0:
-            if ((iteration - 1) % n) == 0:
-                random_indices = np.random.choice(n, size=n, replace=False)
-
-            #random_indices = np.arange(0, n)
-            #i = get_random_indices(x, n, length_scale)[0]
-            i = random_indices[(iteration - 1) % n]
-            indices  = []
-            for j in np.arange(0, n):
-                x_diff = x[j] - x[i]
-                if (np.dot(x_diff, x_diff) < length_scale**2):
-                    indices.append(j)
+            random_indices = get_random_indices(x, n, temp*length_scale)
                 
-            #sign_change = np.zeros(n, dtype=bool)
-
             r = random.uniform()
-            for ri in indices:
+            for ri in random_indices:
                 #r = np.log(random.uniform())
                 if num_positive[ri] + num_negative[ri] <= 10:
                     theta = 0.5
@@ -304,6 +292,8 @@ def algorithm_a(x, y, y_orig):
                         y_sign[ri] = -1
                         #sign_change[ri] = True
                 print(np.exp(thetas[ri]))
+
+            neighborhoods = align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
 
             loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
     
@@ -332,7 +322,7 @@ def algorithm_a(x, y, y_orig):
                 y = y_last
                 y_sign = y_sign_last
                 
-            for ri in indices:
+            for ri in np.arange(0, n):
                 if y_sign[ri] > 0:
                     num_positive[ri] += 1.0
                 else:
@@ -396,7 +386,7 @@ def algorithm_a(x, y, y_orig):
                     #thetas[i] = new_theta
                     new_theta = thetas_i + loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]), b=np.array([exp_theta, 1.0-exp_theta]))
                     thetas[i] += learning_rate * (new_theta - thetas_i)
-        
+
                     thetas_i = thetas[i]
             
                     print(thetas_i, np.exp(thetas_i), loglik1, loglik2)
@@ -437,6 +427,23 @@ def algorithm_a(x, y, y_orig):
 
     return num_guessed/n, exp_thetas, y
 
+def align(x, y, y_sign, indices, n, length_scale, thetas):
+    normal_dist = stats.norm(0.0, length_scale)
+    for i in indices:
+        r = random.uniform()
+        for j in np.arange(0, n):
+            if any(np.where(indices == j)[0]):
+                continue
+            x_diff = x[j] - x[i]
+            x_diff = np.sqrt(np.dot(x_diff, x_diff))
+            if (x_diff < 3.0*length_scale):
+                p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
+                if (r < p):
+                    thetas[j] = thetas[i]
+                    if np.dot(y[i], y[j]) < 0:
+                        y[j] = np.array(y[j])*-1
+                        y_sign[j] *= -1
+    
 def get_random_indices(x, n, length_scale):
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
     random_indices = np.random.choice(n, size=n, replace=False)
