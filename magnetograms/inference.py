@@ -31,9 +31,10 @@ import os.path
 save_data = True
 data_file = "data"
 
-num_samples = 5
-num_chains = 3
+num_samples = 10
+num_chains = 10
 inference = True
+inference_after_iter = 10
 
 MODE = 0
 
@@ -196,7 +197,7 @@ def algorithm_a(x, y, y_orig):
     max_loglik = None
     y_best = None
     
-    iteration = 0
+    iteration = -1
 
     #thetas = random.uniform(size=n)
     thetas = np.ones(n)/2
@@ -213,7 +214,7 @@ def algorithm_a(x, y, y_orig):
     
         initial_param_values = []
         
-        if inference:
+        if inference and (iteration % inference_after_iter == 0):
             #for i in np.arange(0, num_chains):
             #    #initial_m = m
             #    #initial_length_scale = length_scale
