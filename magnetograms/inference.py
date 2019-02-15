@@ -31,7 +31,7 @@ import os.path
 save_data = True
 data_file = "data"
 
-num_samples = 10
+num_samples = 50
 num_chains = 10
 inference = True
 inference_after_iter = 10
@@ -151,6 +151,12 @@ print(n)
 
 # define the parameters with their associated priors
         
+if not inference:
+    sig_var=sig_var_train
+    #mean=mean_train
+    length_scale=length_scale_train
+    
+
 def sample(x, y):
 
     s = sampling.Sampling()
@@ -238,10 +244,6 @@ def algorithm_a(x, y, y_orig):
             #mean = np.mean(mean_samples)
             
             length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
-        else:
-            sig_var=sig_var_train
-            #mean=mean_train
-            length_scale=length_scale_train
 
         if loglik is None:
             gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
