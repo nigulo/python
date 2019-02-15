@@ -12,8 +12,7 @@ from matplotlib import cm
 def binomial_coef(n, k):
 
     if k > n:
-        binomial_coef = 0.0
-        return
+        return 0.0
     kk = k
         
     if k > n/2:
@@ -22,7 +21,7 @@ def binomial_coef(n, k):
     binomial_coef = 1.0
     for i in np.arange(1, kk + 1):
         binomial_coef *= (n-kk+i) / i
-        
+
     return binomial_coef
 
 '''
@@ -66,10 +65,11 @@ def Vnmf(radio, f, n, m):
                 ulj = (-1.0)**p * (abs(m)+l+2*j) * t1 * t2 * t3 / t4
                 for ix in np.arange(0, np.shape(radio)[0]):#size(radio(:,1)))
                     for iy in np.arange(0, np.shape(radio)[1]):#size(radio(1,:))
-                        sum_[ix,iy] += ulj * special.iv(abs(m)+l+2*j,2.0*np.pi*(radio[ix,iy]+1.0-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.0-10))**l)
-        Vnm += Vnm + sum_ * (-2.0*ii*f)**(l-1)
+                        #sum_[ix,iy] += ulj * special.iv(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.e-10))**l)
+                        sum_[ix,iy] += ulj * special.iv(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy])) / (l*(2.0*np.pi*(radio[ix,iy]))**l)
+        Vnm += sum_ * (-2.0*ii*f)**(l-1)
         
-    Vnm = epsm * Vnm * np.exp(ii*f)
+    Vnm *= epsm * np.exp(ii*f)
     return Vnm
 
 '''
@@ -121,7 +121,7 @@ if False:
 diffraction = 1.22 * wavelength * 1e-8 / diameter
 diffraction = 206265.0 * diffraction
 
-print('Diffraction limit =', diffraction)
+print('Diffraction limit ["]=', diffraction)
 
 # Generate pupil plane
 x_diff = np.zeros(nx)
@@ -182,7 +182,7 @@ for loop_defocus in ["focus", "defocus"]:
 
 #    write(12) nx, nx, 2, jmax, jmax
 
-# Generate all the basis functions
+    # Generate all the basis functions
     
     ncols = jmax
     nrows = int(jmax*jmax / ncols)
@@ -212,6 +212,27 @@ for loop_defocus in ["focus", "defocus"]:
             n_p = noll_n(k)
             print(n, m, n_p, m_p)
 
+
+            V_np_mp = Vnmf(radio, f, n_p, m_p)
+
+            ca = np.cos(0.5*(m+m_p)*np.pi)
+            sa = np.sin(0.5*(m+m_p)*np.pi)
+            if abs(ca) < 1.0e-14:
+                ca = 0.0
+            if abs(sa) < 1.0e-14:
+                sa = 0.0
+
+            c_sum = ca*np.cos((m-m_p)*phi) - sa*np.sin((m-m_p)*phi)
+            s_sum = sa*np.cos((m-m_p)*phi) + ca*np.sin((m-m_p)*phi)
+
+            xi = V_n_m.imag * V_np_mp.imag + V_n_m.real * V_np_mp.real
+            psi = V_n_m.real * V_np_mp.imag - V_n_m.imag * V_np_mp.real
+        
+            X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
+            Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
+            
+            # Do the plotting #################################################
+
             ax_x = axes_x[row][col]
             ax_y = axes_y[row][col]
             col += 1
@@ -231,24 +252,6 @@ for loop_defocus in ["focus", "defocus"]:
                     transform=ax_y.transAxes,
                     color='yellow', fontsize=10)
 
-            V_np_mp = Vnmf(radio, f, n_p, m_p)
-
-            ca = np.cos(0.5*(m+m_p)*np.pi)
-            sa = np.sin(0.5*(m+m_p)*np.pi)
-            if abs(ca) < 1.0e-14:
-                ca = 0.0
-            if abs(sa) < 1.0e-14:
-                sa = 0.0
-
-            c_sum = ca*np.cos((m-m_p)*phi) - sa*np.sin((m-m_p)*phi)
-            s_sum = sa*np.cos((m-m_p)*phi) + ca*np.sin((m-m_p)*phi)
-
-            xi = V_n_m.imag * V_np_mp.imag + V_n_m.real * V_np_mp.real
-            psi = V_n_m.real * V_np_mp.imag - V_n_m.imag * V_np_mp.real
-        
-            X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
-            Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
-
             center = nx/2
             zoom_radius = nx*zoom_factor/2
             left = int(center-zoom_radius)
@@ -259,7 +262,9 @@ for loop_defocus in ["focus", "defocus"]:
             ax_y.imshow(Y[left:right,left:right].T,extent=extent,cmap=my_cmap,origin='lower')
             ax_y.set_aspect(aspect=plot_aspect)
 
-# Do the FFT and save the results
+            ###################################################################
+
+            # Do the FFT and save the results
             
             #FX = fft.fft2(X)
             #FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
