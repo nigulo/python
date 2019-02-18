@@ -32,7 +32,7 @@ save_data = True
 data_file = "data"
 
 num_samples = 50
-num_chains = 10
+num_chains = 1
 inference = True
 inference_after_iter = 10
 
@@ -161,8 +161,10 @@ def sample(x, y):
 
     s = sampling.Sampling()
     with s.get_model():
-        ell = pm.Uniform('ell', 0.0, 1.0)
-        sig_var = pm.Uniform('sig_var', 0.0, 1.0)
+        #ell = pm.Uniform('ell', 0.0, 1.0)
+        #sig_var = pm.Uniform('sig_var', 0.0, 1.0)
+        ell = pm.HalfNormal('ell', sd=1.0)
+        sig_var = pm.HalfNormal('sig_var', sd=1.0)
         
     def cov_func(sig_var, ell, noise_var, u):
         gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
