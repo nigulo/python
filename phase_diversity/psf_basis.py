@@ -253,15 +253,158 @@ def noll_m(j):
 
     return noll_m        
 
+class psf_basis:
+    
+    def __init__(self, jmax = 10, arcsec_per_px = 0.055, diameter = 20.0, wavelength = 5250.0, nx = 100, F_D = 1.0):
+        
+        self.jmax = jmax
+        self.arcsec_per_px = arcsec_per_px
+        self.diameter = diameter
+        self.wavelength = wavelength
+        self.nx = nx
+        self.F_D = F_D
+
+    def create_basis(self, do_fft=False, do_defocus=False):
+        jmax = self.jmax
+        arcsec_per_px = self.arcsec_per_px
+        diameter = self.diameter
+        wavelength = self.wavelength
+        nx = self.nx
+        F_D = self.F_D
+        
+        self.Xs = np.zeros((jmax, jmax, nx, nx))
+        self.Ys = np.zeros((jmax, jmax, nx, nx))
+
+        if do_fft:
+            self.FXs = np.zeros((jmax, jmax, nx, nx))
+            self.FYs = np.zeros((jmax, jmax, nx, nx))
+
+        if do_defocus:
+            self.Xs_d = np.zeros((jmax, jmax, nx, nx))
+            self.Ys_d = np.zeros((jmax, jmax, nx, nx))
+
+            if do_fft:
+                self.FXs_d = np.zeros((jmax, jmax, nx, nx))
+                self.FYs_d = np.zeros((jmax, jmax, nx, nx))
+
+
+        diffraction = 1.22 * wavelength * 1e-8 / diameter
+        diffraction = 206265.0 * diffraction
+        
+        print('Diffraction limit ["]=', diffraction)
+        
+        # Generate pupil plane
+        x_diff = np.zeros(nx)
+        y_diff = np.zeros(nx)
+        for i in np.arange(0, nx):
+            x_diff[i] = arcsec_per_px*i
+            y_diff[i] = arcsec_per_px*i
+        
+        x_diff = x_diff - x_diff[int(nx/2)]
+        y_diff = y_diff - y_diff[int(nx/2)]
+        
+        x_diff = x_diff / diffraction
+        y_diff = y_diff / diffraction
+        
+        radio = np.zeros((nx,nx))
+        phi = np.zeros((nx,nx))
+        
+        for i in np.arange(0, nx):
+            for j in np.arange(0, nx):
+                radio[i,j] = np.sqrt(x_diff[i]**2 + y_diff[j]**2)
+                phi[i,j] = np.arctan2(y_diff[j], x_diff[i])
+        
+        radio = radio * 3.8317 / (2.0 * np.pi)
+        # Generate the two focus+defocused PSFs
+        
+        defocus_array = [False]
+        if do_defocus:
+            defocus_array.append(True)
+            
+        for defocus in defocus_array:
+            f = 0.0
+            defocus_mm = 0.0
+            
+            if defocus:
+                d_lambda = 8.0 * F_D**2
+                f = np.pi * d_lambda / (4 * (F_D)**2)
+                defocus_mm = d_lambda * wavelength*1.e-7
+        
+                print('Defocus in mm = ', d_lambda * wavelength*1.e-7)
+                print('Defocus f = ', f)
+        
+        
+        
+            # Generate all the basis functions
+            for j in np.arange(1, jmax + 1):
+                m = noll_m(j)
+                n = noll_n(j)
+        
+                V_n_m =  Vnmf(radio, f, n, m)
+                
+                for k in np.arange(1, jmax + 1):
+                    m_p = noll_m(k)
+                    n_p = noll_n(k)
+        
+                    print(n, m, n_p, m_p)
+        
+                    V_np_mp = Vnmf(radio, f, n_p, m_p)
+        
+                    ca = np.cos(0.5*(m+m_p)*np.pi)
+                    sa = np.sin(0.5*(m+m_p)*np.pi)
+                    if abs(ca) < 1.0e-14:
+                        ca = 0.0
+                    if abs(sa) < 1.0e-14:
+                        sa = 0.0
+        
+                    c_sum = ca*np.cos((m-m_p)*phi) - sa*np.sin((m-m_p)*phi)
+                    s_sum = sa*np.cos((m-m_p)*phi) + ca*np.sin((m-m_p)*phi)
+        
+                    xi = V_n_m.imag * V_np_mp.imag + V_n_m.real * V_np_mp.real
+                    psi = V_n_m.real * V_np_mp.imag - V_n_m.imag * V_np_mp.real
+                
+                    X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
+                    Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
+                    if defocus:
+                        self.Xs_d[j-1, k-1] = X
+                        self.Ys_d[j-1, k-1]  = Y
+                    else:
+                        self.Xs[j-1, k-1] = X
+                        self.Ys[j-1, k-1]  = Y
+                        
+                    
+                    ###################################################################
+                    if do_fft:
+                    # Do the FFT and save the results
+                    
+                        FX = fft.fft2(X)
+                        FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
+                        FY = fft.fft2(Y)
+                        FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
+                        if defocus:
+                            self.FXs_d[j-1, k-1] = FX
+                            self.FYs_d[j-1, k-1] = FY
+                        else:
+                            self.FXs[j-1, k-1] = FX
+                            self.FYs[j-1, k-1] = FY
+
+    def getXY(self, j, k, defocus = False):
+        if defocus:
+            return self.Xs_d[j, k]
+        else:
+            return self.Xs[j, k]
+            
+
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
+
 zoom_factor = 1.0
-jmax = 5
+jmax = 10
 arcsec_per_px = 0.055
-diameter = 1.0
+diameter = 20.0
 wavelength = 5250.0
 nx = 100
 F_D = 1.0
@@ -274,71 +417,10 @@ if False:
     nx = int(input('Number of pixel of images? '))
     F_D = float(input('F/D? '))
 
+psf = psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+psf.create_basis(do_fft=False, do_defocus=True)
 
-diffraction = 1.22 * wavelength * 1e-8 / diameter
-diffraction = 206265.0 * diffraction
-
-print('Diffraction limit ["]=', diffraction)
-
-# Generate pupil plane
-x_diff = np.zeros(nx)
-y_diff = np.zeros(nx)
-for i in np.arange(0, nx):
-    x_diff[i] = arcsec_per_px*i
-    y_diff[i] = arcsec_per_px*i
-
-x_diff = x_diff - x_diff[int(nx/2)]
-y_diff = y_diff - y_diff[int(nx/2)]
-
-x_diff = x_diff / diffraction
-y_diff = y_diff / diffraction
-
-radio = np.zeros((nx,nx))
-phi = np.zeros((nx,nx))
-#V_n_m = np.zeros((nx,nx), dtype='complex'))
-#V_np_mp = np.zeros((nx,nx), dtype='complex'))
-#c_sum = np.zeros((nx,nx))
-#s_sum = np.zeros((nx,nx))
-#xi = np.zeros((nx,nx))
-#psi = np.zeros((nx,nx))
-#X = np.zeros((nx,nx))
-#Y = np.zeros((nx,nx))
-in_fft = np.zeros((nx,nx), dtype='complex')
-out_fft = np.zeros((nx,nx), dtype='complex')
-
-for i in np.arange(0, nx):
-    for j in np.arange(0, nx):
-        radio[i,j] = np.sqrt(x_diff[i]**2 + y_diff[j]**2)
-        phi[i,j] = np.arctan2(y_diff[j], x_diff[i])
-
-radio = radio * 3.8317 / (2.0 * np.pi)
-
-# Generate the two focus+defocused PSFs
-for loop_defocus in ["focus", "defocus"]:
-    f = 0.0
-    defocus_mm = 0.0
-    
-    if loop_defocus == "defocus":
-        d_lambda = 8.0 * F_D**2
-        f = np.pi * d_lambda / (4 * (F_D)**2)
-        defocus_mm = d_lambda * wavelength*1.e-7
-
-        print('Defocus in mm = ', d_lambda * wavelength*1.e-7)
-        print('Defocus f = ', f)
-
-#    write(s_jmax,FMT='(I2)') jmax
-#    write(s_arcsec_per_px,FMT='(F6.4)') arcsec_per_px
-#    write(s_nx,FMT='(I3)') nx
-#    write(s_diameter,FMT='(I3)') diameter
-#    write(s_F_D,FMT='(F4.1)') F_D
-#    write(s_wavelength,FMT='(F6.1)') wavelength
-#    write(s_defocus,FMT='(F6.3)') defocus_mm
-
-#    open(unit=12,file='PSF_BASIS/psf_basis_jmax_'//trim(adjustl(s_jmax))//'_arcsec_per_px_'//trim(adjustl(s_arcsec_per_px))//'_size_'//trim(adjustl(s_nx))//'_D_'//trim(adjustl(s_diameter))//'_FD_'//trim(adjustl(s_F_D))//'_lambda_'//trim(adjustl(s_wavelength))//'_defocus_'//trim(adjustl(s_defocus))//'.bin',&
-#        action='write',form='unformatted')
-
-#    write(12) nx, nx, 2, jmax, jmax
-
+for defocus in [False, True]:
     
     # Init figures ############################################################
     ncols = jmax
@@ -364,31 +446,12 @@ for loop_defocus in ["focus", "defocus"]:
         m = noll_m(j)
         n = noll_n(j)
 
-        V_n_m =  Vnmf(radio, f, n, m)
-        
         for k in np.arange(1, jmax + 1):
             m_p = noll_m(k)
             n_p = noll_n(k)
             print(n, m, n_p, m_p)
 
-
-            V_np_mp = Vnmf(radio, f, n_p, m_p)
-
-            ca = np.cos(0.5*(m+m_p)*np.pi)
-            sa = np.sin(0.5*(m+m_p)*np.pi)
-            if abs(ca) < 1.0e-14:
-                ca = 0.0
-            if abs(sa) < 1.0e-14:
-                sa = 0.0
-
-            c_sum = ca*np.cos((m-m_p)*phi) - sa*np.sin((m-m_p)*phi)
-            s_sum = sa*np.cos((m-m_p)*phi) + ca*np.sin((m-m_p)*phi)
-
-            xi = V_n_m.imag * V_np_mp.imag + V_n_m.real * V_np_mp.real
-            psi = V_n_m.real * V_np_mp.imag - V_n_m.imag * V_np_mp.real
-        
-            X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
-            Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
+            X, Y = psf.getXY(j-1, k-1, defocus=defocus)
             
             # Do the plotting #################################################
 
@@ -426,16 +489,12 @@ for loop_defocus in ["focus", "defocus"]:
 
             ###################################################################
 
-            # Do the FFT and save the results
-            
-            #FX = fft.fft2(X)
-            #FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
+    if defocus:
+        fig_x.savefig("psf_defocus_x.png")
+        fig_y.savefig("psf_defocus_y.png")
+    else:
+        fig_x.savefig("psf_x.png")
+        fig_y.savefig("psf_y.png")
 
-            #FY = fft.fft2(Y)
-            #FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
-
-    fig_x.savefig("psf_"+loop_defocus+"_x.png")
     plt.close(fig_x)
-
-    fig_y.savefig("psf_"+loop_defocus+"_y.png")
     plt.close(fig_y)

@@ -34,7 +34,7 @@ data_file = "data"
 num_samples = 50
 num_chains = 1
 inference = True
-inference_after_iter = 10
+inference_after_iter = 20
 
 MODE = 0
 
@@ -150,12 +150,6 @@ print(n)
 # https://arxiv.org/pdf/1503.01057.pdf
 
 # define the parameters with their associated priors
-        
-if not inference:
-    sig_var=sig_var_train
-    #mean=mean_train
-    length_scale=length_scale_train
-    
 
 def sample(x, y):
 
@@ -196,7 +190,8 @@ def calc_loglik(K, y):
     return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
 
-def algorithm_a(x, y, y_orig):
+def algorithm_a(x, y, y_orig, sig_var=None, length_scale=None):
+    print(sig_var)
     y_in = np.array(y)
     y_sign = np.ones(n)
     num_positive = np.zeros(n)
@@ -223,7 +218,9 @@ def algorithm_a(x, y, y_orig):
         initial_param_values = []
         
         if inference and (iteration % inference_after_iter == 0):
-            #for i in np.arange(0, num_chains):
+            if temp <= 1.0:
+                temp += temp_delta*temp    
+#for i in np.arange(0, num_chains):
             #    #initial_m = m
             #    #initial_length_scale = length_scale
             #    #initial_param_values.append(dict(m=initial_m))
@@ -246,6 +243,10 @@ def algorithm_a(x, y, y_orig):
             #mean = np.mean(mean_samples)
             
             length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
+        else:
+            if temp <= 1.0:
+                temp += temp_delta*temp    
+            
 
         if loglik is None:
             gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
@@ -416,8 +417,6 @@ def algorithm_a(x, y, y_orig):
                 else:
                     y = y_last
             loglik = None
-        if temp <= 1.0:
-            temp += temp_delta*temp    
     
     num_guessed = 0.0
     for i in np.arange(0, n):
@@ -571,8 +570,19 @@ def algorithm_b(x, y, y_orig):
     return num_guessed/n, y
 
 
+sig_var = None
+sig_var = None 
+if not inference:
+    sig_var=sig_var_train
+    #mean=mean_train
+    length_scale=length_scale_train
+
+    sig_var=0.8
+    #mean=mean_train
+    length_scale=0.48
+
 print("******************** Algorithm a ********************")
-perf_a, prob_a, field_a = algorithm_a(x, np.array(y), y_orig)
+perf_a, prob_a, field_a = algorithm_a(x, np.array(y), y_orig, sig_var, length_scale)
 print("******************** Algorithm b ********************")
 #perf_b, field_b = algorithm_b(x, np.array(y), y_orig)
 perf_b = perf_a 
