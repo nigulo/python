@@ -390,9 +390,9 @@ class psf_basis:
 
     def getXY(self, j, k, defocus = False):
         if defocus:
-            return self.Xs_d[j, k]
+            return self.Xs_d[j, k], self.Ys_d[j, k]
         else:
-            return self.Xs[j, k]
+            return self.Xs[j, k], self.Ys[j, k]
             
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
@@ -402,7 +402,7 @@ my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 
 zoom_factor = 1.0
-jmax = 10
+jmax = 3
 arcsec_per_px = 0.055
 diameter = 20.0
 wavelength = 5250.0

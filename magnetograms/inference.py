@@ -31,8 +31,8 @@ import os.path
 save_data = True
 data_file = "data"
 
-num_samples = 50
-num_chains = 1
+num_samples = 200
+num_chains = 2
 inference = True
 inference_after_iter = 20
 
