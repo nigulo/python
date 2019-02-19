@@ -1,3 +1,10 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "4" # export OMP_NUM_THREADS=4
+os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4 
+os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
+os.environ["NUMEXPR_NUM_THREADS"] = "4" # export NUMEXPR_NUM_THREADS=6
+
 import sys
 sys.path.append('../')
 import matplotlib as mpl
@@ -27,7 +34,7 @@ import sampling
 import kiss_gp
 
 num_samples = 100
-num_chains = 10
+num_chains = 4
 
 eps = 0.001
 learning_rate = 1.0

@@ -38,7 +38,7 @@ import os.path
 save_data = True
 data_file = "data"
 
-num_samples = 50
+num_samples = 100
 num_chains = 4
 inference = True
 inference_after_iter = 20
@@ -128,14 +128,12 @@ print(y_orig)
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
 fig.set_size_inches(6, 12)
 
-ax1.set_title('True field')
-ax2.set_title('Probabilistic')
-ax3.set_title('Non-probabilistic')
+ax1.set_title('Shuffled field')
+ax2.set_title('Inferred field (probabilistic)')
+ax3.set_title('Inferred field (non-probabilistic)')
 
-ax1.quiver(x_mesh[0], x_mesh[1], y_orig[:,0], y_orig[:,1], units='width', color = 'k')
-#ax2.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
-#qk = ax.quiverkey(Q, 0.9, 0.9, 2, r'$2 \frac{m}{s}$', labelpos='E',
-#                   coordinates='figure')
+#ax1.quiver(x_mesh[0], x_mesh[1], y_orig[:,0], y_orig[:,1], units='width', color = 'k')
+ax1.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
 
 perf_null = 0.0
 for i in np.arange(0, n):
@@ -196,6 +194,41 @@ def calc_loglik(K, y):
     v = la.solve(L, y)
     return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
+
+def align(x, y, y_sign, indices, n, length_scale, thetas):
+    normal_dist = stats.norm(0.0, length_scale)
+    for i in indices:
+        r = random.uniform()
+        for j in np.arange(0, n):
+            if any(np.where(indices == j)[0]):
+                continue
+            x_diff = x[j] - x[i]
+            x_diff = np.sqrt(np.dot(x_diff, x_diff))
+            if (x_diff < 3.0*length_scale):
+                p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
+                if (r < p):
+                    if thetas is not None:
+                        thetas[j] = thetas[i]
+                    if y_sign is not None:
+                        if np.dot(y[i], y[j]) < 0:
+                            y[j] = np.array(y[j])*-1
+                            y_sign[j] *= -1
+    
+def get_random_indices(x, n, length_scale):
+    #random_indices = np.random.choice(n, size=int(n/2), replace=False)
+    random_indices = np.random.choice(n, size=n, replace=False)
+    i = 0
+    while i < len(random_indices):
+        random_index_filter = np.ones_like(random_indices, dtype=bool)
+        ri = random_indices[i]
+        for j in np.arange(i + 1, len(random_indices)):
+            rj = random_indices[j]
+            x_diff = x[rj] - x[ri]
+            if (np.dot(x_diff, x_diff) < length_scale**2):
+                random_index_filter[j] = False
+        random_indices = random_indices[random_index_filter]
+        i += 1
+    return random_indices
 
 def algorithm_a(x, y, y_orig, sig_var=None, length_scale=None):
     print(sig_var)
@@ -306,7 +339,7 @@ def algorithm_a(x, y, y_orig, sig_var=None, length_scale=None):
                         #sign_change[ri] = True
                 print(np.exp(thetas[ri]))
 
-            neighborhoods = align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
+            align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
 
             loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
     
@@ -438,38 +471,6 @@ def algorithm_a(x, y, y_orig, sig_var=None, length_scale=None):
 
     return num_guessed/n, exp_thetas, y
 
-def align(x, y, y_sign, indices, n, length_scale, thetas):
-    normal_dist = stats.norm(0.0, length_scale)
-    for i in indices:
-        r = random.uniform()
-        for j in np.arange(0, n):
-            if any(np.where(indices == j)[0]):
-                continue
-            x_diff = x[j] - x[i]
-            x_diff = np.sqrt(np.dot(x_diff, x_diff))
-            if (x_diff < 3.0*length_scale):
-                p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
-                if (r < p):
-                    thetas[j] = thetas[i]
-                    if np.dot(y[i], y[j]) < 0:
-                        y[j] = np.array(y[j])*-1
-                        y_sign[j] *= -1
-    
-def get_random_indices(x, n, length_scale):
-    #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, size=n, replace=False)
-    i = 0
-    while i < len(random_indices):
-        random_index_filter = np.ones_like(random_indices, dtype=bool)
-        ri = random_indices[i]
-        for j in np.arange(i + 1, len(random_indices)):
-            rj = random_indices[j]
-            x_diff = x[rj] - x[ri]
-            if (np.dot(x_diff, x_diff) < length_scale**2):
-                random_index_filter[j] = False
-        random_indices = random_indices[random_index_filter]
-        i += 1
-    return random_indices
     
 
 def algorithm_b(x, y, y_orig):
@@ -535,10 +536,12 @@ def algorithm_b(x, y, y_orig):
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         
         
-        if True:
+        if MODE == 0:
             # Select n/2 random indices and filter out those too close to each other
             random_indices = get_random_indices(x, n, temp*length_scale)
     
+            align(x, y, None, random_indices, n, temp*length_scale, None)
+
             loglik1 = loglik
             y_saved = np.array(y)
             for ri in random_indices:

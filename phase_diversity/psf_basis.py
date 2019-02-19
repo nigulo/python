@@ -430,11 +430,11 @@ def main():
     
     
     zoom_factor = 1.0
-    jmax = 3
+    jmax = 6
     arcsec_per_px = 0.055
     diameter = 20.0
     wavelength = 5250.0
-    nx = 100
+    nx = 200
     F_D = 1.0
     # Ask for some data
     if False:
@@ -451,12 +451,13 @@ def main():
     for defocus in [False, True]:
         
         # Init figures ############################################################
+        num_cells = jmax*int(jmax/2) + jmax
         ncols = jmax
-        nrows = int(jmax*jmax / ncols)
-        if ncols * nrows < jmax:
+        nrows = int(num_cells / ncols)
+        if ncols * nrows < num_cells:
             ncols += 1
             
-        assert(ncols * nrows >= jmax * jmax)
+        assert(ncols * nrows >= num_cells)
         fig_x, axes_x = plt.subplots(nrows=nrows, ncols=ncols)
         fig_x.set_size_inches(ncols*3, nrows*3)
         
