@@ -1,3 +1,10 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "4" # export OMP_NUM_THREADS=4
+os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4 
+os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
+os.environ["NUMEXPR_NUM_THREADS"] = "4" # export NUMEXPR_NUM_THREADS=6
+
 import sys
 sys.path.append('../')
 import matplotlib as mpl
@@ -31,8 +38,8 @@ import os.path
 save_data = True
 data_file = "data"
 
-num_samples = 200
-num_chains = 2
+num_samples = 50
+num_chains = 4
 inference = True
 inference_after_iter = 20
 

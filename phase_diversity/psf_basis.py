@@ -263,8 +263,11 @@ class psf_basis:
         self.wavelength = wavelength
         self.nx = nx
         self.F_D = F_D
+        self.betas = None
 
     def create_basis(self, do_fft=False, do_defocus=False):
+        print("do_defocus", do_defocus)
+        print("do_fft", do_fft)
         jmax = self.jmax
         arcsec_per_px = self.arcsec_per_px
         diameter = self.diameter
@@ -272,20 +275,25 @@ class psf_basis:
         nx = self.nx
         F_D = self.F_D
         
-        self.Xs = np.zeros((jmax, jmax, nx, nx))
-        self.Ys = np.zeros((jmax, jmax, nx, nx))
+        if self.betas is not None:
+            dtype = 'complex'
+        else:
+            dtype = 'float'
+        
+        self.Xs = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
+        self.Ys = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
 
         if do_fft:
-            self.FXs = np.zeros((jmax, jmax, nx, nx))
-            self.FYs = np.zeros((jmax, jmax, nx, nx))
+            self.FXs = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
+            self.FYs = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
 
         if do_defocus:
-            self.Xs_d = np.zeros((jmax, jmax, nx, nx))
-            self.Ys_d = np.zeros((jmax, jmax, nx, nx))
+            self.Xs_d = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
+            self.Ys_d = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
 
             if do_fft:
-                self.FXs_d = np.zeros((jmax, jmax, nx, nx))
-                self.FYs_d = np.zeros((jmax, jmax, nx, nx))
+                self.FXs_d = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
+                self.FYs_d = np.zeros((jmax, jmax, nx, nx), dtype=dtype)
 
 
         diffraction = 1.22 * wavelength * 1e-8 / diameter
@@ -342,7 +350,7 @@ class psf_basis:
         
                 V_n_m =  Vnmf(radio, f, n, m)
                 
-                for k in np.arange(1, jmax + 1):
+                for k in np.arange(1, j + 1):
                     m_p = noll_m(k)
                     n_p = noll_n(k)
         
@@ -365,6 +373,16 @@ class psf_basis:
                 
                     X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
                     Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
+                    
+                    if j == k:
+                        eps = 0.5
+                    else:
+                        eps = 1.0
+                    
+                    if self.betas is not None:
+                        X *= eps*(self.betas[j-1]*self.betas[k-1].conjugate()).real
+                        Y *= eps*(self.betas[j-1]*self.betas[k-1].conjugate()).imag
+                        
                     if defocus:
                         self.Xs_d[j-1, k-1] = X
                         self.Ys_d[j-1, k-1]  = Y
@@ -378,9 +396,9 @@ class psf_basis:
                     # Do the FFT and save the results
                     
                         FX = fft.fft2(X)
-                        FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
+                        #FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
                         FY = fft.fft2(Y)
-                        FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
+                        #FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
                         if defocus:
                             self.FXs_d[j-1, k-1] = FX
                             self.FYs_d[j-1, k-1] = FY
@@ -393,108 +411,121 @@ class psf_basis:
             return self.Xs_d[j, k], self.Ys_d[j, k]
         else:
             return self.Xs[j, k], self.Ys[j, k]
+
+    def getFXFY(self, j, k, defocus = False):
+        if defocus:
+            return self.FXs_d[j, k], self.FYs_d[j, k]
+        else:
+            return self.FXs[j, k], self.FYs[j, k]
             
+    def set_betas(self, betas):
+        self.betas=betas
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
-my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
-
-zoom_factor = 1.0
-jmax = 3
-arcsec_per_px = 0.055
-diameter = 20.0
-wavelength = 5250.0
-nx = 100
-F_D = 1.0
-# Ask for some data
-if False:
-    jmax = int(input('Maximum Noll index? '))
-    arcsec_per_px = float(input('Arcsec per pixel? '))
-    diameter = float(input('Telescope diameter [m]? '))
-    wavelength = float(input('Wavelength [A]? '))
-    nx = int(input('Number of pixel of images? '))
-    F_D = float(input('F/D? '))
-
-psf = psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
-psf.create_basis(do_fft=False, do_defocus=True)
-
-for defocus in [False, True]:
+def main():
+    my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
     
-    # Init figures ############################################################
-    ncols = jmax
-    nrows = int(jmax*jmax / ncols)
-    if ncols * nrows < jmax:
-        ncols += 1
+    
+    zoom_factor = 1.0
+    jmax = 3
+    arcsec_per_px = 0.055
+    diameter = 20.0
+    wavelength = 5250.0
+    nx = 100
+    F_D = 1.0
+    # Ask for some data
+    if False:
+        jmax = int(input('Maximum Noll index? '))
+        arcsec_per_px = float(input('Arcsec per pixel? '))
+        diameter = float(input('Telescope diameter [m]? '))
+        wavelength = float(input('Wavelength [A]? '))
+        nx = int(input('Number of pixel of images? '))
+        F_D = float(input('F/D? '))
+    
+    psf = psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+    psf.create_basis(do_fft=False, do_defocus=True)
+    
+    for defocus in [False, True]:
         
-    assert(ncols * nrows >= jmax * jmax)
-    fig_x, axes_x = plt.subplots(nrows=nrows, ncols=ncols)
-    fig_x.set_size_inches(ncols*3, nrows*3)
-    
-    fig_y, axes_y = plt.subplots(nrows=nrows, ncols=ncols)
-    fig_y.set_size_inches(ncols*3, nrows*3)
-    
-    extent=[0., 1., 0., 1.]
-    plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
-    ###########################################################################
-
-    # Generate all the basis functions
-    row = 0
-    col = 0
-    for j in np.arange(1, jmax + 1):
-        m = noll_m(j)
-        n = noll_n(j)
-
-        for k in np.arange(1, jmax + 1):
-            m_p = noll_m(k)
-            n_p = noll_n(k)
-            print(n, m, n_p, m_p)
-
-            X, Y = psf.getXY(j-1, k-1, defocus=defocus)
+        # Init figures ############################################################
+        ncols = jmax
+        nrows = int(jmax*jmax / ncols)
+        if ncols * nrows < jmax:
+            ncols += 1
             
-            # Do the plotting #################################################
-
-            ax_x = axes_x[row][col]
-            ax_y = axes_y[row][col]
-            col += 1
-            if col >= ncols:
-                col = 0
-                row += 1
-            
-            title_x = r'$X^{'+ str(m) + r',' + str(m_p) + r'}_{' + str(n) + ',' + str(n_p) + r'}$'
-            title_y = r'$Y^{'+ str(m) + r',' + str(m_p) + r'}_{' + str(n) + ',' + str(n_p) + r'}$'
-            ax_x.text(0.95, 0.01, title_x,
-                    verticalalignment='bottom', horizontalalignment='right',
-                    transform=ax_x.transAxes,
-                    color='yellow', fontsize=10)
+        assert(ncols * nrows >= jmax * jmax)
+        fig_x, axes_x = plt.subplots(nrows=nrows, ncols=ncols)
+        fig_x.set_size_inches(ncols*3, nrows*3)
+        
+        fig_y, axes_y = plt.subplots(nrows=nrows, ncols=ncols)
+        fig_y.set_size_inches(ncols*3, nrows*3)
+        
+        extent=[0., 1., 0., 1.]
+        plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
+        ###########################################################################
     
-            ax_y.text(0.95, 0.01, title_y,
-                    verticalalignment='bottom', horizontalalignment='right',
-                    transform=ax_y.transAxes,
-                    color='yellow', fontsize=10)
+        # Generate all the basis functions
+        row = 0
+        col = 0
+        for j in np.arange(1, jmax + 1):
+            m = noll_m(j)
+            n = noll_n(j)
+    
+            for k in np.arange(1, j + 1):
+                m_p = noll_m(k)
+                n_p = noll_n(k)
+                print(n, m, n_p, m_p)
+    
+                X, Y = psf.getXY(j-1, k-1, defocus=defocus)
+                
+                # Do the plotting #################################################
+    
+                ax_x = axes_x[row][col]
+                ax_y = axes_y[row][col]
+                col += 1
+                if col >= ncols:
+                    col = 0
+                    row += 1
+                
+                title_x = r'$X^{'+ str(m) + r',' + str(m_p) + r'}_{' + str(n) + ',' + str(n_p) + r'}$'
+                title_y = r'$Y^{'+ str(m) + r',' + str(m_p) + r'}_{' + str(n) + ',' + str(n_p) + r'}$'
+                ax_x.text(0.95, 0.01, title_x,
+                        verticalalignment='bottom', horizontalalignment='right',
+                        transform=ax_x.transAxes,
+                        color='yellow', fontsize=10)
+        
+                ax_y.text(0.95, 0.01, title_y,
+                        verticalalignment='bottom', horizontalalignment='right',
+                        transform=ax_y.transAxes,
+                        color='yellow', fontsize=10)
+    
+                center = nx/2
+                zoom_radius = nx*zoom_factor/2
+                left = int(center-zoom_radius)
+                right = int(center+zoom_radius)
+                
+                #X = utils.trunc(X, 1e-2)
 
-            center = nx/2
-            zoom_radius = nx*zoom_factor/2
-            left = int(center-zoom_radius)
-            right = int(center+zoom_radius)
-            
-            #X = utils.trunc(X, 1e-2)
+                ax_x.imshow(X[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
+                ax_x.set_aspect(aspect=plot_aspect)
+    
+                ax_y.imshow(Y[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
+                ax_y.set_aspect(aspect=plot_aspect)
+    
+                ###################################################################
+    
+        if defocus:
+            fig_x.savefig("psf_defocus_x.png")
+            fig_y.savefig("psf_defocus_y.png")
+        else:
+            fig_x.savefig("psf_x.png")
+            fig_y.savefig("psf_y.png")
+    
+        plt.close(fig_x)
+        plt.close(fig_y)
 
-            ax_x.imshow(X[left:right,left:right].T,extent=extent,cmap=my_cmap,origin='lower')
-            ax_x.set_aspect(aspect=plot_aspect)
-
-            ax_y.imshow(Y[left:right,left:right].T,extent=extent,cmap=my_cmap,origin='lower')
-            ax_y.set_aspect(aspect=plot_aspect)
-
-            ###################################################################
-
-    if defocus:
-        fig_x.savefig("psf_defocus_x.png")
-        fig_y.savefig("psf_defocus_y.png")
-    else:
-        fig_x.savefig("psf_x.png")
-        fig_y.savefig("psf_y.png")
-
-    plt.close(fig_x)
-    plt.close(fig_y)
+if __name__ == "__main__":
+    main()
