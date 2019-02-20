@@ -421,6 +421,95 @@ class psf_basis:
     def set_betas(self, betas):
         self.betas=betas
 
+
+    def likelihood(self, theta, data):
+        D = data[0]
+        D_d = data[1]
+        gamma = data[2]
+        betas = theta
+        
+        L = 0.
+        for j in np.arange(0, self.jmax):
+            for k in np.arange(0, j):
+                if j == k:
+                    eps = 0.5
+                else:
+                    eps = 1.0
+                FX, FY = self.getFXFY(j, k)
+                FX_d, FY_d = self.getFXFY(j, k, defocus=True)
+
+                coef = eps*(betas[j-1]*betas[k-1].conjugate())
+                coef_x = coef.real
+                coef_y = coef.imag
+                    
+                FX *= coef_x
+                FY *= coef_y
+
+                FX_d *= coef_x
+                FY_d *= coef_y
+
+                P = FX + FY
+                P_d = FX_d + FY_d
+                num = D_d*P - D*P_d
+                L += num*num.conjugate()/(P*P.conjugate()+gamma*P_d*P_d.conjugate())
+
+        return L
+        
+
+    def likelihood_grad(self, theta, data):
+        D = data[0]
+        D_d = data[1]
+        gamma = data[2]
+        betas = theta
+
+        grads = np.zeros(len(theta))
+
+
+        for j1 in np.arange(0, len(grads)):
+
+            dP_dbeta = 0.
+            dP_d_dbeta = 0.
+            for k1 in np.arange(0, self.jmax):
+                FX1, FY1 = self.getFXFY(j1, k1)
+                FX1_d, FY1_d = self.getFXFY(j1, k1, defocus=True)
+
+                dP_dbeta += betas[k1].real*FX1-betas[k1].imag*FY1 + 1.j*(betas[k1].real*FY1+betas[k1].imag*FX1)
+                dP_d_dbeta += betas[k1].real*FX1_d-betas[k1].imag*FY1_d + 1.j*(betas[k1].real*FY1_d+betas[k1].imag*FX1_d)
+            dP_dbeta *= 8.
+            dP_d_dbeta *= 8.
+
+            for j in np.arange(0, self.jmax):
+                for k in np.arange(0, j):
+                    if j == k:
+                        eps = 0.5
+                    else:
+                        eps = 1.0
+                    FX, FY = self.getFXFY(j, k)
+                    FX_d, FY_d = self.getFXFY(j, k, defocus=True)
+    
+                    coef = eps*(betas[j-1]*betas[k-1].conjugate())
+                    coef_x = coef.real
+                    coef_y = coef.imag
+                        
+                    P = coef_x*FX + coef_y*FY
+                    P_d = coef_x*FX_d + coef_y*FY_d
+    
+                    num = D_d*P - D*P_d
+
+
+                    Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate())
+                
+                    real_part = (Q * num.conjugate()*(D_d*dP_dbeta.real - D*dP_d_dbeta.real) -
+                        Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta.real+gamma*P_d.conjugate()*dP_d_dbeta.real)).real
+                    imag_part = (Q * num.conjugate()*(D_d*dP_dbeta.imag - D*dP_d_dbeta.imag) -
+                        Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta.imag+gamma*P_d.conjugate()*dP_d_dbeta.imag)).real
+                    grads[j1] += real_part + 1.j*imag_part
+            grads[j1] *= 2.
+                    
+
+        return grads
+
+
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 

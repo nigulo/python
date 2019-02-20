@@ -33,6 +33,8 @@ diameter = 50.0
 wavelength = 5250.0
 F_D = 1.0
 
+
+
 psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
 
 for trial in np.arange(0, 10):
@@ -43,10 +45,10 @@ for trial in np.arange(0, 10):
     
     fmeasurement = np.zeros((nx, ny), dtype='complex')
     for j in np.arange(0, jmax):
-        for k in np.arange(0, jmax):
+        for k in np.arange(0, j):
             FX, FY = psf.getFXFY(j, k)
             
-            fmeasurement += fimage*8*(FX + FY)
+            fmeasurement += fimage*(FX + FY)
             
     measurement = fft.ifft2(fmeasurement).real
     measurement = np.roll(np.roll(measurement, int(nx/2), axis=0), int(ny/2), axis=1)

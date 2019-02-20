@@ -29,7 +29,7 @@ import pymc3 as pm
 #from sklearn.cluster import KMeans
 import numpy.linalg as la
 import matplotlib.pyplot as plt
-import sampling
+import utils.sampling as sampling
 import kiss_gp
 
 import pickle
@@ -125,6 +125,15 @@ if not data_loaded:
 y_orig = np.array(y)
 print(y_orig)
 
+perf_null = 0.0
+for i in np.arange(0, n):
+    if np.random.uniform() < 0.5:
+        y[i] = y[i]*-1
+        perf_null += 1.0
+perf_null /=n
+y_flat = np.reshape(y, (2*n, -1))
+
+
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True)
 fig.set_size_inches(6, 12)
 
@@ -134,14 +143,6 @@ ax3.set_title('Inferred field (non-probabilistic)')
 
 #ax1.quiver(x_mesh[0], x_mesh[1], y_orig[:,0], y_orig[:,1], units='width', color = 'k')
 ax1.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
-
-perf_null = 0.0
-for i in np.arange(0, n):
-    if np.random.uniform() < 0.5:
-        y[i] = y[i]*-1
-        perf_null += 1.0
-perf_null /=n
-y_flat = np.reshape(y, (2*n, -1))
 
 mean = 0.0
 length_scale = 1.0

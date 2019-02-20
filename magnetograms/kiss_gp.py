@@ -27,7 +27,7 @@ class kiss_gp:
         #print x
         L = la.cholesky(U)
         self.L = L
-        #print L
+        #print Lr_hks_a
         #v = la.solve(L, x)
         #v = la.solve(L, x)
         self.alpha = la.solve(self.L.T, la.solve(self.L, x))
