@@ -46,23 +46,13 @@ for trial in np.arange(0, 10):
     betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
     psf.set_betas(betas)
     
-    psf.create_basis(do_fft=True, do_defocus=True)
+    psf.create_basis()
     
-    fmeasurement = np.zeros((nx, ny), dtype='complex')
-    for j in np.arange(0, jmax):
-        for k in np.arange(0, j):
-            FX, FY = psf.getFXFY(j, k)
-            
-            fmeasurement += fimage*(FX + FY)
+    fmeasurement = psf.multiply(fimage, betas)
             
     print(fmeasurement)
 
-    fmeasurement_d = np.zeros((nx, ny), dtype='complex')
-    for j in np.arange(0, jmax):
-        for k in np.arange(0, j):
-            FX, FY = psf.getFXFY(j, k, defocus=True)
-            
-            fmeasurement_d += fimage*(FX + FY)
+    fmeasurement_d = psf.multiply(fimage, betas, defocus = True)
 
     print(fmeasurement_d)
 

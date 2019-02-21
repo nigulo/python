@@ -104,9 +104,34 @@ D_d = [[ 5.41635689e+02+0.00000000e+00j,  3.68881920e+01-1.19828784e+01j,
    2.47066490e-01-4.02749354e-02j,  3.51148463e-01+2.20709147e-01j,
    1.57626952e+00+6.29222777e-01j, -1.23030366e+00+2.76166909e+01j]]
 
-gamma = 1.
 
 class test_psf_basis(unittest.TestCase):
+
+    def test_likelihood(self):
+        
+        jmax = 5
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        nx = 10
+        F_D = 1.0
+
+        gamma = 1.
+        
+        psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+        psf.create_basis(do_fft=True, do_defocus=True)
+
+
+        betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
+
+
+        lik = psf.likelihood(betas, [D, D_d, gamma])
+        
+        P, P_d = psf.get_P(betas)
+        num = D_d*P-D*P_d
+        num *= num.conjugate()
+        lik_expected = np.sum(num/np.sqrt(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
+        np.testing.assert_almost_equal(lik, lik_expected, 8)
 
     def test_likelihood_grad(self):
         
@@ -117,6 +142,8 @@ class test_psf_basis(unittest.TestCase):
         nx = 10
         F_D = 1.0
         
+        gamma = 1.
+        
         psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
         psf.create_basis(do_fft=True, do_defocus=True)
 
@@ -126,12 +153,27 @@ class test_psf_basis(unittest.TestCase):
         delta_betas = betas*1.0e-5
 
         lik = psf.likelihood(betas, [D, D_d, gamma])
-        lik1 = psf.likelihood(betas+delta_betas, [D, D_d, gamma])
+        liks = np.repeat(lik, len(betas))
+        liks1_real = np.zeros_like(betas)
+        liks1_imag = np.zeros_like(betas)
+        for i in np.arange(0, len(betas)):
+            delta = np.zeros_like(betas)
+            delta[i] = delta_betas[i].real
+            lik1_real = psf.likelihood(betas+delta, [D, D_d, gamma])
+
+            delta[i] = 1.j*delta_betas[i].imag
+            lik1_imag = psf.likelihood(betas+delta, [D, D_d, gamma])
+
+            liks1_real[i] = lik1_real
+            liks1_imag[i] = lik1_imag
+        
+        d_lik_real = liks1_real - liks
+        d_lik_imag = liks1_real - liks
+        #delta_betas = np.reshape(np.repeat(delta_betas, np.shape(d_lik)[0] * np.shape(d_lik)[1]), (len(betas), np.shape(d_lik)[0], np.shape(d_lik)[1]))
     
         grads = psf.likelihood_grad(betas, [D, D_d, gamma])
     
-
-        grads_expected = (lik1 - lik) / delta_betas
+        grads_expected = d_lik_real / delta_betas.real + 1.j * d_lik_imag / delta_betas.imag
         np.testing.assert_almost_equal(grads, grads_expected, 10)
         
 
