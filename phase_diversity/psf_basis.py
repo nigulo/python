@@ -1,11 +1,7 @@
-import matplotlib as mpl
-mpl.use('Agg')
 import numpy as np
 import scipy.special as special
 import numpy.fft as fft
-import matplotlib.pyplot as plt
-from matplotlib import cm
-import utils
+import zernike
 
 '''
  Return a binomial coefficient
@@ -229,29 +225,6 @@ def Vnmf(radio, f, n, m):
     Vnm *= epsm * np.exp(ii*f)
     return Vnm
 
-'''
- Return the n index associated to a Noll index j
-'''
-def noll_n(j):
-    return int(np.floor(np.sqrt(2.0*j-0.75)-0.5))
-        
-
-'''
- Return the m index associated to a Noll index j
-'''
-def noll_m(j):
-    n = noll_n(j)
-    nn = (n-1)*(n+2)/2
-    noll_m = j-nn-2
-    if np.ceil(n/2.) != np.floor(n/2.):
-        noll_m = 2*int(noll_m/2.)+1
-    else:
-        noll_m = 2*int((noll_m+1)/2.)
-
-    if np.ceil(j/2.) != np.floor(j/2.):
-        noll_m = -noll_m
-
-    return noll_m        
 
 class psf_basis:
     
@@ -345,14 +318,12 @@ class psf_basis:
         
             # Generate all the basis functions
             for j in np.arange(1, jmax + 1):
-                m = noll_m(j)
-                n = noll_n(j)
+                n, m = zernike.get_nm(j)
         
                 V_n_m =  Vnmf(radio, f, n, m)
                 
                 for k in np.arange(1, j + 1):
-                    m_p = noll_m(k)
-                    n_p = noll_n(k)
+                    n_p, m_p = zernike.get_nm(k)
         
                     print(n, m, n_p, m_p)
         
@@ -510,112 +481,3 @@ class psf_basis:
         return grads
 
 
-def reverse_colourmap(cmap, name = 'my_cmap_r'):
-     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
-
-
-def main():
-    my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
-    
-    
-    zoom_factor = 1.0
-    jmax = 6
-    arcsec_per_px = 0.055
-    diameter = 20.0
-    wavelength = 5250.0
-    nx = 200
-    F_D = 1.0
-    # Ask for some data
-    if False:
-        jmax = int(input('Maximum Noll index? '))
-        arcsec_per_px = float(input('Arcsec per pixel? '))
-        diameter = float(input('Telescope diameter [m]? '))
-        wavelength = float(input('Wavelength [A]? '))
-        nx = int(input('Number of pixel of images? '))
-        F_D = float(input('F/D? '))
-    
-    psf = psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
-    psf.create_basis(do_fft=False, do_defocus=True)
-    
-    for defocus in [False, True]:
-        
-        # Init figures ############################################################
-        num_cells = jmax*int(jmax/2) + jmax
-        ncols = jmax
-        nrows = int(num_cells / ncols)
-        if ncols * nrows < num_cells:
-            ncols += 1
-            
-        assert(ncols * nrows >= num_cells)
-        fig_x, axes_x = plt.subplots(nrows=nrows, ncols=ncols)
-        fig_x.set_size_inches(ncols*3, nrows*3)
-        
-        fig_y, axes_y = plt.subplots(nrows=nrows, ncols=ncols)
-        fig_y.set_size_inches(ncols*3, nrows*3)
-        
-        extent=[0., 1., 0., 1.]
-        plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
-        ###########################################################################
-    
-        # Generate all the basis functions
-        row = 0
-        col = 0
-        for j in np.arange(1, jmax + 1):
-            m = noll_m(j)
-            n = noll_n(j)
-    
-            for k in np.arange(1, j + 1):
-                m_p = noll_m(k)
-                n_p = noll_n(k)
-                print(n, m, n_p, m_p)
-    
-                X, Y = psf.getXY(j-1, k-1, defocus=defocus)
-                
-                # Do the plotting #################################################
-    
-                ax_x = axes_x[row][col]
-                ax_y = axes_y[row][col]
-                col += 1
-                if col >= ncols:
-                    col = 0
-                    row += 1
-                
-                title_x = r'$X^{'+ str(m) + r',' + str(m_p) + r'}_{' + str(n) + ',' + str(n_p) + r'}$'
-                title_y = r'$Y^{'+ str(m) + r',' + str(m_p) + r'}_{' + str(n) + ',' + str(n_p) + r'}$'
-                ax_x.text(0.95, 0.01, title_x,
-                        verticalalignment='bottom', horizontalalignment='right',
-                        transform=ax_x.transAxes,
-                        color='yellow', fontsize=10)
-        
-                ax_y.text(0.95, 0.01, title_y,
-                        verticalalignment='bottom', horizontalalignment='right',
-                        transform=ax_y.transAxes,
-                        color='yellow', fontsize=10)
-    
-                center = nx/2
-                zoom_radius = nx*zoom_factor/2
-                left = int(center-zoom_radius)
-                right = int(center+zoom_radius)
-                
-                #X = utils.trunc(X, 1e-2)
-
-                ax_x.imshow(X[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
-                ax_x.set_aspect(aspect=plot_aspect)
-    
-                ax_y.imshow(Y[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
-                ax_y.set_aspect(aspect=plot_aspect)
-    
-                ###################################################################
-    
-        if defocus:
-            fig_x.savefig("psf_defocus_x.png")
-            fig_y.savefig("psf_defocus_y.png")
-        else:
-            fig_x.savefig("psf_x.png")
-            fig_y.savefig("psf_y.png")
-    
-        plt.close(fig_x)
-        plt.close(fig_y)
-
-if __name__ == "__main__":
-    main()

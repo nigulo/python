@@ -81,6 +81,26 @@ class test_get_noll(unittest.TestCase):
         np.testing.assert_equal(get_noll(5, -3), 19)
         np.testing.assert_equal(get_noll(5, 5), 20)
 
+
+
+def noll_n(j):
+    return int(np.floor(np.sqrt(2.0*j-0.75)-0.5))
+        
+
+def noll_m(j):
+    n = noll_n(j)
+    nn = (n-1)*(n+2)/2
+    noll_m = j-nn-2
+    if np.ceil(n/2.) != np.floor(n/2.):
+        noll_m = 2*int(noll_m/2.)+1
+    else:
+        noll_m = 2*int((noll_m+1)/2.)
+
+    if np.ceil(j/2.) != np.floor(j/2.):
+        noll_m = -noll_m
+
+    return noll_m        
+
 class test_get_nm(unittest.TestCase):
 
     def test(self):
@@ -105,6 +125,12 @@ class test_get_nm(unittest.TestCase):
         np.testing.assert_equal(get_nm(19), (5, -3))
         np.testing.assert_equal(get_nm(20), (5, 5))
         
+        # Check against alternative implementations of the methods
+        for j in np.arange(1, 100):
+            n, m = get_nm(j)
+            np.testing.assert_equal(n, noll_n(j))
+            np.testing.assert_equal(m, noll_m(j))
+            
         
 if __name__ == '__main__':
     unittest.main()
