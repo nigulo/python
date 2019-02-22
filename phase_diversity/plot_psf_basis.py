@@ -64,7 +64,7 @@ def main():
                 n_p, m_p = zernike.get_nm(k)
                 print(n, m, n_p, m_p)
     
-                X, Y = psf.getXY(j-1, k-1, defocus=defocus)
+                X, Y = psf.get_XY(j-1, k-1, defocus=defocus)
                 
                 # Do the plotting #################################################
     

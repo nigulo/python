@@ -27,145 +27,6 @@ def binomial_coef(n, k):
 def odd(m):
     return (m % 2) != 0
 
-
-'''
-def bessj0(x):
-
-    p1=1.0
-    p2=-.1098628627e-2
-    p3=.2734510407e-4
-    p4=-.2073370639e-5
-    p5=.2093887211e-6
-    q1=-.1562499995e-1
-    q2=.1430488765e-3,
-    q3=-.6911147651e-5,
-    q4=.7621095161e-6,
-    q5=-.934945152e-7
-
-    r1=57568490574.0
-    r2=-13362590354.0
-    r3=651619640.7
-    r4=-11214424.18
-    r5=77392.33017
-    r6=-184.9052456
-
-    s1=57568490411.0
-    s2=1029532985.0
-    s3=9494680.718
-    s4=59272.64853
-    s5=267.8532712
-    s6=1.0
-    if(abs(x)<8.):
-        y=x**2
-        bessj0=(r1+y*(r2+y*(r3+y*(r4+y*(r5+y*r6)))))/(s1+y*(s2+y*(s3+y*(s4+y*(s5+y*s6)))))
-    else:
-        ax=abs(x)
-        z=8./ax
-        y=z**2
-        xx=ax-.785398164
-        bessj0=np.sqrt(.636619772/ax)*(np.cos(xx)*(p1+y*(p2+y*(p3+y*(p4+y*p5))))-z*np.sin(xx)*(q1+y*(q2+y*(q3+y*(q4+y*q5)))))
-    return bessj0
-
-def bessj1(x):
-
-    r1=72362614232.0
-    r2=-7895059235.0
-    r3=242396853.1
-    r4=-2972611.439
-    r5=15704.4826
-    r6=-30.16036606
-
-    s1=144725228442.0
-    s2=2300535178.0
-    s3=18583304.74
-    s4=99447.43394
-    s5=376.9991397
-    s6=1.0
-
-
-    p1=1.0
-    p2=.183105e-2
-    p3=-.3516396496e-4
-    p4=.2457520174e-5
-    p5=-.240337019e-6
-
-    q1=.04687499995
-    q2=-.2002690873e-3,
-    q3=.8449199096e-5
-    q4=-.88228987e-6
-    q5=.105787412e-6
-    
-    if(abs(x)<8.):
-        y=x**2
-        bessj1=x*(r1+y*(r2+y*(r3+y*(r4+y*(r5+y*r6)))))/(s1+y*(s2+y*(s3+y*(s4+y*(s5+y*s6)))))
-    else:
-        ax=abs(x)
-        z=8./ax
-        y=z**2
-        xx=ax-2.356194491
-        bessj1=np.sqrt(.636619772/ax)*(np.cos(xx)*(p1+y*(p2+y*(p3+y*(p4+y*p5))))-z*np.sin(xx)*(q1+y*(q2+y*(q3+y*(q4+y*q5)))))*np.sign(x)
-
-    return bessj1
-
-
-def bessj(n,x):
-      
-    iacc = 40
-    bigno = 1.e10
-    bigni = 1.e-10
-      
-
-    if n == 0:
-        return bessj0(x)
-
-    if n == 1:
-        return bessj1(x)
-
-
-    ax=abs(x)
-    if(ax == 0.):
-        bessj=0.
-    elif ax > float(n):
-        tox=2./ax
-        bjm=bessj0(ax)
-        bj=bessj1(ax)
-        for j in np.arange(1, n):#1,n-1
-            bjp=j*tox*bj-bjm
-            bjm=bj
-            bj=bjp
-
-        bessj=bj
-    else:
-        tox=2./ax
-        m=int(2*((n+int(np.sqrt(float(iacc*n))))/2))
-        bessj=0.
-        jsum=0
-        sum_=0.
-        bjp=0.
-        bj=1.
-        for j in np.arange(m, 0, -1):#m,1,-1
-            bjm=j*tox*bj-bjp
-            bjp=bj
-            bj=bjm
-            if abs(bj) > bigno:
-                bj=bj*bigni
-                bjp=bjp*bigni
-                bessj=bessj*bigni
-                sum_=sum_*bigni
-
-            if jsum != 0:
-                sum_=sum_+bj
-            jsum=1-jsum
-            if j==n:
-                bessj=bjp
-
-        sum_=2.*sum_-bj
-        bessj=bessj/sum_
-    if x<0 and (n % 2) == 1:
-        bessj = -bessj
-    return bessj
-'''   
-
 '''   
  Return the Vnm(r,f) function of the theory
 '''
@@ -367,21 +228,21 @@ class psf_basis:
         if defocus:
             ret_val_d = np.zeros((self.nx, self.nx), dtype='complex')
         for j in np.arange(0, self.jmax):
-            for k in np.arange(0, j):
+            for k in np.arange(0, j + 1):
                 if defocus:
                     defocus_array = [False, True]
                 else:
                     defocus_array = [False]
                 for defocus1 in defocus_array:
-                    FX, FY = self.getFXFY(j, k, defocus = defocus1)
+                    FX, FY = self.get_FXFY(j, k, defocus = defocus1)
                     
-                    if j == k:
-                        eps = 0.5
-                    else:
-                        eps = 1.0
+                    FX1 = FX * (betas[j-1]*betas[k-1].conjugate()).real
+                    FY1 = FY * (betas[j-1]*betas[k-1].conjugate()).imag
                     
-                    FX1 = FX * eps*(betas[j-1]*betas[k-1].conjugate()).real
-                    FY1 = FY * eps*(betas[j-1]*betas[k-1].conjugate()).imag
+                    if k == j:
+                        FX1 *= 0.5
+                        FY1 *= 0.5
+                    
                     if defocus1:
                         ret_val_d += dat_F*(FX1 + FY1)
                     else:
@@ -403,13 +264,13 @@ class psf_basis:
         else:
             return ret_val[0]
 
-    def getXY(self, j, k, defocus = False):
+    def get_XY(self, j, k, defocus = False):
         if defocus:
             return self.Xs_d[j, k], self.Ys_d[j, k]
         else:
             return self.Xs[j, k], self.Ys[j, k]
 
-    def getFXFY(self, j, k, defocus = False):
+    def get_FXFY(self, j, k, defocus = False):
         if defocus:
             return self.FXs_d[j, k], self.FYs_d[j, k]
         else:
@@ -418,26 +279,26 @@ class psf_basis:
     def set_betas(self, betas):
         self.betas=betas
         
-    def get_P(self, betas, defocus = True):
+    def get_FP(self, betas, defocus = True):
         ret_val = np.zeros((self.nx, self.nx), dtype='complex')
         if defocus:
             ret_val_d = np.zeros((self.nx, self.nx), dtype='complex')
         for j in np.arange(0, self.jmax):
-            for k in np.arange(0, j):
+            for k in np.arange(0, j + 1):
                 if defocus:
                     defocus_array = [False, True]
                 else:
                     defocus_array = [False]
                 for defocus1 in defocus_array:
-                    FX, FY = self.getFXFY(j, k, defocus = defocus1)
+                    FX, FY = self.get_FXFY(j, k, defocus = defocus1)
                     
-                    if j == k:
-                        eps = 0.5
-                    else:
-                        eps = 1.0
+                    FX1 = FX*(betas[j]*betas[k].conjugate()).real
+                    FY1 = FY*(betas[j]*betas[k].conjugate()).imag
                     
-                    FX1 = FX * eps*(betas[j]*betas[k].conjugate()).real
-                    FY1 = FY * eps*(betas[j]*betas[k].conjugate()).imag
+                    if k == j:
+                        FX1 *= 0.5
+                        FY1 *= 0.5
+                        
 
                     if defocus1:
                         ret_val_d += (FX1 + FY1)
@@ -453,29 +314,29 @@ class psf_basis:
         D = data[0]
         D_d = data[1]
         gamma = data[2]
-        betas = theta
+        betas_real = theta[:self.jmax]
+        betas_imag = theta[self.jmax:]
+        betas = betas_real + betas_imag*1.j
         
         P = np.zeros_like(D, dtype = 'complex')
         P_d = np.zeros_like(D_d, dtype = 'complex')
 
         for j in np.arange(0, self.jmax):
-            for k in np.arange(0, j):
-                if j == k:
-                    eps = 0.5
-                else:
-                    eps = 1.0
-                FX, FY = self.getFXFY(j, k)
-                FX_d, FY_d = self.getFXFY(j, k, defocus=True)
+            for k in np.arange(0, j + 1):
+                FX, FY = self.get_FXFY(j, k)
+                FX_d, FY_d = self.get_FXFY(j, k, defocus=True)
 
-                coef = eps*(betas[j]*betas[k].conjugate())
+                coef = betas[j]*betas[k].conjugate()
+                if j == k:
+                    coef *= 0.5
                 coef_x = coef.real
                 coef_y = coef.imag
 
                 P += FX*coef_x + FY*coef_y
                 P_d += FX_d*coef_x + FY_d*coef_y
         num = D_d*P - D*P_d
-        L = num*num.conjugate()/np.sqrt(P*P.conjugate()+gamma*P_d*P_d.conjugate())
-        print("L:", np.shape(L))
+        #L = num*num.conjugate()/np.sqrt(P*P.conjugate()+gamma*P_d*P_d.conjugate())
+        L = num*num.conjugate()/(P*P.conjugate()+gamma*P_d*P_d.conjugate())
 
         return np.sum(L.real)
         
@@ -484,36 +345,56 @@ class psf_basis:
         D = data[0]
         D_d = data[1]
         gamma = data[2]
-        betas = theta
+        betas_real = theta[:self.jmax]
+        betas_imag = theta[self.jmax:]
+        betas = betas_real + betas_imag*1.j
 
         #grads = np.zeros((len(theta), np.shape(D)[0], np.shape(D)[1]), dtype='complex')
-        grads = np.zeros(len(theta), dtype='complex')#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
+        grads = np.zeros(len(theta))#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
-        P, P_d = self.get_P(betas, defocus = True)
+        P, P_d = self.get_FP(betas, defocus = True)
         Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate())
+        print("Q=", Q)
 
         for j1 in np.arange(0, len(betas)):
 
-            dP_dbeta = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype='complex')
-            dP_d_dbeta = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype='complex')
-            for k1 in np.arange(0, j1):#self.jmax):
-                FX1, FY1 = self.getFXFY(j1, k1)
-                FX1_d, FY1_d = self.getFXFY(j1, k1, defocus=True)
+            dP_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]))
+            dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]))
+            dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]))
+            dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]))
+            for k1 in np.arange(0, j1 + 1):#self.jmax):
+                FX1, FY1 = self.get_FXFY(j1, k1)
+                FX1_d, FY1_d = self.get_FXFY(j1, k1, defocus=True)
 
-                dP_dbeta += betas[k1].real*FX1-betas[k1].imag*FY1 + 1.j*(betas[k1].real*FY1+betas[k1].imag*FX1)
-                dP_d_dbeta += betas[k1].real*FX1_d-betas[k1].imag*FY1_d + 1.j*(betas[k1].real*FY1_d+betas[k1].imag*FX1_d)
-            dP_dbeta *= 8.
-            dP_d_dbeta *= 8.
+                dP_dbeta_real += betas[k1].real*FX1 - betas[k1].imag*FY1
+                dP_dbeta_imag += betas[k1].real*FY1 + betas[k1].imag*FX1
+
+                dP_d_dbeta_real += betas[k1].real*FX1_d - betas[k1].imag*FY1_d
+                dP_d_dbeta_imag += betas[k1].real*FY1_d + betas[k1].imag*FX1_d
+                
+            dP_dbeta_real *= 8.
+            dP_dbeta_imag *= 8.
+            dP_d_dbeta_real *= 8.
+            dP_d_dbeta_imag *= 8.
 
             num = D_d*P - D*P_d
+            num_conj = num.conjugate()
+            num_sq = num*num_conj
 
-            print(np.shape(Q), np.shape(P), np.shape(dP_dbeta), np.shape(dP_d_dbeta))
-        
-            real_part = (Q * num.conjugate()*(D_d*dP_dbeta.real - D*dP_d_dbeta.real) -
-                Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta.real+gamma*P_d.conjugate()*dP_d_dbeta.real)).real
-            imag_part = (Q * num.conjugate()*(D_d*dP_dbeta.imag - D*dP_d_dbeta.imag) -
-                Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta.imag+gamma*P_d.conjugate()*dP_d_dbeta.imag)).real
-            grads[j1] = 2.*np.sum(real_part + 1.j*imag_part)
+            real_part = (Q * num_conj*(D_d*dP_dbeta_real - D*dP_d_dbeta_real) -
+                Q**2*num_sq*(P.conjugate()*dP_dbeta_real + gamma*P_d.conjugate()*dP_d_dbeta_real).real).real
+                         
+            #real_part_test = Q * (num.conjugate()*(D_d*dP_dbeta_real - D*dP_d_dbeta_real) + num*(D_d*dP_dbeta_real - D*dP_d_dbeta_real).conjugate()) - Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta_real + gamma*P_d.conjugate()*dP_d_dbeta_real + P*dP_dbeta_real.conjugate() + gamma*P_d*dP_d_dbeta_real.conjugate())
+            #np.testing.assert_almost_equal(2.*real_part, real_part_test, 10)
+                         
+            imag_part = (Q * num_conj*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag) -
+                Q**2*num_sq*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag).real).real
+
+            #imag_part_test = Q * (num.conjugate()*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag) + num*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag).conjugate()) - Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag + P*dP_dbeta_imag.conjugate() + gamma*P_d*dP_d_dbeta_imag.conjugate())
+            #np.testing.assert_almost_equal(2.*imag_part, imag_part_test, 10)
+
+            grads[j1] = 2.*np.sum(real_part)
+            grads[j1 + self.jmax] = 2.*np.sum(imag_part)
 
         return grads
 
