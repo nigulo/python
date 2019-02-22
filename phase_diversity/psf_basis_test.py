@@ -150,7 +150,7 @@ class test_psf_basis(unittest.TestCase):
 
         betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
 
-        delta_betas = betas*1.0e-5
+        delta_betas = betas*1.0e-7
 
         lik = psf.likelihood(np.concatenate((betas.real, betas.imag)), [D, D_d, gamma])
         liks = np.repeat(lik, len(betas))
@@ -170,7 +170,9 @@ class test_psf_basis(unittest.TestCase):
     
         grads = psf.likelihood_grad(np.concatenate((betas.real, betas.imag)), [D, D_d, gamma])
 
-        np.testing.assert_almost_equal(grads, grads_expected, 10)
+        for i in np.arange(0, len(grads)):
+            np.testing.assert_approx_equal(grads[i], grads_expected[i], 4)
+            
         
 
         

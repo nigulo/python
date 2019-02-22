@@ -335,7 +335,6 @@ class psf_basis:
                 P += FX*coef_x + FY*coef_y
                 P_d += FX_d*coef_x + FY_d*coef_y
         num = D_d*P - D*P_d
-        #L = num*num.conjugate()/np.sqrt(P*P.conjugate()+gamma*P_d*P_d.conjugate())
         L = num*num.conjugate()/(P*P.conjugate()+gamma*P_d*P_d.conjugate())
 
         return np.sum(L.real)
@@ -349,12 +348,10 @@ class psf_basis:
         betas_imag = theta[self.jmax:]
         betas = betas_real + betas_imag*1.j
 
-        #grads = np.zeros((len(theta), np.shape(D)[0], np.shape(D)[1]), dtype='complex')
         grads = np.zeros(len(theta))#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
         P, P_d = self.get_FP(betas, defocus = True)
         Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate())
-        print("Q=", Q)
 
         for j1 in np.arange(0, len(betas)):
 
@@ -362,21 +359,24 @@ class psf_basis:
             dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]))
             dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]))
             dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]))
-            for k1 in np.arange(0, j1 + 1):#self.jmax):
-                FX1, FY1 = self.get_FXFY(j1, k1)
-                FX1_d, FY1_d = self.get_FXFY(j1, k1, defocus=True)
+            for k1 in np.arange(0, self.jmax):#self.jmax):
+                eps = 1.0
+                if j1 == k1:
+                    eps = 0.5
+                if k1 > j1:
+                    FX, FY = self.get_FXFY(k1, j1)
+                    FX_d, FY_d = self.get_FXFY(k1, j1, defocus=True)
+                    eps *= -1.
+                else:
+                    FX, FY = self.get_FXFY(j1, k1)
+                    FX_d, FY_d = self.get_FXFY(j1, k1, defocus=True)
 
-                dP_dbeta_real += betas[k1].real*FX1 - betas[k1].imag*FY1
-                dP_dbeta_imag += betas[k1].real*FY1 + betas[k1].imag*FX1
+                dP_dbeta_real += betas[k1].real*FX - eps*betas[k1].imag*FY
+                dP_dbeta_imag += eps*betas[k1].real*FY + betas[k1].imag*FX
 
-                dP_d_dbeta_real += betas[k1].real*FX1_d - betas[k1].imag*FY1_d
-                dP_d_dbeta_imag += betas[k1].real*FY1_d + betas[k1].imag*FX1_d
+                dP_d_dbeta_real += betas[k1].real*FX_d - eps*betas[k1].imag*FY_d
+                dP_d_dbeta_imag += eps*betas[k1].real*FY_d + betas[k1].imag*FX_d
                 
-            dP_dbeta_real *= 8.
-            dP_dbeta_imag *= 8.
-            dP_d_dbeta_real *= 8.
-            dP_d_dbeta_imag *= 8.
-
             num = D_d*P - D*P_d
             num_conj = num.conjugate()
             num_sq = num*num_conj
@@ -384,14 +384,8 @@ class psf_basis:
             real_part = (Q * num_conj*(D_d*dP_dbeta_real - D*dP_d_dbeta_real) -
                 Q**2*num_sq*(P.conjugate()*dP_dbeta_real + gamma*P_d.conjugate()*dP_d_dbeta_real).real).real
                          
-            #real_part_test = Q * (num.conjugate()*(D_d*dP_dbeta_real - D*dP_d_dbeta_real) + num*(D_d*dP_dbeta_real - D*dP_d_dbeta_real).conjugate()) - Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta_real + gamma*P_d.conjugate()*dP_d_dbeta_real + P*dP_dbeta_real.conjugate() + gamma*P_d*dP_d_dbeta_real.conjugate())
-            #np.testing.assert_almost_equal(2.*real_part, real_part_test, 10)
-                         
             imag_part = (Q * num_conj*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag) -
                 Q**2*num_sq*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag).real).real
-
-            #imag_part_test = Q * (num.conjugate()*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag) + num*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag).conjugate()) - Q**2*num*num.conjugate()*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag + P*dP_dbeta_imag.conjugate() + gamma*P_d*dP_d_dbeta_imag.conjugate())
-            #np.testing.assert_almost_equal(2.*imag_part, imag_part_test, 10)
 
             grads[j1] = 2.*np.sum(real_part)
             grads[j1 + self.jmax] = 2.*np.sum(imag_part)
