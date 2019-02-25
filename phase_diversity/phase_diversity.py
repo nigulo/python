@@ -48,18 +48,17 @@ for trial in np.arange(0, 10):
     
     psf.create_basis()
     
-    fmeasurement = psf.multiply(fimage, betas)
+    fmeasurement, fmeasurement_d = psf.multiply(fimage, betas)
             
     print(fmeasurement)
-
-    fmeasurement_d = psf.multiply(fimage, betas, defocus = True)
-
     print(fmeasurement_d)
 
     for (fft_image, label) in [(fmeasurement, ""), (fmeasurement_d, "_d")]:
 
         measurement = fft.ifft2(fft_image).real
         measurement = np.roll(np.roll(measurement, int(nx/2), axis=0), int(ny/2), axis=1)
+        print(np.shape(measurement))
+        print(measurement)
         
         extent=[0., 1., 0., 1.]
         plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
