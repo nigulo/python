@@ -97,7 +97,7 @@ class psf_basis:
         self.wavelength = wavelength
         self.nx = nx
         self.F_D = F_D
-
+        
     def create_basis(self, do_fft=True, do_defocus=True):
         print("do_defocus", do_defocus)
         print("do_fft", do_fft)
@@ -251,6 +251,19 @@ class psf_basis:
             return (ret_val, ret_val_d)
         else:
             return ret_val
+        
+    def get_image(self, D, D_d, betas, do_fft = True):
+        P, P_d = self.get_FP(self, betas)
+        
+        F_image = D * P.conjugate() + self.gammma * D_d* P_d.conjugate()
+        F_image /= P*P.conjugate() + self.gamma * P_d * P_d.conjugate()
+        
+        if not do_fft:
+            return F_image
+
+        image = fft.ifft2(F_image).real
+        return np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+            
     
     def convolve(self, dat, betas, defocus = True):
         dat_F = fft.fft2(dat)
@@ -335,9 +348,17 @@ class psf_basis:
                 P += FX*coef_x + FY*coef_y
                 P_d += FX_d*coef_x + FY_d*coef_y
         num = D_d*P - D*P_d
-        L = num*num.conjugate()/(P*P.conjugate()+gamma*P_d*P_d.conjugate())
+        num *= num.conjugate()
+        den = P*P.conjugate()+gamma*P_d*P_d.conjugate() + 1e-10
+        #if num == 0 and den == 0:
+        #    L = np.ones((self.nx, self.nx))
+        #else:
+        L = num/den
 
-        return np.sum(L.real)
+        retval = np.sum(L.real)
+        print("likelihood", theta, retval)
+
+        return retval
         
 
     def likelihood_grad(self, theta, data):
@@ -390,6 +411,7 @@ class psf_basis:
             grads[j1] = 2.*np.sum(real_part)
             grads[j1 + self.jmax] = 2.*np.sum(imag_part)
 
+        print("likelihood_grad", theta, grads)
         return grads
 
 
