@@ -1,9 +1,9 @@
 import os
-os.environ["OMP_NUM_THREADS"] = "4" # export OMP_NUM_THREADS=4
-os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4 
-os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
-os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
-os.environ["NUMEXPR_NUM_THREADS"] = "4" # export NUMEXPR_NUM_THREADS=6
+os.environ["OMP_NUM_THREADS"] = "3" # export OMP_NUM_THREADS=4
+os.environ["OPENBLAS_NUM_THREADS"] = "3" # export OPENBLAS_NUM_THREADS=4 
+os.environ["MKL_NUM_THREADS"] = "3" # export MKL_NUM_THREADS=6
+os.environ["VECLIB_MAXIMUM_THREADS"] = "3" # export VECLIB_MAXIMUM_THREADS=4
+os.environ["NUMEXPR_NUM_THREADS"] = "3" # export NUMEXPR_NUM_THREADS=6
 
 import sys
 sys.path.append('../utils')
@@ -27,13 +27,14 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 
-num_samples = 100
-num_chains = 4
+num_samples = 10
+num_chains = 3
 
+num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:10,0:10]
+image = image[0:100,0:100]
 
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
@@ -45,7 +46,7 @@ fimage = fft.fft2(image)
 #vals = fft.ifft2(vals).real
 #fimage = np.roll(np.roll(fimage, int(nx/2), axis=0), int(ny/2), axis=1)
     
-print(np.shape(image))
+print("Image", image)
 
 jmax = 5
 arcsec_per_px = 0.055
@@ -87,26 +88,30 @@ def sample(D, D_d, gamma, psf):
 psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
 psf.create_basis()
 
-for trial in np.arange(0, 10):
+extent=[0., 1., 0., 1.]
+plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
+
+mean_image_est = np.zeros((nx, nx))
+mean_image_measured = np.zeros((nx, nx))
+for trial in np.arange(0, num_frames):
     betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
     psf.set_betas(betas)
     
     D, D_d = psf.multiply(fimage, betas)
     
+    fimage_back = psf.deconvolve(D, D_d, betas, gamma, do_fft = False)
     
-    betas = sample(D, D_d, gamma, psf)
+    betas_est = sample(D, D_d, gamma, psf)
     
-    fimage_est = psf.get_image(D, D_d, betas, do_fft = False)
+    fimage_est = psf.deconvolve(D, D_d, betas_est, gamma, do_fft = False)
 
-    for (fft_image, label) in [(D, ""), (D_d, "_d"), (fimage_est, "_est")]:
+    for (fft_image, label) in [(D, ""), (D_d, "_d"), (fimage_est, "_est"), (fimage_back, "_null")]:
 
         measurement = fft.ifft2(fft_image).real
         measurement = np.roll(np.roll(measurement, int(nx/2), axis=0), int(ny/2), axis=1)
         print(np.shape(measurement))
         print(measurement)
         
-        extent=[0., 1., 0., 1.]
-        plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         
         fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
         fig.set_size_inches(6, 3)
@@ -118,3 +123,38 @@ for trial in np.arange(0, 10):
         
         fig.savefig("measurement" + str(trial) + label + ".png")
         plt.close(fig)
+
+    image_est = fft.ifft2(fimage_est).real
+    image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
+    mean_image_est += image_est
+
+    image_measured = fft.ifft2(D).real
+    image_measured = np.roll(np.roll(image_measured, int(nx/2), axis=0), int(ny/2), axis=1)
+    mean_image_measured += image_measured
+
+mean_image_est /= num_frames
+mean_image_measured /= num_frames
+
+fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
+fig.set_size_inches(6, 3)
+ax1.imshow(image[::-1],extent=extent,cmap=my_cmap,origin='lower')
+ax1.set_aspect(aspect=plot_aspect)
+
+ax2.imshow(mean_image_est[::-1],extent=extent,cmap=my_cmap,origin='lower')
+ax2.set_aspect(aspect=plot_aspect)
+
+fig.savefig("mean_image_est.png")
+
+fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
+fig.set_size_inches(6, 3)
+ax1.imshow(image[::-1],extent=extent,cmap=my_cmap,origin='lower')
+ax1.set_aspect(aspect=plot_aspect)
+
+ax2.imshow(mean_image_measured[::-1],extent=extent,cmap=my_cmap,origin='lower')
+ax2.set_aspect(aspect=plot_aspect)
+
+fig.savefig("mean_image_measured.png")
+
+
+
+plt.close(fig)

@@ -112,16 +112,16 @@ class psf_basis:
         self.Ys = np.zeros((jmax, jmax, nx, nx))
 
         if do_fft:
-            self.FXs = np.zeros((jmax, jmax, nx, nx))
-            self.FYs = np.zeros((jmax, jmax, nx, nx))
+            self.FXs = np.zeros((jmax, jmax, nx, nx), dtype='complex')
+            self.FYs = np.zeros((jmax, jmax, nx, nx), dtype='complex')
 
         if do_defocus:
             self.Xs_d = np.zeros((jmax, jmax, nx, nx))
             self.Ys_d = np.zeros((jmax, jmax, nx, nx))
 
             if do_fft:
-                self.FXs_d = np.zeros((jmax, jmax, nx, nx))
-                self.FYs_d = np.zeros((jmax, jmax, nx, nx))
+                self.FXs_d = np.zeros((jmax, jmax, nx, nx), dtype='complex')
+                self.FYs_d = np.zeros((jmax, jmax, nx, nx), dtype='complex')
 
 
         diffraction = 1.22 * wavelength * 1e-8 / diameter
@@ -236,8 +236,8 @@ class psf_basis:
                 for defocus1 in defocus_array:
                     FX, FY = self.get_FXFY(j, k, defocus = defocus1)
                     
-                    FX1 = FX * (betas[j-1]*betas[k-1].conjugate()).real
-                    FY1 = FY * (betas[j-1]*betas[k-1].conjugate()).imag
+                    FX1 = FX * (betas[j]*betas[k].conjugate()).real
+                    FY1 = FY * (betas[j]*betas[k].conjugate()).imag
                     
                     if k == j:
                         FX1 *= 0.5
@@ -252,12 +252,15 @@ class psf_basis:
         else:
             return ret_val
         
-    def get_image(self, D, D_d, betas, do_fft = True):
-        P, P_d = self.get_FP(self, betas)
+    def deconvolve(self, D, D_d, betas, gamma, do_fft = True):
+        P, P_d = self.get_FP(betas)
+        #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         
-        F_image = D * P.conjugate() + self.gammma * D_d* P_d.conjugate()
-        F_image /= P*P.conjugate() + self.gamma * P_d * P_d.conjugate()
+        F_image = D * P.conjugate() + gamma * D_d* P_d.conjugate()
+        F_image /= P*P.conjugate() + gamma * P_d * P_d.conjugate()
         
+        print(F_image)
         if not do_fft:
             return F_image
 
@@ -356,7 +359,7 @@ class psf_basis:
         L = num/den
 
         retval = np.sum(L.real)
-        print("likelihood", theta, retval)
+        #print("likelihood", theta, retval)
 
         return retval
         
@@ -372,14 +375,14 @@ class psf_basis:
         grads = np.zeros(len(theta))#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
         P, P_d = self.get_FP(betas, defocus = True)
-        Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate())
+        Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate() + 1e-10)
 
         for j1 in np.arange(0, len(betas)):
 
-            dP_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]))
-            dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]))
-            dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]))
-            dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]))
+            dP_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
+            dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
+            dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
+            dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
             for k1 in np.arange(0, self.jmax):#self.jmax):
                 eps = 1.0
                 if j1 == k1:
@@ -411,7 +414,7 @@ class psf_basis:
             grads[j1] = 2.*np.sum(real_part)
             grads[j1 + self.jmax] = 2.*np.sum(imag_part)
 
-        print("likelihood_grad", theta, grads)
+        #print("likelihood_grad", theta, grads)
         return grads
 
 

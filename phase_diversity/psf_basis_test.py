@@ -1,7 +1,28 @@
 import numpy as np
 import psf_basis
+import numpy.fft as fft
 import unittest
 
+image = [[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
+  0.38431373, 0.4509804,  0.45882353, 0.5137255 ],
+ [0.4117647,  0.38039216, 0.39607844, 0.39215687, 0.34117648, 0.3529412,
+  0.35686275, 0.37254903, 0.36862746, 0.38039216],
+ [0.36862746, 0.34901962, 0.30980393, 0.3254902,  0.31764707, 0.3372549,
+  0.3019608,  0.3254902,  0.33333334, 0.34901962],
+ [0.3254902,  0.34509805, 0.3647059,  0.37254903, 0.41568628, 0.36078432,
+  0.33333334, 0.32156864, 0.28235295, 0.30980393],
+ [0.4392157,  0.4509804,  0.5019608,  0.4627451,  0.4745098,  0.43529412,
+  0.36078432, 0.3254902,  0.2901961,  0.2627451 ],
+ [0.54901963, 0.5058824,  0.56078434, 0.56078434, 0.5803922,  0.49803922,
+  0.3882353,  0.34117648, 0.28627452, 0.30588236],
+ [0.6039216,  0.61960787, 0.64705884, 0.61960787, 0.627451,   0.5568628,
+  0.42745098, 0.3647059,  0.32941177, 0.32156864],
+ [0.6666667,  0.7294118,  0.69803923, 0.7176471,  0.62352943, 0.5803922,
+  0.45882353, 0.37254903, 0.3372549,  0.3372549 ],
+ [0.6745098,  0.654902,   0.7019608,  0.6862745,  0.6431373,  0.5529412,
+  0.42352942, 0.40392157, 0.37254903, 0.39215687],
+ [0.6509804,  0.6901961,  0.6509804,  0.6392157,  0.58431375, 0.5294118,
+  0.45490196, 0.39607844, 0.36862746, 0.37254903]]
 
 D = [[ 2.69347342e+02+0.00000000e+00j, -2.89554084e+02-3.58791959e+01j,
    7.78166322e+00+2.19016473e+01j,  4.13088439e-01+1.05472906e+00j,
@@ -173,7 +194,30 @@ class test_psf_basis(unittest.TestCase):
         for i in np.arange(0, len(grads)):
             np.testing.assert_approx_equal(grads[i], grads_expected[i], 4)
             
+    def test_deconvolve(self):
+        jmax = 5
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        nx = 10
+        F_D = 1.0
         
+        gamma = 1.
+
+        fimage = fft.fft2(image)
+        
+        psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+        psf.create_basis(do_fft=True, do_defocus=True)
+
+
+        betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
+
+        D, D_d = psf.multiply(fimage, betas)
+        image_back = psf.deconvolve(D, D_d, betas, gamma, do_fft = True)
+        #fimage_back = psf.get_restoration(D, D_d, betas, gamma, do_fft = False)
+
+        np.testing.assert_almost_equal(image_back, image, 8)
+        #np.testing.assert_almost_equal(fimage_back, fimage, 8)
 
         
 if __name__ == '__main__':
