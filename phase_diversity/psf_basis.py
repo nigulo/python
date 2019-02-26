@@ -257,7 +257,7 @@ class psf_basis:
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         
-        F_image = D * P.conjugate() + gamma * D_d* P_d.conjugate()
+        F_image = D * P.conjugate() + gamma * D_d * P_d.conjugate()
         F_image /= P*P.conjugate() + gamma * P_d * P_d.conjugate()
         
         if not do_fft:
@@ -292,9 +292,6 @@ class psf_basis:
         else:
             return self.FXs[j, k], self.FYs[j, k]
             
-    def set_betas(self, betas):
-        self.betas=betas
-        
     def get_FP(self, betas, defocus = True):
         ret_val = np.zeros((self.nx, self.nx), dtype='complex')
         if defocus:

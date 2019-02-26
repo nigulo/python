@@ -10,6 +10,13 @@ sys.path.append('../utils')
 
 import matplotlib as mpl
 mpl.use('Agg')
+import matplotlib.colorbar as cb
+from matplotlib import cm
+from matplotlib.colors import LogNorm, SymLogNorm
+from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
+import matplotlib.colors as colors
+import matplotlib.ticker as ticker
+
 import numpy as np
 import scipy.special as special
 import scipy.signal as signal
@@ -33,14 +40,14 @@ do_sampling = False
 num_samples = 500
 num_chains = 3
 
-num_MAP_trials = 10
+num_MAP_trials = 5
 
 
 num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:100,0:100]
+image = image[0:200,0:200]
 
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
@@ -142,68 +149,76 @@ psf.create_basis()
 extent=[0., 1., 0., 1.]
 plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
 
-mean_image_est = np.zeros((nx, nx))
-mean_image_measured = np.zeros((nx, nx))
+fig, axes = plt.subplots(nrows=num_frames + 1, ncols=5)
+fig.set_size_inches(4.5*5, 3*(num_frames+1))
+
+image_est_mean = np.zeros((nx, nx))
+D_mean = np.zeros((nx, nx))
+D_d_mean = np.zeros((nx, nx))
+
+def plot(fig, ax, dat, colorbar = True):
+    im = ax.imshow(dat[::-1],extent=extent,cmap=my_cmap,origin='lower')
+    ax.set_aspect(aspect=plot_aspect)
+    
+    if colorbar:
+        l_f = FormatStrFormatter('%1.1f')
+
+        pos = ax.get_position().get_points()
+        #x0 = pos[0, 0]
+        y0 = pos[0, 1]
+        x1 = pos[1, 0]
+        y1 = pos[1, 1]
+        
+        cbar_ax = fig.add_axes([x1 + 0.01, y0, 0.02, y1-y0])
+        fig.colorbar(im, cax=cbar_ax, format=l_f)#, label=r'Label')
+        
+
 for trial in np.arange(0, num_frames):
     betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
-    psf.set_betas(betas)
     
     D, D_d = psf.multiply(fimage, betas)
     
-    fimage_back = psf.deconvolve(D, D_d, betas, gamma, do_fft = False)
-    
     betas_est = sample(D, D_d, gamma, psf, "samples" + str(trial) + ".png")
     
-    fimage_est = psf.deconvolve(D, D_d, betas_est, gamma, do_fft = False)
+    image_est = psf.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
 
-    for (fft_image, label, roll) in [(D, "", True), (D_d, "_d", True), (fimage_est, "_est", False), (fimage_back, "_null", False)]:
+    D = fft.ifft2(D).real
+    D = np.roll(np.roll(D, int(nx/2), axis=0), int(ny/2), axis=1)
 
-        measurement = fft.ifft2(fft_image).real
-        if roll:
-            measurement = np.roll(np.roll(measurement, int(nx/2), axis=0), int(ny/2), axis=1)
+    D_d = fft.ifft2(D_d).real
+    D_d = np.roll(np.roll(D_d, int(nx/2), axis=0), int(ny/2), axis=1)
 
-        fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
-        fig.set_size_inches(6, 3)
-        ax1.imshow(image[::-1],extent=extent,cmap=my_cmap,origin='lower')
-        ax1.set_aspect(aspect=plot_aspect)
-        
-        ax2.imshow(measurement[::-1],extent=extent,cmap=my_cmap,origin='lower')
-        ax2.set_aspect(aspect=plot_aspect)
-        
-        fig.savefig("measurement" + str(trial) + label + ".png")
-        plt.close(fig)
+    ax1, ax2, ax3, ax4, ax5 = axes[trial]
 
-    image_est = fft.ifft2(fimage_est).real
+    #image_min = min([np.min(image), np.min(D), np.min(D_d), np.min(image_est)])
+    #image_max = max([np.max(image), np.max(D), np.max(D_d), np.max(image_est)])
+
+    plot(fig, ax1, image)
+    plot(fig, ax2, D)
+    plot(fig, ax3, D_d)
+    plot(fig, ax4, image_est)
+    plot(fig, ax5, (image_est-image))
+    
+    #image_est = fft.ifft2(fimage_est).real
     #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
-    mean_image_est += image_est
+    image_est_mean += image_est
 
-    image_measured = fft.ifft2(D).real
-    image_measured = np.roll(np.roll(image_measured, int(nx/2), axis=0), int(ny/2), axis=1)
-    mean_image_measured += image_measured
+    D_mean += D
+    D_d_mean += D_d
 
-mean_image_est /= num_frames
-mean_image_measured /= num_frames
+    fig.savefig("estimates.png")
 
-fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
-fig.set_size_inches(6, 3)
-ax1.imshow(image[::-1],extent=extent,cmap=my_cmap,origin='lower')
-ax1.set_aspect(aspect=plot_aspect)
+image_est_mean /= num_frames
+D_mean /= num_frames
+D_d_mean /= num_frames
 
-ax2.imshow(mean_image_est[::-1],extent=extent,cmap=my_cmap,origin='lower')
-ax2.set_aspect(aspect=plot_aspect)
+ax1, ax2, ax3, ax4, ax5 = axes[num_frames]
 
-fig.savefig("mean_image_est.png")
+plot(fig, ax1, image)
+plot(fig, ax2, D_mean)
+plot(fig, ax3, D_d_mean)
+plot(fig, ax4, image_est_mean)
+plot(fig, ax5, (image_est_mean-image))
 
-fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
-fig.set_size_inches(6, 3)
-ax1.imshow(image[::-1],extent=extent,cmap=my_cmap,origin='lower')
-ax1.set_aspect(aspect=plot_aspect)
-
-ax2.imshow(mean_image_measured[::-1],extent=extent,cmap=my_cmap,origin='lower')
-ax2.set_aspect(aspect=plot_aspect)
-
-fig.savefig("mean_image_measured.png")
-
-
-
+fig.savefig("estimates.png")
 plt.close(fig)
