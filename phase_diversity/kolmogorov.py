@@ -101,6 +101,10 @@ def return_wave(fried, size, wfsize, pupsize, iterations=400):
     start, end = int((size-wfsize)/2), int((size+wfsize)/2)
     return w[:,start:end,start:end]
 
+'''
+Simulate phase-screens obeying the Kolmogorov-Obukhov power law.
+Description can be found in Nagaraju et. al (2012) http://adsabs.harvard.edu/abs/2012ApOpt..51.7953K
+'''
 def kolmogorov(): 
 
     fried = np.linspace(0.01, 0.1, 10) # Fried parameter (in meters).
