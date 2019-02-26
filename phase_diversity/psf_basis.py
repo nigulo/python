@@ -260,7 +260,6 @@ class psf_basis:
         F_image = D * P.conjugate() + gamma * D_d* P_d.conjugate()
         F_image /= P*P.conjugate() + gamma * P_d * P_d.conjugate()
         
-        print(F_image)
         if not do_fft:
             return F_image
 
@@ -328,6 +327,8 @@ class psf_basis:
 
 
     def likelihood(self, theta, data):
+        regularizer_eps = 1e-10
+
         D = data[0]
         D_d = data[1]
         gamma = data[2]
@@ -353,7 +354,7 @@ class psf_basis:
                 P_d += FX_d*coef_x + FY_d*coef_y
         num = D_d*P - D*P_d
         num *= num.conjugate()
-        den = P*P.conjugate()+gamma*P_d*P_d.conjugate() + 1e-10
+        den = P*P.conjugate()+gamma*P_d*P_d.conjugate() + regularizer_eps
         #if num == 0 and den == 0:
         #    L = np.ones((self.nx, self.nx))
         #else:
@@ -366,6 +367,8 @@ class psf_basis:
         
 
     def likelihood_grad(self, theta, data):
+        regularizer_eps = 1e-10
+
         D = data[0]
         D_d = data[1]
         gamma = data[2]
@@ -376,7 +379,7 @@ class psf_basis:
         grads = np.zeros(len(theta))#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
         P, P_d = self.get_FP(betas, defocus = True)
-        Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate() + 1e-10)
+        Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate() + regularizer_eps)
 
         for j1 in np.arange(0, len(betas)):
 

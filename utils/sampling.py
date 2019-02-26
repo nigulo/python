@@ -269,3 +269,5 @@ class Sampling:
             trace = pm.sample(num_samples, tune=int(num_samples/2), init=None, step=step, cores=num_chains)
     
             return trace
+
+
