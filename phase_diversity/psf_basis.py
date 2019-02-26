@@ -265,7 +265,8 @@ class psf_basis:
             return F_image
 
         image = fft.ifft2(F_image).real
-        return np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        return image
             
     
     def convolve(self, dat, betas, defocus = True):

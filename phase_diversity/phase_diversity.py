@@ -105,10 +105,12 @@ for trial in np.arange(0, num_frames):
     
     fimage_est = psf.deconvolve(D, D_d, betas_est, gamma, do_fft = False)
 
-    for (fft_image, label) in [(D, ""), (D_d, "_d"), (fimage_est, "_est"), (fimage_back, "_null")]:
+    for (fft_image, label, roll) in [(D, "", True), (D_d, "_d", True), (fimage_est, "_est", False), (fimage_back, "_null", False)]:
 
         measurement = fft.ifft2(fft_image).real
-        measurement = np.roll(np.roll(measurement, int(nx/2), axis=0), int(ny/2), axis=1)
+        if roll:
+            measurement = np.roll(np.roll(measurement, int(nx/2), axis=0), int(ny/2), axis=1)
+
         print(np.shape(measurement))
         print(measurement)
         

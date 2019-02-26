@@ -216,7 +216,7 @@ class test_psf_basis(unittest.TestCase):
         image_back = psf.deconvolve(D, D_d, betas, gamma, do_fft = True)
         #fimage_back = psf.get_restoration(D, D_d, betas, gamma, do_fft = False)
 
-        np.testing.assert_almost_equal(image_back, image, 8)
+        np.testing.assert_almost_equal(image_back, image, 10)
         #np.testing.assert_almost_equal(fimage_back, fimage, 8)
 
         
