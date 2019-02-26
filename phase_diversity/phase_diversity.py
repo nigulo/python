@@ -8,33 +8,19 @@ os.environ["NUMEXPR_NUM_THREADS"] = "3" # export NUMEXPR_NUM_THREADS=6
 import sys
 sys.path.append('../utils')
 
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.colorbar as cb
-from matplotlib import cm
-from matplotlib.colors import LogNorm, SymLogNorm
-from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
-import matplotlib.colors as colors
-import matplotlib.ticker as ticker
-
 import numpy as np
 import scipy.special as special
 import scipy.signal as signal
 import numpy.fft as fft
-import matplotlib.pyplot as plt
-from matplotlib import cm
 import sampling
+import misc
+import plot
 import pymc3 as pm
 
 import pyhdust.triangle as triangle
-import matplotlib.pyplot as plt
 import psf_basis
 import scipy.optimize
-
-def reverse_colourmap(cmap, name = 'my_cmap_r'):
-     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
-my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
-
+import matplotlib.pyplot as plt
 
 do_sampling = False
 num_samples = 500
@@ -47,7 +33,7 @@ num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:200,0:200]
+image = image[0:10,0:10]
 
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
@@ -146,32 +132,13 @@ def sample(D, D_d, gamma, psf, plot_file = None):
 psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
 psf.create_basis()
 
-extent=[0., 1., 0., 1.]
-plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
-
-fig, axes = plt.subplots(nrows=num_frames + 1, ncols=5)
-fig.set_size_inches(4.5*5, 3*(num_frames+1))
+my_plot = plot.plot_map(nrows=num_frames + 1, ncols=5)
 
 image_est_mean = np.zeros((nx, nx))
 D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
-
-def plot(fig, ax, dat, colorbar = True):
-    im = ax.imshow(dat[::-1],extent=extent,cmap=my_cmap,origin='lower')
-    ax.set_aspect(aspect=plot_aspect)
-    
-    if colorbar:
-        l_f = FormatStrFormatter('%1.1f')
-
-        pos = ax.get_position().get_points()
-        #x0 = pos[0, 0]
-        y0 = pos[0, 1]
-        x1 = pos[1, 0]
-        y1 = pos[1, 1]
         
-        cbar_ax = fig.add_axes([x1 + 0.01, y0, 0.02, y1-y0])
-        fig.colorbar(im, cax=cbar_ax, format=l_f)#, label=r'Label')
-        
+image_norm = misc.normalize(image)
 
 for trial in np.arange(0, num_frames):
     betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
@@ -188,37 +155,38 @@ for trial in np.arange(0, num_frames):
     D_d = fft.ifft2(D_d).real
     D_d = np.roll(np.roll(D_d, int(nx/2), axis=0), int(ny/2), axis=1)
 
-    ax1, ax2, ax3, ax4, ax5 = axes[trial]
+    #image_min = np.min(image)
+    #image_max = np.max(image)
+    
+    D_norm = misc.normalize(D)
+    D_d_norm = misc.normalize(D_d)
+    image_est_norm = misc.normalize(image_est)
+    
 
-    #image_min = min([np.min(image), np.min(D), np.min(D_d), np.min(image_est)])
-    #image_max = max([np.max(image), np.max(D), np.max(D_d), np.max(image_est)])
-
-    plot(fig, ax1, image)
-    plot(fig, ax2, D)
-    plot(fig, ax3, D_d)
-    plot(fig, ax4, image_est)
-    plot(fig, ax5, (image_est-image))
+    my_plot.plot([trial, 0], image_norm)
+    my_plot.plot([trial, 1], D_norm)
+    my_plot.plot([trial, 2], D_d_norm)
+    my_plot.plot([trial, 3], image_est_norm)
+    my_plot.plot([trial, 4], np.abs(image_est-image))
     
     #image_est = fft.ifft2(fimage_est).real
     #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
-    image_est_mean += image_est
+    image_est_mean += image_est_norm
 
-    D_mean += D
-    D_d_mean += D_d
+    D_mean += D_norm
+    D_d_mean += D_d_norm
 
-    fig.savefig("estimates.png")
+    my_plot.save("estimates.png")
 
 image_est_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
-ax1, ax2, ax3, ax4, ax5 = axes[num_frames]
+my_plot.plot([trial, 0], image_norm)
+my_plot.plot([trial, 1], D_mean)
+my_plot.plot([trial, 2], D_d_mean)
+my_plot.plot([trial, 3], image_est_mean)
+my_plot.plot([trial, 4], np.abs(image_est_mean-image_norm))
 
-plot(fig, ax1, image)
-plot(fig, ax2, D_mean)
-plot(fig, ax3, D_d_mean)
-plot(fig, ax4, image_est_mean)
-plot(fig, ax5, (image_est_mean-image))
-
-fig.savefig("estimates.png")
-plt.close(fig)
+my_plot.save("estimates.png")
+my_plot.close()
