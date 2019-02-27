@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 import numpy as np
 from zernike import zernike, get_nm, get_noll
 import unittest

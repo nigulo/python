@@ -6,9 +6,9 @@ def cart_to_polar(us):
     if len(np.shape(us)) == 1:
         scalar = True
         us = np.array([us])
-    rhos = np.sqrt(np.sum(us**2, axis=1))
-    phis = np.arctan2(us[:,1], us[:,0])
-    ret_val = np.column_stack((rhos, phis))
+    rhos = np.sqrt(np.sum(us**2, axis=us.ndim-1))
+    phis = np.arctan2(us[...,1], us[...,0])
+    ret_val = np.stack((rhos, phis), axis = us.ndim-1)
     if scalar:
         ret_val = ret_val[0]
     return ret_val

@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 import numpy as np
 import psf_basis
 import numpy.fft as fft

@@ -12,19 +12,31 @@ class phase_aberration():
             z = zernike.zernike(n, m)
             self.terms.append((coef, z))
             
-    def get_value(self, us):
+    def __call__(self, xs):
         scalar = False
-        if len(np.shape(us)) == 1:
+        if len(np.shape(xs)) == 1:
             scalar = True
-            us = np.array([us])
-        vals = np.zeros(np.shape(us)[0])
-        rhos_phis = utils.cart_to_polar(us)
+            xs = np.array([xs])
+        vals = np.zeros(np.shape(xs)[:-1])
+        rhos_phis = utils.cart_to_polar(xs)
         for coef, z in self.terms:
             #TODO vectorize zernike
             vals += z.get_value(rhos_phis) * coef
         if scalar:
             vals = vals[0]
         return vals
+
+
+class wavefront():
+    
+    def __init__(self, data):
+        self.data = data
+            
+    def __call__(self, xs):
+        # Ignore the coordinates, just return data
+        # We assume that the wavefront array is properly 
+        # aligned with the coordinates
+        return self.data
 
 
 class coh_trans_func():
@@ -34,17 +46,18 @@ class coh_trans_func():
         self.phase_aberr = phase_aberr
         self.phase_div = phase_div
        
-    def get_value(self, us):
+    def get_value(self, xs):
         #if self.pupil_func(u) == 0:
         #    return 0.0
         #else:
         #    return np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
         #a = np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
         #b = np.cos(self.phase_aberr.get_value(u) + self.phase_div(u)) + 1.j * np.sin(self.phase_aberr.get_value(u) + self.phase_div(u))
-        return self.pupil_func(us)*np.exp(1.j * (self.phase_aberr.get_value(us) + self.phase_div(us)))
+        return self.pupil_func(xs)*np.exp(1.j * (self.phase_aberr(xs) + self.phase_div(xs)))
 
 class psf():
-    def __init__(self, coh_trans_func, nx, ny):
+    def __init__(self, coh_trans_func, nx, ny, repeat_factor = 2):
+        assert((repeat_factor % 2) == 0)
         self.nx = nx
         self.ny = ny
         #coh_vals = np.zeros((nx, ny))
@@ -52,19 +65,31 @@ class psf():
         ys = np.linspace(-1.0, 1.0, ny)/np.sqrt(2)
         assert(len(xs) == nx)
         assert(len(ys) == ny)
-        us = np.transpose([np.tile(xs, ny), np.repeat(ys, nx)])
-        #for x in np.arange(0, nx):
-        #    for y in np.arange(0, ny):
-        #        norm_x = np.sqrt(2.0)*(float(x) - nx/2) / nx
-        #        norm_y = np.sqrt(2.0)*(float(y) - ny/2) / ny
-        #        coh_vals[x, y] = coh_trans_func.get_value(np.array([norm_x, norm_y]))
-        coh_vals = coh_trans_func.get_value(us)
-        coh_vals = np.reshape(coh_vals, (nx, ny))
+        coords = np.dstack(np.meshgrid(xs, ys))
+        
+        #us = np.transpose([np.tile(xs, ny), np.repeat(ys, nx)])
+        #coh_vals = coh_trans_func.get_value(us)
+        #coh_vals = np.reshape(coh_vals, (nx, ny))
+
+        coh_vals = coh_trans_func.get_value(coords)
+        coh_vals = np.tile(coh_vals, (repeat_factor + 1, repeat_factor + 1))
+        print(np.shape(coh_vals))
+        middle_x = int(nx*(repeat_factor+1)/2)
+        middle_y = int(ny*(repeat_factor+1)/2)
+        delta_x = int(nx*repeat_factor/2)
+        delta_y = int(ny*repeat_factor/2)
+        coh_vals = coh_vals[middle_x-delta_x:middle_x+delta_x,middle_y-delta_y:middle_y+delta_y]
+        print(np.shape(coh_vals))
+        for i in np.arange(0, np.shape(coh_vals)[0]):
+            print(coh_vals[i,:])
+        
+        
         vals = fft.fft2(coh_vals)
         vals = vals.real**2 + vals.imag**2
         #vals = fft.ifft2(vals)
         #vals = fft.ifft2(vals).real
         vals = np.roll(np.roll(vals, int(nx/2), axis=0), int(ny/2), axis=1)
+        vals /= vals.sum()
         self.incoh_vals = vals
         #assert(np.all(self.incoh_vals == np.conjugate(vals)*vals))
         

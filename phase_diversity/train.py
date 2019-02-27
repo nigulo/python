@@ -55,7 +55,7 @@ else:
 assert(n_data <= max_huge_set_size and (max_huge_set_size % n_data) == 0)
 n_train = int(n_data*0.75)
 
-num_sets = 10000
+num_sets = 10000n_coefs
 n_epochs = 100
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):

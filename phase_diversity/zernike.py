@@ -15,6 +15,10 @@ class zernike():
         if len(np.shape(rhos_phis)) == 1:
             scalar = True
             rhos_phis = np.array([rhos_phis])
+        orig_shape = rhos_phis.shape
+        if len(orig_shape) > 2:
+            rhos_phis = rhos_phis.reshape(-1, 2)
+
         rhos = rhos_phis[:,0]
         phis = rhos_phis[:,1]
         assert(all(rhos >= 0) and all(rhos <= 1))
@@ -43,6 +47,8 @@ class zernike():
             Z = R*np.sin(phis*self.abs_m)
         else:
             Z = R*np.cos(phis*self.abs_m)
+        if len(orig_shape) > 2:
+            Z = Z.reshape(orig_shape[:-1])
         if scalar:
             Z = Z[0]
         return Z
