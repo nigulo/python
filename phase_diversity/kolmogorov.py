@@ -26,6 +26,9 @@ import utils
 sys.path.append('../utils')
 import plot
 
+
+pool_size = 3 # Thread pool size
+
 def init_amplitude(fried, size, pupsize):
 
     if size % 2 == 0:
@@ -110,23 +113,13 @@ def return_wave(fried, size, wfsize, pupsize, iterations=400):
 Simulate phase-screens obeying the Kolmogorov-Obukhov power law.
 Description can be found in Nagaraju et. al (2012) http://adsabs.harvard.edu/abs/2012ApOpt..51.7953K
 '''
-def kolmogorov(): 
-
-    fried = np.linspace(0.01, 0.1, 2) # Fried parameter (in meters).
-
-    size = 252		# Total size of the phase-screen from which the final realizations are cropped. 
-			# Needs to be kept high enough to include enough power in tip/tilt modes. Currently
-			# set at 4 times the diameter of the wavefront. 
-
-    sampling = 1.0      # Sampling rate of the data on which the Point Spread Functions are used. A sampling of unity 
-                        # denotes critical sampling. 
+def kolmogorov(fried, num_realizations, size, sampling): 
 
     wfsize = size/4.   
     pupsize = wfsize/sampling # Final size of the phase-screens. They correspond to a 1m aperture telescope. 
-    iterations = 400    # Number of realizations per fried parameter. 
 
-    parallelize = Pool(32)
-    return_wave_parallel = partial(return_wave, size=size, wfsize=wfsize, pupsize=pupsize, iterations=iterations)
+    parallelize = Pool(pool_size)
+    return_wave_parallel = partial(return_wave, size=size, wfsize=wfsize, pupsize=pupsize, iterations=num_realizations)
     return_wavefront = np.asarray(parallelize.map(return_wave_parallel, fried))
 
     print('Returned array size: ', return_wavefront.shape)
@@ -148,8 +141,9 @@ def apodize(dat, pupil):
             dat[i,j,:,:] -= (dat[i,j,:,:].sum()/pupil.sum())*pupil
 
 
-def return_psf(wfs):
+def calc_psf(wfs):
  
+    mask = 1.
     psf = np.zeros((wfs.shape[0], 2*wfs.shape[1]-1, 2*wfs.shape[2]-1))
     for i in range(wfs.shape[0]):
         pupil = mask*np.exp(1j*wfs[i,:,:])
@@ -159,26 +153,28 @@ def return_psf(wfs):
  
     return psf
 
-def calc_psf(wavefronts):
-
-    #wavefronts = fits.open(sys.argv[1])[0].data
-
-    parallelize = Pool(96)	 
-    result = parallelize.map(return_psf, wavefronts)
-    psf = np.asarray(result)
-
-    return psf
-
 
 def main():
-    wavefront = kolmogorov()
+    
+    fried = np.linspace(.5, 2., 1) # Fried parameter (in meters).
+    num_realizations = 10    # Number of realizations per fried parameter. 
+    
+    size = 200		# Total size of the phase-screen from which the final realizations are cropped. 
+			# Needs to be kept high enough to include enough power in tip/tilt modes. Currently
+			# set at 4 times the diameter of the wavefront. 
+
+    sampling = 1.      # Sampling rate of the data on which the Point Spread Functions are used. A sampling of unity 
+                        # denotes critical sampling. 
+
+    
+    wavefront = kolmogorov(fried, num_realizations, size, sampling)
     nx = np.shape(wavefront)[2]
     ny = np.shape(wavefront)[3]
     
-    x1 = np.linspace(0., 1., nx)
-    x2 = np.linspace(0., 1., ny)
+    x1 = np.linspace(-1., 1., nx)
+    x2 = np.linspace(-1., 1., ny)
     pupil_coords = np.dstack(np.meshgrid(x1, x2))
-    pupil = utils.aperture_circ(pupil_coords, r=1.0, coef=5.0)
+    pupil = utils.aperture_circ(pupil_coords, r=1.0, coef=15.0)
 
     my_plot = plot.plot_map(nrows=1, ncols=1)
     my_plot.plot(pupil)
@@ -189,11 +185,20 @@ def main():
     #pupil[int(nx/2),:] = 0
     #pupil[:,int(ny/2)] = 0
     apodize(wavefront, pupil)
-    for i in np.arange(0, 2):
-        for j in np.arange(0, 10):
+    
+    
+    
+    for i in np.arange(0, len(fried)):
+        psfs = calc_psf(wavefront[i,:,:,:])
+        for j in np.arange(0, num_realizations):
             my_plot = plot.plot_map(nrows=1, ncols=1)
             my_plot.plot(wavefront[i,j,:,:])
             my_plot.save("kolmogorov" + str(i) + "_" + str(j) + ".png")
+            my_plot.close()
+
+            my_plot = plot.plot_map(nrows=1, ncols=1)
+            my_plot.plot(psfs[j,:,:])
+            my_plot.save("psf" + str(i) + "_" + str(j) + ".png")
             my_plot.close()
     
 if __name__ == "__main__":
