@@ -27,7 +27,7 @@ psf_vals_nx = 64
 psf_vals_ny = 64
 
 
-aperture_func = lambda u: psf.aperture_circ(u, 0.2, 100.0)
+aperture_func = lambda u: utils.aperture_circ(u, 0.2, 100.0)
 
 n_coefs = 50
 n_data = 200

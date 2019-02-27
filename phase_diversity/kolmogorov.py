@@ -21,6 +21,11 @@ from scipy.signal import correlate2d as correlate
 from multiprocessing import Pool
 from functools import partial
 
+import utils
+
+sys.path.append('../utils')
+import plot
+
 def init_amplitude(fried, size, pupsize):
 
     if size % 2 == 0:
@@ -107,7 +112,7 @@ Description can be found in Nagaraju et. al (2012) http://adsabs.harvard.edu/abs
 '''
 def kolmogorov(): 
 
-    fried = np.linspace(0.01, 0.1, 10) # Fried parameter (in meters).
+    fried = np.linspace(0.01, 0.1, 2) # Fried parameter (in meters).
 
     size = 252		# Total size of the phase-screen from which the final realizations are cropped. 
 			# Needs to be kept high enough to include enough power in tip/tilt modes. Currently
@@ -167,8 +172,29 @@ def calc_psf(wavefronts):
 
 def main():
     wavefront = kolmogorov()
+    nx = np.shape(wavefront)[2]
+    ny = np.shape(wavefront)[3]
     
-    def reverse_colourmap(cmap, name = 'my_cmap_r'):
-         return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
-    my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
+    x1 = np.linspace(0., 1., nx)
+    x2 = np.linspace(0., 1., ny)
+    pupil_coords = np.dstack(np.meshgrid(x1, x2))
+    pupil = utils.aperture_circ(pupil_coords, r=1.0, coef=5.0)
+
+    my_plot = plot.plot_map(nrows=1, ncols=1)
+    my_plot.plot(pupil)
+    my_plot.save("pupil.png")
+    my_plot.close()
+
     
+    #pupil[int(nx/2),:] = 0
+    #pupil[:,int(ny/2)] = 0
+    apodize(wavefront, pupil)
+    for i in np.arange(0, 2):
+        for j in np.arange(0, 10):
+            my_plot = plot.plot_map(nrows=1, ncols=1)
+            my_plot.plot(wavefront[i,j,:,:])
+            my_plot.save("kolmogorov" + str(i) + "_" + str(j) + ".png")
+            my_plot.close()
+    
+if __name__ == "__main__":
+    main()

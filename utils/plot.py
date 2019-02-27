@@ -13,7 +13,7 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 
 class plot_map:
 
-    def __init__(self, nrows, ncols, width=4.3, height = 3., extent=[0., 1., 0., 1.]):
+    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., extent=[0., 1., 0., 1.]):
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
         self.fig = fig
@@ -22,11 +22,13 @@ class plot_map:
         self.plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         self.my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
-    def plot(self, ax_index, dat, vmin=None, vmax=None, colorbar = True):
+    def plot(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True):
         if len(ax_index) == 2:
             ax = self.axes[ax_index[0]][ax_index[1]]
-        else:
+        elif len(ax_index) == 1:
             ax = self.axes[ax_index[0]]
+        else:
+            ax = self.axes
         im = ax.imshow(dat[::-1],extent=self.extent,cmap=self.my_cmap,origin='lower', vmin=vmin, vmax=vmax)
 
         ax.set_aspect(aspect=self.plot_aspect)

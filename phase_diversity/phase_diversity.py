@@ -33,7 +33,7 @@ num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:10,0:10]
+image = image[0:200,0:200]
 
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
@@ -163,11 +163,11 @@ for trial in np.arange(0, num_frames):
     image_est_norm = misc.normalize(image_est)
     
 
-    my_plot.plot([trial, 0], image_norm)
-    my_plot.plot([trial, 1], D_norm)
-    my_plot.plot([trial, 2], D_d_norm)
-    my_plot.plot([trial, 3], image_est_norm)
-    my_plot.plot([trial, 4], np.abs(image_est-image))
+    my_plot.plot(image_norm, [trial, 0])
+    my_plot.plot(D_norm, [trial, 1])
+    my_plot.plot(D_d_norm, [trial, 2])
+    my_plot.plot(image_est_norm, [trial, 3])
+    my_plot.plot(np.abs(image_est-image), [trial, 4])
     
     #image_est = fft.ifft2(fimage_est).real
     #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
@@ -182,11 +182,11 @@ image_est_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
-my_plot.plot([trial, 0], image_norm)
-my_plot.plot([trial, 1], D_mean)
-my_plot.plot([trial, 2], D_d_mean)
-my_plot.plot([trial, 3], image_est_mean)
-my_plot.plot([trial, 4], np.abs(image_est_mean-image_norm))
+my_plot.plot(image_norm, [num_frames, 0])
+my_plot.plot(D_mean, [num_frames, 1])
+my_plot.plot(D_d_mean, [num_frames, 2])
+my_plot.plot(image_est_mean, [num_frames, 3])
+my_plot.plot(np.abs(image_est_mean-image_norm), [num_frames, 4])
 
 my_plot.save("estimates.png")
 my_plot.close()

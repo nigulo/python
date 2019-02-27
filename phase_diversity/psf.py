@@ -2,7 +2,6 @@ import numpy as np
 import numpy.fft as fft
 import zernike
 import utils
-import scipy.special as special
 
 class phase_aberration():
     
@@ -78,18 +77,3 @@ class psf():
         return np.array([vals.real, vals.imag])
 
 
-def aperture_circ(us, r=1.0, coef=5.0):
-    scalar = False
-    if len(np.shape(us)) == 1:
-        scalar = True
-        us = np.array([us])
-    if coef > 0.0:
-        ret_val = 0.5+0.5*special.erf(coef*(r-np.sqrt(np.sum(us**2, axis=1))))
-    else:
-        ret_val = np.zeros(np.shape(us)[0])
-        indices = np.where(np.sum(us**2, axis=1) <= r*r)[0]
-        ret_val[indices] = 1.0
-    if scalar:
-        ret_val = ret_val[0]
-    return ret_val
-    
