@@ -19,6 +19,8 @@ import pymc3 as pm
 
 import pyhdust.triangle as triangle
 import psf_basis
+import psf
+import kolmogorov
 import scipy.optimize
 import matplotlib.pyplot as plt
 
@@ -53,25 +55,25 @@ F_D = 1.0
 gamma = 1.0
 
 
-def sample(D, D_d, gamma, psf, plot_file = None):
+def sample(D, D_d, gamma, psf_b, plot_file = None):
 
 
 
-    betas_est = np.zeros(psf.jmax, dtype='complex')    
+    betas_est = np.zeros(psf_b.jmax, dtype='complex')    
 
     s = sampling.Sampling()
     if do_sampling:
         betas_real = [None] * jmax
         betas_imag = [None] * jmax
         with s.get_model():
-            for i in np.arange(0, psf.jmax):
+            for i in np.arange(0, psf_b.jmax):
                 betas_real[i] = pm.Normal('beta_r' + str(i), sd=1.0)
                 betas_imag[i] = pm.Normal('beta_i' + str(i), sd=1.0)
 
-        trace = s.sample(psf.likelihood, betas_real + betas_imag, [D, D_d, gamma], num_samples, num_chains, psf.likelihood_grad)
+        trace = s.sample(psf_b.likelihood, betas_real + betas_imag, [D, D_d, gamma], num_samples, num_chains, psf_b.likelihood_grad)
         samples = []
         var_names = []
-        for i in np.arange(0, psf.jmax):
+        for i in np.arange(0, psf_b.jmax):
             var_name_r = 'beta_r' + str(i)
             var_name_i = 'beta_i' + str(i)
             samples.append(trace[var_name_r])
@@ -82,18 +84,18 @@ def sample(D, D_d, gamma, psf, plot_file = None):
         
         samples = np.asarray(samples).T
         if plot_file is not None:
-            fig, ax = plt.subplots(nrows=psf.jmax*2, ncols=psf.jmax*2)
-            fig.set_size_inches(6*psf.jmax, 6*psf.jmax)
+            fig, ax = plt.subplots(nrows=psf_b.jmax*2, ncols=psf_b.jmax*2)
+            fig.set_size_inches(6*psf_b.jmax, 6*psf_b.jmax)
             triangle.corner(samples[:,:], labels=var_names, fig=fig)
             fig.savefig(plot_file)
 
     else:
         
         def lik_fn(params):
-            return psf.likelihood(params, [D, D_d, gamma])
+            return psf_b.likelihood(params, [D, D_d, gamma])
 
         def grad_fn(params):
-            return psf.likelihood_grad(params, [D, D_d, gamma])
+            return psf_b.likelihood_grad(params, [D, D_d, gamma])
         
         
         # Optional methods:
@@ -114,14 +116,14 @@ def sample(D, D_d, gamma, psf, plot_file = None):
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_MAP_trials):
-            res = scipy.optimize.minimize(lik_fn, np.random.normal(size=psf.jmax*2), method='BFGS', jac=grad_fn, options={'disp': True})
+            res = scipy.optimize.minimize(lik_fn, np.random.normal(size=psf_b.jmax*2), method='BFGS', jac=grad_fn, options={'disp': True})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
                 min_loglik = loglik
                 min_res = res
-        for i in np.arange(0, psf.jmax):
-            betas_est[i] = min_res['x'][i] + 1.j*min_res['x'][psf.jmax + i]
+        for i in np.arange(0, psf_b.jmax):
+            betas_est[i] = min_res['x'][i] + 1.j*min_res['x'][psf_b.jmax + i]
         
     print(betas_est)
     #betas_est = np.random.normal(size=psf.jmax) + np.random.normal(size=psf.jmax)*1.j
@@ -129,8 +131,8 @@ def sample(D, D_d, gamma, psf, plot_file = None):
     return betas_est
 
 
-psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
-psf.create_basis()
+psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+psf_b.create_basis()
 
 my_plot = plot.plot_map(nrows=num_frames + 1, ncols=5)
 
@@ -140,14 +142,20 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
+wavefront = kolmogorov.kolmogorov(fried = np.array([0.1]), num_frames, size=4*nx, sampling=1.0)
+
 for trial in np.arange(0, num_frames):
-    betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
     
-    D, D_d = psf.multiply(fimage, betas)
     
-    betas_est = sample(D, D_d, gamma, psf, "samples" + str(trial) + ".png")
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), lambda u: 0.0)
+    psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+    #betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
     
-    image_est = psf.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
+    D, D_d = psf_b.multiply(fimage, betas)
+    
+    betas_est = sample(D, D_d, gamma, psf_b, "samples" + str(trial) + ".png")
+    
+    image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
 
     D = fft.ifft2(D).real
     D = np.roll(np.roll(D, int(nx/2), axis=0), int(ny/2), axis=1)

@@ -12,19 +12,12 @@ import matplotlib as mpl
 mpl.use('Agg')
 
 import numpy as np
-import scipy.special as special
-import scipy.signal as signal
-import numpy.fft as fft
-import matplotlib.pyplot as plt
-
-from scipy.signal import correlate2d as correlate
 from multiprocessing import Pool
 from functools import partial
 
 import utils
 import psf
 
-sys.path.append('../utils')
 import plot
 
 
@@ -142,24 +135,12 @@ def apodize(dat, pupil):
             dat[i,j,:,:] -= (dat[i,j,:,:].sum()/pupil.sum())*pupil
 
 
-def calc_psf(wfs, mask):
- 
-    psf = np.zeros((wfs.shape[0], 2*wfs.shape[1]-1, 2*wfs.shape[2]-1))
-    for i in range(wfs.shape[0]):
-        pupil = mask*np.exp(1j*wfs[i,:,:])
-        auto = correlate(pupil, pupil.conj(), mode='full')
-        psf[i,:,:] = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(auto))).real
-        psf[i,:,:] /= psf[i,:,:].sum()
- 
-    return psf
-
-
 def main():
     
     fried = np.linspace(.1, 2., 1) # Fried parameter (in meters).
     num_realizations = 10    # Number of realizations per fried parameter. 
     
-    size = 40		# Total size of the phase-screen from which the final realizations are cropped. 
+    size = 200		# Total size of the phase-screen from which the final realizations are cropped. 
 			# Needs to be kept high enough to include enough power in tip/tilt modes. Currently
 			# set at 4 times the diameter of the wavefront. 
 
@@ -167,7 +148,7 @@ def main():
                         # denotes critical sampling. 
 
     
-    aperture_func = lambda u: utils.aperture_circ(u, 0.5, 15.0)
+    aperture_func = lambda u: utils.aperture_circ(u, 0.2, 15.0)
 
     wavefront = kolmogorov(fried, num_realizations, size, sampling)
     nx = np.shape(wavefront)[2]
@@ -192,20 +173,18 @@ def main():
     
     
     for i in np.arange(0, len(fried)):
-        psfs = calc_psf(wavefront[i,:,:,:], pupil)
         for j in np.arange(0, num_realizations):
             my_plot = plot.plot_map(nrows=1, ncols=1)
             my_plot.plot(wavefront[i,j,:,:])
             my_plot.save("kolmogorov" + str(i) + "_" + str(j) + ".png")
             my_plot.close()
 
-            my_plot = plot.plot_map(nrows=1, ncols=2)
-            my_plot.plot(psfs[j,:,:], [0])
             
             ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), lambda u: 0.0)
             psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
 
-            my_plot.plot(psf_vals, [1])
+            my_plot = plot.plot_map(nrows=1, ncols=1)
+            my_plot.plot(psf_vals)
 
             my_plot.save("psf" + str(i) + "_" + str(j) + ".png")
             my_plot.close()

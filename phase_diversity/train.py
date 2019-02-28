@@ -245,7 +245,10 @@ def gen_data(n_data, normalize=True, log=False):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
         
         if otf_or_psf:
-            psf_vals[i] = psf.psf(ctf, nx, ny).get_otf_vals()[:,zoomin_start:zoomin_end,zoomin_start:zoomin_end]
+            otf_vals = psf.psf(ctf, nx, ny).get_otf_vals()
+            otf_vals = np.array([otf_vals.real, otf_vals.imag])
+
+            psf_vals[i] = otf_vals[:,zoomin_start:zoomin_end,zoomin_start:zoomin_end]
         else:
             psf_vals[i] = psf.psf(ctf, nx, ny).get_incoh_vals()[zoomin_start:zoomin_end,zoomin_start:zoomin_end]
             

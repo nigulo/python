@@ -252,13 +252,27 @@ class psf_basis:
         else:
             return ret_val
         
+    def convolve(self, dat, betas, defocus = True):
+        dat_F = fft.fft2(dat)
+        ret_val = []
+        for m_F in self.multiply(dat_F, betas, defocus):
+            m = fft.fftshift(fft.ifft2(m_F).real)
+            ret_val.append(m) 
+        if defocus:
+            return (ret_val[0], ret_val[1])
+        else:
+            return ret_val[0]
+
     def deconvolve(self, D, D_d, betas, gamma, do_fft = True):
         P, P_d = self.get_FP(betas)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         
-        F_image = D * P.conjugate() + gamma * D_d * P_d.conjugate()
-        F_image /= P*P.conjugate() + gamma * P_d * P_d.conjugate()
+        P_conj = P.conjugate()
+        P_d_conj = P_d.conjugate()
+        
+        F_image = D * P_conj + gamma * D_d * P_d_conj
+        F_image /= P*P_conj + gamma * P_d * P_d_conj
         
         if not do_fft:
             return F_image
@@ -266,19 +280,6 @@ class psf_basis:
         image = fft.ifft2(F_image).real
         #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         return image
-            
-    
-    def convolve(self, dat, betas, defocus = True):
-        dat_F = fft.fft2(dat)
-        ret_val = []
-        for m_F in self.multiply(dat_F, betas, defocus):
-            m = fft.ifft2(m_F).real
-            m = np.roll(np.roll(ret_val, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-            ret_val.append(m) 
-        if defocus:
-            return (ret_val[0], ret_val[1])
-        else:
-            return ret_val[0]
 
     def get_XY(self, j, k, defocus = False):
         if defocus:

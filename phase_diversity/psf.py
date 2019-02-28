@@ -1,7 +1,9 @@
 import numpy as np
 import numpy.fft as fft
+from scipy.signal import correlate2d as correlate
 import zernike
 import utils
+import sys
 
 class phase_aberration():
     
@@ -41,21 +43,95 @@ class wavefront():
 
 class coh_trans_func():
 
-    def __init__(self, pupil_func, phase_aberr, phase_div):
+    def __init__(self, pupil_func, phase_aberr, phase_div = None):
         self.pupil_func = pupil_func
         self.phase_aberr = phase_aberr
         self.phase_div = phase_div
        
-    def get_value(self, xs):
+    def __call__(self, xs, defocus = False):
         #if self.pupil_func(u) == 0:
         #    return 0.0
         #else:
         #    return np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
         #a = np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
         #b = np.cos(self.phase_aberr.get_value(u) + self.phase_div(u)) + 1.j * np.sin(self.phase_aberr.get_value(u) + self.phase_div(u))
-        return self.pupil_func(xs)*np.exp(1.j * (self.phase_aberr(xs) + self.phase_div(xs)))
+        phase = self.phase_aberr(xs)
+        if defocus and self.phase_div is not None:
+            phase += self.phase_div(xs)
+        return self.pupil_func(xs)*np.exp(1.j * phase)
 
 class psf():
+    def __init__(self, coh_trans_func, nx, ny):
+        self.nx = nx
+        self.ny = ny
+        #coh_vals = np.zeros((nx, ny))
+        xs = np.linspace(-1.0, 1.0, nx)/np.sqrt(2)
+        ys = np.linspace(-1.0, 1.0, ny)/np.sqrt(2)
+        assert(len(xs) == nx)
+        assert(len(ys) == ny)
+        self.coords = np.dstack(np.meshgrid(xs, ys))
+        self.incoh_vals = dict()
+        
+    def get_incoh_vals(self, defocus = True):
+        coh_vals = coh_trans_func(self.coords, defocus)
+        
+        auto = correlate(coh_vals, coh_vals.conj(), mode='full')
+        vals = fft.fftshift(fft.ifft2(fft.ifftshift(auto))).real
+        vals /= vals.sum()
+        self.incoh_vals[defocus] = vals
+        return vals
+
+    def get_otf_vals(self, defocus = True):
+        if (self.incoh_vals.has_key(defocus)):
+            incoh_vals = self.incoh_vals[defocus]
+        else:
+            incoh_vals = self.get_incoh_vals(defocus)
+            self.incoh_vals[defocus] = incoh_vals
+        vals = fft.fft2(incoh_vals)
+        vals = fft.fftshift(vals)
+        self.otf_vals[defocus] = vals
+        return vals
+
+    def multiply(self, dat_F, defocus = True):
+        ret_val = dat_F * self.get_otf_vals(defocus=False)
+        if not defocus:
+            return ret_val
+        else:
+            ret_val_d = dat_F * self.get_otf_vals(defocus = True)
+            return (ret_val, ret_val_d)
+            
+    def convolve(self, dat, betas, defocus = True):
+        dat_F = fft.fft2(dat)
+        ret_val = []
+        for m_F in self.multiply(dat_F, defocus):
+            m = fft.fftshift(fft.ifft2(m_F).real)
+            ret_val.append(m) 
+        if defocus:
+            return (ret_val[0], ret_val[1])
+        else:
+            return ret_val[0]
+
+    def deconvolve(self, D, D_d, gamma, do_fft = True):
+        #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        
+        S = self.otf_vals[False]
+        S_conj = S.conjugate()
+        S_d = self.otf_vals[True]
+        S_d_conj = S_d.conjugate()
+        
+        F_image = D * S_conj + gamma * D_d * S_d_conj
+        F_image /= S*S_conj + gamma * S_d * S_d_conj
+        
+        if not do_fft:
+            return F_image
+
+        image = fft.ifft2(F_image).real
+        #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        return image
+
+
+class psf_():
     def __init__(self, coh_trans_func, nx, ny, repeat_factor = 2):
         assert((repeat_factor % 2) == 0)
         self.nx = nx
@@ -71,25 +147,16 @@ class psf():
         #coh_vals = coh_trans_func.get_value(us)
         #coh_vals = np.reshape(coh_vals, (nx, ny))
 
-        coh_vals = coh_trans_func.get_value(coords)
-        coh_vals = np.tile(coh_vals, (repeat_factor + 1, repeat_factor + 1))
-        print(np.shape(coh_vals))
-        middle_x = int(nx*(repeat_factor+1)/2)
-        middle_y = int(ny*(repeat_factor+1)/2)
-        delta_x = int(nx*repeat_factor/2)
-        delta_y = int(ny*repeat_factor/2)
-        coh_vals = coh_vals[middle_x-delta_x:middle_x+delta_x,middle_y-delta_y:middle_y+delta_y]
-        print(np.shape(coh_vals))
-        for i in np.arange(0, np.shape(coh_vals)[0]):
-            print(coh_vals[i,:])
+        coh_vals = coh_trans_func(coords)
         
-        
-        vals = fft.fft2(coh_vals)
-        vals = vals.real**2 + vals.imag**2
+        vals = fft.ifft2(coh_vals)
+        #vals = fft.fftshift(vals)
+        #vals = vals.real**2 + vals.imag**2
+        vals = (vals*vals.conjugate()).real
         #vals = fft.ifft2(vals)
         #vals = fft.ifft2(vals).real
         vals = np.roll(np.roll(vals, int(nx/2), axis=0), int(ny/2), axis=1)
-        vals /= vals.sum()
+        #vals /= vals.sum()
         self.incoh_vals = vals
         #assert(np.all(self.incoh_vals == np.conjugate(vals)*vals))
         
@@ -98,7 +165,6 @@ class psf():
 
     def get_otf_vals(self):
         vals = fft.fft2(self.incoh_vals)
-        vals = np.roll(np.roll(vals, int(self.nx/2), axis=0), int(self.ny/2), axis=1)
+        #vals = np.roll(np.roll(vals, int(self.nx/2), axis=0), int(self.ny/2), axis=1)
+        vals = fft.fftshift(vals)
         return np.array([vals.real, vals.imag])
-
-
