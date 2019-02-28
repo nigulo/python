@@ -78,6 +78,7 @@ class psf():
         coh_vals = self.coh_trans_func(self.coords, defocus)
         
         auto = correlate(coh_vals, coh_vals.conjugate(), mode='full')
+        #vals = fft.ifft2(fft.ifftshift(auto)).real
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(auto))).real
         vals /= vals.sum()
         self.incoh_vals[defocus] = vals
@@ -86,21 +87,20 @@ class psf():
     def calc_otf(self, defocus = True):
         if defocus not in self.incoh_vals:
             self.calc(defocus)
-        incoh_vals = self.incoh_vals[defocus]
-        vals = fft.fft2(incoh_vals)
-        vals = fft.fftshift(vals)
+        vals = fft.fft2(self.incoh_vals[defocus])
+        #vals = fft.fftshift(vals)
         self.otf_vals[defocus] = vals
         return vals
 
     def multiply(self, dat_F, defocus = True):
-        if True not in self.otf_vals:
-            self.calc_otf(True)
         if False not in self.otf_vals:
             self.calc_otf(False)
         ret_val = dat_F * self.otf_vals[False]
         if not defocus:
             return ret_val
         else:
+            if True not in self.otf_vals:
+                self.calc_otf(True)
             ret_val_d = dat_F * self.otf_vals[True]
             return (ret_val, ret_val_d)
             

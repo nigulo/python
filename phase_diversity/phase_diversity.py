@@ -50,9 +50,7 @@ ny = np.shape(image)[1]
 assert(nx == ny)
 
 fimage = fft.fft2(image)
-#vals = fft.ifft2(vals)
-#vals = fft.ifft2(vals).real
-#fimage = np.roll(np.roll(fimage, int(nx/2), axis=0), int(ny/2), axis=1)
+#fimage = fft.fftshift(fimage)
     
 jmax = 5
 arcsec_per_px = 0.055
@@ -138,7 +136,8 @@ def sample(D, D_d, gamma, psf_b, plot_file = None):
     return betas_est
 
 
-aperture_func = lambda u: utils.aperture_circ(u, 1.0, 15.0)
+#aperture_func = lambda u: utils.aperture_circ(u, 1.0, 15.0)
+aperture_func = lambda u: 1.0
 
 psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
 psf_b.create_basis()
@@ -151,14 +150,16 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([10.]), num_realizations=num_frames, size=4*nx_orig, sampling=1.0)
+wavefront = kolmogorov.kolmogorov(fried = np.array([1.]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 for trial in np.arange(0, num_frames):
     
     
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), lambda u: 0.0)
+    #pa = psf.phase_aberration([(trial+1, 10.0)])
+    pa = psf.phase_aberration([])
+    ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)#np.sum(u**2))
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), lambda u: 0.0)
     psf_ = psf.psf(ctf, nx_orig, ny_orig)
-    #betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
     
     D, D_d = psf_.multiply(fimage)
     
