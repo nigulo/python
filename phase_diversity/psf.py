@@ -33,7 +33,7 @@ class wavefront():
     
     def __init__(self, data):
         self.data = data
-            
+        
     def __call__(self, xs):
         # Ignore the coordinates, just return data
         # We assume that the wavefront array is properly 
@@ -71,33 +71,37 @@ class psf():
         assert(len(ys) == ny)
         self.coords = np.dstack(np.meshgrid(xs, ys))
         self.incoh_vals = dict()
+        self.otf_vals = dict()
+        self.coh_trans_func = coh_trans_func
         
-    def get_incoh_vals(self, defocus = True):
-        coh_vals = coh_trans_func(self.coords, defocus)
+    def calc(self, defocus = True):
+        coh_vals = self.coh_trans_func(self.coords, defocus)
         
-        auto = correlate(coh_vals, coh_vals.conj(), mode='full')
+        auto = correlate(coh_vals, coh_vals.conjugate(), mode='full')
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(auto))).real
         vals /= vals.sum()
         self.incoh_vals[defocus] = vals
         return vals
 
-    def get_otf_vals(self, defocus = True):
-        if (self.incoh_vals.has_key(defocus)):
-            incoh_vals = self.incoh_vals[defocus]
-        else:
-            incoh_vals = self.get_incoh_vals(defocus)
-            self.incoh_vals[defocus] = incoh_vals
+    def calc_otf(self, defocus = True):
+        if defocus not in self.incoh_vals:
+            self.calc(defocus)
+        incoh_vals = self.incoh_vals[defocus]
         vals = fft.fft2(incoh_vals)
         vals = fft.fftshift(vals)
         self.otf_vals[defocus] = vals
         return vals
 
     def multiply(self, dat_F, defocus = True):
-        ret_val = dat_F * self.get_otf_vals(defocus=False)
+        if True not in self.otf_vals:
+            self.calc_otf(True)
+        if False not in self.otf_vals:
+            self.calc_otf(False)
+        ret_val = dat_F * self.otf_vals[False]
         if not defocus:
             return ret_val
         else:
-            ret_val_d = dat_F * self.get_otf_vals(defocus = True)
+            ret_val_d = dat_F * self.otf_vals[True]
             return (ret_val, ret_val_d)
             
     def convolve(self, dat, betas, defocus = True):

@@ -5,18 +5,20 @@ os.environ["MKL_NUM_THREADS"] = "3" # export MKL_NUM_THREADS=6
 os.environ["VECLIB_MAXIMUM_THREADS"] = "3" # export VECLIB_MAXIMUM_THREADS=4
 os.environ["NUMEXPR_NUM_THREADS"] = "3" # export NUMEXPR_NUM_THREADS=6
 
-import sys
-sys.path.append('../utils')
 
 import numpy as np
+import scipy.misc
 import scipy.special as special
 import scipy.signal as signal
 import numpy.fft as fft
-import sampling
-import misc
+import utils
+import sys
+sys.path.append('../utils')
 import plot
-import pymc3 as pm
+import misc
+import sampling
 
+import pymc3 as pm
 import pyhdust.triangle as triangle
 import psf_basis
 import psf
@@ -35,8 +37,13 @@ num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:200,0:200]
+image = image[0:20,0:20]
 
+nx_orig = np.shape(image)[0]
+ny_orig = np.shape(image)[1]
+
+
+image = scipy.misc.imresize(image, (ny_orig*2-1, ny_orig*2-1))
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
 
@@ -131,6 +138,8 @@ def sample(D, D_d, gamma, psf_b, plot_file = None):
     return betas_est
 
 
+aperture_func = lambda u: utils.aperture_circ(u, 1.0, 15.0)
+
 psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
 psf_b.create_basis()
 
@@ -142,26 +151,23 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([0.1]), num_frames, size=4*nx, sampling=1.0)
+wavefront = kolmogorov.kolmogorov(fried = np.array([10.]), num_realizations=num_frames, size=4*nx_orig, sampling=1.0)
 
 for trial in np.arange(0, num_frames):
     
     
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), lambda u: 0.0)
-    psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), lambda u: 0.0)
+    psf_ = psf.psf(ctf, nx_orig, ny_orig)
     #betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
     
-    D, D_d = psf_b.multiply(fimage, betas)
+    D, D_d = psf_.multiply(fimage)
     
     betas_est = sample(D, D_d, gamma, psf_b, "samples" + str(trial) + ".png")
     
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
 
-    D = fft.ifft2(D).real
-    D = np.roll(np.roll(D, int(nx/2), axis=0), int(ny/2), axis=1)
-
-    D_d = fft.ifft2(D_d).real
-    D_d = np.roll(np.roll(D_d, int(nx/2), axis=0), int(ny/2), axis=1)
+    D = fft.fftshift(fft.ifft2(D).real)
+    D_d = fft.fftshift(fft.ifft2(D_d).real)
 
     #image_min = np.min(image)
     #image_max = np.max(image)
