@@ -1,5 +1,7 @@
 import numpy as np
 import scipy.special as special
+#import scipy.misc
+import scipy.ndimage
 
 def cart_to_polar(us):
     scalar = False
@@ -50,4 +52,8 @@ def aperture_circ(us, r=1.0, coef=5.0):
         ret_val = ret_val[0]
     return ret_val
     
+def resize(image):
+    #return scipy.misc.imresize(image, (image.shape[0]*2-1, image.shape[1]*2-1))
+    zoom_perc = (float(image.shape[0])*2.-1.)/image.shape[0]
+    return scipy.ndimage.zoom(image, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
 

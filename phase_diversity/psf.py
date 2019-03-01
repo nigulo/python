@@ -3,7 +3,7 @@ import numpy.fft as fft
 from scipy.signal import correlate2d as correlate
 import zernike
 import utils
-import sys
+import scipy.misc
 
 class phase_aberration():
     
@@ -57,6 +57,7 @@ class coh_trans_func():
         #b = np.cos(self.phase_aberr.get_value(u) + self.phase_div(u)) + 1.j * np.sin(self.phase_aberr.get_value(u) + self.phase_div(u))
         phase = self.phase_aberr(xs)
         if defocus and self.phase_div is not None:
+            print(xs.shape, np.shape(self.phase_div(xs)))
             phase += self.phase_div(xs)
         return self.pupil_func(xs)*np.exp(1.j * phase)
 
@@ -74,16 +75,18 @@ class psf():
         self.otf_vals = dict()
         self.coh_trans_func = coh_trans_func
         
-    def calc(self, defocus = True):
+    def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(self.coords, defocus)
         
         auto = correlate(coh_vals, coh_vals.conjugate(), mode='full')
         #vals = fft.ifft2(fft.ifftshift(auto)).real
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(auto))).real
-        vals /= vals.sum()
+        if normalize:
+            vals /= vals.sum()
+        #vals = scipy.misc.imresize(vals, (vals.shape[0]+1, vals.shape[1]+1))
         self.incoh_vals[defocus] = vals
         return vals
-
+    
     def calc_otf(self, defocus = True):
         if defocus not in self.incoh_vals:
             self.calc(defocus)
@@ -104,11 +107,11 @@ class psf():
             ret_val_d = dat_F * self.otf_vals[True]
             return (ret_val, ret_val_d)
             
-    def convolve(self, dat, betas, defocus = True):
+    def convolve(self, dat, defocus = True):
         dat_F = fft.fft2(dat)
         ret_val = []
         for m_F in self.multiply(dat_F, defocus):
-            m = fft.fftshift(fft.ifft2(m_F).real)
+            m = fft.ifftshift(fft.ifft2(m_F).real)
             ret_val.append(m) 
         if defocus:
             return (ret_val[0], ret_val[1])

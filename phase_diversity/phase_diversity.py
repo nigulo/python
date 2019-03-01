@@ -42,8 +42,8 @@ image = image[0:20,0:20]
 nx_orig = np.shape(image)[0]
 ny_orig = np.shape(image)[1]
 
+image = utils.resize(image)
 
-image = scipy.misc.imresize(image, (ny_orig*2-1, ny_orig*2-1))
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
 
@@ -136,8 +136,7 @@ def sample(D, D_d, gamma, psf_b, plot_file = None):
     return betas_est
 
 
-#aperture_func = lambda u: utils.aperture_circ(u, 1.0, 15.0)
-aperture_func = lambda u: 1.0
+aperture_func = lambda u: utils.aperture_circ(u, 1.0, 15.0)
 
 psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
 psf_b.create_basis()
@@ -165,7 +164,8 @@ for trial in np.arange(0, num_frames):
     
     betas_est = sample(D, D_d, gamma, psf_b, "samples" + str(trial) + ".png")
     
-    image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
+    #image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
+    image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
 
     D = fft.fftshift(fft.ifft2(D).real)
     D_d = fft.fftshift(fft.ifft2(D_d).real)
@@ -178,10 +178,16 @@ for trial in np.arange(0, num_frames):
     image_est_norm = misc.normalize(image_est)
     
 
-    my_plot.plot(image_norm, [trial, 0])
-    my_plot.plot(D_norm, [trial, 1])
-    my_plot.plot(D_d_norm, [trial, 2])
-    my_plot.plot(image_est_norm, [trial, 3])
+    #my_plot.plot(image_norm, [trial, 0])
+    #my_plot.plot(D_norm, [trial, 1])
+    #my_plot.plot(D_d_norm, [trial, 2])
+    #my_plot.plot(image_est_norm, [trial, 3])
+    #my_plot.plot(np.abs(image_est_norm-image_norm), [trial, 4])
+
+    my_plot.plot(image, [trial, 0])
+    my_plot.plot(D, [trial, 1])
+    my_plot.plot(D_d, [trial, 2])
+    my_plot.plot(image_est, [trial, 3])
     my_plot.plot(np.abs(image_est-image), [trial, 4])
     
     #image_est = fft.ifft2(fimage_est).real
