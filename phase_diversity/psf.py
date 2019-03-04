@@ -3,29 +3,47 @@ import numpy.fft as fft
 from scipy.signal import correlate2d as correlate
 import zernike
 import utils
-import scipy.misc
 
 class phase_aberration():
     
-    def __init__(self, coefs):
-        self.terms = []
-        for index, coef in coefs:
-            n, m = zernike.get_nm(index)
+    def __init__(self, alphas):
+        if len(np.shape(alphas)) == 0:
+            self.create_pols(alphas)
+        else:
+            self.create_pols(len(alphas))
+            self.set_alphas(alphas)
+    
+    def create_pols(self, num):
+        self.pols = []
+        for i in np.arange(1, num + 1):
+            n, m = zernike.get_nm(i)
             z = zernike.zernike(n, m)
-            self.terms.append((coef, z))
-            
-    def __call__(self, xs):
-        scalar = False
-        if len(np.shape(xs)) == 1:
-            scalar = True
-            xs = np.array([xs])
-        vals = np.zeros(np.shape(xs)[:-1])
+            self.pols.append(z)
+
+    def calc_terms(self, xs):
+        self.terms = np.zeros(np.concatenate(([len(self.pols)], np.shape(xs)[:-1])))
+        i = 0
         rhos_phis = utils.cart_to_polar(xs)
-        for coef, z in self.terms:
-            #TODO vectorize zernike
-            vals += z.get_value(rhos_phis) * coef
-        if scalar:
-            vals = vals[0]
+        for z in self.pols:
+            self.terms[i] = z.get_value(rhos_phis)
+            i += 1
+
+    def set_alphas(self, alphas):
+        if len(self.pols) != len(alphas):
+            self.create_pols(len(alphas))
+        self.alphas = np.array(alphas)
+        
+            
+    def __call__(self):
+        vals = np.zeros(np.shape(self.terms)[1:])
+        for i in np.arange(0, len(self.terms)):
+            vals += self.terms[i] * self.alphas[i]
+        return vals
+    
+    def get_pol_values(self, xs):
+        vals = np.zeros(np.concatenate((np.array([len(self.terms)]), np.shape(self.terms[0]))))
+        for i in np.arange(0, len(self.terms)):
+            vals[i] = self.terms[i]
         return vals
 
 
@@ -41,25 +59,27 @@ class wavefront():
         return self.data
 
 
+'''
+Coherent transfer function, also called as generalized pupil function
+'''
 class coh_trans_func():
 
-    def __init__(self, pupil_func, phase_aberr, phase_div = None):
+    def __init__(self, pupil_func, phase_aberr, defocus_func = None):
         self.pupil_func = pupil_func
         self.phase_aberr = phase_aberr
-        self.phase_div = phase_div
-       
-    def __call__(self, xs, defocus = False):
-        #if self.pupil_func(u) == 0:
-        #    return 0.0
-        #else:
-        #    return np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
-        #a = np.exp(1.j * (self.phase_aberr.get_value(u) + self.phase_div(u)))
-        #b = np.cos(self.phase_aberr.get_value(u) + self.phase_div(u)) + 1.j * np.sin(self.phase_aberr.get_value(u) + self.phase_div(u))
-        phase = self.phase_aberr(xs)
-        if defocus and self.phase_div is not None:
-            print(xs.shape, np.shape(self.phase_div(xs)))
-            phase += self.phase_div(xs)
-        return self.pupil_func(xs)*np.exp(1.j * phase)
+        self.defocus_func = defocus_func
+        
+    def calc(self, xs):
+        self.phase_aberr.calc_terms(xs)
+        self.pupil = self.pupil_func(xs)
+        self.defocus = self.defocus_func(xs)
+            
+    def __call__(self, defocus = False):
+        phase = self.phase_aberr()
+        if defocus:
+            phase += self.defocus
+        return self.pupil*np.exp(1.j * phase)
+
 
 class psf():
     def __init__(self, coh_trans_func, nx, ny):
@@ -74,9 +94,10 @@ class psf():
         self.incoh_vals = dict()
         self.otf_vals = dict()
         self.coh_trans_func = coh_trans_func
+        self.coh_trans_func.calc(self.coords)
         
     def calc(self, defocus = True, normalize = True):
-        coh_vals = self.coh_trans_func(self.coords, defocus)
+        coh_vals = self.coh_trans_func(defocus)
         
         auto = correlate(coh_vals, coh_vals.conjugate(), mode='full')
         #vals = fft.ifft2(fft.ifftshift(auto)).real
@@ -138,6 +159,86 @@ class psf():
         return image
 
 
+    '''
+        Actually this is negative log likelihood
+    '''
+    def likelihood(self, theta, data):
+        D = data[0]
+        D_d = data[1]
+        gamma = data[2] # Not used
+        alphas = theta
+        
+        pa = self.coh_trans_func.phase_aberr
+        pa.set_alphas(alphas)
+        
+        self.calc_otf(defocus = False)
+        self.calc_otf(defocus = True)
+        
+        S = self.otf_vals[False]
+        S_d = self.otf_vals[True]
+        nzi = np.nonzero(np.abs(S) + np.abs(S_d))
+        
+        num = D[nzi]*S[nzi].conjugate() + D_d[nzi]*S_d[nzi].conjugate()
+        num *= num.conjugate()
+        den = S[nzi]*S[nzi].conjugate()+ S_d[nzi]*S_d[nzi].conjugate()
+
+        lik = -np.sum((num/den).real) + np.sum((D*D.conjugate() + D_d*D_d.conjugate()).real)
+        
+
+        return lik
+        
+
+    def likelihood_grad(self, theta, data):
+        #regularizer_eps = 1e-10
+
+        D = data[0]
+        D_d = data[1]
+        gamma = data[2] # Not used
+        alphas = theta
+        
+        pa = self.coh_trans_func.phase_aberr
+        pa.set_alphas(alphas)
+        self.calc_otf(defocus = False)
+        self.calc_otf(defocus = True)
+        
+        S = self.otf_vals[False]
+        S_d = self.otf_vals[True]
+        
+        nzi = np.where(np.abs(S)+np.abs(S_d) != 0.)
+        S_nzi = S[nzi]
+        S_d_nzi = S[nzi]
+        S_nzi_conj = S_nzi.conjugate()
+        S_d_nzi_conj = S_d_nzi.conjugate()
+        D_nzi = D[nzi]
+        D_d_nzi = D_d[nzi]
+        
+        Z = np.zeros_like(S)
+        Z_d = np.zeros_like(S)
+
+        #S_conj = S.conjugate()
+        #S_d_conj = S_d.conjugate()
+        SD = D_nzi*S_nzi_conj + D_d_nzi*S_d_nzi_conj
+        SD2 = SD*SD.conjugate()
+        den = 1./(S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)**2
+        
+        SDS = (S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)*SD
+        
+        Z[nzi] = (SDS*D_nzi.conjugate()-SD2*S_nzi_conj)*den
+        Z_d[nzi] = (SDS*D_d_nzi.conjugate()-SD2*S_d_nzi_conj)*den
+        
+        H = self.coh_trans_func(defocus = False)
+        H_d = self.coh_trans_func(defocus = True)
+
+        Z_conv_H = fft.ifft2(fft.fft2(Z)*fft.fft2(H.conjugate()))
+        Z_conv_H_d = fft.ifft2(fft.fft2(Z_d)*fft.fft2(H_d.conjugate()))
+        
+        zs = pa.get_z_values(self.coords) 
+        grads = 4./(self.nx*self.ny)*np.sum(zs*(Z_conv_H + Z_conv_H_d).imag)
+
+        return grads
+
+
+'''
 class psf_():
     def __init__(self, coh_trans_func, nx, ny, repeat_factor = 2):
         assert((repeat_factor % 2) == 0)
@@ -175,3 +276,4 @@ class psf_():
         #vals = np.roll(np.roll(vals, int(self.nx/2), axis=0), int(self.ny/2), axis=1)
         vals = fft.fftshift(vals)
         return np.array([vals.real, vals.imag])
+'''

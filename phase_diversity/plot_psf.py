@@ -65,7 +65,7 @@ for index in np.arange(0, num_tests):
     if index == 0:
         pa = psf.phase_aberration([])
     else:
-        pa = psf.phase_aberration([(index, 10.0)])
+        pa = psf.phase_aberration([0.]*(index-1) + [10.])#[(index, 10.0)])
     vals = np.zeros((nx, ny))
     for x in np.arange(0, nx):
         for y in np.arange(0, ny):
@@ -97,7 +97,7 @@ for index in np.arange(0, num_tests):
     fig3, (ax31, ax32) = plt.subplots(nrows=2, ncols=1)
     fig3.set_size_inches(4, 6)
 
-    psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+    psf_vals = psf.psf(ctf, nx, ny).calc()
     ax31.hist(psf_vals.flatten(), bins=100)
     print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
     psf_vals = utils.trunc(psf_vals, 1e-3)

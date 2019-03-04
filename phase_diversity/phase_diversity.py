@@ -30,7 +30,7 @@ do_sampling = False
 num_samples = 500
 num_chains = 3
 
-num_MAP_trials = 5
+num_MAP_trials = 10
 
 
 num_frames = 10
@@ -149,23 +149,23 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([1.]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 for trial in np.arange(0, num_frames):
     
     
     #pa = psf.phase_aberration([(trial+1, 10.0)])
     pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)#np.sum(u**2))
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), lambda u: 0.0)
+    ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
     psf_ = psf.psf(ctf, nx_orig, ny_orig)
     
     D, D_d = psf_.multiply(fimage)
     
     betas_est = sample(D, D_d, gamma, psf_b, "samples" + str(trial) + ".png")
     
-    #image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
-    image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
+    image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
+    #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
 
     D = fft.fftshift(fft.ifft2(D).real)
     D_d = fft.fftshift(fft.ifft2(D_d).real)

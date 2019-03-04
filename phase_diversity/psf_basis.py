@@ -324,6 +324,9 @@ class psf_basis:
             return ret_val
 
 
+    '''
+        Actually this is negative log likelihood
+    '''
     def likelihood(self, theta, data):
         regularizer_eps = 1e-10
 
