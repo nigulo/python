@@ -3,6 +3,7 @@ import numpy.fft as fft
 from scipy.signal import correlate2d as correlate
 import zernike
 import utils
+import copy
 
 class phase_aberration():
     
@@ -40,7 +41,7 @@ class phase_aberration():
             vals += self.terms[i] * self.alphas[i]
         return vals
     
-    def get_pol_values(self, xs):
+    def get_pol_values(self):
         vals = np.zeros(np.concatenate((np.array([len(self.terms)]), np.shape(self.terms[0]))))
         for i in np.arange(0, len(self.terms)):
             vals[i] = self.terms[i]
@@ -96,6 +97,15 @@ class psf():
         self.coh_trans_func = coh_trans_func
         self.coh_trans_func.calc(self.coords)
         
+        # Repeat the same for bigger grid
+        xs1 = np.linspace(-1.0, 1.0, nx*2-1)/np.sqrt(2)
+        ys1 = np.linspace(-1.0, 1.0, ny*2-1)/np.sqrt(2)
+        coords1 = np.dstack(np.meshgrid(xs1, ys1))
+
+        self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
+        self.coh_trans_func1.calc(coords1)
+        
+        
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
@@ -108,8 +118,8 @@ class psf():
         self.incoh_vals[defocus] = vals
         return vals
     
-    def calc_otf(self, defocus = True):
-        if defocus not in self.incoh_vals:
+    def calc_otf(self, defocus = True, recalc_psf=True):
+        if recalc_psf:
             self.calc(defocus)
         vals = fft.fft2(self.incoh_vals[defocus])
         #vals = fft.fftshift(vals)
@@ -226,14 +236,19 @@ class psf():
         Z[nzi] = (SDS*D_nzi.conjugate()-SD2*S_nzi_conj)*den
         Z_d[nzi] = (SDS*D_d_nzi.conjugate()-SD2*S_d_nzi_conj)*den
         
-        H = self.coh_trans_func(defocus = False)
-        H_d = self.coh_trans_func(defocus = True)
+        self.coh_trans_func1.phase_aberr.set_alphas(alphas)
+        H = self.coh_trans_func1(defocus = False)
+        H_d = self.coh_trans_func1(defocus = True)
 
         Z_conv_H = fft.ifft2(fft.fft2(Z)*fft.fft2(H.conjugate()))
         Z_conv_H_d = fft.ifft2(fft.fft2(Z_d)*fft.fft2(H_d.conjugate()))
         
-        zs = pa.get_z_values(self.coords) 
-        grads = 4./(self.nx*self.ny)*np.sum(zs*(Z_conv_H + Z_conv_H_d).imag)
+        zs = self.coh_trans_func1.phase_aberr.get_pol_values()
+        print("zs", np.shape(zs))
+        grads = np.zeros_like(alphas)
+        coef = 4./(self.nx*self.ny)
+        for i in np.arange(0, len(alphas)):
+            grads[i] = coef*np.sum(zs[i]*(Z_conv_H + Z_conv_H_d).imag)
 
         return grads
 
