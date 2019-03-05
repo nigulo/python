@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.fft as fft
-from scipy.signal import correlate2d as correlate
+import scipy.signal as signal
 import zernike
 import utils
 import copy
@@ -109,9 +109,9 @@ class psf():
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
-        auto = correlate(coh_vals, coh_vals.conjugate(), mode='full')
+        corr = signal.correlate2d(coh_vals, coh_vals.conjugate(), mode='full')
         #vals = fft.ifft2(fft.ifftshift(auto)).real
-        vals = fft.fftshift(fft.ifft2(fft.ifftshift(auto))).real
+        vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
         if normalize:
             vals /= vals.sum()
         #vals = scipy.misc.imresize(vals, (vals.shape[0]+1, vals.shape[1]+1))
@@ -241,20 +241,53 @@ class psf():
         H = self.coh_trans_func1(defocus = False)
         H_d = self.coh_trans_func1(defocus = True)
 
-        print("Z, H", np.shape(Z[nzi]), np.shape(SD), np.shape(den))
+        H1 = self.coh_trans_func(defocus = False)
+        H1_d = self.coh_trans_func(defocus = True)
+        zs = self.coh_trans_func1.phase_aberr.get_pol_values()
+        zs1 = self.coh_trans_func.phase_aberr.get_pol_values()
+        print(zs1)
+
+
+        grads1 = np.zeros_like(alphas)
+        for i in np.arange(0, len(alphas)):
+            S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1, H1.conjugate()) - signal.convolve(H1, zs1[i]*H1.conjugate()))
+            S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
+            a = Z*S_primes + Z_d*S_d_primes
+            grads1[i] = np.sum(a) + np.sum(a.conjugate())
+
         
+        Z_conv_Ha = np.zeros_like(S)
+        Z_conv_H_da = np.zeros_like(S)
+        for i1 in np.arange(0, self.nx):
+            for j1 in np.arange(0, self.ny):
+                for i2 in np.arange(0, self.nx):
+                    if i1 - i2 >= 0:
+                        for j2 in np.arange(0, self.ny):
+                            if j1 - j2 >= 0:
+                                Z_conv_Ha[i1, j1] += Z[i2, j2].conjugate()*H[i1-i2, j1-j2]
+                                Z_conv_H_da[i1, j1] += Z_d[i2, j2].conjugate()*H_d[i1-i2, j1-j2]
 
         Z_conv_H = fft.ifft2(fft.fft2(Z)*fft.fft2(H.conjugate()))
         Z_conv_H_d = fft.ifft2(fft.fft2(Z_d)*fft.fft2(H_d.conjugate()))
         
-        np.testing.assert_almost_equal(fft.ifft2(fft.fft2(Z_d)), Z_d, 8)
+        Z_conv_H = signal.fftconvolve(Z, H.conjugate(), mode='same')
+        Z_conv_H_d = signal.fftconvolve(Z_d, H_d.conjugate(), mode='same')
         
-        zs = self.coh_trans_func1.phase_aberr.get_pol_values()
+        #expected = signal.convolve2d(Z, H1.conjugate(), mode='same', boundary='wrap')
+        #expected1 = signal.convolve2d(H1.conjugate(), Z, mode='same', boundary='wrap')
+        #expected2 = signal.fftconvolve(Z, H1.conjugate(), mode='same')
+        #print("AAAA", Z_conv_H.shape, expected.shape)
+        #np.testing.assert_almost_equal(expected, expected2)
+        #np.testing.assert_almost_equal(expected, Z_conv_Ha)
+        
+        
         print("zs", np.shape(zs))
         grads = np.zeros_like(alphas)
         coef = 4./(self.nx*self.ny)
         for i in np.arange(0, len(alphas)):
             grads[i] = coef*np.sum(zs[i]*(H*Z_conv_H + H_d*Z_conv_H_d).imag)
+
+        np.testing.assert_almost_equal(grads, grads1)
 
         return grads
 
