@@ -214,9 +214,9 @@ class psf():
         S = self.otf_vals[False]
         S_d = self.otf_vals[True]
         
-        nzi = np.where(np.abs(S)+np.abs(S_d) != 0.)
+        nzi = np.nonzero(np.abs(S)+np.abs(S_d))
         S_nzi = S[nzi]
-        S_d_nzi = S[nzi]
+        S_d_nzi = S_d[nzi]
         S_nzi_conj = S_nzi.conjugate()
         S_d_nzi_conj = S_d_nzi.conjugate()
         D_nzi = D[nzi]
@@ -236,19 +236,25 @@ class psf():
         Z[nzi] = (SDS*D_nzi.conjugate()-SD2*S_nzi_conj)*den
         Z_d[nzi] = (SDS*D_d_nzi.conjugate()-SD2*S_d_nzi_conj)*den
         
+        
         self.coh_trans_func1.phase_aberr.set_alphas(alphas)
         H = self.coh_trans_func1(defocus = False)
         H_d = self.coh_trans_func1(defocus = True)
 
+        print("Z, H", np.shape(Z[nzi]), np.shape(SD), np.shape(den))
+        
+
         Z_conv_H = fft.ifft2(fft.fft2(Z)*fft.fft2(H.conjugate()))
         Z_conv_H_d = fft.ifft2(fft.fft2(Z_d)*fft.fft2(H_d.conjugate()))
+        
+        np.testing.assert_almost_equal(fft.ifft2(fft.fft2(Z_d)), Z_d, 8)
         
         zs = self.coh_trans_func1.phase_aberr.get_pol_values()
         print("zs", np.shape(zs))
         grads = np.zeros_like(alphas)
         coef = 4./(self.nx*self.ny)
         for i in np.arange(0, len(alphas)):
-            grads[i] = coef*np.sum(zs[i]*(Z_conv_H + Z_conv_H_d).imag)
+            grads[i] = coef*np.sum(zs[i]*(H*Z_conv_H + H_d*Z_conv_H_d).imag)
 
         return grads
 
