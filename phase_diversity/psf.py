@@ -52,8 +52,11 @@ class wavefront():
     
     def __init__(self, data):
         self.data = data
+
+    def calc_terms(self, xs):
+        return
         
-    def __call__(self, xs):
+    def __call__(self):
         # Ignore the coordinates, just return data
         # We assume that the wavefront array is properly 
         # aligned with the coordinates
@@ -111,17 +114,26 @@ class psf():
         
         corr = signal.correlate2d(coh_vals, coh_vals.conjugate(), mode='full')
         #vals = fft.ifft2(fft.ifftshift(auto)).real
-        vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
-        if normalize:
-            vals /= vals.sum()
+        
+        a = fft.fftshift(fft.ifft2(fft.ifftshift(corr)))
+        np.testing.assert_array_less(np.abs(a.imag), np.abs(a.real)*1e-3)
+        
+        vals = a.real
+        #if normalize:
+        #    vals /= vals.sum()
         #vals = scipy.misc.imresize(vals, (vals.shape[0]+1, vals.shape[1]+1))
         self.incoh_vals[defocus] = vals
+        self.corr = corr
         return vals
     
     def calc_otf(self, defocus = True, recalc_psf=True):
         if recalc_psf:
             self.calc(defocus)
         vals = fft.fft2(self.incoh_vals[defocus])
+        
+        
+        #np.testing.assert_almost_equal(fft.fftshift(vals), self.corr)
+
         #vals = fft.fftshift(vals)
         self.otf_vals[defocus] = vals
         return vals

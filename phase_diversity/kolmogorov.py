@@ -181,7 +181,7 @@ def main():
 
             
             ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), lambda u: 0.0)
-            psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+            psf_vals = psf.psf(ctf, nx, ny).calc()
 
             my_plot = plot.plot_map(nrows=1, ncols=1)
             my_plot.plot(psf_vals)
