@@ -74,7 +74,8 @@ for index in np.arange(0, num_tests):
             x1 = 2.0*(float(x) - nx/2) / nx
             y1 = 2.0*(float(y) - ny/2) / ny
             if x1**2+y1**2 <= 1.0:
-                vals[x, y] = pa(np.array([x1, y1]))
+                pa.calc_terms(np.array([[x1, y1]]))
+                vals[x, y] = pa()
             else:
                 vals[x, y] = 0.0
 
@@ -123,7 +124,7 @@ for index in np.arange(0, num_tests):
 
 
 
-    psf_vals = psf.psf_(ctf, nx, ny).get_incoh_vals()
+    psf_vals = psf.psf(ctf, nx, ny).calc()
     ax31.hist(psf_vals.flatten(), bins=100)
     print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
     psf_vals = utils.trunc(psf_vals, 1e-3)

@@ -4,11 +4,17 @@ import scipy.signal as signal
 import zernike
 import utils
 import copy
+import sys
+_DEBUG = False
+if _DEBUG:
+    sys.path.append('../utils')
+    import plot
 
 class phase_aberration():
     
     def __init__(self, alphas):
         if len(np.shape(alphas)) == 0:
+            # alphas is an integer, representing jmax
             self.create_pols(alphas)
         else:
             self.create_pols(len(alphas))
@@ -113,12 +119,35 @@ class psf():
         coh_vals = self.coh_trans_func(defocus)
         
         corr = signal.correlate2d(coh_vals, coh_vals.conjugate(), mode='full')
+        
+        if _DEBUG:
+            my_plot = plot.plot_map(nrows=1, ncols=2)
+            my_plot.plot(corr.real, [0])
+            my_plot.plot(corr.imag, [1])
+            my_plot.save("corr.png")
+            my_plot.close()
+        
+        #for i in np.arange(0, corr.shape[0]):
+        #    for j in np.arange(0, corr.shape[1]):
+        #        np.testing.assert_almost_equal(corr[i, j], corr[j, i], 10)
         #vals = fft.ifft2(fft.ifftshift(auto)).real
         
-        a = fft.fftshift(fft.ifft2(fft.ifftshift(corr)))
-        np.testing.assert_array_less(np.abs(a.imag), np.abs(a.real)*1e-3)
+        P = fft.fftshift(fft.ifft2(fft.ifftshift(corr)))
+        #np.testing.assert_array_less(np.abs(a.imag), a.real*1e-1)
+        if _DEBUG:
+            mser = np.sum(P.real**2)
+            msei = np.sum(P.imag**2)
+            my_plot = plot.plot_map(nrows=1, ncols=2)
+            my_plot.plot(P.real, [0])
+            my_plot.plot(P.imag, [1])
+            my_plot.save("power.png")
+            my_plot.close()
+            print(mser, msei)
+        #assert(msei/mser < 1.e-1)
         
-        vals = a.real
+        
+        vals = P.real
+
         #if normalize:
         #    vals /= vals.sum()
         #vals = scipy.misc.imresize(vals, (vals.shape[0]+1, vals.shape[1]+1))
@@ -132,7 +161,7 @@ class psf():
         vals = fft.fft2(self.incoh_vals[defocus])
         
         
-        #np.testing.assert_almost_equal(fft.fftshift(vals), self.corr)
+        np.testing.assert_almost_equal(fft.fftshift(vals), self.corr)
 
         #vals = fft.fftshift(vals)
         self.otf_vals[defocus] = vals
