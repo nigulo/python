@@ -37,12 +37,13 @@ class plot_map:
             l_f = FormatStrFormatter('%1.2f')
 
             pos = ax.get_position().get_points()
-            #x0 = pos[0, 0]
+            x0 = pos[0, 0]
             y0 = pos[0, 1]
             x1 = pos[1, 0]
             y1 = pos[1, 1]
+            width = x1 - x0
             
-            cbar_ax = self.fig.add_axes([x1 + 0.01, y0, 0.01, y1-y0])
+            cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
             self.fig.colorbar(im, cax=cbar_ax, format=l_f)#, label=r'Label')
 
 

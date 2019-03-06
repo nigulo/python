@@ -252,7 +252,7 @@ class psf():
         for i in np.arange(0, len(alphas)):
             S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1, H1.conjugate()) - signal.convolve(H1, zs1[i]*H1.conjugate()))
             S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
-            a = Z*S_primes + Z_d*S_d_primes
+            a = Z + Z_d#Z*S_primes + Z_d*S_d_primes
             grads1[i] = np.sum(a) + np.sum(a.conjugate())
 
         
@@ -288,6 +288,32 @@ class psf():
             grads[i] = coef*np.sum(zs[i]*(H*Z_conv_H + H_d*Z_conv_H_d).imag)
 
         np.testing.assert_almost_equal(grads, grads1)
+
+        return grads
+
+    def S_prime(self, theta, data):
+        #regularizer_eps = 1e-10
+
+        D = data[0]
+        D_d = data[1]
+        gamma = data[2] # Not used
+        alphas = theta
+        
+        pa = self.coh_trans_func.phase_aberr
+        pa.set_alphas(alphas)
+        
+
+        H = self.coh_trans_func(defocus = False)
+        H_d = self.coh_trans_func(defocus = True)
+        zs = self.coh_trans_func.phase_aberr.get_pol_values()
+
+
+        grads = np.zeros((len(alphas), H.shape[0]*2-1, H.shape[1]*2-1), dtype='complex')
+        for i in np.arange(0, len(alphas)):
+            S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))
+            #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))
+            #S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
+            grads[i] = S_primes
 
         return grads
 
