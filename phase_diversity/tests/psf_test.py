@@ -138,22 +138,87 @@ class test_phase_aberration(unittest.TestCase):
             z_val = z.get_value(polar)
             np.testing.assert_almost_equal(pol_vals[noll_index - 1], z_val, 15)
             
+'''
+# Returns the same result as scipy.signal.correlate2d
+def corr2d(d):
+    d1 = d - np.mean(d)
+    nx = d.shape[0]
+    ny = d.shape[1]
+    corr = np.zeros((nx*2 - 1, ny*2 - 1), dtype='complex')
+    counts = np.zeros((nx*2 - 1, ny*2 - 1))
+    for i in np.arange(-nx + 1, nx):
+        for j in np.arange(-ny + 1, ny):
+            for k in np.arange(0, nx):
+                if k + i >= 0 and k + i < nx:
+                    for l in np.arange(0, ny):
+                        if l + j >= 0 and l + j < ny:
+                            corr[i, j] += d1[k+i, l+j]*d1[k, l].conj()
+                            counts[i,j] += 1
+    return fft.ifftshift(corr)
+
+def comp_corr(wfs, mask):
+    pupil = mask*np.exp(1j*wfs)
+    #pupil = fft.ifftshift(pupil) 
+    
+    my_plot = plot.plot_map(nrows=1, ncols=2)
+    my_plot.plot(correlate(pupil, pupil, mode='full').real, [0])
+    my_plot.plot(corr2d(pupil).real, [1])
+        
+    my_plot.save("corr_comp.png")
+    my_plot.close()
+'''
         
 def calc_psf_via_corr(wfs, mask):
  
     #psf = np.zeros((2*wfs.shape[0]-1, 2*wfs.shape[1]-1))
-    pupil = mask*np.exp(1j*wfs)
+    pupil = mask*np.exp(1.j*wfs)
     corr = correlate(pupil, pupil.conj(), mode='full')
     psf = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
-    psf /= psf.sum()
+    
+    mser = np.sum(psf.real**2)
+    msei = np.sum(psf.imag**2)
+    my_plot = plot.plot_map(nrows=1, ncols=2)
+    my_plot.plot(psf.real, [0])
+    my_plot.plot(psf.imag, [1])
+    my_plot.save("power.png")
+    my_plot.close()
+    print("mser, msei", mser, msei)
+    
+    #psf /= psf.sum()
     return psf
+
 
 def calc_psf_via_fft(wfs, mask):
     pupil = mask*np.exp(1j*wfs)
+    #pupil = fft.ifftshift(pupil)
+    #pupil -= np.mean(pupil)
     
-    pupil += pupil[::-1,::-1]#.conjugate()
-    pupil -= np.mean(pupil)
-    pupil /= np.std(pupil)
+    nx = pupil.shape[0]
+    ny = pupil.shape[1]
+    pupil_mirror_x = pupil#[::-1,:]
+    pupil_mirror_y = pupil#[:,::-1]
+    pupil_mirror_xy = pupil#[::-1,::-1]
+    
+    #pupil_full = utils.resize(pupil.real) + 1.j*utils.resize(pupil.imag)
+    pupil_full = np.zeros((nx*2 - 1, ny*2 - 1), dtype='complex')
+    pupil_full[:nx, :ny] = pupil
+    pupil_full[:nx, :ny] += pupil_mirror_xy
+    #pupil_full[nx-1:, :ny] = pupil_mirror_x
+    #pupil_full[:nx, ny-1:] = pupil_mirror_y
+    #pupil_full[nx-1:, ny-1:] = pupil_mirror_xy
+    #pupil_full = np.roll(np.roll(pupil_full, int(nx/2), axis=0), int(ny/2), axis=1)
+    
+    
+    my_plot = plot.plot_map(nrows=1, ncols=2)
+    my_plot.plot(pupil_full.real, [0])
+    my_plot.plot(pupil_full.imag, [1])
+        
+    my_plot.save("pupil_full.png")
+    my_plot.close()
+    
+    #pupil += pupil[::-1,::-1]#.conjugate()
+    #pupil -= np.mean(pupil)
+    #pupil /= np.std(pupil)
 
     #i_m = pupil.shape[0]/2
     #j_m = pupil.shape[1]/2
@@ -164,6 +229,8 @@ def calc_psf_via_fft(wfs, mask):
     vals = fft.ifft2(pupil)
     vals = (vals*vals.conjugate()).real
     vals = fft.ifftshift(vals)
+    
+    #vals /= vals.sum()
     #vals += vals.T
     #vals += vals[::-1,::-1]
 
@@ -172,10 +239,10 @@ def calc_psf_via_fft(wfs, mask):
     #vals2 = fft.fftshift(vals2)
 
     #vals += vals2
-    print("MEAN:",np.mean(vals))
+    #print("MEAN:",np.mean(vals))
     vals -= np.mean(vals)
-    print("VALS:", vals, vals[::-1,::-1])
-    print("VALS:", vals.T)
+    #print("VALS:", vals, vals[::-1,::-1])
+    #print("VALS:", vals.T)
 
     return vals
 
@@ -183,28 +250,29 @@ def calc_psf_via_fft(wfs, mask):
 class test_psf(unittest.TestCase):
 
 
+    '''
     def test_calc2(self):
         aperture_func = lambda xs: utils.aperture_circ(xs, 0.2, 15.0)
 
         n_coefs = 25
         coefs = np.random.normal(size=n_coefs)*10
         #coefs= [0., 10., 0.]
-        size = 100
+        size = 20
         psf_vals = np.zeros((size, size))
-            
+
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
             
-        psf_vals = psf.psf(ctf, size, size).calc()
+        _ = psf.psf(ctf, size, size).calc()
 
         x1 = np.linspace(-1., 1., size)/np.sqrt(2)
         x2 = np.linspace(-1., 1., size)/np.sqrt(2)
         coords = np.dstack(np.meshgrid(x1, x2))
         pupil = aperture_func(coords)
         
+        psf_vals = calc_psf_via_corr(pa(), pupil)
         psf_vals_expected = calc_psf_via_fft(pa(), pupil)
-
 
         my_plot = plot.plot_map(nrows=1, ncols=2)
         my_plot.plot(psf_vals, [0])
@@ -215,7 +283,6 @@ class test_psf(unittest.TestCase):
 
         np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 8)
     
-    '''
     def test_calc(self):
         n_coefs = 25
         coefs = np.random.normal(size=n_coefs)
@@ -400,10 +467,10 @@ class test_psf(unittest.TestCase):
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_alphas = alphas*1.0e-7
+        delta_alphas = alphas*1.0e-10
         pa = psf_.coh_trans_func.phase_aberr
 
-        S = psf_.calc_otf()
+        S = psf_.calc_otf(defocus=False)
         Ss = np.broadcast_to(S, (len(alphas), S.shape[0], S.shape[1]))
         print(Ss.shape)
         Ss1 = np.zeros_like(grads)
@@ -411,7 +478,7 @@ class test_psf(unittest.TestCase):
             delta = np.zeros_like(alphas)
             delta[i] = delta_alphas[i]
             pa.set_alphas(alphas+delta)
-            Ss1[i] = psf_.calc_otf()
+            Ss1[i] = psf_.calc_otf(defocus=False)
 
         delta_alphas1 = np.reshape(np.repeat(delta_alphas, S.shape[0]*S.shape[1], axis=0), np.shape(grads))
         grads_expected = (Ss1 - Ss) / delta_alphas1
@@ -420,9 +487,9 @@ class test_psf(unittest.TestCase):
         my_plot = plot.plot_map(nrows=4, ncols=num_plots)
         for i in np.arange(0, num_plots):
             my_plot.plot(grads[i].real, [0, i])
-            my_plot.plot(grads_expected[i].real, [1, i])
+            my_plot.plot(np.abs(grads_expected[i].real-grads[i].real), [1, i])
             my_plot.plot(grads[i].imag, [2, i])
-            my_plot.plot(grads_expected[i].imag, [3, i])
+            my_plot.plot(np.abs(grads_expected[i].imag-grads[i].imag), [3, i])
             
         my_plot.save("test.png")
         my_plot.close()

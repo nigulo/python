@@ -5,10 +5,8 @@ import zernike
 import utils
 import copy
 import sys
-_DEBUG = False
-if _DEBUG:
-    sys.path.append('../utils')
-    import plot
+#sys.path.append('../../utils')
+#import plot
 
 class phase_aberration():
     
@@ -103,6 +101,7 @@ class psf():
         self.coords = np.dstack(np.meshgrid(xs, ys))
         self.incoh_vals = dict()
         self.otf_vals = dict()
+        self.corr = dict() # only for testing purposes
         self.coh_trans_func = coh_trans_func
         self.coh_trans_func.calc(self.coords)
         
@@ -118,52 +117,35 @@ class psf():
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
-        corr = signal.correlate2d(coh_vals, coh_vals.conjugate(), mode='full')
+        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')
         
-        if _DEBUG:
-            my_plot = plot.plot_map(nrows=1, ncols=2)
-            my_plot.plot(corr.real, [0])
-            my_plot.plot(corr.imag, [1])
-            my_plot.save("corr.png")
-            my_plot.close()
-        
-        #for i in np.arange(0, corr.shape[0]):
-        #    for j in np.arange(0, corr.shape[1]):
-        #        np.testing.assert_almost_equal(corr[i, j], corr[j, i], 10)
-        #vals = fft.ifft2(fft.ifftshift(auto)).real
-        
-        P = fft.fftshift(fft.ifft2(fft.ifftshift(corr)))
-        #np.testing.assert_array_less(np.abs(a.imag), a.real*1e-1)
-        if _DEBUG:
-            mser = np.sum(P.real**2)
-            msei = np.sum(P.imag**2)
-            my_plot = plot.plot_map(nrows=1, ncols=2)
-            my_plot.plot(P.real, [0])
-            my_plot.plot(P.imag, [1])
-            my_plot.save("power.png")
-            my_plot.close()
-            print(mser, msei)
-        #assert(msei/mser < 1.e-1)
-        
-        
-        vals = P.real
+        vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
 
         #if normalize:
         #    vals /= vals.sum()
         #vals = scipy.misc.imresize(vals, (vals.shape[0]+1, vals.shape[1]+1))
         self.incoh_vals[defocus] = vals
-        self.corr = corr
+        self.corr[defocus] = corr
         return vals
     
     def calc_otf(self, defocus = True, recalc_psf=True):
         if recalc_psf:
             self.calc(defocus)
-        vals = fft.fft2(self.incoh_vals[defocus])
+        vals = fft.fft2(fft.ifftshift(self.incoh_vals[defocus]))
         
-        
-        np.testing.assert_almost_equal(fft.fftshift(vals), self.corr)
+        #my_plot = plot.plot_map(nrows=2, ncols=3)
+        #my_plot.plot(self.corr[defocus].real, [0,0])
+        #my_plot.plot(fft.fftshift(vals.real), [0,1])
+        #my_plot.plot(np.abs(self.corr[defocus].real-fft.fftshift(vals.real)), [0,2])
+        #my_plot.plot(self.corr[defocus].imag, [1,0])
+        #my_plot.plot(fft.fftshift(vals.imag), [1,1])
+        #my_plot.plot(np.abs(self.corr[defocus].imag-fft.fftshift(vals.imag)), [1,2])
+        #my_plot.save("power.png")
+        #my_plot.close()
 
-        #vals = fft.fftshift(vals)
+        np.testing.assert_almost_equal(fft.fftshift(vals), self.corr[defocus])
+
+        vals = fft.fftshift(vals)
         self.otf_vals[defocus] = vals
         return vals
 
@@ -351,7 +333,10 @@ class psf():
 
         grads = np.zeros((len(alphas), H.shape[0]*2-1, H.shape[1]*2-1), dtype='complex')
         for i in np.arange(0, len(alphas)):
-            S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))
+            #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H) - signal.convolve(H, zs[i]*H))
+            S_primes = 1.j*(signal.correlate2d(zs[i]*H, H) - signal.correlate2d(H, zs[i]*H))
+            #print("AAAAAAAAA", np.abs(S_primes-S_primes1))
+            #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))
             #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))
             #S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
             grads[i] = S_primes
