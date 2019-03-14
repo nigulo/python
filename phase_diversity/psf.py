@@ -112,6 +112,12 @@ class psf():
 
         self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
         self.coh_trans_func1.calc(coords1)
+
+        xs2 = np.linspace(-1.0, 1.0, (nx*2-1)*2-1)/np.sqrt(2)
+        ys2 = np.linspace(-1.0, 1.0, (ny*2-1)*2-1)/np.sqrt(2)
+        coords2 = np.dstack(np.meshgrid(xs2, ys2))
+        self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
+        self.coh_trans_func2.calc(coords2)
         
         
     def calc(self, defocus = True, normalize = True):
@@ -264,37 +270,78 @@ class psf():
         H = self.coh_trans_func1(defocus = False)
         H_d = self.coh_trans_func1(defocus = True)
 
+        self.coh_trans_func2.phase_aberr.set_alphas(alphas)
+        H2 = self.coh_trans_func2(defocus = False)
+        H2_d = self.coh_trans_func2(defocus = True)
+        zs = self.coh_trans_func2.phase_aberr.get_pol_values()
+
         H1 = self.coh_trans_func(defocus = False)
         H1_d = self.coh_trans_func(defocus = True)
-        zs = self.coh_trans_func1.phase_aberr.get_pol_values()
         zs1 = self.coh_trans_func.phase_aberr.get_pol_values()
         print(zs1)
 
 
         grads1 = np.zeros_like(alphas)
         for i in np.arange(0, len(alphas)):
-            S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1, H1.conjugate()) - signal.convolve(H1, zs1[i]*H1.conjugate()))
-            S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
-            a = Z + Z_d#Z*S_primes + Z_d*S_d_primes
+            S_primes = -1.j*(signal.correlate2d(zs1[i]*H1, H1) - signal.correlate2d(H1, zs1[i]*H1))
+            S_d_primes = -1.j*(signal.correlate2d(zs1[i]*H1_d, H1_d) - signal.correlate2d(H1_d, zs1[i]*H1_d))
+            #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1, H1.conjugate()) - signal.convolve(H1, zs1[i]*H1.conjugate()))
+            #S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
+            a = Z*S_primes + Z_d*S_d_primes
             grads1[i] = np.sum(a) + np.sum(a.conjugate())
 
         
-        Z_conv_Ha = np.zeros_like(S)
-        Z_conv_H_da = np.zeros_like(S)
-        for i1 in np.arange(0, self.nx):
-            for j1 in np.arange(0, self.ny):
-                for i2 in np.arange(0, self.nx):
-                    if i1 - i2 >= 0:
-                        for j2 in np.arange(0, self.ny):
-                            if j1 - j2 >= 0:
-                                Z_conv_Ha[i1, j1] += Z[i2, j2].conjugate()*H[i1-i2, j1-j2]
-                                Z_conv_H_da[i1, j1] += Z_d[i2, j2].conjugate()*H_d[i1-i2, j1-j2]
+        #Z_conv_Ha = np.zeros_like(S)
+        #Z_conv_H_da = np.zeros_like(S)
+        #for i1 in np.arange(0, self.nx):
+        #    for j1 in np.arange(0, self.ny):
+        #        for i2 in np.arange(0, self.nx):
+        #            if i1 - i2 >= 0:
+        #                for j2 in np.arange(0, self.ny):
+        #                    if j1 - j2 >= 0:
+        #                        Z_conv_Ha[i1, j1] += Z[i2, j2].conjugate()*H[i1-i2, j1-j2]
+        #                        Z_conv_H_da[i1, j1] += Z_d[i2, j2].conjugate()*H_d[i1-i2, j1-j2]
 
-        Z_conv_H = fft.ifft2(fft.fft2(Z)*fft.fft2(H.conjugate()))
-        Z_conv_H_d = fft.ifft2(fft.fft2(Z_d)*fft.fft2(H_d.conjugate()))
+        #Z_conv_H = fft.ifft2(fft.fft2(Z)*fft.fft2(H.conjugate()))
+        #Z_conv_H_d = fft.ifft2(fft.fft2(Z_d)*fft.fft2(H_d.conjugate()))
         
-        Z_conv_H = signal.fftconvolve(Z, H.conjugate(), mode='same')
-        Z_conv_H_d = signal.fftconvolve(Z_d, H_d.conjugate(), mode='same')
+        #Z_conv_H = signal.fftconvolve(Z, H.conjugate(), mode='same')
+        #Z_conv_H_d = signal.fftconvolve(Z_d, H_d.conjugate(), mode='same')
+
+        #for k in np.arange(0, S.shape[0]):
+        #    for l in np.arange(0, S.shape[1]):
+        #        print(k, l, Z[k, l])
+        #np.testing.assert_almost_equal(Z, Z.conj()[::-1,::-1])
+
+        Z_conv_H = signal.convolve2d(Z, H.conj(), mode='full')
+        Z_conv_H_d = signal.convolve2d(Z_d, H_d.conj(), mode='full')
+        
+        Z_conv_H_conj = signal.correlate2d(Z.conj(), H.conj(), mode='full')
+        Z_conv_H_d_conj = signal.correlate2d(Z_d.conj(), H_d.conj(), mode='full')
+
+        Z_conv_H_1 = signal.correlate2d(Z, H, mode='full')
+        Z_conv_H_d_1 = signal.correlate2d(Z_d, H_d, mode='full')
+
+        #Z_conv_H_conj = signal.convolve2d(Z.conj(), H, mode='same')
+        #Z_conv_H_d_conj = signal.convolve2d(Z_d.conj(), H_d, mode='same')
+
+
+        #test1 = (H*Z_conv_H + H_d*Z_conv_H_d) - (H.conj()*Z_conv_H_conj + H_d.conj()*Z_conv_H_d_conj)
+        test1 = 1.j*(H2*Z_conv_H + H2_d*Z_conv_H_d)# - (H.conj()*Z_conv_H_conj + H_d.conj()*Z_conv_H_d_conj)
+        test1 += test1.conj()
+        test2 = 1.j*(H2.conj()*Z_conv_H_1 + H2_d.conj()*Z_conv_H_d_1)
+        test2 += test2.conj()
+        #np.testing.assert_almost_equal(test.conj(), H2.conj()*Z_conv_H_conj + H2_d.conj()*Z_conv_H_d_conj)
+        #test -= H.conj()*Z_conv_H_conj + H_d.conj()*Z_conv_H_d_conj
+        test = test1-test2
+        for k in np.arange(0, S.shape[0]):
+            for l in np.arange(0, S.shape[1]):
+                print(test[k, l])
+        
+        
+        test_a = 4.*(H2*Z_conv_H + H2_d*Z_conv_H_d)
+        np.testing.assert_almost_equal(test_a, test)
+
         
         #expected = signal.convolve2d(Z, H1.conjugate(), mode='same', boundary='wrap')
         #expected1 = signal.convolve2d(H1.conjugate(), Z, mode='same', boundary='wrap')
@@ -306,13 +353,18 @@ class psf():
         
         print("zs", np.shape(zs))
         grads = np.zeros_like(alphas)
-        coef = 4./(self.nx*self.ny)
+        coef = -4./(self.nx*self.ny)
         for i in np.arange(0, len(alphas)):
-            grads[i] = coef*np.sum(zs[i]*(H*Z_conv_H + H_d*Z_conv_H_d).imag)
+            #for k in np.arange(0, S.shape[0]):
+            #    for l in np.arange(0, S.shape[1]):
+            #        print((H*Z_conv_H + H_d*Z_conv_H_d)[k, l])
+            #grads[i] = coef*np.sum(zs[i]*(H*Z_conv_H + H_d*Z_conv_H_d).imag)
+            grads[i] = coef*np.sum(zs[i]*test.real)
+            print(grads[i], grads1[i])
 
         np.testing.assert_almost_equal(grads, grads1)
 
-        return grads
+        return grads1
 
     def S_prime(self, theta, data):
         #regularizer_eps = 1e-10
@@ -335,6 +387,13 @@ class psf():
         for i in np.arange(0, len(alphas)):
             #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H) - signal.convolve(H, zs[i]*H))
             S_primes = 1.j*(signal.correlate2d(zs[i]*H, H) - signal.correlate2d(H, zs[i]*H))
+            S_primes1 = 1.j*(signal.correlate2d(zs[i]*H, H) - signal.convolve2d(H, (zs[i]*H).conj()[::-1,::-1]))
+            #a = signal.correlate2d(zs[i]*H, H, mode='full')
+            #b = signal.convolve2d((zs[i]*H), H.conj()[::-1,::-1], mode='full')
+            #np.testing.assert_almost_equal(a, b)
+
+            np.testing.assert_almost_equal(S_primes, S_primes1)
+            
             #print("AAAAAAAAA", np.abs(S_primes-S_primes1))
             #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))
             #S_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs[i]*H, H.conjugate()) - signal.convolve(H, zs[i]*H.conjugate()))

@@ -391,13 +391,14 @@ class test_psf(unittest.TestCase):
         
         np.testing.assert_almost_equal(lik, lik_expected, 7)
     '''
-    '''
+
+
     def test_likelihood_grad(self):
         n_coefs = 20
         gamma = 1.
         
-        nx = np.shape(image)[0]
-        ny = np.shape(image)[1]
+        nx = np.shape(image10x10)[0]
+        ny = np.shape(image10x10)[1]
 
         #######################################################################
         # Create data
@@ -405,7 +406,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, ny)
         
-        image1 = utils.resize(image)
+        image1 = utils.resize(image10x10)
         image1_F = fft.fft2(image1)
         D, D_d = psf_.multiply(image1_F)
         
@@ -434,8 +435,8 @@ class test_psf(unittest.TestCase):
 
         grads_expected = (liks1 - liks) / delta_alphas
 
-        np.testing.assert_almost_equal(grads, grads_expected, 8)
-        '''
+        np.testing.assert_almost_equal(grads, grads_expected, 3)
+
 
     def test_S_prime(self):
         n_coefs = 25
@@ -467,7 +468,7 @@ class test_psf(unittest.TestCase):
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_alphas = alphas*1.0e-10
+        delta_alphas = alphas*1.0e-7
         pa = psf_.coh_trans_func.phase_aberr
 
         S = psf_.calc_otf(defocus=False)
@@ -494,7 +495,13 @@ class test_psf(unittest.TestCase):
         my_plot.save("test.png")
         my_plot.close()
 
-        np.testing.assert_almost_equal(grads, grads_expected, 8)
+        #for i in np.arange(len(grads)):
+        #    for j in np.arange(grads[i].shape[0]):
+        #        for k in np.arange(grads[i].shape[1]):
+        #            print(grads[i, j, k], grads_expected[i, j, k])
+            
+            
+        np.testing.assert_almost_equal(grads, grads_expected, 5)
 
 
         
