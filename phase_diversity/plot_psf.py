@@ -30,7 +30,7 @@ num_rows = 5
 num_cols = 5
 num_tests = num_rows * num_cols
 
-aperture_func = lambda u: utils.aperture_circ(u, 0.2, 100.0)
+aperture_func = lambda u: utils.aperture_circ(u, 0.8, 100.0)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 6)

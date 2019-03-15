@@ -52,8 +52,17 @@ def aperture_circ(us, r=1.0, coef=5.0):
         ret_val = ret_val[0]
     return ret_val
     
-def resize(image):
+def upscale(image):
     #return scipy.misc.imresize(image, (image.shape[0]*2-1, image.shape[1]*2-1))
     zoom_perc = (float(image.shape[0])*2.-1.)/image.shape[0]
     return scipy.ndimage.zoom(image, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
 
+def downscale(image):
+    #return scipy.misc.imresize(image, (image.shape[0]*2-1, image.shape[1]*2-1))
+    zoom_perc = (float(image.shape[0])+1.)/2./image.shape[0]
+    if image.dtype == 'complex':
+        real = scipy.ndimage.zoom(image.real, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
+        imag = scipy.ndimage.zoom(image.imag, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
+        return real + imag*1.j
+    else:
+        return scipy.ndimage.zoom(image, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)

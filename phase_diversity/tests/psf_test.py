@@ -172,7 +172,7 @@ def calc_psf_via_corr(wfs, mask):
  
     #psf = np.zeros((2*wfs.shape[0]-1, 2*wfs.shape[1]-1))
     pupil = mask*np.exp(1.j*wfs)
-    corr = correlate(pupil, pupil.conj(), mode='full')
+    corr = correlate(pupil, pupil, mode='full')
     psf = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
     
     mser = np.sum(psf.real**2)
@@ -249,7 +249,6 @@ def calc_psf_via_fft(wfs, mask):
 
 class test_psf(unittest.TestCase):
 
-
     '''
     def test_calc2(self):
         aperture_func = lambda xs: utils.aperture_circ(xs, 0.2, 15.0)
@@ -282,6 +281,8 @@ class test_psf(unittest.TestCase):
         my_plot.close()
 
         np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 8)
+    '''
+    
     
     def test_calc(self):
         n_coefs = 25
@@ -307,22 +308,19 @@ class test_psf(unittest.TestCase):
     def test_deconvolve(self):
         nx = np.shape(image10x10)[0]
         ny = np.shape(image10x10)[1]
-        image1 = utils.resize(image10x10)
+        image1 = utils.upscale(image10x10)
 
         #######################################################################
         # First test that the convolution has no effect in case
         # we have a full aperture and zero wavefront aberration
         pa = psf.phase_aberration([])
 
-        
         ctf = psf.coh_trans_func(lambda xs: 1.0, pa, lambda xs: 0.0)
         psf_ = psf.psf(ctf, nx, ny)
         
         D, D_d = psf_.convolve(image1)
         # No defocus, so D should be equal to D_d
         np.testing.assert_almost_equal(D, D_d, 8)
-
-
 
         threshold = np.ones_like(D)*0.01
         np.testing.assert_array_less((D - image1)**2, threshold)
@@ -358,7 +356,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, ny)
         
-        image1 = utils.resize(image10x10)
+        image1 = utils.upscale(image10x10)
         image1_F = fft.fft2(image1)
         D, D_d = psf_.multiply(image1_F)
         
@@ -390,8 +388,6 @@ class test_psf(unittest.TestCase):
         lik_expected = np.sum((num/den).real)
         
         np.testing.assert_almost_equal(lik, lik_expected, 7)
-    '''
-
 
     def test_likelihood_grad(self):
         n_coefs = 20
@@ -406,7 +402,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, ny)
         
-        image1 = utils.resize(image10x10)
+        image1 = utils.upscale(image10x10)
         image1_F = fft.fft2(image1)
         D, D_d = psf_.multiply(image1_F)
         
@@ -451,7 +447,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, ny)
         
-        image1 = utils.resize(image10x10)
+        image1 = utils.upscale(image10x10)
         image1_F = fft.fft2(image1)
         D, D_d = psf_.multiply(image1_F)
         
@@ -473,7 +469,6 @@ class test_psf(unittest.TestCase):
 
         S = psf_.calc_otf(defocus=False)
         Ss = np.broadcast_to(S, (len(alphas), S.shape[0], S.shape[1]))
-        print(Ss.shape)
         Ss1 = np.zeros_like(grads)
         for i in np.arange(0, len(alphas)):
             delta = np.zeros_like(alphas)
