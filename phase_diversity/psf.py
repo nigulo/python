@@ -110,6 +110,9 @@ class psf():
         ys1 = np.linspace(-1.0, 1.0, ny*2-1)/np.sqrt(2)
         coords1 = np.dstack(np.meshgrid(xs1, ys1))
 
+        self.nx1 = nx * 2 - 1
+        self.ny1 = ny * 2 - 1
+
         self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
         self.coh_trans_func1.calc(coords1)
 
@@ -123,7 +126,7 @@ class psf():
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
-        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')
+        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.ny)
         
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
 
@@ -156,13 +159,11 @@ class psf():
             return (ret_val, ret_val_d)
             
     def convolve(self, dat, defocus = True):
-        dat_F = fft.fft2(dat)
+        dat_F = fft.fftshift(fft.fft2(dat))
         ret_val = []
         for m_F in self.multiply(dat_F, defocus):
-            print("MAX:", np.max(np.abs(fft.ifft2(m_F).imag)))
-            print("MAX:", np.max(np.abs(self.otf_vals[False])))
-            m = fft.ifft2(m_F).real
-            ret_val.append(m)
+            m = fft.ifft2(fft.ifftshift(m_F))
+            ret_val.append(m.real)
         if defocus:
             return (ret_val[0], ret_val[1])
         else:
@@ -354,7 +355,7 @@ class psf():
         np.testing.assert_almost_equal(grads, grads1)
         '''
 
-        return grads1
+        return grads1/(self.nx*self.ny)
 
     def S_prime(self, theta, data):
         #regularizer_eps = 1e-10
@@ -390,7 +391,7 @@ class psf():
             #S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
             grads[i] = S_primes
 
-        return grads
+        return grads/(self.nx*self.ny)
 
 
 '''

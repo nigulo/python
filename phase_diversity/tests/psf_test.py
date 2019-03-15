@@ -172,7 +172,7 @@ def calc_psf_via_corr(wfs, mask):
  
     #psf = np.zeros((2*wfs.shape[0]-1, 2*wfs.shape[1]-1))
     pupil = mask*np.exp(1.j*wfs)
-    corr = signal.correlate2d(pupil, pupil, mode='full')
+    corr = signal.correlate2d(pupil, pupil, mode='full')/pupil.shape[0]/pupil.shape[1]
     psf = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
     
     mser = np.sum(psf.real**2)
@@ -317,7 +317,7 @@ class test_psf(unittest.TestCase):
         otf_vals = psf.psf(ctf, size, size).calc_otf()
         
         coh_vals = ctf(defocus=True)        
-        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')
+        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/size/size
         np.testing.assert_almost_equal(otf_vals, corr)
         
 
