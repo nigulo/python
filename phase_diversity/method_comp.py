@@ -67,7 +67,7 @@ def main():
     
     aperture_func = lambda u: utils.aperture_circ(u, 0.2, 15.0)
 
-    wavefront = kolmogorov(fried, num_realizations, size, sampling)
+    wavefront = kolmogorov.kolmogorov(fried, num_realizations, size, sampling)
     nx = np.shape(wavefront)[2]
     ny = np.shape(wavefront)[3]
     
@@ -98,7 +98,7 @@ def main():
 
             
             ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), lambda u: 0.0)
-            psf_vals = psf.psf(ctf, nx, ny).get_incoh_vals()
+            psf_vals = psf.psf(ctf, nx, ny).calc()
 
             my_plot = plot.plot_map(nrows=1, ncols=1)
             my_plot.plot(psf_vals)
