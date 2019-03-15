@@ -129,31 +129,19 @@ class psf():
 
         #if normalize:
         #    vals /= vals.sum()
-        #vals = scipy.misc.imresize(vals, (vals.shape[0]+1, vals.shape[1]+1))
         self.incoh_vals[defocus] = vals
-        self.corr[defocus] = corr
+        self.otf_vals[defocus] = corr
         return vals
     
     def calc_otf(self, defocus = True, recalc_psf=True):
         if recalc_psf:
             self.calc(defocus)
-        vals = fft.fft2(fft.ifftshift(self.incoh_vals[defocus]))
-        
-        #my_plot = plot.plot_map(nrows=2, ncols=3)
-        #my_plot.plot(self.corr[defocus].real, [0,0])
-        #my_plot.plot(fft.fftshift(vals.real), [0,1])
-        #my_plot.plot(np.abs(self.corr[defocus].real-fft.fftshift(vals.real)), [0,2])
-        #my_plot.plot(self.corr[defocus].imag, [1,0])
-        #my_plot.plot(fft.fftshift(vals.imag), [1,1])
-        #my_plot.plot(np.abs(self.corr[defocus].imag-fft.fftshift(vals.imag)), [1,2])
-        #my_plot.save("power.png")
-        #my_plot.close()
-
-        np.testing.assert_almost_equal(fft.fftshift(vals), self.corr[defocus])
-
-        vals = fft.fftshift(vals)
-        self.otf_vals[defocus] = vals
-        return vals
+        #vals = fft.fft2(fft.ifftshift(self.incoh_vals[defocus]))
+        ##np.testing.assert_almost_equal(fft.fftshift(vals), self.corr[defocus])
+        #vals = fft.fftshift(vals)
+        #self.otf_vals[defocus] = vals
+        #return vals
+        return self.otf_vals[defocus]
 
     def multiply(self, dat_F, defocus = True):
         if False not in self.otf_vals:
@@ -171,7 +159,9 @@ class psf():
         dat_F = fft.fft2(dat)
         ret_val = []
         for m_F in self.multiply(dat_F, defocus):
-            m = fft.ifftshift(fft.ifft2(m_F).real)
+            print("MAX:", np.max(np.abs(fft.ifft2(m_F).imag)))
+            print("MAX:", np.max(np.abs(self.otf_vals[False])))
+            m = fft.ifft2(m_F).real
             ret_val.append(m)
         if defocus:
             return (ret_val[0], ret_val[1])

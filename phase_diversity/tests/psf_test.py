@@ -4,7 +4,7 @@ import numpy as np
 import psf
 import zernike
 import numpy.fft as fft
-from scipy.signal import correlate2d as correlate
+import scipy.signal as signal
 import unittest
 import utils
 sys.path.append('../../utils')
@@ -172,7 +172,7 @@ def calc_psf_via_corr(wfs, mask):
  
     #psf = np.zeros((2*wfs.shape[0]-1, 2*wfs.shape[1]-1))
     pupil = mask*np.exp(1.j*wfs)
-    corr = correlate(pupil, pupil, mode='full')
+    corr = signal.correlate2d(pupil, pupil, mode='full')
     psf = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
     
     mser = np.sum(psf.real**2)
@@ -305,6 +305,22 @@ class test_psf(unittest.TestCase):
 
         np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 8)
 
+    def test_calc_otf(self):
+        n_coefs = 25
+        coefs = np.random.normal(size=n_coefs)
+        size = 3
+            
+        pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+        ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
+        #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
+            
+        otf_vals = psf.psf(ctf, size, size).calc_otf()
+        
+        coh_vals = ctf(defocus=True)        
+        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')
+        np.testing.assert_almost_equal(otf_vals, corr)
+        
+
     def test_deconvolve(self):
         nx = np.shape(image10x10)[0]
         ny = np.shape(image10x10)[1]
@@ -321,6 +337,14 @@ class test_psf(unittest.TestCase):
         D, D_d = psf_.convolve(image1)
         # No defocus, so D should be equal to D_d
         np.testing.assert_almost_equal(D, D_d, 8)
+        
+        my_plot = plot.plot_map(nrows=1, ncols=2)
+        my_plot.plot(image1, [0])
+        my_plot.plot(D, [1])
+            
+        my_plot.save("ahaa.png")
+        my_plot.close()
+
 
         threshold = np.ones_like(D)*0.01
         np.testing.assert_array_less((D - image1)**2, threshold)
