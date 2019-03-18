@@ -7,6 +7,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
 import matplotlib.colors as colors
 import matplotlib.ticker as ticker
+import numpy as np
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -22,7 +23,7 @@ class plot_map:
         self.plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         self.my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
-    def plot(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True):
+    def plot(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True, colorbar_prec=None):
         if len(ax_index) == 2:
             ax = self.axes[ax_index[0]][ax_index[1]]
         elif len(ax_index) == 1:
@@ -34,7 +35,18 @@ class plot_map:
         ax.set_aspect(aspect=self.plot_aspect)
         
         if colorbar:
-            l_f = FormatStrFormatter('%1.2f')
+            if colorbar_prec is None:
+                colorbar_prec = 0
+                z_max = np.max(dat)
+                z_min = np.min(dat)
+                if z_max > z_min:
+                    scale = np.log10(z_max-z_min)
+                    if scale < 0.:
+                        colorbar_prec = int(abs(np.floor(scale)))
+            if colorbar_prec > 0:
+                l_f = FormatStrFormatter('%1.' + str(colorbar_prec) +'f')
+            else:
+                l_f = FormatStrFormatter('%1.f')
 
             pos = ax.get_position().get_points()
             x0 = pos[0, 0]

@@ -132,11 +132,11 @@ class test_phase_aberration(unittest.TestCase):
         
         polar = utils.cart_to_polar(xs)
         
-        for noll_index in np.arange(1, n_coefs + 1):
+        for noll_index in np.arange(4, n_coefs + 4):
             n, m = zernike.get_nm(noll_index)
             z = zernike.zernike(n, m)
             z_val = z.get_value(polar)
-            np.testing.assert_almost_equal(pol_vals[noll_index - 1], z_val, 15)
+            np.testing.assert_almost_equal(pol_vals[noll_index - 4], z_val, 15)
             
 '''
 # Returns the same result as scipy.signal.correlate2d
@@ -294,7 +294,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
             
-        psf_vals = psf.psf(ctf, size, size).calc()
+        psf_vals = psf.psf(ctf, size, size).calc(normalize = False)
 
         x1 = np.linspace(-1., 1., size)/np.sqrt(2)
         x2 = np.linspace(-1., 1., size)/np.sqrt(2)

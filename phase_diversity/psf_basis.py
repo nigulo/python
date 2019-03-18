@@ -159,14 +159,13 @@ class psf_basis:
             
         for defocus in defocus_array:
             f = 0.0
-            defocus_mm = 0.0
             
             if defocus:
                 d_lambda = 8.0 * F_D**2
                 f = np.pi * d_lambda / (4 * (F_D)**2)
                 defocus_mm = d_lambda * wavelength*1.e-7
         
-                print('Defocus in mm = ', d_lambda * wavelength*1.e-7)
+                print('Defocus in mm = ', defocus_mm)
                 print('Defocus f = ', f)
         
         
@@ -277,7 +276,7 @@ class psf_basis:
         if not do_fft:
             return F_image
 
-        image = fft.ifft2(F_image).real
+        image = fft.ifft2(fft.ifftshift(F_image)).real
         #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         return image
 

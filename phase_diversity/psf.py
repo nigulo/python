@@ -10,7 +10,8 @@ import copy
 
 class phase_aberration():
     
-    def __init__(self, alphas):
+    def __init__(self, alphas, start_index = 3):
+        self.start_index= start_index
         if len(np.shape(alphas)) == 0:
             # alphas is an integer, representing jmax
             self.create_pols(alphas)
@@ -21,7 +22,7 @@ class phase_aberration():
     
     def create_pols(self, num):
         self.pols = []
-        for i in np.arange(1, num + 1):
+        for i in np.arange(self.start_index+1, self.start_index+num+1):
             n, m = zernike.get_nm(i)
             z = zernike.zernike(n, m)
             self.pols.append(z)
@@ -132,8 +133,8 @@ class psf():
         
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
 
-        #if normalize:
-        #    vals /= vals.sum()
+        if normalize:
+            vals /= vals.sum()
         self.incoh_vals[defocus] = vals
         self.otf_vals[defocus] = corr
         return vals

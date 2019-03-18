@@ -47,7 +47,7 @@ gamma = 1.0
     
 def main():
     image = plt.imread('granulation.png')
-    image = image[0:50,0:50]
+    image = image[0:20,0:20]
     
     nx = np.shape(image)[0]
     ny = np.shape(image)[1]
@@ -60,7 +60,7 @@ def main():
 
     
     aperture_func = lambda u: utils.aperture_circ(u, 0.2, 15.0)
-    defocus_func = lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.)
+    defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#100.*(2*np.sum(xs*xs, axis=2) - 1.)
 
     wavefront = kolmogorov.kolmogorov(fried, num_realizations, nx*4, sampling=1.)
     
@@ -133,8 +133,8 @@ def main():
             image_est_b = psf_b.deconvolve(DF1, DF1_d, betas_est, gamma, do_fft = True)
             #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
         
-            D = fft.ifft2(fft.fftshift(DF)).real
-            D_d = fft.ifft2(fft.fftshift(DF_d)).real
+            D = fft.ifft2(fft.ifftshift(DF)).real
+            D_d = fft.ifft2(fft.ifftshift(DF_d)).real
         
             #image_min = np.min(image)
             #image_max = np.max(image)
@@ -183,7 +183,7 @@ def main():
     plot_res.plot(image_est_b_mean, [num_realizations, 5])
     plot_res.plot(np.abs(image_est_b_mean-image_norm), [num_realizations, 6])
     
-    my_plot.save("estimates.png")
+    plot_res.save("estimates.png")
     plot_res.close()
 
 if __name__ == "__main__":

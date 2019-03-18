@@ -154,7 +154,7 @@ class test_psf_basis(unittest.TestCase):
         num *= num.conjugate()
         #lik_expected = np.sum(num/np.sqrt(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
         lik_expected = np.sum(num/(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
-        np.testing.assert_almost_equal(lik, lik_expected, 8)
+        np.testing.assert_almost_equal(lik, lik_expected, 6)
 
     def test_likelihood_grad(self):
         
@@ -206,7 +206,7 @@ class test_psf_basis(unittest.TestCase):
         
         gamma = 1.
 
-        fimage = fft.fft2(image)
+        fimage = fft.fftshift(fft.fft2(image))
         
         psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
         psf.create_basis(do_fft=True, do_defocus=True)
