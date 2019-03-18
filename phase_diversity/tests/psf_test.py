@@ -364,7 +364,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, ny)
         
-        image1_F = fft.fft2(image1)
+        image1_F = fft.fftshift(fft.fft2(image1))
         D, D_d = psf_.multiply(image1_F)
         reconst = psf_.deconvolve(D, D_d, alphas=coefs, gamma=1., do_fft=True)
         np.testing.assert_almost_equal(reconst, image1, 15)

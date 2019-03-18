@@ -173,17 +173,23 @@ class psf():
             return ret_val[0]
 
     def deconvolve(self, D, D_d, alphas, gamma, do_fft = True):
+        assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         
         self.coh_trans_func.phase_aberr.set_alphas(alphas)
+        self.calc(defocus=False)
+        self.calc(defocus=True)
         S = self.otf_vals[False]
         S_conj = S.conjugate()
         S_d = self.otf_vals[True]
         S_d_conj = S_d.conjugate()
         
         F_image = D * S_conj + gamma * D_d * S_d_conj
+        np.set_printoptions(threshold=np.inf)
         F_image /= S*S_conj + gamma * S_d * S_d_conj
+        
+        F_image = fft.ifftshift(F_image)
         
         if not do_fft:
             return F_image
@@ -197,6 +203,7 @@ class psf():
         Actually this is negative log likelihood
     '''
     def likelihood(self, theta, data):
+        regularizer_eps = 1e-10
         D = data[0]
         D_d = data[1]
         gamma = data[2] # Not used
@@ -214,7 +221,7 @@ class psf():
         
         num = D[nzi]*S[nzi].conjugate() + D_d[nzi]*S_d[nzi].conjugate()
         num *= num.conjugate()
-        den = S[nzi]*S[nzi].conjugate()+ S_d[nzi]*S_d[nzi].conjugate()
+        den = S[nzi]*S[nzi].conjugate()+ S_d[nzi]*S_d[nzi].conjugate()+regularizer_eps
 
         lik = -np.sum((num/den).real) + np.sum((D*D.conjugate() + D_d*D_d.conjugate()).real)
         
@@ -223,7 +230,7 @@ class psf():
         
 
     def likelihood_grad(self, theta, data):
-        #regularizer_eps = 1e-10
+        regularizer_eps = 1e-10
 
         D = data[0]
         D_d = data[1]
@@ -253,7 +260,7 @@ class psf():
         #S_d_conj = S_d.conjugate()
         SD = D_nzi*S_nzi_conj + D_d_nzi*S_d_nzi_conj
         SD2 = SD*SD.conjugate()
-        den = 1./(S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)**2
+        den = 1./((S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)**2 + regularizer_eps)
         
         SDS = (S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)*SD
         

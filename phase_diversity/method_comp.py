@@ -55,11 +55,11 @@ def main():
     assert(nx == ny)
     
     image1 = utils.upscale(image)
-    fimage = fft.fft2(image)
-    fimage1 = fft.fft2(image1)
+    fimage = fft.fftshift(fft.fft2(image))
+    fimage1 = fft.fftshift(fft.fft2(image1))
 
     
-    aperture_func = lambda u: utils.aperture_circ(u, 0.2, 15.0)
+    aperture_func = lambda u: utils.aperture_circ(u, 1.0, 15.0)
     defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#100.*(2*np.sum(xs*xs, axis=2) - 1.)
 
     wavefront = kolmogorov.kolmogorov(fried, num_realizations, nx*4, sampling=1.)
@@ -108,13 +108,18 @@ def main():
             my_plot.save("kolmogorov" + str(i) + "_" + str(j) + ".png")
             my_plot.close()
 
-            
+            #pa_true = psf.phase_aberration(np.random.normal(size=5)*2)
+            #pa_true = psf.phase_aberration([])
+            #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+
             ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
             psf_true = psf.psf(ctf_true, nx, ny)
-            psf_vals_true = psf_true.calc()
+            psf_vals_true = psf_true.calc(defocus=False)
+            psf_vals_d_true = psf_true.calc(defocus=True)
 
-            plot_psf = plot.plot_map(nrows=1, ncols=1)
-            plot_psf.plot(psf_vals_true)
+            plot_psf = plot.plot_map(nrows=1, ncols=2)
+            plot_psf.plot(psf_vals_true, [0])
+            plot_psf.plot(psf_vals_d_true, [1])
 
             plot_psf.save("psf" + str(i) + "_" + str(j) + ".png")
             plot_psf.close()
@@ -131,7 +136,6 @@ def main():
 
             betas_est = sampler_b.sample(DF1, DF1_d, "samples_b" + str(j) + ".png")
             image_est_b = psf_b.deconvolve(DF1, DF1_d, betas_est, gamma, do_fft = True)
-            #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
         
             D = fft.ifft2(fft.ifftshift(DF)).real
             D_d = fft.ifft2(fft.ifftshift(DF_d)).real
