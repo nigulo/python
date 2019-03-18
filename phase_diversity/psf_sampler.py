@@ -20,15 +20,16 @@ import matplotlib.pyplot as plt
 
 class psf_sampler():
     
-    def __init__(self, psf, num_samples=10, num_chains = 0, full_posterior = False):
+    def __init__(self, psf, gamma, num_samples=10, num_chains = 0, full_posterior = False):
         self.psf = psf
+        self.gamma = gamma
         self.num_samples = num_samples
         self.num_chains = num_chains
         self.full_posterior = full_posterior
 
-    def sample(self, D, D_d, gamma, psf, plot_file = None):
+    def sample(self, D, D_d, plot_file = None):
     
-        jmax = len(self.psf.coh_trans_func.phase_aberr.alphas)
+        jmax = self.psf.coh_trans_func.phase_aberr.jmax
         alphas_est = np.zeros(jmax)    
     
         s = sampling.Sampling()
@@ -38,7 +39,7 @@ class psf_sampler():
                 for i in np.arange(0, jmax):
                     alphas[i] = pm.Normal('alpha' + str(i), sd=1.0)
     
-            trace = s.sample(self.psf.likelihood, alphas, [D, D_d, gamma], self.num_samples, self.num_chains, self.psf.likelihood_grad)
+            trace = s.sample(self.psf.likelihood, alphas, [D, D_d, self.gamma], self.num_samples, self.num_chains, self.psf.likelihood_grad)
             samples = []
             var_names = []
             for i in np.arange(0, jmax):
@@ -56,10 +57,10 @@ class psf_sampler():
     
         else:
             def lik_fn(params):
-                return self.psf.likelihood(params, [D, D_d, gamma])
+                return self.psf.likelihood(params, [D, D_d, self.gamma])
     
             def grad_fn(params):
-                return self.psf.likelihood_grad(params, [D, D_d, gamma])
+                return self.psf.likelihood_grad(params, [D, D_d, self.gamma])
             
             min_loglik = None
             min_res = None

@@ -304,6 +304,11 @@ class test_psf(unittest.TestCase):
         psf_vals_expected = calc_psf_via_corr(pa(), pupil)
 
         np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 8)
+        
+        # Check that all the values are positive
+        threshold = np.zeros_like(psf_vals)
+        np.testing.assert_array_less(-psf_vals, threshold)
+        
 
     def test_calc_otf(self):
         n_coefs = 25
@@ -342,7 +347,7 @@ class test_psf(unittest.TestCase):
         my_plot.plot(image1, [0])
         my_plot.plot(D, [1])
             
-        my_plot.save("ahaa.png")
+        my_plot.save("test_deconvolve.png")
         my_plot.close()
 
 
@@ -361,7 +366,7 @@ class test_psf(unittest.TestCase):
         
         image1_F = fft.fft2(image1)
         D, D_d = psf_.multiply(image1_F)
-        reconst = psf_.deconvolve(D, D_d, gamma=1, do_fft=True)
+        reconst = psf_.deconvolve(D, D_d, alphas=coefs, gamma=1., do_fft=True)
         np.testing.assert_almost_equal(reconst, image1, 15)
 
 
@@ -511,7 +516,7 @@ class test_psf(unittest.TestCase):
             my_plot.plot(grads[i].imag, [2, i])
             my_plot.plot(np.abs(grads_expected[i].imag-grads[i].imag), [3, i])
             
-        my_plot.save("test.png")
+        my_plot.save("test_S_prime.png")
         my_plot.close()
 
         #for i in np.arange(len(grads)):

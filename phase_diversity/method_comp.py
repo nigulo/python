@@ -23,53 +23,46 @@ from functools import partial
 
 import utils
 import psf
+import psf_sampler
 import psf_basis
+import psf_basis_sampler
 import kolmogorov
+import misc
 
 import plot
 
-num_frames = 10
-
-image = plt.imread('granulation.png')
-
-image = image[0:200,0:200]
-
-nx = np.shape(image)[0]
-ny = np.shape(image)[1]
-
-assert(nx == ny)
-
-fimage = fft.fft2(image)
-#vals = fft.ifft2(vals)
-#vals = fft.ifft2(vals).real
-#fimage = np.roll(np.roll(fimage, int(nx/2), axis=0), int(ny/2), axis=1)
-    
+###############################################################################
+# Parameters
+fried = np.linspace(.1, 2., 1) # Fried parameter (in meters).
+num_realizations = 10    # Number of realizations per fried parameter. 
 jmax = 5
 arcsec_per_px = 0.055
 diameter = 50.0
 wavelength = 5250.0
 F_D = 1.0
 gamma = 1.0
+###############################################################################
 
 
+    
 def main():
+    image = plt.imread('granulation.png')
+    image = image[0:50,0:50]
     
-    fried = np.linspace(.1, 2., 1) # Fried parameter (in meters).
-    num_realizations = 10    # Number of realizations per fried parameter. 
+    nx = np.shape(image)[0]
+    ny = np.shape(image)[1]
     
-    size = 200		# Total size of the phase-screen from which the final realizations are cropped. 
-			# Needs to be kept high enough to include enough power in tip/tilt modes. Currently
-			# set at 4 times the diameter of the wavefront. 
-
-    sampling = 1.      # Sampling rate of the data on which the Point Spread Functions are used. A sampling of unity 
-                        # denotes critical sampling. 
+    assert(nx == ny)
+    
+    image1 = utils.upscale(image)
+    fimage = fft.fft2(image)
+    fimage1 = fft.fft2(image1)
 
     
     aperture_func = lambda u: utils.aperture_circ(u, 0.2, 15.0)
+    defocus_func = lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.)
 
-    wavefront = kolmogorov.kolmogorov(fried, num_realizations, size, sampling)
-    nx = np.shape(wavefront)[2]
-    ny = np.shape(wavefront)[3]
+    wavefront = kolmogorov.kolmogorov(fried, num_realizations, nx*4, sampling=1.)
     
     x1 = np.linspace(-1., 1., nx)
     x2 = np.linspace(-1., 1., ny)
@@ -82,12 +75,31 @@ def main():
     my_plot.close()
 
     
-    #pupil[int(nx/2),:] = 0
-    #pupil[:,int(ny/2)] = 0
+    ###########################################################################
+    # Create objects for image reconstruction
+    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
+    psf_ = psf.psf(ctf, nx, ny)
+    sampler = psf_sampler.psf_sampler(psf_, gamma)
+
+
+    psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+    psf_b.create_basis()
+    sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma)
+
+
+
+    ###########################################################################
     
-    #apodize(wavefront, pupil)
+    plot_res = plot.plot_map(nrows=num_realizations + 1, ncols=7)
     
-    
+    image_est_mean = np.zeros((nx*2-1, nx*2-1))
+    image_est_b_mean = np.zeros((nx, nx))
+    D_mean = np.zeros((nx*2-1, nx*2-1))
+    D_d_mean = np.zeros((nx*2-1, nx*2-1))
+            
+    image_norm = misc.normalize(image)
+    image_norm1 = misc.normalize(image1)
+
     
     for i in np.arange(0, len(fried)):
         for j in np.arange(0, num_realizations):
@@ -97,15 +109,82 @@ def main():
             my_plot.close()
 
             
-            ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), lambda u: 0.0)
-            psf_vals = psf.psf(ctf, nx, ny).calc()
+            ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
+            psf_true = psf.psf(ctf_true, nx, ny)
+            psf_vals_true = psf_true.calc()
 
-            my_plot = plot.plot_map(nrows=1, ncols=1)
-            my_plot.plot(psf_vals)
+            plot_psf = plot.plot_map(nrows=1, ncols=1)
+            plot_psf.plot(psf_vals_true)
 
-            my_plot.save("psf" + str(i) + "_" + str(j) + ".png")
-            my_plot.close()
+            plot_psf.save("psf" + str(i) + "_" + str(j) + ".png")
+            plot_psf.close()
             
+            ###################################################################
+            # Create convolved image and do the estimation
+            DF, DF_d = psf_true.multiply(fimage1)
+            
+            alphas_est = sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
+            image_est = psf_.deconvolve(DF, DF_d, alphas_est, gamma, do_fft = True)
+            
+            DF1 = utils.downscale(DF)
+            DF1_d = utils.downscale(DF_d) 
+
+            betas_est = sampler_b.sample(DF1, DF1_d, "samples_b" + str(j) + ".png")
+            image_est_b = psf_b.deconvolve(DF1, DF1_d, betas_est, gamma, do_fft = True)
+            #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
+        
+            D = fft.ifft2(fft.fftshift(DF)).real
+            D_d = fft.ifft2(fft.fftshift(DF_d)).real
+        
+            #image_min = np.min(image)
+            #image_max = np.max(image)
+            
+            D_norm = misc.normalize(D)
+            D_d_norm = misc.normalize(D_d)
+            image_est_norm = misc.normalize(image_est)
+            image_est_b_norm = misc.normalize(image_est_b)
+            
+        
+            #my_plot.plot(image_norm, [trial, 0])
+            #my_plot.plot(D_norm, [trial, 1])
+            #my_plot.plot(D_d_norm, [trial, 2])
+            #my_plot.plot(image_est_norm, [trial, 3])
+            #my_plot.plot(np.abs(image_est_norm-image_norm), [trial, 4])
+        
+            plot_res.plot(image, [j, 0])
+            plot_res.plot(D, [j, 1])
+            plot_res.plot(D_d, [j, 2])
+            plot_res.plot(image_est, [j, 3])
+            plot_res.plot(np.abs(image_est-image1), [j, 4])
+            plot_res.plot(image_est_b, [j, 5])
+            plot_res.plot(np.abs(image_est_b-image), [j, 6])
+            
+            #image_est = fft.ifft2(fimage_est).real
+            #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
+            image_est_mean += image_est_norm
+            image_est_b_mean += image_est_b_norm
+        
+            D_mean += D_norm
+            D_d_mean += D_d_norm
+        
+            plot_res.save("estimates.png")
+            
+            
+    image_est_mean /= num_realizations
+    image_est_b_mean /= num_realizations
+    D_mean /= num_realizations
+    D_d_mean /= num_realizations
     
+    plot_res.plot(image_norm, [num_realizations, 0])
+    plot_res.plot(D_mean, [num_realizations, 1])
+    plot_res.plot(D_d_mean, [num_realizations, 2])
+    plot_res.plot(image_est_mean, [num_realizations, 3])
+    plot_res.plot(np.abs(image_est_mean-image_norm1), [num_realizations, 4])
+    plot_res.plot(image_est_b_mean, [num_realizations, 5])
+    plot_res.plot(np.abs(image_est_b_mean-image_norm), [num_realizations, 6])
+    
+    my_plot.save("estimates.png")
+    plot_res.close()
+
 if __name__ == "__main__":
     main()

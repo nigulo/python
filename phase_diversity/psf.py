@@ -4,7 +4,7 @@ import scipy.signal as signal
 import zernike
 import utils
 import copy
-import sys
+#import sys
 #sys.path.append('../../utils')
 #import plot
 
@@ -14,6 +14,7 @@ class phase_aberration():
         if len(np.shape(alphas)) == 0:
             # alphas is an integer, representing jmax
             self.create_pols(alphas)
+            self.jmax = alphas
         else:
             self.create_pols(len(alphas))
             self.set_alphas(alphas)
@@ -37,7 +38,8 @@ class phase_aberration():
         if len(self.pols) != len(alphas):
             self.create_pols(len(alphas))
         self.alphas = np.array(alphas)
-        
+        self.jmax = len(self.alphas)
+    
             
     def __call__(self):
         vals = np.zeros(np.shape(self.terms)[1:])
@@ -169,10 +171,11 @@ class psf():
         else:
             return ret_val[0]
 
-    def deconvolve(self, D, D_d, gamma, do_fft = True):
+    def deconvolve(self, D, D_d, alphas, gamma, do_fft = True):
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         
+        self.coh_trans_func.phase_aberr.set_alphas(alphas)
         S = self.otf_vals[False]
         S_conj = S.conjugate()
         S_d = self.otf_vals[True]

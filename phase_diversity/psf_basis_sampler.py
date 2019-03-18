@@ -71,7 +71,7 @@ class psf_basis_sampler():
             # Optional methods:
             # Nelder-Mead Simplex algorithm (method='Nelder-Mead')
             # Broyden-Fletcher-Goldfarb-Shanno algorithm (method='BFGS')
-            # Powell’s method (method='powell')
+            # Powell's method (method='powell')
             # Newton-Conjugate-Gradient algorithm (method='Newton-CG')
             # Trust-Region Newton-Conjugate-Gradient Algorithm (method='trust-ncg')
             # Trust-Region Truncated Generalized Lanczos / Conjugate Gradient Algorithm (method='trust-krylov')
