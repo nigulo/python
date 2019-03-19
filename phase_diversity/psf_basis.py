@@ -354,10 +354,14 @@ class psf_basis:
                 P_d += FX_d*coef_x + FY_d*coef_y
         num = D_d*P - D*P_d
         num *= num.conjugate()
-        den = P*P.conjugate()+gamma*P_d*P_d.conjugate() + regularizer_eps
-        #if num == 0 and den == 0:
-        #    L = np.ones((self.nx, self.nx))
-        #else:
+        den = P*P.conjugate()+gamma*P_d*P_d.conjugate()
+        
+        eps_indices = np.where(abs(den) < regularizer_eps)
+        sign_indices = np.where(den[eps_indices] < 0.)
+        den[eps_indices] = regularizer_eps
+        den[eps_indices][sign_indices] *= -1.
+
+        #den += regularizer_eps
         L = num/den
 
         retval = np.sum(L.real)
@@ -379,7 +383,15 @@ class psf_basis:
         grads = np.zeros(len(theta))#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
         P, P_d = self.get_FP(betas, defocus = True)
-        Q = 1./(P*P.conjugate()+gamma*P_d*P_d.conjugate() + regularizer_eps)
+        Q = P*P.conjugate()+gamma*P_d*P_d.conjugate()
+        
+        eps_indices = np.where(abs(Q) < regularizer_eps)
+        sign_indices = np.where(Q[eps_indices] < 0.)
+        Q[eps_indices] = regularizer_eps
+        Q[eps_indices][sign_indices] *= -1.
+        
+        #Q += regularizer_eps
+        Q = 1./Q
 
         for j1 in np.arange(0, len(betas)):
 
@@ -418,6 +430,8 @@ class psf_basis:
             grads[j1] = 2.*np.sum(real_part)
             grads[j1 + self.jmax] = 2.*np.sum(imag_part)
 
+        #eps_indices = np.where(abs(grads) < regularizer_eps)
+        #grads[eps_indices] = np.random.normal()*regularizer_eps
         #print("likelihood_grad", theta, grads)
         return grads
 

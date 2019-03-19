@@ -44,7 +44,7 @@ assert(nx == ny)
 
 fimage = fft.fftshift(fft.fft2(image))
     
-jmax = 10
+jmax = 5
 arcsec_per_px = 0.055
 diameter = 50.0
 wavelength = 5250.0
@@ -67,22 +67,23 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.3]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
-sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma)
+sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 for trial in np.arange(0, num_frames):
     
-    pa = psf.phase_aberration(np.random.normal(size=5)*2)
+    #pa = psf.phase_aberration(np.random.normal(size=5)*2)
     #pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
+    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, ny_orig)
     
     D, D_d = psf_.multiply(fimage)
     
-    betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
-    
+    betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")    
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
+
+
     #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
 
     D = fft.ifft2(fft.ifftshift(D)).real
@@ -94,7 +95,13 @@ for trial in np.arange(0, num_frames):
     D_norm = misc.normalize(D)
     D_d_norm = misc.normalize(D_d)
     image_est_norm = misc.normalize(image_est)
+    image_est_norm_neg = 1. - image_est_norm
     
+    mse = np.sum((image_est_norm-image_norm)**2)
+    mse_neg = np.sum((image_est_norm_neg-image_norm)**2)
+    if mse_neg < mse:
+        print("Negative image")
+        image_est_norm = image_est_norm_neg
 
     #my_plot.plot(image_norm, [trial, 0])
     #my_plot.plot(D_norm, [trial, 1])
@@ -105,8 +112,8 @@ for trial in np.arange(0, num_frames):
     my_plot.plot(image, [trial, 0])
     my_plot.plot(D, [trial, 1])
     my_plot.plot(D_d, [trial, 2])
-    my_plot.plot(image_est, [trial, 3])
-    my_plot.plot(np.abs(image_est-image), [trial, 4])
+    my_plot.plot(image_est_norm, [trial, 3])
+    my_plot.plot(np.abs(image_est_norm-image_norm), [trial, 4])
     
     #image_est = fft.ifft2(fimage_est).real
     #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)

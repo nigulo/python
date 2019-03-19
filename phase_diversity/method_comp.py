@@ -33,7 +33,7 @@ import plot
 
 ###############################################################################
 # Parameters
-fried = np.linspace(.1, 2., 1) # Fried parameter (in meters).
+fried = np.linspace(0.25, 2., 1) # Fried parameter (in meters).
 num_realizations = 10    # Number of realizations per fried parameter. 
 jmax = 5
 arcsec_per_px = 0.055
@@ -44,10 +44,10 @@ gamma = 1.0
 ###############################################################################
 
 
-    
+
 def main():
     image = plt.imread('granulation.png')
-    image = image[0:20,0:20]
+    image = image[0:30,0:30]
     
     nx = np.shape(image)[0]
     ny = np.shape(image)[1]
@@ -79,12 +79,12 @@ def main():
     # Create objects for image reconstruction
     ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
     psf_ = psf.psf(ctf, nx, ny)
-    sampler = psf_sampler.psf_sampler(psf_, gamma)
+    sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=5)
 
 
     psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
     psf_b.create_basis()
-    sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma)
+    sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 
 
 
@@ -103,6 +103,7 @@ def main():
     
     for i in np.arange(0, len(fried)):
         for j in np.arange(0, num_realizations):
+            print("Realization: " + str(j))
             my_plot = plot.plot_map(nrows=1, ncols=1)
             my_plot.plot(wavefront[i,j,:,:])
             my_plot.save("kolmogorov" + str(i) + "_" + str(j) + ".png")

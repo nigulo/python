@@ -230,6 +230,7 @@ class psf():
         
 
     def likelihood_grad(self, theta, data):
+        #print("likelihood_grad")
         regularizer_eps = 1e-10
 
         D = data[0]
@@ -366,6 +367,7 @@ class psf():
         np.testing.assert_almost_equal(grads, grads1)
         '''
 
+        #print("likelihood_grad_end")
         return grads1/(self.nx*self.ny)
 
     def S_prime(self, theta, data):
