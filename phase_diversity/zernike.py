@@ -21,7 +21,7 @@ class zernike():
 
         rhos = rhos_phis[:,0]
         phis = rhos_phis[:,1]
-        assert(all(rhos >= 0) and all(rhos <= 1))
+        #assert(all(rhos >= 0) and all(rhos <= 1))
         if (self.n - self.abs_m) % 2 != 0:
             return 0.0
         R = np.zeros(np.shape(rhos)[0])

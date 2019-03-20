@@ -30,11 +30,11 @@ def odd(m):
 '''   
  Return the Vnm(r,f) function of the theory
 '''
-def Vnmf(radio, f, n, m):
-    #real(kind=8) :: radio(:,:), f
+def Vnmf(radius, f, n, m):
+    #real(kind=8) :: radius(:,:), f
     #integer :: n, m, l, j, lmax, p, q, ix, iy
-    #real(kind=8) :: t1, t2, t3, t4, ulj, sum(size(radio(:,1)),size(radio(1,:))), epsm
-    #complex(kind=8) :: ii, Vnm(size(radio(:,1)),size(radio(1,:)))
+    #real(kind=8) :: t1, t2, t3, t4, ulj, sum(size(radius(:,1)),size(radius(1,:))), epsm
+    #complex(kind=8) :: ii, Vnm(size(radius(:,1)),size(radius(1,:)))
 
     p = int(0.5*(n-abs(m)))
     q = int(0.5*(n+abs(m)))
@@ -51,11 +51,11 @@ def Vnmf(radio, f, n, m):
     
     ii = 1.j
     
-    Vnm = np.zeros_like(radio, dtype='complex')
+    Vnm = np.zeros_like(radius, dtype='complex')
     
     for l in np.arange(1, lmax + 1):
 
-        sum_ = np.zeros_like(radio)
+        sum_ = np.zeros_like(radius)
         for j in np.arange(0, p + 1):
             if p-j < l:
                 t1 = binomial_coef(abs(m)+j+l-1,l-1)
@@ -63,24 +63,9 @@ def Vnmf(radio, f, n, m):
                 t3 = binomial_coef(l-1,p-j)
                 t4 = binomial_coef(q+l+j,l)
                 ulj = (-1.0)**p * (abs(m)+l+2*j) * t1 * t2 * t3 / t4
-                for ix in np.arange(0, np.shape(radio)[0]):#size(radio(:,1)))
-                    for iy in np.arange(0, np.shape(radio)[1]):#size(radio(1,:))
-                        #x = 2.0*np.pi*(radio[ix,iy]+1.e-10)
-                        #b1 = bessj(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.e-10))**l)
-                        #b2 = special.jv(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.e-10))**l)
-                        #b3 = special.iv(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.e-10))**l)
-                        
-                        #print(b1, b2, b3, abs(m)+l+2*j, x, m, l, j)
-                        #if (3.0 and x != 1.1279621214707376
-                        #np.testing.assert_approx_equal(b1, b2, 7)
-
-                        #np.testing.assert_approx_equal(bessj0(x), special.j0(x), 7)
-                        #np.testing.assert_approx_equal(bessj1(x), special.j1(x), 7)
-
-
-                        #sum_[ix,iy] += ulj * bessj(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.e-10))**l)
-                        sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radio[ix,iy]+1.e-10))**l)
-                        #sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radio[ix,iy])) / (l*(2.0*np.pi*(radio[ix,iy]))**l)
+                for ix in np.arange(0, np.shape(radius)[0]):
+                    for iy in np.arange(0, np.shape(radius)[1]):
+                        sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radius[ix,iy]+1.e-10))**l)
         Vnm += sum_ * (-2.0*ii*f)**(l-1)
         
     Vnm *= epsm * np.exp(ii*f)
@@ -88,7 +73,10 @@ def Vnmf(radio, f, n, m):
 
 
 class psf_basis:
-    
+    '''
+        diameter is in centimeters
+        wavelength is in Angstroms
+    '''
     def __init__(self, jmax = 10, arcsec_per_px = 0.055, diameter = 20.0, wavelength = 5250.0, nx = 100, F_D = 1.0):
         
         self.jmax = jmax
@@ -123,9 +111,9 @@ class psf_basis:
                 self.FXs_d = np.zeros((jmax, jmax, nx, nx), dtype='complex')
                 self.FYs_d = np.zeros((jmax, jmax, nx, nx), dtype='complex')
 
-
+        # Diffraction limit or the resolution of the telescope (in arcesonds)
         diffraction = 1.22 * wavelength * 1e-8 / diameter
-        diffraction = 206265.0 * diffraction
+        diffraction = 3600*180/np.pi * diffraction
         
         print('Diffraction limit ["]=', diffraction)
         
@@ -136,21 +124,25 @@ class psf_basis:
             x_diff[i] = arcsec_per_px*i
             y_diff[i] = arcsec_per_px*i
         
+        # Angular separation of pixels measured from the center (in arceconds)
         x_diff = x_diff - x_diff[int(nx/2)]
         y_diff = y_diff - y_diff[int(nx/2)]
         
+        # Angular separation of resolved pixels measured from the center (in arceconds)
         x_diff = x_diff / diffraction
         y_diff = y_diff / diffraction
         
-        radio = np.zeros((nx,nx))
+        radius = np.zeros((nx,nx))
         phi = np.zeros((nx,nx))
         
         for i in np.arange(0, nx):
             for j in np.arange(0, nx):
-                radio[i,j] = np.sqrt(x_diff[i]**2 + y_diff[j]**2)
+                radius[i,j] = np.sqrt(x_diff[i]**2 + y_diff[j]**2)
                 phi[i,j] = np.arctan2(y_diff[j], x_diff[i])
         
-        radio = radio * 3.8317 / (2.0 * np.pi)
+        # What is this factor?
+        radius = radius * 3.8317 / (2.0 * np.pi)
+        print("radius:", radius[-1, -1])
         # Generate the two focus+defocused PSFs
         
         defocus_array = [False]
@@ -174,14 +166,14 @@ class psf_basis:
             for j in np.arange(1, jmax + 1):
                 n, m = zernike.get_nm(j)
         
-                V_n_m =  Vnmf(radio, f, n, m)
+                V_n_m =  Vnmf(radius, f, n, m)
                 
                 for k in np.arange(1, j + 1):
                     n_p, m_p = zernike.get_nm(k)
         
                     print(n, m, n_p, m_p)
         
-                    V_np_mp = Vnmf(radio, f, n_p, m_p)
+                    V_np_mp = Vnmf(radius, f, n_p, m_p)
         
                     ca = np.cos(0.5*(m+m_p)*np.pi)
                     sa = np.sin(0.5*(m+m_p)*np.pi)

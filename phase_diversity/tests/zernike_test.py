@@ -14,7 +14,7 @@ def radial_polynomial(rho, m, n):
 class test_zernike(unittest.TestCase):
 
     def test(self):
-        for rho in np.linspace(0.0, 1.0, 10):
+        for rho in np.linspace(0.0, 1.5, 10):
             for phi in np.linspace(0.0, 2.0*np.pi, 10):
                 for n in np.arange(0, 27):
                     for m in np.arange(-n, 0):
@@ -30,7 +30,9 @@ class test_zernike(unittest.TestCase):
                             expected = 0.0
                         else:
                             expected = radial_polynomial(rho, m, n)*np.cos(phi*m)
-                        np.testing.assert_approx_equal(z.get_value(np.array([rho, phi])), expected, significant=7)
+                        value = z.get_value(np.array([rho, phi]))
+                        np.testing.assert_approx_equal(value, expected, significant=7)
+                            
         
         # Test vector form
         rhos = np.linspace(0.0, 1.0, 10)

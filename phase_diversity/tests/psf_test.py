@@ -294,7 +294,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
             
-        psf_vals = psf.psf(ctf, size, size).calc(normalize = False)
+        psf_vals = psf.psf(ctf, size).calc(normalize = False)
 
         x1 = np.linspace(-1., 1., size)/np.sqrt(2)
         x2 = np.linspace(-1., 1., size)/np.sqrt(2)
@@ -319,7 +319,7 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
             
-        otf_vals = psf.psf(ctf, size, size).calc_otf()
+        otf_vals = psf.psf(ctf, size).calc_otf()
         
         coh_vals = ctf(defocus=True)        
         corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/size/size
@@ -328,7 +328,6 @@ class test_psf(unittest.TestCase):
 
     def test_deconvolve(self):
         nx = np.shape(image10x10)[0]
-        ny = np.shape(image10x10)[1]
         image1 = utils.upscale(image10x10)
 
         #######################################################################
@@ -337,7 +336,7 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration([])
 
         ctf = psf.coh_trans_func(lambda xs: 1.0, pa, lambda xs: 0.0)
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         D, D_d = psf_.convolve(image1)
         # No defocus, so D should be equal to D_d
@@ -362,7 +361,7 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         image1_F = fft.fftshift(fft.fft2(image1))
         D, D_d = psf_.multiply(image1_F)
@@ -377,13 +376,12 @@ class test_psf(unittest.TestCase):
         gamma = 1.
         
         nx = np.shape(image10x10)[0]
-        ny = np.shape(image10x10)[1]
 
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         image1 = utils.upscale(image10x10)
         image1_F = fft.fft2(image1)
@@ -395,7 +393,7 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(n_coefs)#zip(np.arange(1, n_coefs + 1), coefs))
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         alphas = np.random.normal(size=n_coefs)*10.
         lik = psf_.likelihood(alphas, [D, D_d, gamma])
@@ -405,31 +403,30 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(alphas)
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
 
         S = psf_.calc_otf(defocus = False)
         S_d = psf_.calc_otf(defocus = True)
 
         num = D_d*S - D*S_d
         num *= num.conjugate()
-        den = S*S.conjugate()+gamma*S_d*S_d.conjugate() + 1e-15
+        den = S*S.conjugate()+gamma*S_d*S_d.conjugate() + 1e-10
 
         lik_expected = np.sum((num/den).real)
         
-        np.testing.assert_almost_equal(lik, lik_expected, 7)
+        np.testing.assert_almost_equal(lik, lik_expected, 5)
 
     def test_likelihood_grad(self):
         n_coefs = 20
         gamma = 1.
         
         nx = np.shape(image10x10)[0]
-        ny = np.shape(image10x10)[1]
 
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         image1 = utils.upscale(image10x10)
         image1_F = fft.fft2(image1)
@@ -441,7 +438,7 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(n_coefs)#zip(np.arange(1, n_coefs + 1), coefs))
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         alphas = np.random.normal(size=n_coefs)*10.
         grads = psf_.likelihood_grad(alphas, [D, D_d, gamma])
@@ -468,13 +465,12 @@ class test_psf(unittest.TestCase):
         gamma = 1.
         
         nx = np.shape(image10x10)[0]
-        ny = np.shape(image10x10)[1]
 
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         image1 = utils.upscale(image10x10)
         image1_F = fft.fft2(image1)
@@ -486,7 +482,7 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(n_coefs)#zip(np.arange(1, n_coefs + 1), coefs))
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, ny)
+        psf_ = psf.psf(ctf, nx)
         
         alphas = np.random.normal(size=n_coefs)*10.
         grads = psf_.S_prime(alphas, [D, D_d, gamma])

@@ -79,7 +79,7 @@ def main():
     # Create objects for image reconstruction
     ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
     psf_ = psf.psf(ctf, nx, ny)
-    sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=5)
+    sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=2)
 
 
     psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)

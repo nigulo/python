@@ -30,7 +30,7 @@ num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:20,0:20]
+image = image[0:100,0:100]
 
 nx_orig = np.shape(image)[0]
 ny_orig = np.shape(image)[1]
@@ -44,9 +44,9 @@ assert(nx == ny)
 
 fimage = fft.fftshift(fft.fft2(image))
     
-jmax = 5
+jmax = 10
 arcsec_per_px = 0.055
-diameter = 50.0
+diameter = 20.0
 wavelength = 5250.0
 F_D = 1.0
 gamma = 1.0
@@ -67,7 +67,7 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([.3]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 for trial in np.arange(0, num_frames):

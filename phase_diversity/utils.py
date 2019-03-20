@@ -3,14 +3,14 @@ import scipy.special as special
 #import scipy.misc
 import scipy.ndimage
 
-def cart_to_polar(us):
+def cart_to_polar(xs):
     scalar = False
-    if len(np.shape(us)) == 1:
+    if len(np.shape(xs)) == 1:
         scalar = True
-        us = np.array([us])
-    rhos = np.sqrt(np.sum(us**2, axis=us.ndim-1))
-    phis = np.arctan2(us[...,1], us[...,0])
-    ret_val = np.stack((rhos, phis), axis = us.ndim-1)
+        xs = np.array([xs])
+    rhos = np.sqrt(np.sum(xs**2, axis=xs.ndim-1))
+    phis = np.arctan2(xs[...,1], xs[...,0])
+    ret_val = np.stack((rhos, phis), axis = xs.ndim-1)
     if scalar:
         ret_val = ret_val[0]
     return ret_val
@@ -37,27 +37,27 @@ def trunc(ds, perc):
                 ds_out[i, j] = p2
     return ds_out
 
-def aperture_circ(us, r=1.0, coef=5.0):
+def aperture_circ(xs, r=1.0, coef=5.0):
     scalar = False
-    if len(np.shape(us)) == 1:
+    if len(np.shape(xs)) == 1:
         scalar = True
-        us = np.array([us])
+        xs = np.array([xs])
     if coef > 0.0:
-        ret_val = 0.5+0.5*special.erf(coef*(r-np.sqrt(np.sum(us**2, axis=us.ndim-1))))
+        ret_val = 0.5+0.5*special.erf(coef*(r-np.sqrt(np.sum(xs**2, axis=xs.ndim-1))))
     else:
-        ret_val = np.zeros(np.shape(us)[0])
-        indices = np.where(np.sum(us**2, axis=us.ndim-1) <= r*r)[0]
+        ret_val = np.zeros(np.shape(xs)[0])
+        indices = np.where(np.sum(xs**2, axis=xs.ndim-1) <= r*r)[0]
         ret_val[indices] = 1.0
     if scalar:
         ret_val = ret_val[0]
     return ret_val
     
-def upscale(image):
+def upsample(image):
     #return scipy.misc.imresize(image, (image.shape[0]*2-1, image.shape[1]*2-1))
     zoom_perc = (float(image.shape[0])*2.-1.)/image.shape[0]
     return scipy.ndimage.zoom(image, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
 
-def downscale(image):
+def downsample(image):
     #return scipy.misc.imresize(image, (image.shape[0]*2-1, image.shape[1]*2-1))
     zoom_perc = (float(image.shape[0])+1.)/2./image.shape[0]
     if image.dtype == 'complex':

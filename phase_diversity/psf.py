@@ -80,9 +80,9 @@ class coh_trans_func():
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
         
-    def calc(self, xs):
+    def calc(self, xs, rc):
         self.phase_aberr.calc_terms(xs)
-        self.pupil = self.pupil_func(xs)
+        self.pupil = self.pupil_func(xs*2./rc)
         self.defocus = self.defocus_func(xs)
             
     def __call__(self, defocus = False):
@@ -93,43 +93,53 @@ class coh_trans_func():
 
 
 class psf():
-    def __init__(self, coh_trans_func, nx, ny):
-        self.nx = nx
-        self.ny = ny
+
+    '''
+        diameter in centimeters
+        wavelength in Angstroms
+    '''
+    def __init__(self, coh_trans_func, nx, arcsec_per_pix = 0.055, diameter = 20, wavelength = 5250.0):
+        
+        self.nx= nx
+          
+        rad2deg=180.0/np.pi
+        scale_angle2CCD=arcsec_per_pix/(rad2deg*3600.0)
+        q_number=wavelength*1.e-8/(scale_angle2CCD*diameter)
+        lim_freq=2.*self.nx/q_number # telescope_d in pupil space
+        rc=lim_freq
+        
+        x_limit = self.nx**2/4./rc
+        
         #coh_vals = np.zeros((nx, ny))
-        xs = np.linspace(-1.0, 1.0, nx)/np.sqrt(2)
-        ys = np.linspace(-1.0, 1.0, ny)/np.sqrt(2)
-        assert(len(xs) == nx)
-        assert(len(ys) == ny)
-        self.coords = np.dstack(np.meshgrid(xs, ys))
+        xs = np.linspace(-x_limit, x_limit, self.nx)
+        print(xs)
+        assert(len(xs) == self.nx)
+        self.coords = np.dstack(np.meshgrid(xs, xs))
         self.incoh_vals = dict()
         self.otf_vals = dict()
         self.corr = dict() # only for testing purposes
         self.coh_trans_func = coh_trans_func
-        self.coh_trans_func.calc(self.coords)
+        self.coh_trans_func.calc(self.coords, rc)
         
         # Repeat the same for bigger grid
-        xs1 = np.linspace(-1.0, 1.0, nx*2-1)/np.sqrt(2)
-        ys1 = np.linspace(-1.0, 1.0, ny*2-1)/np.sqrt(2)
-        coords1 = np.dstack(np.meshgrid(xs1, ys1))
+        xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
+        coords1 = np.dstack(np.meshgrid(xs1, xs1))
 
-        self.nx1 = nx * 2 - 1
-        self.ny1 = ny * 2 - 1
+        self.nx1 = self.nx * 2 - 1
 
         self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
-        self.coh_trans_func1.calc(coords1)
+        self.coh_trans_func1.calc(coords1, rc)
 
-        xs2 = np.linspace(-1.0, 1.0, (nx*2-1)*2-1)/np.sqrt(2)
-        ys2 = np.linspace(-1.0, 1.0, (ny*2-1)*2-1)/np.sqrt(2)
-        coords2 = np.dstack(np.meshgrid(xs2, ys2))
+        xs2 = np.linspace(-x_limit, x_limit, (self.nx*2-1)*2-1)
+        coords2 = np.dstack(np.meshgrid(xs2, xs2))
         self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
-        self.coh_trans_func2.calc(coords2)
+        self.coh_trans_func2.calc(coords2, rc)
         
         
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
-        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.ny)
+        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
         
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
 
@@ -368,7 +378,7 @@ class psf():
         '''
 
         #print("likelihood_grad_end")
-        return grads1/(self.nx*self.ny)
+        return grads1/(self.nx*self.nx)
 
     def S_prime(self, theta, data):
         #regularizer_eps = 1e-10
@@ -404,7 +414,7 @@ class psf():
             #S_d_primes = -1.j/(self.nx*self.ny)*(signal.convolve2d(zs1[i]*H1_d, H1_d.conjugate()) - signal.convolve(H1_d, zs1[i]*H1_d.conjugate()))
             grads[i] = S_primes
 
-        return grads/(self.nx*self.ny)
+        return grads/(self.nx*self.nx)
 
 
 '''
