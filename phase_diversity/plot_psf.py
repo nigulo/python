@@ -29,7 +29,7 @@ num_rows = 5
 num_cols = 5
 num_tests = num_rows * num_cols
 
-aperture_func = lambda xs: utils.aperture_circ(xs, 0.8, 100.0)
+aperture_func = lambda xs: utils.aperture_circ(xs, 1.0, 15.0)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 6)
@@ -58,9 +58,9 @@ axes2 = axes2.flatten()
 
 for index in np.arange(0, num_tests):
     if index == 0:
-        pa = psf.phase_aberration([])
+        pa = psf.phase_aberration([], start_index = 0)
     else:
-        pa = psf.phase_aberration([0.]*(index-1) + [10.])#[(index, 10.0)])
+        pa = psf.phase_aberration([0.]*(index-1) + [10.], start_index = 0)#[(index, 10.0)])
     vals = np.zeros((nx, nx))
     for x in np.arange(0, nx):
         for y in np.arange(0, nx):

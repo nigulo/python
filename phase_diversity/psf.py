@@ -4,9 +4,12 @@ import scipy.signal as signal
 import zernike
 import utils
 import copy
-#import sys
-#sys.path.append('../../utils')
-#import plot
+
+__DEBUG__ = True
+if __DEBUG__:
+    import sys
+    sys.path.append('../utils')
+    import plot
 
 class phase_aberration():
     
@@ -82,11 +85,20 @@ class coh_trans_func():
         
     def calc(self, xs, rc):
         self.phase_aberr.calc_terms(xs)
-        self.pupil = self.pupil_func(xs*2./rc)
+        self.pupil = self.pupil_func(xs)
         self.defocus = self.defocus_func(xs)
-            
+        
     def __call__(self, defocus = False):
         phase = self.phase_aberr()
+
+        if __DEBUG__:
+            my_plot = plot.plot_map(nrows=1, ncols=2)
+            my_plot.plot(self.pupil, [0])
+            my_plot.plot(self.pupil*phase, [1])
+            
+            my_plot.save("aperture_test.png")
+            my_plot.close()
+
         if defocus:
             phase += self.defocus
         return self.pupil*np.exp(1.j * phase)
@@ -98,7 +110,7 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_pix = 0.055, diameter = 20, wavelength = 5250.0):
+    def __init__(self, coh_trans_func, nx, arcsec_per_pix = 0.055, diameter = 50, wavelength = 5250.0):
         
         self.nx= nx
           
@@ -108,11 +120,10 @@ class psf():
         lim_freq=2.*self.nx/q_number # telescope_d in pupil space
         rc=lim_freq
         
-        x_limit = self.nx**2/4./rc
+        x_limit = self.nx/rc
         
         #coh_vals = np.zeros((nx, ny))
         xs = np.linspace(-x_limit, x_limit, self.nx)
-        print(xs)
         assert(len(xs) == self.nx)
         self.coords = np.dstack(np.meshgrid(xs, xs))
         self.incoh_vals = dict()
