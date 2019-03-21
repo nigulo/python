@@ -31,6 +31,7 @@ def odd(m):
  Return the Vnm(r,f) function of the theory
 '''
 def Vnmf(radius, f, n, m):
+    epsilon = 1.e-10
     #real(kind=8) :: radius(:,:), f
     #integer :: n, m, l, j, lmax, p, q, ix, iy
     #real(kind=8) :: t1, t2, t3, t4, ulj, sum(size(radius(:,1)),size(radius(1,:))), epsm
@@ -65,10 +66,22 @@ def Vnmf(radius, f, n, m):
                 ulj = (-1.0)**p * (abs(m)+l+2*j) * t1 * t2 * t3 / t4
                 for ix in np.arange(0, np.shape(radius)[0]):
                     for iy in np.arange(0, np.shape(radius)[1]):
-                        sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius[ix,iy]+1.e-10)) / (l*(2.0*np.pi*(radius[ix,iy]+1.e-10))**l)
+                        sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius[ix,iy]+epsilon)) / (l*(2.0*np.pi*(radius[ix,iy]+epsilon))**l)
         Vnm += sum_ * (-2.0*ii*f)**(l-1)
         
     Vnm *= epsm * np.exp(ii*f)
+    #if n == 0 and m == 0:
+    #    if f == 0.:
+    #        res = special.jv(1, 2*np.pi*radius+epsilon)/(2.*np.pi*radius+epsilon)
+    #        np.testing.assert_almost_equal(Vnm, res, 8)
+    #    else:
+    #        res = np.zeros_like(Vnm)
+    #        for l in np.arange(1, 250):
+    #            res += (-2.j*f)**(l-1)*special.jv(l, 2*np.pi*radius)/(2.*np.pi*radius)**l
+    #        res *= np.exp(1.j*f)
+    #        np.testing.assert_almost_equal(Vnm, res)
+                
+                
     return Vnm
 
 
@@ -96,20 +109,20 @@ class psf_basis:
         nx = self.nx
         F_D = self.F_D
         
-        self.Xs = np.zeros((jmax, jmax, nx, nx))
-        self.Ys = np.zeros((jmax, jmax, nx, nx))
+        self.Xs = np.zeros((jmax+1, jmax+1, nx, nx))
+        self.Ys = np.zeros((jmax+1, jmax+1, nx, nx))
 
         if do_fft:
-            self.FXs = np.zeros((jmax, jmax, nx, nx), dtype='complex')
-            self.FYs = np.zeros((jmax, jmax, nx, nx), dtype='complex')
+            self.FXs = np.zeros((jmax+1, jmax+1, nx, nx), dtype='complex')
+            self.FYs = np.zeros((jmax+1, jmax+1, nx, nx), dtype='complex')
 
         if do_defocus:
-            self.Xs_d = np.zeros((jmax, jmax, nx, nx))
-            self.Ys_d = np.zeros((jmax, jmax, nx, nx))
+            self.Xs_d = np.zeros((jmax+1, jmax+1, nx, nx))
+            self.Ys_d = np.zeros((jmax+1, jmax+1, nx, nx))
 
             if do_fft:
-                self.FXs_d = np.zeros((jmax, jmax, nx, nx), dtype='complex')
-                self.FYs_d = np.zeros((jmax, jmax, nx, nx), dtype='complex')
+                self.FXs_d = np.zeros((jmax+1, jmax+1, nx, nx), dtype='complex')
+                self.FYs_d = np.zeros((jmax+1, jmax+1, nx, nx), dtype='complex')
 
         # Diffraction limit or the resolution of the telescope (in arcesonds)
         diffraction = 1.22 * wavelength * 1e-8 / diameter
@@ -161,15 +174,20 @@ class psf_basis:
                 print('Defocus f = ', f)
         
         
-        
             # Generate all the basis functions
-            for j in np.arange(1, jmax + 1):
-                n, m = zernike.get_nm(j)
+            for j in np.arange(0, jmax + 1):
+                if j == 0:
+                    n, m = 0, 0
+                else:
+                    n, m = zernike.get_nm(j)
         
                 V_n_m =  Vnmf(radius, f, n, m)
                 
-                for k in np.arange(1, j + 1):
-                    n_p, m_p = zernike.get_nm(k)
+                for k in np.arange(0, j + 1):
+                    if k == 0:
+                        n_p, m_p = 0, 0
+                    else:
+                        n_p, m_p = zernike.get_nm(k)
         
                     print(n, m, n_p, m_p)
         
@@ -192,11 +210,11 @@ class psf_basis:
                     Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
                     
                     if defocus:
-                        self.Xs_d[j-1, k-1] = X
-                        self.Ys_d[j-1, k-1]  = Y
+                        self.Xs_d[j, k] = X
+                        self.Ys_d[j, k]  = Y
                     else:
-                        self.Xs[j-1, k-1] = X
-                        self.Ys[j-1, k-1]  = Y
+                        self.Xs[j, k] = X
+                        self.Ys[j, k]  = Y
                         
                     
                     ###################################################################
@@ -208,17 +226,17 @@ class psf_basis:
                         FY = fft.fft2(Y)
                         #FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
                         if defocus:
-                            self.FXs_d[j-1, k-1] = FX
-                            self.FYs_d[j-1, k-1] = FY
+                            self.FXs_d[j, k] = FX
+                            self.FYs_d[j, k] = FY
                         else:
-                            self.FXs[j-1, k-1] = FX
-                            self.FYs[j-1, k-1] = FY
+                            self.FXs[j, k] = FX
+                            self.FYs[j, k] = FY
 
     def multiply(self, dat_F, betas, defocus = True):
         ret_val = np.zeros((self.nx, self.nx), dtype='complex')
         if defocus:
             ret_val_d = np.zeros((self.nx, self.nx), dtype='complex')
-        for j in np.arange(0, self.jmax):
+        for j in np.arange(0, self.jmax+1):
             for k in np.arange(0, j + 1):
                 if defocus:
                     defocus_array = [False, True]
@@ -226,9 +244,16 @@ class psf_basis:
                     defocus_array = [False]
                 for defocus1 in defocus_array:
                     FX, FY = self.get_FXFY(j, k, defocus = defocus1)
-                    
-                    FX1 = FX * (betas[j]*betas[k].conjugate()).real
-                    FY1 = FY * (betas[j]*betas[k].conjugate()).imag
+                    if j == 0:
+                        betas_j = 1.
+                    else:
+                        betas_j = betas[j-1]
+                    if k == 0:
+                        betas_k = 1.
+                    else:
+                        betas_k = betas[k-1]
+                    FX1 = FX * (betas_j*betas_k.conjugate()).real
+                    FY1 = FY * (betas_j*betas_k.conjugate()).imag
                     
                     if k == j:
                         FX1 *= 0.5
@@ -285,34 +310,7 @@ class psf_basis:
             return self.FXs[j, k], self.FYs[j, k]
             
     def get_FP(self, betas, defocus = True):
-        ret_val = np.zeros((self.nx, self.nx), dtype='complex')
-        if defocus:
-            ret_val_d = np.zeros((self.nx, self.nx), dtype='complex')
-        for j in np.arange(0, self.jmax):
-            for k in np.arange(0, j + 1):
-                if defocus:
-                    defocus_array = [False, True]
-                else:
-                    defocus_array = [False]
-                for defocus1 in defocus_array:
-                    FX, FY = self.get_FXFY(j, k, defocus = defocus1)
-                    
-                    FX1 = FX*(betas[j]*betas[k].conjugate()).real
-                    FY1 = FY*(betas[j]*betas[k].conjugate()).imag
-                    
-                    if k == j:
-                        FX1 *= 0.5
-                        FY1 *= 0.5
-                        
-
-                    if defocus1:
-                        ret_val_d += (FX1 + FY1)
-                    else:
-                        ret_val += (FX1 + FY1)
-        if defocus:
-            return (ret_val, ret_val_d)
-        else:
-            return ret_val
+        return self.multiply(1.0, betas, defocus=defocus)
 
 
     '''
@@ -331,12 +329,20 @@ class psf_basis:
         P = np.zeros_like(D, dtype = 'complex')
         P_d = np.zeros_like(D_d, dtype = 'complex')
 
-        for j in np.arange(0, self.jmax):
+        for j in np.arange(0, self.jmax + 1):
             for k in np.arange(0, j + 1):
                 FX, FY = self.get_FXFY(j, k)
                 FX_d, FY_d = self.get_FXFY(j, k, defocus=True)
 
-                coef = betas[j]*betas[k].conjugate()
+                if j == 0:
+                    betas_j = 1.
+                else:
+                    betas_j = betas[j-1]
+                if k == 0:
+                    betas_k = 1.
+                else:
+                    betas_k = betas[k-1]
+                coef = betas_j*betas_k.conjugate()
                 if j == k:
                     coef *= 0.5
                 coef_x = coef.real
@@ -391,7 +397,7 @@ class psf_basis:
             dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
             dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
             dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
-            for k1 in np.arange(0, self.jmax):#self.jmax):
+            for k1 in np.arange(0, self.jmax + 1):
                 eps = 1.0
                 if j1 == k1:
                     eps = 0.5
@@ -402,12 +408,15 @@ class psf_basis:
                 else:
                     FX, FY = self.get_FXFY(j1, k1)
                     FX_d, FY_d = self.get_FXFY(j1, k1, defocus=True)
+                if k1 == 0:
+                    betas_k1 = 1.
+                else:
+                    betas_k1 = betas[k1-1]
+                dP_dbeta_real += betas_k1.real*FX - eps*betas_k1.imag*FY
+                dP_dbeta_imag += eps*betas_k1.real*FY + betas_k1.imag*FX
 
-                dP_dbeta_real += betas[k1].real*FX - eps*betas[k1].imag*FY
-                dP_dbeta_imag += eps*betas[k1].real*FY + betas[k1].imag*FX
-
-                dP_d_dbeta_real += betas[k1].real*FX_d - eps*betas[k1].imag*FY_d
-                dP_d_dbeta_imag += eps*betas[k1].real*FY_d + betas[k1].imag*FX_d
+                dP_d_dbeta_real += betas_k1.real*FX_d - eps*betas_k1.imag*FY_d
+                dP_d_dbeta_imag += eps*betas_k1.real*FY_d + betas_k1.imag*FX_d
                 
             num = D_d*P - D*P_d
             num_conj = num.conjugate()

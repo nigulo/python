@@ -49,7 +49,7 @@ def main():
         
         fig_y, axes_y = plt.subplots(nrows=nrows, ncols=ncols)
         fig_y.set_size_inches(ncols*3, nrows*3)
-        
+
         extent=[0., 1., 0., 1.]
         plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         ###########################################################################
@@ -99,15 +99,18 @@ def main():
     
                 ax_y.imshow(Y[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
                 ax_y.set_aspect(aspect=plot_aspect)
+                
+                
     
                 ###################################################################
     
-        if defocus:
-            fig_x.savefig("psf_defocus_x.png")
-            fig_y.savefig("psf_defocus_y.png")
-        else:
-            fig_x.savefig("psf_x.png")
-            fig_y.savefig("psf_y.png")
+                if defocus:
+                    fig_x.savefig("psf_defocus_x.png")
+                    fig_y.savefig("psf_defocus_y.png")
+                else:
+                    fig_x.savefig("psf_x.png")
+                    fig_y.savefig("psf_y.png")
+    
     
         plt.close(fig_x)
         plt.close(fig_y)
