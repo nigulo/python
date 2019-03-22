@@ -391,13 +391,13 @@ class psf_basis:
         #Q += regularizer_eps
         Q = 1./Q
 
-        for j1 in np.arange(0, len(betas)):
+        for j1 in np.arange(1, len(betas)+1):
 
             dP_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
             dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
             dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
             dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
-            for k1 in np.arange(0, self.jmax + 1):
+            for k1 in np.arange(0, self.jmax+1):
                 eps = 1.0
                 if j1 == k1:
                     eps = 0.5
@@ -428,8 +428,8 @@ class psf_basis:
             imag_part = (Q * num_conj*(D_d*dP_dbeta_imag - D*dP_d_dbeta_imag) -
                 Q**2*num_sq*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag).real).real
 
-            grads[j1] = 2.*np.sum(real_part)
-            grads[j1 + self.jmax] = 2.*np.sum(imag_part)
+            grads[j1-1] = 2.*np.sum(real_part)
+            grads[j1-1 + self.jmax] = 2.*np.sum(imag_part)
 
         #eps_indices = np.where(abs(grads) < regularizer_eps)
         #grads[eps_indices] = np.random.normal()*regularizer_eps
