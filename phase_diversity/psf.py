@@ -125,7 +125,7 @@ class psf():
         #coh_vals = np.zeros((nx, ny))
         xs = np.linspace(-x_limit, x_limit, self.nx)
         assert(len(xs) == self.nx)
-        self.coords = np.dstack(np.meshgrid(xs, xs))
+        self.coords = np.dstack(np.meshgrid(xs, xs)[::-1])
         self.incoh_vals = dict()
         self.otf_vals = dict()
         self.corr = dict() # only for testing purposes
@@ -134,7 +134,7 @@ class psf():
         
         # Repeat the same for bigger grid
         xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
-        coords1 = np.dstack(np.meshgrid(xs1, xs1))
+        coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
 
         self.nx1 = self.nx * 2 - 1
 
@@ -142,7 +142,7 @@ class psf():
         self.coh_trans_func1.calc(coords1, rc)
 
         xs2 = np.linspace(-x_limit, x_limit, (self.nx*2-1)*2-1)
-        coords2 = np.dstack(np.meshgrid(xs2, xs2))
+        coords2 = np.dstack(np.meshgrid(xs2, xs2)[::-1])
         self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
         self.coh_trans_func2.calc(coords2, rc)
         

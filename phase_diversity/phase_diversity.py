@@ -30,12 +30,12 @@ num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:100,0:100]
+image = image[0:20,0:20]
 
 nx_orig = np.shape(image)[0]
 ny_orig = np.shape(image)[1]
 
-image = utils.upscale(image)
+image = utils.upsample(image)
 
 nx = np.shape(image)[0]
 ny = np.shape(image)[1]
@@ -44,7 +44,7 @@ assert(nx == ny)
 
 fimage = fft.fftshift(fft.fft2(image))
     
-jmax = 10
+jmax = 5
 arcsec_per_px = 0.055
 diameter = 20.0
 wavelength = 5250.0
@@ -72,10 +72,10 @@ wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_f
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 for trial in np.arange(0, num_frames):
     
-    #pa = psf.phase_aberration(np.random.normal(size=5)*2)
+    pa = psf.phase_aberration(np.random.normal(size=5)*2)
     #pa = psf.phase_aberration([])
-    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, ny_orig)
     
     D, D_d = psf_.multiply(fimage)
@@ -97,11 +97,11 @@ for trial in np.arange(0, num_frames):
     image_est_norm = misc.normalize(image_est)
     image_est_norm_neg = 1. - image_est_norm
     
-    mse = np.sum((image_est_norm-image_norm)**2)
-    mse_neg = np.sum((image_est_norm_neg-image_norm)**2)
-    if mse_neg < mse:
-        print("Negative image")
-        image_est_norm = image_est_norm_neg
+    #mse = np.sum((image_est_norm-image_norm)**2)
+    #mse_neg = np.sum((image_est_norm_neg-image_norm)**2)
+    #if mse_neg < mse:
+    #    print("Negative image")
+    #    image_est_norm = image_est_norm_neg
 
     #my_plot.plot(image_norm, [trial, 0])
     #my_plot.plot(D_norm, [trial, 1])

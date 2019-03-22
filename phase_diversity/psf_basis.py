@@ -2,6 +2,7 @@ import numpy as np
 import scipy.special as special
 import numpy.fft as fft
 import zernike
+import utils
 
 '''
  Return a binomial coefficient
@@ -148,14 +149,15 @@ class psf_basis:
         radius = np.zeros((nx,nx))
         phi = np.zeros((nx,nx))
         
-        for i in np.arange(0, nx):
-            for j in np.arange(0, nx):
-                radius[i,j] = np.sqrt(x_diff[i]**2 + y_diff[j]**2)
-                phi[i,j] = np.arctan2(y_diff[j], x_diff[i])
+        coords = np.dstack(np.meshgrid(x_diff, x_diff)[::-1])
+        radiuses_phis = utils.cart_to_polar(coords)
         
+        radius = radiuses_phis[:,:,0]
+        phi = radiuses_phis[:,:,1]
+
         # What is this factor?
-        radius = radius * 3.8317 / (2.0 * np.pi)
-        print("radius:", radius[-1, -1])
+        #radius = radius * 3.8317 / (2.0 * np.pi)
+        print("radius_psf:", radius[-1, -1])
         # Generate the two focus+defocused PSFs
         
         defocus_array = [False]
