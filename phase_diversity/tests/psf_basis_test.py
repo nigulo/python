@@ -141,7 +141,7 @@ class test_psf_basis(unittest.TestCase):
 
         gamma = 1.
         
-        psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
@@ -167,7 +167,7 @@ class test_psf_basis(unittest.TestCase):
         
         gamma = 1.
         
-        psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
@@ -208,7 +208,7 @@ class test_psf_basis(unittest.TestCase):
 
         fimage = fft.fftshift(fft.fft2(image))
         
-        psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 

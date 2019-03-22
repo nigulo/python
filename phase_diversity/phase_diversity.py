@@ -33,14 +33,12 @@ image = plt.imread('granulation.png')
 image = image[0:20,0:20]
 
 nx_orig = np.shape(image)[0]
-ny_orig = np.shape(image)[1]
 
 image = utils.upsample(image)
 
 nx = np.shape(image)[0]
-ny = np.shape(image)[1]
 
-assert(nx == ny)
+assert(np.shape(image)[0] == np.shape(image)[1])
 
 fimage = fft.fftshift(fft.fft2(image))
     
@@ -56,7 +54,7 @@ aperture_func = lambda xs: utils.aperture_circ(xs, 1.0, 15.0)
 defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
 
 
-psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
 psf_b.create_basis()
 
 my_plot = plot.plot_map(nrows=num_frames + 1, ncols=5)
@@ -76,7 +74,7 @@ for trial in np.arange(0, num_frames):
     #pa = psf.phase_aberration([])
     ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
     #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
-    psf_ = psf.psf(ctf, nx_orig, ny_orig)
+    psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
     

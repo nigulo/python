@@ -110,7 +110,7 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_pix = 0.055, diameter = 50, wavelength = 5250.0):
+    def __init__(self, coh_trans_func, nx, arcsec_per_pix, diameter, wavelength):
         
         self.nx= nx
           
@@ -126,6 +126,7 @@ class psf():
         xs = np.linspace(-x_limit, x_limit, self.nx)
         assert(len(xs) == self.nx)
         self.coords = np.dstack(np.meshgrid(xs, xs)[::-1])
+        print("psf_coords", np.min(self.coords, axis=(0,1)), np.max(self.coords, axis=(0,1)), np.shape(self.coords))
         self.incoh_vals = dict()
         self.otf_vals = dict()
         self.corr = dict() # only for testing purposes

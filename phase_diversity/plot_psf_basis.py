@@ -31,7 +31,7 @@ def main():
         nx = int(input('Number of pixel of images? '))
         F_D = float(input('F/D? '))
     
-    psf = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+    psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
     psf.create_basis(do_fft=False, do_defocus=True)
     
     for defocus in [False, True]:

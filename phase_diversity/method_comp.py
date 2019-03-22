@@ -82,7 +82,7 @@ def main():
     sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=2)
 
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, nx = nx, F_D = F_D)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
     psf_b.create_basis()
     sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 

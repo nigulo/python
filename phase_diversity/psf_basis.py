@@ -91,7 +91,7 @@ class psf_basis:
         diameter is in centimeters
         wavelength is in Angstroms
     '''
-    def __init__(self, jmax = 10, arcsec_per_px = 0.055, diameter = 20.0, wavelength = 5250.0, nx = 100, F_D = 1.0):
+    def __init__(self, jmax, nx, arcsec_per_px, diameter, wavelength, F_D):
         
         self.jmax = jmax
         self.arcsec_per_px = arcsec_per_px
@@ -133,28 +133,25 @@ class psf_basis:
         
         # Generate pupil plane
         x_diff = np.zeros(nx)
-        y_diff = np.zeros(nx)
         for i in np.arange(0, nx):
             x_diff[i] = arcsec_per_px*i
-            y_diff[i] = arcsec_per_px*i
         
         # Angular separation of pixels measured from the center (in arceconds)
         x_diff = x_diff - x_diff[int(nx/2)]
-        y_diff = y_diff - y_diff[int(nx/2)]
         
         # Angular separation of resolved pixels measured from the center (in arceconds)
         x_diff = x_diff / diffraction
-        y_diff = y_diff / diffraction
         
         radius = np.zeros((nx,nx))
         phi = np.zeros((nx,nx))
         
         coords = np.dstack(np.meshgrid(x_diff, x_diff)[::-1])
+        print("psf_basis_coords", np.min(coords, axis=(0,1)), np.max(coords, axis=(0,1)), np.shape(coords))
         radiuses_phis = utils.cart_to_polar(coords)
         
         radius = radiuses_phis[:,:,0]
         phi = radiuses_phis[:,:,1]
-
+        
         # What is this factor?
         #radius = radius * 3.8317 / (2.0 * np.pi)
         print("radius_psf:", radius[-1, -1])
