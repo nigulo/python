@@ -104,7 +104,7 @@ class psf_basis:
         print("do_defocus", do_defocus)
         print("do_fft", do_fft)
         jmax = self.jmax
-        arcsec_per_px = self.arcsec_per_px
+        arcsec_per_px = self.arcsec_per_px/3600*np.pi/180
         diameter = self.diameter
         wavelength = self.wavelength
         nx = self.nx
@@ -126,21 +126,22 @@ class psf_basis:
                 self.FYs_d = np.zeros((jmax+1, jmax+1, nx, nx), dtype='complex')
 
         # Diffraction limit or the resolution of the telescope (in arcesonds)
-        diffraction = 1.22 * wavelength * 1e-8 / diameter
-        diffraction = 3600*180/np.pi * diffraction
+        #diffraction = 1.22 * wavelength * 1e-8 / diameter
+        diffraction = wavelength * 1e-8 / diameter
         
-        print('Diffraction limit ["]=', diffraction)
+        print('Diffraction limit, arcsec_per_px', diffraction, arcsec_per_px)
         
         # Generate pupil plane
-        x_diff = np.zeros(nx)
-        for i in np.arange(0, nx):
-            x_diff[i] = arcsec_per_px*i
+        x_diff = np.linspace(0, nx-1, nx)*arcsec_per_px
+        print(len(x_diff))
         
         # Angular separation of pixels measured from the center (in arceconds)
         x_diff = x_diff - x_diff[int(nx/2)]
         
         # Angular separation of resolved pixels measured from the center (in arceconds)
         x_diff = x_diff / diffraction
+        
+        print("scale_factor", arcsec_per_px/diffraction)
         
         radius = np.zeros((nx,nx))
         phi = np.zeros((nx,nx))
@@ -154,7 +155,6 @@ class psf_basis:
         
         # What is this factor?
         #radius = radius * 3.8317 / (2.0 * np.pi)
-        print("radius_psf:", radius[-1, -1])
         # Generate the two focus+defocused PSFs
         
         defocus_array = [False]

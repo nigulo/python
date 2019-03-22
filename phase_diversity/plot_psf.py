@@ -56,6 +56,10 @@ fig2.set_size_inches(30, 30)
 axes1 = axes1.flatten()
 axes2 = axes2.flatten()
 
+arcsec_per_px = 0.0055
+diameter = 20.0
+wavelength = 5250.0
+
 for index in np.arange(0, num_tests):
     if index == 0:
         pa = psf.phase_aberration([], start_index = 0)
@@ -93,7 +97,7 @@ for index in np.arange(0, num_tests):
     fig3, (ax31, ax32) = plt.subplots(nrows=2, ncols=1)
     fig3.set_size_inches(4, 6)
 
-    psf_vals = psf.psf(ctf, nx).calc()
+    psf_vals = psf.psf(ctf, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength).calc()
     ax31.hist(psf_vals.flatten(), bins=100)
     print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
     psf_vals = utils.trunc(psf_vals, 1e-3)

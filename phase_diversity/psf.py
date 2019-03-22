@@ -110,17 +110,18 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_pix, diameter, wavelength):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength):
         
         self.nx= nx
           
         rad2deg=180.0/np.pi
-        scale_angle2CCD=arcsec_per_pix/(rad2deg*3600.0)
-        q_number=wavelength*1.e-8/(scale_angle2CCD*diameter)
-        lim_freq=2.*self.nx/q_number # telescope_d in pupil space
-        rc=lim_freq
-        
-        x_limit = self.nx/rc
+        scale_angle2CCD=arcsec_per_px/(rad2deg*3600.0)
+        diff_limit = wavelength*1.e-8/diameter
+        q_number=diff_limit/(scale_angle2CCD)
+        rc=1./q_number # telescope_d in pupil space
+        print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
+         
+        x_limit = self.nx*rc
         
         #coh_vals = np.zeros((nx, ny))
         xs = np.linspace(-x_limit, x_limit, self.nx)
