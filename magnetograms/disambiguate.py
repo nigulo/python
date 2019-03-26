@@ -35,9 +35,9 @@ import kiss_gp
 import os.path
 from astropy.io import fits
 
-#hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
-hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
-dat = hdul[0].data[:,::2,::2]#[:,200:300,200:300]
+hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+#hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+dat = hdul[0].data[:,::4,::4]
 b = dat[0]
 theta = dat[1]
 phi = dat[2]
@@ -100,16 +100,24 @@ bx = np.reshape(bx, n)
 by = np.reshape(by, n)
 bz = np.reshape(bz, n)
 bxy = np.reshape(bz, n)
-bx_offset = bxy + bz
-by_offset = bxy + bz
+
+#for i in np.arange(0, n):
+#    if np.random.uniform() < 0.5:
+#        bx[i] *= -1
+#        by[i] *= -1
+
+bx_offset = np.zeros_like(bx)#bxy + bz
+by_offset = np.zeros_like(by)#bxy + bz
+#bx_offset = bxy + bz
+#by_offset = bxy + bz
 bx -= bx_offset
 by -= by_offset
 bx_mean = np.mean(bx)
 by_mean = np.mean(by)
-bx -= np.mean(bx)
-by -= np.mean(by)
-bx_offset += bx_mean
-by_offset += by_mean
+#bx -= np.mean(bx)
+#by -= np.mean(by)
+#bx_offset += bx_mean
+#by_offset += by_mean
 norm = np.std(np.sqrt(bx**2+by**2))
 bx /= norm
 by /= norm
@@ -121,9 +129,6 @@ y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
-#for i in np.arange(0, n):
-#    if np.random.uniform() < 0.5:
-#        y[i] = y[i]*-1
 
 
 components_plot = plot.plot_map(nrows=2, ncols=2)
@@ -143,7 +148,6 @@ ax2.set_title('Inferred field')
 ax1.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
 fig.savefig("field.png")
 
-noise_var = 0.1*np.var(bx) + 0.1*np.var(by)
 
 print(np.shape(x))
 print(np.shape(y))
@@ -154,8 +158,9 @@ print(n)
 
 # define the parameters with their associated priors
 
-data_var = np.var(y[:,0]) + np.var(y[:,1])
+data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
 print("data_var:", data_var)
+noise_var = 0.1*data_var
 
 def sample(x, y):
 
@@ -193,7 +198,7 @@ def sample(x, y):
         for trial_no in np.arange(0, num_samples):
             #res = scipy.optimize.minimize(lik_fn, np.zeros(jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
             #res = scipy.optimize.minimize(lik_fn, np.random.uniform(low=0.01, high=1., size=2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [0.2, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (.1, data_var*2.)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.5, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 2.), (data_var*.1, data_var*2.)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -219,12 +224,24 @@ def calc_loglik(K, y):
     return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
 
+def reverse(y, y_sign, i):
+    y[i]*=norm
+    y[i,0] += bx_offset[i]
+    y[i,1] += by_offset[i]
+    y[i] *= -1
+    y[i,0] -= bx_offset[i]
+    y[i,1] -= by_offset[i]
+    y[i]/=norm
+    y_sign[i] *= -1
+    
+
 def align(x, y, y_sign, indices, n, length_scale, thetas):
     inv_ell_sq_two = -1./(2.*length_scale**2)
     #normal_dist = stats.norm(0.0, length_scale)
     
     include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
-    mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])    
+    mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
+    used_js = set()
     x1 = x[~mask]
     y1 = y[~mask]
     y_sign1 = y[~mask]
@@ -249,28 +266,30 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
         ### Non-Vecorized ###
         
         for j in np.arange(0, n):
-            if any(np.where(indices == j)[0]):
+            if len(np.where(indices == j)[0]) > 0 or j in used_js:
                 continue
             
             x_diff = x[j] - x[i]
             x_diff = np.sqrt(np.dot(x_diff, x_diff))
-            if (x_diff < 3.0*length_scale):
+            if (x_diff < 3*length_scale):
                 #p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
                 # TODO: It makes no sense to compare to pdf value
                 p = np.exp(x_diff**2*inv_ell_sq_two)
                 #np.testing.assert_almost_equal(p, p1)
-                if (r < p):
-                    if thetas is not None:
-                        thetas[j] = thetas[i]
-                    if y_sign is not None:
-                        if np.dot(y[i], y[j]) < 0:
-                            y[j] = np.array(y[j])*-1
-                            y_sign[j] *= -1
+                if r < p:
+                    used_js.add(j)
+                    bz_diff = 0.#np.abs(bz[j]+bxy[j]-bz[i]-bxy[i])/(np.abs(bz[j]+bxy[j]+bz[i]+bxy[i])+1e-10)
+                    if r > bz_diff:
+                        if thetas is not None:
+                            thetas[j] = thetas[i]
+                        if y_sign is not None:
+                            if np.dot(y[i], y[j]) < 0.:
+                                reverse(y, y_sign, j)
         
     
 def get_random_indices(x, n, length_scale):
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, size=n, replace=False)
+    random_indices = np.random.choice(n, size=20, replace=False)
     i = 0
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
@@ -383,13 +402,13 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
                     th = 0.8
                 if r < th:
                     if y_sign[ri] < 0:
-                        y[ri] = np.array(y[ri])*-1
-                        y_sign[ri] = 1
+                        reverse(y, y_sign, ri)
+                        y_sign[ri] = 1 # overwrite sign
                         #sign_change[ri] = True
                 else:
                     if y_sign[ri] > 0:
-                        y[ri] = np.array(y[ri])*-1
-                        y_sign[ri] = -1
+                        reverse(y, y_sign, ri)
+                        y_sign[ri] = -1 # overwrite sign
                         #sign_change[ri] = True
                 #print(np.exp(thetas[ri]))
 
@@ -403,6 +422,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
             components_plot.save("components.png")
 
             loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+            print("loglik1=", loglik1)
     
             #for ri in random_indices:
             #    thetas_ri = thetas[ri]
