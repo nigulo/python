@@ -22,6 +22,17 @@ class plot_map:
         self.extent = extent
         self.plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         self.my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
+        self.title=None
+        self.colorbars = dict()
+
+    def set_color_map(self, color_map, reverse=True):
+        if reverse:
+            self.my_cmap = reverse_colourmap(plt.get_cmap(color_map))
+        else:
+            self.my_cmap = plt.get_cmap(color_map)
+
+    def set_title(self, title):
+        self.title = title
 
     def plot(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True, colorbar_prec=None):
         if len(ax_index) == 2:
@@ -34,7 +45,7 @@ class plot_map:
 
         ax.set_aspect(aspect=self.plot_aspect)
         
-        if colorbar:
+        if colorbar and not ax in self.colorbars:
             if colorbar_prec is None:
                 colorbar_prec = 0
                 z_max = np.max(dat)
@@ -55,8 +66,11 @@ class plot_map:
             y1 = pos[1, 1]
             width = x1 - x0
             
-            cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
+            cbar_ax = self.fig.add_axes([x1+width/20, y0, width/20, y1-y0])
+            self.colorbars[ax] = cbar_ax
             self.fig.colorbar(im, cax=cbar_ax, format=l_f)#, label=r'Label')
+            if self.title is not None:
+                ax.set_title(self.title)
 
 
     def save(self, file_name):

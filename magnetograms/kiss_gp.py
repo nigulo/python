@@ -12,12 +12,14 @@ class kiss_gp:
         self.cov_func = cov_func
         self.W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         self.U = None
+        self.ell = None
 
     
     def likelihood(self, theta, data):
         self.ell = theta[0]
         self.sig_var = theta[1]
         self.noise_var = data[0]
+        print("likelihood params:", self.ell, self.sig_var, self.noise_var)
         self.y = data[1]
         U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u)
         self.U_grads = U_grads
