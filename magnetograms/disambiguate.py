@@ -35,8 +35,8 @@ import kiss_gp
 import os.path
 from astropy.io import fits
 
-hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
-#hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+#hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
 dat = hdul[0].data[:,::4,::4]
 b = dat[0]
 theta = dat[1]
@@ -47,8 +47,6 @@ sample_or_optimize = False
 num_samples = 1
 num_chains = 4
 inference_after_iter = 20
-
-MODE = 0
 
 eps = 0.001
 learning_rate = 0.1
@@ -106,21 +104,21 @@ bxy = np.reshape(bz, n)
 #        bx[i] *= -1
 #        by[i] *= -1
 
-bx_offset = np.zeros_like(bx)#bxy + bz
-by_offset = np.zeros_like(by)#bxy + bz
-#bx_offset = bxy + bz
-#by_offset = bxy + bz
+#bx_offset = np.zeros_like(bx)#bxy + bz
+#by_offset = np.zeros_like(by)#bxy + bz
+bx_offset = bz+bxy
+by_offset = bz+bxy
 bx -= bx_offset
 by -= by_offset
-bx_mean = np.mean(bx)
-by_mean = np.mean(by)
-#bx -= np.mean(bx)
-#by -= np.mean(by)
+#bx_mean = np.mean(bx)
+#by_mean = np.mean(by)
+#bx -= bx_mean
+#by -= by_mean
 #bx_offset += bx_mean
 #by_offset += by_mean
-norm = np.std(np.sqrt(bx**2+by**2))
-bx /= norm
-by /= norm
+norm = 1.#np.std(np.sqrt(bx**2+by**2))
+#bx /= norm
+#by /= norm
 y = np.column_stack((bx,by))
 #y = np.stack((bx,by), axis=2)
 
@@ -131,10 +129,15 @@ print(y.shape)
 
 
 
-components_plot = plot.plot_map(nrows=2, ncols=2)
+components_plot = plot.plot_map(nrows=2, ncols=3)
 components_plot.set_color_map('bwr')
-components_plot.plot(np.reshape(y[:,0]*norm+bx_offset, (n1, n2)), [0, 0])
-components_plot.plot(np.reshape(y[:,1]*norm+by_offset, (n1, n2)), [0, 1])
+
+bx_norm = y[:,0]*norm+bx_offset
+by_norm = y[:,1]*norm+by_offset
+
+components_plot.plot(np.reshape(bx_norm, (n1, n2)), [0, 0])
+components_plot.plot(np.reshape(by_norm, (n1, n2)), [0, 1])
+components_plot.plot(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
 components_plot.save("components.png")
 
 
@@ -225,13 +228,13 @@ def calc_loglik(K, y):
 
 
 def reverse(y, y_sign, i):
-    y[i]*=norm
-    y[i,0] += bx_offset[i]
-    y[i,1] += by_offset[i]
+    #y[i]*=norm
+    #y[i,0] += bx_offset[i]
+    #y[i,1] += by_offset[i]
     y[i] *= -1
-    y[i,0] -= bx_offset[i]
-    y[i,1] -= by_offset[i]
-    y[i]/=norm
+    #y[i,0] -= bx_offset[i]
+    #y[i,1] -= by_offset[i]
+    #y[i]/=norm
     y_sign[i] *= -1
     
 
@@ -274,11 +277,12 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
             if (x_diff < 3*length_scale):
                 #p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
                 # TODO: It makes no sense to compare to pdf value
-                p = np.exp(x_diff**2*inv_ell_sq_two)
                 #np.testing.assert_almost_equal(p, p1)
+                p = np.exp(x_diff**2*inv_ell_sq_two)
                 if r < p:
                     used_js.add(j)
-                    bz_diff = 0.#np.abs(bz[j]+bxy[j]-bz[i]-bxy[i])/(np.abs(bz[j]+bxy[j]+bz[i]+bxy[i])+1e-10)
+                    #bz_diff = np.abs(bz[j]+bxy[j]-bz[i]-bxy[i])/(np.abs(bz[j]+bxy[j]+bz[i]+bxy[i])+1e-10)
+                    bz_diff = 0.#np.abs(bz[j]-bz[i])/(np.abs(bz[j]+bz[i])+1e-10)
                     if r > bz_diff:
                         if thetas is not None:
                             thetas[j] = thetas[i]
@@ -328,32 +332,9 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
     
         num_tries += 1
     
-        initial_param_values = []
-        
         if inference and (iteration % inference_after_iter == 0):
             if temp <= 1.0:
                 temp += temp_delta*temp    
-#for i in np.arange(0, num_chains):
-            #    #initial_m = m
-            #    #initial_length_scale = length_scale
-            #    #initial_param_values.append(dict(m=initial_m))
-            #    initial_param_values.append(dict())
-            #
-            #fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
-            #
-            #results = fit.extract()
-            #loglik_samples = results['lp__']
-            #print loglik_samples 
-            #loglik = np.mean(loglik_samples)
-            #
-            #length_scale_samples = results['length_scale'];
-            #length_scale = np.mean(length_scale_samples)
-            #
-            #sig_var_samples = results['sig_var']
-            #sig_var = np.mean(sig_var_samples)
-            #
-            #mean_samples = results['m'];
-            #mean = np.mean(mean_samples)
             
             length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
         else:
@@ -384,166 +365,65 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
-        if MODE == 0:
-            random_indices = get_random_indices(x, n, temp*length_scale)
-                
-            r = random.uniform()
-            for ri in random_indices:
-                #r = np.log(random.uniform())
-                if num_positive[ri] + num_negative[ri] <= 10:
-                    theta = 0.5
-                else:
-                    theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-                thetas[ri] = np.log(theta)
-                th = theta
-                if th < 0.2:
-                    th = 0.2
-                if th > 0.8:
-                    th = 0.8
-                if r < th:
-                    if y_sign[ri] < 0:
-                        reverse(y, y_sign, ri)
-                        y_sign[ri] = 1 # overwrite sign
-                        #sign_change[ri] = True
-                else:
-                    if y_sign[ri] > 0:
-                        reverse(y, y_sign, ri)
-                        y_sign[ri] = -1 # overwrite sign
-                        #sign_change[ri] = True
-                #print(np.exp(thetas[ri]))
-
-            align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
-
-            bx_dis = y[:,0]*norm + bx_offset
-            by_dis = y[:,1]*norm + by_offset
-        
-            components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
-            components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
-            components_plot.save("components.png")
-
-            loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-            print("loglik1=", loglik1)
-    
-            #for ri in random_indices:
-            #    thetas_ri = thetas[ri]
-            #    exp_theta = np.exp(thetas_ri)
-            #    #new_theta = loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]))
-            #    #thetas[i] = new_theta
-            #    #print(thetas[ri], np.exp(thetas[ri]), loglik1, loglik2)
-            #    
-            #    #new_theta = thetas_ri + loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]), b=np.array([exp_theta, 1.0-exp_theta]))
-            #    #thetas[ri] += learning_rate * np.sign(new_theta - thetas_ri) * thetas[ri]
-
-            #    change = learning_rate * np.sign(loglik1 - loglik) * abs(thetas[ri])
-            #    if sign_change[ri]:
-            #        if y_sign[ri] > 0:
-            #            thetas[ri] += change
-            #        else:
-            #            thetas[ri] -= change
-            #            
-            #    #thetas[ri] = new_theta
-    
-            if loglik1 > loglik:
-                loglik = loglik1
-            else:
-                y = y_last
-                y_sign = y_sign_last
-                
-            for ri in np.arange(0, n):
-                if y_sign[ri] > 0:
-                    num_positive[ri] += 1.0
-                else:
-                    num_negative[ri] += 1.0
-
-        elif MODE == 1:
-            random_indices = get_random_indices(x, n, temp*length_scale)
-
-            for ri in random_indices:
-                y[ri] = y_in[ri]
-            loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-    
-            for ri in random_indices:
-                y[ri] = y_in[ri]*-1
-            loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-
-            if (loglik1 > loglik or loglik2 > loglik):    
-                for ri in random_indices:
-                    thetas_ri = thetas[ri]
-                    exp_theta = np.exp(thetas_ri)
-                    #new_theta = loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]))
-                    #thetas[i] = new_theta
-                    #print(thetas[ri], np.exp(thetas[ri]), loglik1, loglik2)
-                    
-                    #new_theta = thetas_ri + loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]), b=np.array([exp_theta, 1.0-exp_theta]))
-                    #thetas[ri] += learning_rate * np.sign(new_theta - thetas_ri) * thetas[ri]
-
-                    thetas[ri] += learning_rate * np.sign(loglik1 - loglik2) * abs(thetas[ri])
-                    #thetas[ri] = new_theta
-        
-                    print(thetas[ri], np.exp(thetas_ri), np.exp(thetas[ri]), loglik1-loglik2)
-                    #r = np.log(random.uniform())
-                    if thetas[ri] > np.log(0.5):#r < thetas[ri]
-                        y[ri] = np.array(y_in[ri])
-                    else:
-                        y[ri] = np.array(y_in[ri])*-1
-            else:
-                y = y_last
-
-            loglik = None
-        else:
-            for i in np.random.choice(n, size=1, replace=False):
-                js = []
-                for j in np.arange(0, n):
-                    x_diff = x[j] - x[i]
-                    if (np.dot(x_diff, x_diff) < length_scale**2):
-                        js.append(j)
-                for j in js:
-                    y[j] = np.array(y_in[j])
-                #loglik1 = gp.init(x, y)
-                loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-                for j in js:
-                    y[j] = np.array(y_in[j])*-1
-                #loglik2 = gp.init(x, y)
-                loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-    
-                if (loglik1 > loglik or loglik2 > loglik):    
-                    thetas_i = thetas[i]
-                    exp_theta = np.exp(thetas_i)
-                    #new_theta = loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]))
-                    #thetas[i] = new_theta
-                    new_theta = thetas_i + loglik1 - scipy.special.logsumexp(np.array([loglik1, loglik2]), b=np.array([exp_theta, 1.0-exp_theta]))
-                    thetas[i] += learning_rate * (new_theta - thetas_i)
-
-                    thetas_i = thetas[i]
+        random_indices = get_random_indices(x, n, temp*length_scale)
             
-                    print(thetas_i, np.exp(thetas_i), loglik1, loglik2)
-                    #r = np.log(random.uniform())
-                    for j in js:
-                        thetas[j] = thetas_i
-                        if thetas_i > np.log(0.5):#r < thetas_i
-                            #assert(loglik1 >= loglik2)
-                            y[j] = np.array(y_in[j])
-                        else:
-                            #assert(loglik2 >= loglik1)
-                            y[j] = np.array(y_in[j])*-1
-                            
-                    #if thetas_i > np.log(0.5):#r < thetas_i
-                    #    for j in js:
-                    #        thetas[j] = thetas_i
-                    #        y[j][0] = -y[j][0]
-                    #        y[j][1] = -y[j][1]
-                    #else:
-                    #    for j in js:
-                    #        thetas[j] = np.log(1.0 - np.exp(thetas_i))
-                else:
-                    y = y_last
-            loglik = None
+        r = random.uniform()
+        for ri in random_indices:
+            #r = np.log(random.uniform())
+            if num_positive[ri] + num_negative[ri] <= 10:
+                theta = 0.5
+            else:
+                theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
+            thetas[ri] = np.log(theta)
+            th = theta
+            if th < 0.2:
+                th = 0.2
+            if th > 0.8:
+                th = 0.8
+            if r < th:
+                if y_sign[ri] < 0:
+                    reverse(y, y_sign, ri)
+                    y_sign[ri] = 1 # overwrite sign
+                    #sign_change[ri] = True
+            else:
+                if y_sign[ri] > 0:
+                    reverse(y, y_sign, ri)
+                    y_sign[ri] = -1 # overwrite sign
+                    #sign_change[ri] = True
+            #print(np.exp(thetas[ri]))
+
+        align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
+
+        bx_dis = y[:,0]*norm + bx_offset
+        by_dis = y[:,1]*norm + by_offset
+    
+        components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
+        components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
+        components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
+        components_plot.save("components.png")
+
+        loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+
+        print("loglik1=", loglik1)
+
+        if loglik1 > loglik:
+            loglik = loglik1
+        else:
+            y = y_last
+            y_sign = y_sign_last
+            
+        for ri in np.arange(0, n):
+            if y_sign[ri] > 0:
+                num_positive[ri] += 1.0
+            else:
+                num_negative[ri] += 1.0
     
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
     
         components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
         components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
+        components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
         components_plot.save("components.png")
 
     exp_thetas = np.exp(thetas)
@@ -565,30 +445,7 @@ def algorithm_b(x, y, sig_var=None, length_scale=None):
         print("num_tries", num_tries)
         num_tries += 1
     
-        #initial_param_values = []
-        
         if inference:
-            #for i in np.arange(0, num_chains):
-            #    initial_m = mean
-            #    initial_length_scale = length_scale
-            #    initial_param_values.append(dict(m=initial_m))
-            #
-            #fit = model.sampling(data=dict(x=x,N=n,y=y,noise_var=noise_var), init=initial_param_values, iter=num_iters, chains=num_chains, n_jobs=n_jobs)
-            #
-            #results = fit.extract()
-            #loglik_samples = results['lp__']
-            #print loglik_samples 
-            #loglik = np.mean(loglik_samples)
-            #
-            #length_scale_samples = results['length_scale'];
-            #length_scale = np.mean(length_scale_samples)
-            #
-            #sig_var_samples = results['sig_var']
-            #sig_var = np.mean(sig_var_samples)
-            #
-            #mean_samples = results['m'];
-            #mean = np.mean(mean_samples)
-            
             length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
             
 
@@ -612,33 +469,19 @@ def algorithm_b(x, y, sig_var=None, length_scale=None):
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         
         
-        if MODE == 0:
-            # Select n/2 random indices and filter out those too close to each other
-            random_indices = get_random_indices(x, n, temp*length_scale)
-    
-            align(x, y, None, random_indices, n, temp*length_scale, None)
-
-            loglik1 = loglik
-            y_saved = np.array(y)
-            for ri in random_indices:
-                y[ri] = y[ri]*-1
+        for i in np.random.choice(n, size=1, replace=False):
+            loglik1 = loglik#gp.init(x, y)
+            js = []
+            for j in np.arange(0, n):
+                x_diff = x[j] - x[i]
+                if (np.dot(x_diff, x_diff) < length_scale**2):
+                    y[j] = y[j]*-1
+                    js.append(j)
+            #loglik2 = gp.init(x, y)
             loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-            if loglik1 > loglik2:
-                y = y_saved
-        else:
-            for i in np.random.choice(n, size=1, replace=False):
-                loglik1 = loglik#gp.init(x, y)
-                js = []
-                for j in np.arange(0, n):
-                    x_diff = x[j] - x[i]
-                    if (np.dot(x_diff, x_diff) < length_scale**2):
-                        y[j] = y[j]*-1
-                        js.append(j)
-                #loglik2 = gp.init(x, y)
-                loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-                for j in js:
-                    if loglik1 > loglik2:        
-                        y[j] = y[j]*-1
+            for j in js:
+                if loglik1 > loglik2:        
+                    y[j] = y[j]*-1
     
         if temp <= 1.0:
             temp += temp_delta*temp    
