@@ -31,6 +31,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 import sampling
 import kiss_gp
+from scipy.integrate import simps
 
 import os.path
 from astropy.io import fits
@@ -70,13 +71,56 @@ x2_range = 1.0
 m1 = 10
 m2 = 10
 
+
+bz = b*np.cos(theta)
+dbzx = bz[1:,:-1]-bz[:-1,:-1]
+dbzy = bz[:-1,1:]-bz[:-1,:-1]
+b = b[:-1,:-1]
+bz = bz[:-1,:-1]
+theta = theta[:-1,:-1]
+phi = phi[:-1,:-1]
+bxy = b*np.sin(theta)
+bx = bxy*np.cos(phi)
+by = bxy*np.sin(phi)
+
+n1 -= 1
+n2 -= 1
 n = n1*n2
 
 x1 = np.linspace(0, x1_range, n1)
 x2 = np.linspace(0, x2_range, n2)
-x_mesh = np.meshgrid(x1, x2)
+x_mesh = np.meshgrid(x2, x1)
 x = np.dstack(x_mesh).reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
+
+
+def calc_p(x, y):
+    xs = np.dstack(x_mesh)
+    print("xs:",xs)
+    r = xs - np.array([x, y])
+    r = np.sqrt(np.sum(r*r, axis=2))
+    indices = np.where(r == 0.)
+    bz1 = np.array(bz)
+    bz1[indices] = 0.
+    r[indices] = 1.
+    z = bz/r
+    p = simps(simps(z, x2), x1)
+    return -p/2./np.pi
+
+p = np.zeros_like(bz)
+for i in np.arange(0, len(x1)):
+    for j in np.arange(0, len(x2)):
+        p[i, j] = calc_p(x1[i], x2[j])
+print("p:", p)
+
+bx = np.reshape(bx, n)
+by = np.reshape(by, n)
+bz = np.reshape(bz, n)
+dbzx = np.reshape(dbzx, n)
+dbzy = np.reshape(dbzy, n)
+bxy = np.reshape(bz, n)
+
+
 
 m = m1 * m2
 u1 = np.linspace(0, x1_range, m1)
@@ -88,17 +132,6 @@ print("u_mesh=", u_mesh)
 print("u=", u)
 print(x_mesh)
 
-
-
-bz = b*np.cos(theta)
-bxy = b*np.sin(theta)
-bx = bxy*np.cos(phi)
-by = bxy*np.sin(phi)
-bx = np.reshape(bx, n)
-by = np.reshape(by, n)
-bz = np.reshape(bz, n)
-bxy = np.reshape(bz, n)
-
 #for i in np.arange(0, n):
 #    if np.random.uniform() < 0.5:
 #        bx[i] *= -1
@@ -106,8 +139,8 @@ bxy = np.reshape(bz, n)
 
 #bx_offset = np.zeros_like(bx)#bxy + bz
 #by_offset = np.zeros_like(by)#bxy + bz
-bx_offset = bz+bxy
-by_offset = bz+bxy
+bx_offset = dbzx*10
+by_offset = dbzy*10
 bx -= bx_offset
 by -= by_offset
 #bx_mean = np.mean(bx)
@@ -164,6 +197,7 @@ print(n)
 data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
 print("data_var:", data_var)
 noise_var = 0.1*data_var
+
 
 def sample(x, y):
 
@@ -282,12 +316,13 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
                 if r < p:
                     used_js.add(j)
                     #bz_diff = np.abs(bz[j]+bxy[j]-bz[i]-bxy[i])/(np.abs(bz[j]+bxy[j]+bz[i]+bxy[i])+1e-10)
-                    bz_diff = 0.#np.abs(bz[j]-bz[i])/(np.abs(bz[j]+bz[i])+1e-10)
-                    if r > bz_diff:
-                        if thetas is not None:
-                            thetas[j] = thetas[i]
-                        if y_sign is not None:
-                            if np.dot(y[i], y[j]) < 0.:
+                    if thetas is not None:
+                        thetas[j] = thetas[i]
+                    if y_sign is not None:
+                        if np.dot(y[i], y[j]) < 0.:
+                            bz_diff = np.abs(bz[j]-bz[i])/(np.abs(bz[j]+bz[i])+1e-10)
+                            #print("bz_diff", bz_diff, r)
+                            if r > bz_diff:
                                 reverse(y, y_sign, j)
         
     
