@@ -51,7 +51,7 @@ inference_after_iter = 20
 
 eps = 0.001
 learning_rate = 0.1
-max_num_tries = 20
+max_num_tries = 200
 initial_temp = 0.5
 temp_delta = 0.01
 
@@ -73,8 +73,8 @@ m2 = 10
 
 
 bz = b*np.cos(theta)
-dbzx = bz[1:,:-1]-bz[:-1,:-1]
-dbzy = bz[:-1,1:]-bz[:-1,:-1]
+dbzy = bz[1:,:-1]-bz[:-1,:-1]
+dbzx = bz[:-1,1:]-bz[:-1,:-1]
 b = b[:-1,:-1]
 bz = bz[:-1,:-1]
 theta = theta[:-1,:-1]
@@ -132,17 +132,17 @@ print("u_mesh=", u_mesh)
 print("u=", u)
 print(x_mesh)
 
-#for i in np.arange(0, n):
-#    if np.random.uniform() < 0.5:
-#        bx[i] *= -1
-#        by[i] *= -1
+for i in np.arange(0, n):
+    if np.random.uniform() < 0.5:
+        bx[i] *= -1
+        by[i] *= -1
 
 #bx_offset = np.zeros_like(bx)#bxy + bz
 #by_offset = np.zeros_like(by)#bxy + bz
-bx_offset = dbzx*10
-by_offset = dbzy*10
-bx -= bx_offset
-by -= by_offset
+bx_offset = dbzx*np.std(bx)/np.std(dbzx)
+by_offset = dbzy*np.std(by)/np.std(dbzy)
+bx1 = bx - bx_offset
+by1 = by - by_offset
 #bx_mean = np.mean(bx)
 #by_mean = np.mean(by)
 #bx -= bx_mean
@@ -150,16 +150,16 @@ by -= by_offset
 #bx_offset += bx_mean
 #by_offset += by_mean
 norm = 1.#np.std(np.sqrt(bx**2+by**2))
-#bx /= norm
-#by /= norm
-y = np.column_stack((bx,by))
+bx1 /= norm
+by1 /= norm
+y = np.column_stack((bx1,by1))
 #y = np.stack((bx,by), axis=2)
-
+np.testing.assert_almost_equal(bx1, y[:,0])
+np.testing.assert_almost_equal(by1, y[:,1])
 
 y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
-
 
 
 components_plot = plot.plot_map(nrows=2, ncols=3)
@@ -168,10 +168,18 @@ components_plot.set_color_map('bwr')
 bx_norm = y[:,0]*norm+bx_offset
 by_norm = y[:,1]*norm+by_offset
 
+energy = np.sum(bx**2 + bx**2)
+
 components_plot.plot(np.reshape(bx_norm, (n1, n2)), [0, 0])
 components_plot.plot(np.reshape(by_norm, (n1, n2)), [0, 1])
 components_plot.plot(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
 components_plot.save("components.png")
+
+components_plot2 = plot.plot_map(nrows=2, ncols=2)
+components_plot2.set_color_map('bwr')
+components_plot2.plot(np.reshape(dbzx, (n1, n2)), [0, 0])
+components_plot2.plot(np.reshape(dbzy, (n1, n2)), [0, 1])
+components_plot2.save("components2.png")
 
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
@@ -196,8 +204,7 @@ print(n)
 
 data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
 print("data_var:", data_var)
-noise_var = 0.1*data_var
-
+noise_var = 1.*data_var
 
 def sample(x, y):
 
@@ -262,15 +269,24 @@ def calc_loglik(K, y):
 
 
 def reverse(y, y_sign, i):
-    #y[i]*=norm
-    #y[i,0] += bx_offset[i]
-    #y[i,1] += by_offset[i]
-    y[i] *= -1
-    #y[i,0] -= bx_offset[i]
-    #y[i,1] -= by_offset[i]
-    #y[i]/=norm
+    print(i)
+    y*=norm
+    y[i,0] += bx_offset[i]
+    y[i,1] += by_offset[i]
+    np.testing.assert_almost_equal(np.abs(y[i,0]), np.abs(bx[i]))
+    np.testing.assert_almost_equal(np.abs(y[i,1]), np.abs(by[i]))
+    y[i,:] *= -1.
+    y[i,0] -= bx_offset[i]
+    y[i,1] -= by_offset[i]
+    y[i]/=norm
     y_sign[i] *= -1
+    return
     
+def get_b(y):
+    y1 = y * norm
+    y1[:,0] += bx_offset
+    y1[:,1] += by_offset
+    return y1
 
 def align(x, y, y_sign, indices, n, length_scale, thetas):
     inv_ell_sq_two = -1./(2.*length_scale**2)
@@ -278,41 +294,43 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
     
     include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
     mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
-    used_js = set()
-    x1 = x[~mask]
-    y1 = y[~mask]
-    y_sign1 = y[~mask]
-    if thetas is not None:
-        thetas1 = thetas[~mask]
+    #used_js = set()
+    mask = np.where(~mask)[0]
     for i in indices:
         r = random.uniform()
 
-        ### Vecorised ###
-        #x_diff = x1 - np.repeat(np.array([x[i]]), x1.shape[0], axis=0)
-        #x_diff = np.sqrt(np.sum(x_diff, axis=1))
-        #p = np.exp(x_diff**2*inv_ell_sq_two)
+        ### Vectorized ###
+        x_diff = x[mask] - np.repeat(np.array([x[i]]), x[mask].shape[0], axis=0)
+        x_diff = np.sum(x_diff**2, axis=1)
+        p = np.exp(x_diff*inv_ell_sq_two)
         #np.testing.assert_almost_equal(p, p1)
-        #close_by_inds = np.where(p > r)[0]
-        #thetas1[close_by_inds] = thetas[i]
+        close_by_inds = np.where(p >= r)[0]
+        thetas[close_by_inds] = thetas[i]
 
-        #sim = np.sum(y1*np.repeat(np.array([y[i]]), y1.shape[0], axis=0), axis=1)
-        #sim_indices = np.where(sim < 0)
-        #y1[sim_indices] *= -1
-        #y_sign1 *= -1
+        y_close_by = y[mask][close_by_inds]
+        
+        b = get_b(y)
+        b_close_by = b[mask][close_by_inds]
+
+        sim = np.sum(b_close_by*np.repeat(np.array([b[i]]), b_close_by.shape[0], axis=0), axis=1)
+        #sim = np.sum(y_close_by*np.repeat(np.array([y[i]]), y_close_by.shape[0], axis=0), axis=1)
+        #sim = np.sum(y_close_by*np.repeat(np.array([y[i]]), y_close_by.shape[0], axis=0), axis=1)
+        sim_indices = np.where(sim < 0)[0]
+        reverse(y, y, mask[close_by_inds][sim_indices])
         
         ### Non-Vecorized ###
-        
+        '''
         for j in np.arange(0, n):
             if len(np.where(indices == j)[0]) > 0 or j in used_js:
                 continue
             
             x_diff = x[j] - x[i]
-            x_diff = np.sqrt(np.dot(x_diff, x_diff))
-            if (x_diff < 3*length_scale):
-                #p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
-                # TODO: It makes no sense to compare to pdf value
-                #np.testing.assert_almost_equal(p, p1)
-                p = np.exp(x_diff**2*inv_ell_sq_two)
+            x_diff2 = np.dot(x_diff, x_diff)
+            if (x_diff2 < (3*length_scale)**2):
+            #p = normal_dist.pdf(x_diff)*np.sqrt(2*np.pi)*length_scale
+            # TODO: It makes no sense to compare to pdf value
+            #np.testing.assert_almost_equal(p, p1)
+                p = np.exp(x_diff2*inv_ell_sq_two)
                 if r < p:
                     used_js.add(j)
                     #bz_diff = np.abs(bz[j]+bxy[j]-bz[i]-bxy[i])/(np.abs(bz[j]+bxy[j]+bz[i]+bxy[i])+1e-10)
@@ -320,15 +338,20 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
                         thetas[j] = thetas[i]
                     if y_sign is not None:
                         if np.dot(y[i], y[j]) < 0.:
-                            bz_diff = np.abs(bz[j]-bz[i])/(np.abs(bz[j]+bz[i])+1e-10)
+                            bz_diff = 0.#np.abs(bz[j]-bz[i])/(np.abs(bz[j]+bz[i])+1e-10)
                             #print("bz_diff", bz_diff, r)
-                            if r > bz_diff:
+                            if r >= bz_diff:
                                 reverse(y, y_sign, j)
-        
+                                #y[j] = 1000
+                                #y_sign[j] *= -1
+        '''
+        #np.testing.assert_almost_equal(y_sign, y_sign_copy)
+        #np.testing.assert_almost_equal(y, y_copy)
+
     
 def get_random_indices(x, n, length_scale):
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, size=20, replace=False)
+    random_indices = np.random.choice(n, max(1, int(1./(np.pi*length_scale**2))), replace=False)
     i = 0
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
@@ -361,7 +384,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
     
     temp = initial_temp
     
-    while temp < 1.0 or max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+    while temp < 2.0 or max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
     
@@ -437,6 +460,10 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
         components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
         components_plot.save("components.png")
 
+        components_plot2.plot(np.reshape(y[:,0], (n1, n2)), [1, 0])
+        components_plot2.plot(np.reshape(y[:,1], (n1, n2)), [1, 1])
+        components_plot2.save("components2.png")
+
         loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
 
         print("loglik1=", loglik1)
@@ -456,10 +483,17 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
     
+        energy1 = np.sum(bx_dis**2 + bx_dis**2)
+        np.testing.assert_almost_equal(energy1, energy)
+
         components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
         components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
         components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
         components_plot.save("components.png")
+
+    components_plot2.plot(np.reshape(y[:,0], (n1, n2)), [1, 0])
+    components_plot2.plot(np.reshape(y[:,1], (n1, n2)), [1, 1])
+    components_plot2.save("components2.png")
 
     exp_thetas = np.exp(thetas)
 

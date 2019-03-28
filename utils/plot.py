@@ -66,7 +66,7 @@ class plot_map:
             y1 = pos[1, 1]
             width = x1 - x0
             
-            cbar_ax = self.fig.add_axes([x1+width/20, y0, width/20, y1-y0])
+            cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
             self.colorbars[ax] = cbar_ax
             self.fig.colorbar(im, cax=cbar_ax, format=l_f)#, label=r'Label')
             if self.title is not None:
