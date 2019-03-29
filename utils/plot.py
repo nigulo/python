@@ -47,17 +47,17 @@ class plot_map:
         
         if colorbar and not ax in self.colorbars:
             if colorbar_prec is None:
-                colorbar_prec = 0
                 z_max = np.max(dat)
                 z_min = np.min(dat)
                 if z_max > z_min:
                     scale = np.log10(z_max-z_min)
-                    if scale < 0.:
-                        colorbar_prec = int(abs(np.floor(scale)))
-            if colorbar_prec > 0:
-                l_f = FormatStrFormatter('%1.' + str(colorbar_prec) +'f')
+                    colorbar_prec = int(np.floor(scale))
+                if colorbar_prec < 0:
+                    l_f = FormatStrFormatter('%1.' + str(abs(colorbar_prec)) +'f')
+                else:
+                    l_f = FormatStrFormatter('%' + str(colorbar_prec) +'.f')
             else:
-                l_f = FormatStrFormatter('%1.f')
+                l_f = FormatStrFormatter('%' + str(colorbar_prec) +'f')
 
             pos = ax.get_position().get_points()
             x0 = pos[0, 0]

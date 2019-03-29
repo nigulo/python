@@ -52,7 +52,7 @@ inference_after_iter = 20
 eps = 0.001
 learning_rate = 0.1
 max_num_tries = 200
-initial_temp = 0.5
+initial_temp = 0.1
 temp_delta = 0.01
 
 if len(sys.argv) > 3:
@@ -168,7 +168,7 @@ components_plot.set_color_map('bwr')
 bx_norm = y[:,0]*norm+bx_offset
 by_norm = y[:,1]*norm+by_offset
 
-energy = np.sum(bx**2 + bx**2)
+energy = np.sum(bx**2 + by**2)
 
 components_plot.plot(np.reshape(bx_norm, (n1, n2)), [0, 0])
 components_plot.plot(np.reshape(by_norm, (n1, n2)), [0, 1])
@@ -180,7 +180,6 @@ components_plot2.set_color_map('bwr')
 components_plot2.plot(np.reshape(dbzx, (n1, n2)), [0, 0])
 components_plot2.plot(np.reshape(dbzy, (n1, n2)), [0, 1])
 components_plot2.save("components2.png")
-
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
 fig.set_size_inches(6, 12)
@@ -204,7 +203,8 @@ print(n)
 
 data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
 print("data_var:", data_var)
-noise_var = 1.*data_var
+noise_var = .1*data_var
+
 
 def sample(x, y):
 
@@ -268,19 +268,35 @@ def calc_loglik(K, y):
     return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
 
-def reverse(y, y_sign, i):
-    print(i)
-    y*=norm
-    y[i,0] += bx_offset[i]
-    y[i,1] += by_offset[i]
-    np.testing.assert_almost_equal(np.abs(y[i,0]), np.abs(bx[i]))
-    np.testing.assert_almost_equal(np.abs(y[i,1]), np.abs(by[i]))
-    y[i,:] *= -1.
-    y[i,0] -= bx_offset[i]
-    y[i,1] -= by_offset[i]
-    y[i]/=norm
-    y_sign[i] *= -1
-    return
+def reverse(y, y_sign, ii):
+    #yc = np.array(y)
+    #yc_sign = np.array(y_sign)
+    #print("ii=", ii)
+    #if len(np.shape(ii)) == 0:
+    #    ii = np.array([ii])
+    #for i in ii:
+    #    y[i]*=norm
+    #    y[i,0] += bx_offset[i]
+    #    y[i,1] += by_offset[i]
+    #    np.testing.assert_almost_equal(np.abs(y[i,0]), np.abs(bx[i]))
+    #    np.testing.assert_almost_equal(np.abs(y[i,1]), np.abs(by[i]))
+    #    y[i,:] *= -1.
+    #    y[i,0] -= bx_offset[i]
+    #    y[i,1] -= by_offset[i]
+    #    y[i]/=norm
+    #    y_sign[i] *= -1
+
+    y[ii]*=norm
+    y[ii,0] += bx_offset[ii]
+    y[ii,1] += by_offset[ii]
+    y[ii,:] *= -1.
+    y[ii,0] -= bx_offset[ii]
+    y[ii,1] -= by_offset[ii]
+    y[ii]/=norm
+    y_sign[ii] *= -1
+
+    #np.testing.assert_almost_equal(yc_sign, y_sign)
+    #np.testing.assert_almost_equal(yc, y)
     
 def get_b(y):
     y1 = y * norm
@@ -296,6 +312,7 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
     mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
     #used_js = set()
     mask = np.where(~mask)[0]
+    
     for i in indices:
         r = random.uniform()
 
@@ -316,8 +333,8 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
         #sim = np.sum(y_close_by*np.repeat(np.array([y[i]]), y_close_by.shape[0], axis=0), axis=1)
         #sim = np.sum(y_close_by*np.repeat(np.array([y[i]]), y_close_by.shape[0], axis=0), axis=1)
         sim_indices = np.where(sim < 0)[0]
-        reverse(y, y, mask[close_by_inds][sim_indices])
-        
+        reverse(y, y_sign, mask[close_by_inds][sim_indices])
+
         ### Non-Vecorized ###
         '''
         for j in np.arange(0, n):
@@ -384,7 +401,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
     
     temp = initial_temp
     
-    while temp < 2.0 or max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+    while temp < 0.5 or max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
     
@@ -483,7 +500,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
     
-        energy1 = np.sum(bx_dis**2 + bx_dis**2)
+        energy1 = np.sum(bx_dis**2 + by_dis**2)
         np.testing.assert_almost_equal(energy1, energy)
 
         components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
