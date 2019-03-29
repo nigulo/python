@@ -401,20 +401,21 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
     
     temp = initial_temp
     
-    while temp < 0.5 or max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+    while  max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
     
         num_tries += 1
     
+        temp = random.uniform(initial_temp, 0.5)
         if inference and (iteration % inference_after_iter == 0):
-            if temp <= 1.0:
-                temp += temp_delta*temp    
+            #if temp <= 1.0:
+            #    temp += temp_delta*temp    
             
             length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
-        else:
-            if temp <= 1.0:
-                temp += temp_delta*temp    
+        #else:
+            #if temp <= 1.0:
+            #    temp += temp_delta*temp    
             
 
         if loglik is None:
