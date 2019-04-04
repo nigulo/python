@@ -6,7 +6,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
 os.environ["NUMEXPR_NUM_THREADS"] = "4" # export NUMEXPR_NUM_THREADS=6
 
 import sys
-sys.path.append('../')
+sys.path.append('../utils')
 import matplotlib as mpl
 
 mpl.use('Agg')
@@ -22,6 +22,7 @@ import scipy.interpolate as interp
 import scipy.sparse.linalg as sparse
 import scipy.stats as stats
 import utils
+import sampling
 import pymc3 as pm
 #import os
 #import os.path
@@ -29,7 +30,6 @@ import pymc3 as pm
 #from sklearn.cluster import KMeans
 import numpy.linalg as la
 import matplotlib.pyplot as plt
-import utils.sampling as sampling
 import kiss_gp
 
 import pickle

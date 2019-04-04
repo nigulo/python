@@ -36,8 +36,8 @@ from scipy.integrate import simps
 import os.path
 from astropy.io import fits
 
-#hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
-hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+#hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
 dat = hdul[0].data[:,::4,::4]
 b = dat[0]
 theta = dat[1]
@@ -203,7 +203,7 @@ print(n)
 
 data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
 print("data_var:", data_var)
-noise_var = .1*data_var
+#noise_var = .01*data_var
 
 
 def sample(x, y):
@@ -222,27 +222,29 @@ def sample(x, y):
             #sig_var = pm.Uniform('sig_var', 0.0, 1.0)
             ell = pm.HalfNormal('ell', sd=1.0)
             sig_var = pm.HalfNormal('sig_var', sd=1.0)
+            noise_var = pm.HalfNormal('noise_var', sd=1.0)
             
         
         
-        trace = s.sample(kgp.likelihood, [ell, sig_var], [noise_var, y], num_samples, num_chains, kgp.likelihood_grad)
+        trace = s.sample(kgp.likelihood2, [ell, sig_var], [noise_var, y], num_samples, num_chains, kgp.likelihood_grad2)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
         m_sig_var = np.mean(trace['sig_var'])
+        m_noise_var = np.mean(trace['noise_var'])
     else:
         def lik_fn(params):
-            return -kgp.likelihood(params, [noise_var, y])
+            return -kgp.likelihood(params, [y])
 
         def grad_fn(params):
-            return -kgp.likelihood_grad(params, [noise_var, y])
+            return -kgp.likelihood_grad(params, [y])
 
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
             #res = scipy.optimize.minimize(lik_fn, np.zeros(jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
             #res = scipy.optimize.minimize(lik_fn, np.random.uniform(low=0.01, high=1., size=2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [.5, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 2.), (data_var*.1, data_var*2.)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, .1, .1), (1., data_var*2., data_var*2.)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -250,7 +252,8 @@ def sample(x, y):
                 min_res = res
         m_ell = min_res['x'][0]
         m_sig_var = min_res['x'][1]
-    return m_ell, m_sig_var
+        m_noise_var = min_res['x'][2]
+    return m_ell, m_sig_var, m_noise_var
         
 
 def calc_loglik_approx(U, W, y):
@@ -303,6 +306,50 @@ def get_b(y):
     y1[:,0] += bx_offset
     y1[:,1] += by_offset
     return y1
+
+
+def align2(x, y, y_sign, indices, n, length_scale, thetas, sig_var, noise_var):
+    inv_ell_sq_two = -1./(2.*length_scale**2)
+    #normal_dist = stats.norm(0.0, length_scale)
+    
+    include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
+    mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
+    #used_js = set()
+    mask = np.where(~mask)[0]
+    
+    gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+    for i in indices:
+
+        r = random.uniform()
+        x_diff = x[mask] - np.repeat(np.array([x[i]]), x[mask].shape[0], axis=0)
+        x_diff = np.sum(x_diff**2, axis=1)
+        p = np.exp(x_diff*inv_ell_sq_two)
+        #np.testing.assert_almost_equal(p, p1)
+        inds = np.where(p >= r)[0][::2]
+        inds_train = inds[:int(len(inds)/2)]
+        
+        inds_test = inds[int(len(inds)/2):]
+        print(len(inds_train), len(inds_test))
+
+        x_train = y[mask][inds_train]
+        y_train = y[mask][inds_train]
+
+        x_test = x[mask][inds_test]
+        y_test_obs = y[mask][inds_test]
+
+        y_train_flat = np.reshape(y_train, (2*len(y_train), -1))
+        #loglik = gp.init(x, y)
+        print(x_train.shape, y_train_flat.shape)
+        gp.init(x_train, y_train_flat)
+        
+        y_test_mean, var = gp.fit(x_test)
+        
+        sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
+
+        sim_indices = np.where(sim < 0)[0]
+        reverse(y, y_sign, mask[inds_test][sim_indices])
+        #np.testing.assert_almost_equal(y_sign, y_sign_copy)
+        #np.testing.assert_almost_equal(y, y_copy)
 
 def align(x, y, y_sign, indices, n, length_scale, thetas):
     inv_ell_sq_two = -1./(2.*length_scale**2)
@@ -368,7 +415,7 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
     
 def get_random_indices(x, n, length_scale):
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, max(1, int(1./(np.pi*length_scale**2))), replace=False)
+    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 20), replace=False)
     i = 0
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
@@ -382,7 +429,7 @@ def get_random_indices(x, n, length_scale):
         i += 1
     return random_indices
 
-def algorithm_a(x, y, sig_var=None, length_scale=None):
+def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     print(sig_var)
     y_in = np.array(y)
     y_sign = np.ones(n)
@@ -412,7 +459,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
             
-            length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
+            length_scale, sig_var, noise_var = sample(x, np.reshape(y, (2*n, -1)))
         #else:
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
@@ -468,7 +515,8 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
                     #sign_change[ri] = True
             #print(np.exp(thetas[ri]))
 
-        align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
+        align2(x, y, y_sign, random_indices, n, length_scale, thetas, sig_var, noise_var)
+        #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
 
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
@@ -519,76 +567,19 @@ def algorithm_a(x, y, sig_var=None, length_scale=None):
     return exp_thetas, bx_dis, by_dis
 
     
-
-def algorithm_b(x, y, sig_var=None, length_scale=None):
-    loglik = None
-    max_loglik = None
-
-    num_tries = 0
-    temp = initial_temp
-    
-    while (temp < 1.0 or max_loglik is None or num_tries % max_num_tries != 0 or (loglik > max_loglik + eps)):
-    #while (max_loglik is None or num_tries % max_num_tries != 0 or (loglik > max_loglik + eps)):
-        print("num_tries", num_tries)
-        num_tries += 1
-    
-        if inference:
-            length_scale, sig_var = sample(x, np.reshape(y, (2*n, -1)))
-            
-
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
-        #loglik = gp.init(x, y)
-        U = gp.calc_cov(u, u, data_or_test=True)
-        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-        loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-        
-        print("sig_var=", sig_var)
-        print("length_scale", length_scale)
-        #print("mean", mean)
-        print("loglik=", loglik, "max_loglik=", max_loglik)
-        
-        if max_loglik is None or loglik > max_loglik:
-            num_tries = 1
-            max_loglik = loglik
-        
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
-        U = gp.calc_cov(u, u, data_or_test=True)
-        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-        
-        
-        for i in np.random.choice(n, size=1, replace=False):
-            loglik1 = loglik#gp.init(x, y)
-            js = []
-            for j in np.arange(0, n):
-                x_diff = x[j] - x[i]
-                if (np.dot(x_diff, x_diff) < length_scale**2):
-                    y[j] = y[j]*-1
-                    js.append(j)
-            #loglik2 = gp.init(x, y)
-            loglik2 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
-            for j in js:
-                if loglik1 > loglik2:        
-                    y[j] = y[j]*-1
-    
-        if temp <= 1.0:
-            temp += temp_delta*temp    
-        
-    
-    return y
-
 sig_var = None
 length_scale = None
+noise_var = None
 if not inference:
 
     sig_var=0.9*np.var(bx) + 0.9*np.var(by)
     length_scale=0.2
+    noise_var=0.1*sig_var
 
 
 print("******************** Algorithm a ********************")
 prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale)
 print("******************** Algorithm b ********************")
-#field_b = algorithm_b(x, np.array(y), sig_var, length_scale)
-#field_b = field_a_x
 
 
 Q_a_1 = ax2.quiver(x[:,0], x[:,1], field_a_x, field_a_y, units='width', color='g', linestyle=':')
