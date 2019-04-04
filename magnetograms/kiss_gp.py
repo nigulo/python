@@ -111,7 +111,7 @@ class kiss_gp:
         
         U_inv = np.dot(L_inv.T, L_inv)
         #np.testing.assert_almost_equal(U_inv, la.inv(self.U), 4)
-        ret_val = np.zeros(2)
+        ret_val = np.zeros(3)
 
 
         

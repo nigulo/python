@@ -234,17 +234,17 @@ def sample(x, y):
         m_noise_var = np.mean(trace['noise_var'])
     else:
         def lik_fn(params):
-            return -kgp.likelihood(params, [y])
+            return -kgp.likelihood2(params, [y])
 
         def grad_fn(params):
-            return -kgp.likelihood_grad(params, [y])
+            return -kgp.likelihood_grad2(params, [y])
 
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
             #res = scipy.optimize.minimize(lik_fn, np.zeros(jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
             #res = scipy.optimize.minimize(lik_fn, np.random.uniform(low=0.01, high=1., size=2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, .1, .1), (1., data_var*2., data_var*2.)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.1, data_var*2.)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -325,10 +325,12 @@ def align2(x, y, y_sign, indices, n, length_scale, thetas, sig_var, noise_var):
         x_diff = np.sum(x_diff**2, axis=1)
         p = np.exp(x_diff*inv_ell_sq_two)
         #np.testing.assert_almost_equal(p, p1)
-        inds = np.where(p >= r)[0][::2]
-        inds_train = inds[:int(len(inds)/2)]
+        inds = np.where(p >= r)[0]
+        while len(inds) > 200:
+            inds = np.random.choice(inds, 200)            
+        inds_train = inds[:int(len(inds)/4)]
         
-        inds_test = inds[int(len(inds)/2):]
+        inds_test = inds[int(len(inds)/4):]
         print(len(inds_train), len(inds_test))
 
         x_train = y[mask][inds_train]
@@ -415,7 +417,7 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
     
 def get_random_indices(x, n, length_scale):
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 20), replace=False)
+    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 10), replace=False)
     i = 0
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
