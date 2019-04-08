@@ -326,11 +326,11 @@ def align2(x, y, y_sign, indices, n, length_scale, thetas, sig_var, noise_var):
         p = np.exp(x_diff*inv_ell_sq_two)
         #np.testing.assert_almost_equal(p, p1)
         inds = np.where(p >= r)[0]
-        while len(inds) > 200:
-            inds = np.random.choice(inds, 200)            
-        inds_train = inds[:int(len(inds)/4)]
+        while len(inds) > 250:
+            inds = np.random.choice(inds, 250)            
+        inds_train = inds[:int(len(inds)/10)]
         
-        inds_test = inds[int(len(inds)/4):]
+        inds_test = inds[int(len(inds)/10):]
         print(len(inds_train), len(inds_test))
 
         x_train = y[mask][inds_train]
@@ -415,21 +415,26 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
         #np.testing.assert_almost_equal(y, y_copy)
 
     
-def get_random_indices(x, n, length_scale):
+def get_random_indices(x, n, length_scale, unused_indices):
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 10), replace=False)
+    random_indices = np.random.choice(unused_indices, min(max(1, int(1./(np.pi*length_scale**2))), 1), replace=False)
     i = 0
+    unused_index_filter = np.ones_like(unused_indices, dtype=bool)
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
         ri = random_indices[i]
-        for j in np.arange(i + 1, len(random_indices)):
-            rj = random_indices[j]
+        unused_index_filter[i] = False
+        for rj in np.arange(0, n):
             x_diff = x[rj] - x[ri]
             if (np.dot(x_diff, x_diff) < length_scale**2):
-                random_index_filter[j] = False
+                unused_index_filter[j] = False
+                used_indices.add(rj)
+                for j in np.arange(i + 1, len(random_indices)):
+                    if random_indices[j] == rj:
+                        random_index_filter[j] = False
         random_indices = random_indices[random_index_filter]
         i += 1
-    return random_indices
+    return random_indices, unused_indices
 
 def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     print(sig_var)
@@ -450,6 +455,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     
     temp = initial_temp
     
+    used_indices = set()
     while  max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
@@ -490,8 +496,10 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
-        random_indices = get_random_indices(x, n, temp*length_scale)
-            
+        random_indices = get_random_indices(x, n, length_scale, used_indices)
+        if len(used_indices) == n:
+            used_indices = set()
+
         r = random.uniform()
         for ri in random_indices:
             #r = np.log(random.uniform())
