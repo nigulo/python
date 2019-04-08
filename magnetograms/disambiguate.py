@@ -20,6 +20,7 @@ import scipy.misc
 import numpy.random as random
 import scipy.sparse.linalg as sparse
 import scipy.stats as stats
+import scipy.special as special
 import utils
 import plot
 import pymc3 as pm
@@ -33,11 +34,13 @@ import sampling
 import kiss_gp
 from scipy.integrate import simps
 
+import time
+import copy
 import os.path
 from astropy.io import fits
 
-hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
-#hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+#hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
 dat = hdul[0].data[:,::4,::4]
 b = dat[0]
 theta = dat[1]
@@ -161,25 +164,44 @@ y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
+def do_plots(y):
+    components_plot = plot.plot_map(nrows=2, ncols=3)
+    components_plot.set_color_map('bwr')
+    
+    bx_norm = y_orig[:,0]*norm+bx_offset
+    by_norm = y_orig[:,1]*norm+by_offset
+    
+    components_plot.plot(np.reshape(bx_norm, (n1, n2)), [0, 0])
+    components_plot.plot(np.reshape(by_norm, (n1, n2)), [0, 1])
+    components_plot.plot(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
+    
+    components_plot2 = plot.plot_map(nrows=2, ncols=2)
+    components_plot2.set_color_map('bwr')
+    components_plot2.plot(np.reshape(dbzx, (n1, n2)), [0, 0])
+    components_plot2.plot(np.reshape(dbzy, (n1, n2)), [0, 1])
+    
 
-components_plot = plot.plot_map(nrows=2, ncols=3)
-components_plot.set_color_map('bwr')
+    if y is not None:    
+        bx_dis = y[:,0]*norm + bx_offset
+        by_dis = y[:,1]*norm + by_offset
+       
+        components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
+        components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
+        components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
+    
+        components_plot2.plot(np.reshape(y[:,0], (n1, n2)), [1, 0])
+        components_plot2.plot(np.reshape(y[:,1], (n1, n2)), [1, 1])
+
+    components_plot.save("components.png")
+    components_plot2.save("components2.png")
+
 
 bx_norm = y[:,0]*norm+bx_offset
 by_norm = y[:,1]*norm+by_offset
 
 energy = np.sum(bx**2 + by**2)
 
-components_plot.plot(np.reshape(bx_norm, (n1, n2)), [0, 0])
-components_plot.plot(np.reshape(by_norm, (n1, n2)), [0, 1])
-components_plot.plot(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
-components_plot.save("components.png")
-
-components_plot2 = plot.plot_map(nrows=2, ncols=2)
-components_plot2.set_color_map('bwr')
-components_plot2.plot(np.reshape(dbzx, (n1, n2)), [0, 0])
-components_plot2.plot(np.reshape(dbzy, (n1, n2)), [0, 1])
-components_plot2.save("components2.png")
+do_plots(None)
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
 fig.set_size_inches(6, 12)
@@ -204,6 +226,7 @@ print(n)
 data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
 print("data_var:", data_var)
 #noise_var = .01*data_var
+
 
 
 def sample(x, y):
@@ -244,7 +267,7 @@ def sample(x, y):
         for trial_no in np.arange(0, num_samples):
             #res = scipy.optimize.minimize(lik_fn, np.zeros(jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
             #res = scipy.optimize.minimize(lik_fn, np.random.uniform(low=0.01, high=1., size=2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.1, data_var*2.)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -309,7 +332,8 @@ def get_b(y):
 
 
 def align2(x, y, y_sign, indices, n, length_scale, thetas, sig_var, noise_var):
-    inv_ell_sq_two = -1./(2.*length_scale**2)
+    #inv_ell_sq_two = -1./(2.*length_scale**2)
+    inv_ell_sq_two = 1./(2.*length_scale)
     #normal_dist = stats.norm(0.0, length_scale)
     
     include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
@@ -323,35 +347,44 @@ def align2(x, y, y_sign, indices, n, length_scale, thetas, sig_var, noise_var):
         r = random.uniform()
         x_diff = x[mask] - np.repeat(np.array([x[i]]), x[mask].shape[0], axis=0)
         x_diff = np.sum(x_diff**2, axis=1)
-        p = np.exp(x_diff*inv_ell_sq_two)
+        p = .5*(1+special.erf(np.sqrt(x_diff)*inv_ell_sq_two))
+        i1 = np.where(p > 0.5)[0]
+        p[i1] = 1. - p[i1]
+        p *= 2.
+        #p = np.exp(x_diff*inv_ell_sq_two)
         #np.testing.assert_almost_equal(p, p1)
-        inds = np.where(p >= r)[0]
-        while len(inds) > 250:
-            inds = np.random.choice(inds, 250)            
-        inds_train = inds[:int(len(inds)/10)]
-        
-        inds_test = inds[int(len(inds)/10):]
-        print(len(inds_train), len(inds_test))
-
-        x_train = y[mask][inds_train]
-        y_train = y[mask][inds_train]
-
-        x_test = x[mask][inds_test]
-        y_test_obs = y[mask][inds_test]
-
-        y_train_flat = np.reshape(y_train, (2*len(y_train), -1))
-        #loglik = gp.init(x, y)
-        print(x_train.shape, y_train_flat.shape)
-        gp.init(x_train, y_train_flat)
-        
-        y_test_mean, var = gp.fit(x_test)
-        
-        sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
-
-        sim_indices = np.where(sim < 0)[0]
-        reverse(y, y_sign, mask[inds_test][sim_indices])
-        #np.testing.assert_almost_equal(y_sign, y_sign_copy)
-        #np.testing.assert_almost_equal(y, y_copy)
+        inds1 = np.where(p >= r)[0]
+        inds_train = np.array([i])#np.random.choice(inds1, min(20, len(inds1)))
+        inds1 = np.setdiff1d(inds1, inds_train)
+        while len(inds1) > 0:
+            inds_test = inds1[:min(100, len(inds1))]
+            inds1 = inds1[min(100, len(inds1)):]
+            #while len(inds) > 1000:
+            #    inds = np.random.choice(inds, 1000) 
+            #inds_train = inds[:int(len(inds)/10)]
+            
+            #inds_test = inds[int(len(inds)/10):]
+            #print(len(inds_train), len(inds_test))
+    
+            x_train = y[mask][inds_train]
+            y_train = y[mask][inds_train]
+    
+            x_test = x[mask][inds_test]
+            y_test_obs = y[mask][inds_test]
+    
+            y_train_flat = np.reshape(y_train, (2*len(y_train), -1))
+            #loglik = gp.init(x, y)
+            #print(x_train.shape, y_train_flat.shape)
+            gp.init(x_train, y_train_flat)
+            
+            y_test_mean, var = gp.fit(x_test)
+            
+            sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
+    
+            sim_indices = np.where(sim < 0)[0]
+            reverse(y, y_sign, mask[inds_test][sim_indices])
+            #np.testing.assert_almost_equal(y_sign, y_sign_copy)
+            #np.testing.assert_almost_equal(y, y_copy)
 
 def align(x, y, y_sign, indices, n, length_scale, thetas):
     inv_ell_sq_two = -1./(2.*length_scale**2)
@@ -427,14 +460,13 @@ def get_random_indices(x, n, length_scale, unused_indices):
         for rj in np.arange(0, n):
             x_diff = x[rj] - x[ri]
             if (np.dot(x_diff, x_diff) < length_scale**2):
-                unused_index_filter[j] = False
-                used_indices.add(rj)
                 for j in np.arange(i + 1, len(random_indices)):
                     if random_indices[j] == rj:
                         random_index_filter[j] = False
+                unused_index_filter[unused_indices == rj] = False
         random_indices = random_indices[random_index_filter]
         i += 1
-    return random_indices, unused_indices
+    return random_indices, unused_indices[unused_index_filter]
 
 def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     print(sig_var)
@@ -455,7 +487,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     
     temp = initial_temp
     
-    used_indices = set()
+    unused_indices = np.arange(0, n)
     while  max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
@@ -481,6 +513,7 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
             loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
             
         print("sig_var=", sig_var)
+        print("noise_var=", noise_var)
         print("length_scale", length_scale)
         #print("mean", mean)
         print("loglik=", loglik, "max_loglik=", max_loglik)
@@ -496,9 +529,8 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
-        random_indices = get_random_indices(x, n, length_scale, used_indices)
-        if len(used_indices) == n:
-            used_indices = set()
+        random_indices, unused_indices_new = get_random_indices(x, n, length_scale, unused_indices)
+        print("len(unused_indices)", len(unused_indices))
 
         r = random.uniform()
         for ri in random_indices:
@@ -525,22 +557,20 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
                     #sign_change[ri] = True
             #print(np.exp(thetas[ri]))
 
+        start = time.time()
+
         align2(x, y, y_sign, random_indices, n, length_scale, thetas, sig_var, noise_var)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
+        end = time.time()
+        print("Align took: " + str(end - start))
 
-        bx_dis = y[:,0]*norm + bx_offset
-        by_dis = y[:,1]*norm + by_offset
-    
-        components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
-        components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
-        components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
-        components_plot.save("components.png")
 
-        components_plot2.plot(np.reshape(y[:,0], (n1, n2)), [1, 0])
-        components_plot2.plot(np.reshape(y[:,1], (n1, n2)), [1, 1])
-        components_plot2.save("components2.png")
+        do_plots(y)    
 
+        start = time.time()
         loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+        end = time.time()
+        print("Inference took: " + str(end - start))
 
         print("loglik1=", loglik1)
 
@@ -551,10 +581,11 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
             y_sign = y_sign_last
             
         for ri in np.arange(0, n):
-            if y_sign[ri] > 0:
-                num_positive[ri] += 1.0
-            else:
-                num_negative[ri] += 1.0
+            if ri not in unused_indices_new and ri in unused_indices:
+                if y_sign[ri] > 0:
+                    num_positive[ri] += 1.0
+                else:
+                    num_negative[ri] += 1.0
     
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
@@ -562,14 +593,13 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
         energy1 = np.sum(bx_dis**2 + by_dis**2)
         np.testing.assert_almost_equal(energy1, energy)
 
-        components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
-        components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
-        components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
-        components_plot.save("components.png")
+        do_plots(y)
 
-    components_plot2.plot(np.reshape(y[:,0], (n1, n2)), [1, 0])
-    components_plot2.plot(np.reshape(y[:,1], (n1, n2)), [1, 1])
-    components_plot2.save("components2.png")
+        unused_indices = unused_indices_new
+        if len(unused_indices) == 0:
+            unused_indices = np.arange(0, n)
+
+    do_plots(y)
 
     exp_thetas = np.exp(thetas)
 
