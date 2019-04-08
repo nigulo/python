@@ -366,8 +366,8 @@ def align2(x, y, y_sign, indices, n, length_scale, thetas, sig_var, noise_var):
             #inds_test = inds[int(len(inds)/10):]
             #print(len(inds_train), len(inds_test))
     
-            x_train = y[mask][inds_train]
-            y_train = y[mask][inds_train]
+            x_train = x[inds_train]
+            y_train = y[inds_train]
     
             x_test = x[mask][inds_test]
             y_test_obs = y[mask][inds_test]
