@@ -89,13 +89,16 @@ class GPR_div_free:
         self.loglik = np.asscalar(-0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi))
         return self.loglik
 
-    def fit(self, x_test):
+    def fit(self, x_test, calc_var = True):
         K_test = self.calc_cov(x_test, self.x, False)
         f_mean = np.dot(K_test, self.alpha)
-        v = la.solve(self.L, K_test.T)
-        covar = self.calc_cov(x_test, x_test, False) - np.dot(v.T, v)
-        var = np.diag(covar)
-        return (f_mean, var)
+        if calc_var:
+            v = la.solve(self.L, K_test.T)
+            covar = self.calc_cov(x_test, x_test, False) - np.dot(v.T, v)
+            var = np.diag(covar)
+            return (f_mean, var)
+        else:
+            return f_mean
     
     def cv(self, x_test, y_test, noise_test):
         if np.isscalar(x_test):
