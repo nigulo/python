@@ -54,7 +54,7 @@ inference_after_iter = 20
 
 eps = 0.001
 learning_rate = 0.1
-max_num_tries = 200
+max_num_tries = 10000
 initial_temp = 0.1
 temp_delta = 0.01
 
@@ -155,10 +155,7 @@ by1 = by - by_offset
 norm = 1.#np.std(np.sqrt(bx**2+by**2))
 bx1 /= norm
 by1 /= norm
-y = np.column_stack((bx1,by1))
-#y = np.stack((bx,by), axis=2)
-np.testing.assert_almost_equal(bx1, y[:,0])
-np.testing.assert_almost_equal(by1, y[:,1])
+y = np.column_stack((bx1, by1))
 
 y_orig = np.array(y)
 print(y_orig)
@@ -194,6 +191,9 @@ def do_plots(y):
 
     components_plot.save("components.png")
     components_plot2.save("components2.png")
+    
+    components_plot.close()
+    components_plot2.close()
 
 
 bx_norm = y[:,0]*norm+bx_offset
@@ -265,9 +265,8 @@ def sample(x, y):
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
-            #res = scipy.optimize.minimize(lik_fn, np.zeros(jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-            #res = scipy.optimize.minimize(lik_fn, np.random.uniform(low=0.01, high=1., size=2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
+            #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.1], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -330,6 +329,14 @@ def get_b(y):
     y1[:,1] += by_offset
     return y1
 
+def get_probs(thetas):
+    p = np.exp(thetas)
+    p -= 0.5
+    p = np.abs(p)*2.
+    p[p > 0.8] = 0.8
+    p[p < 0.2] = 0.2
+    p /= np.sum(p)
+    return p    
 
 def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
     #inv_ell_sq_two = -1./(2.*length_scale**2)
@@ -340,10 +347,12 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
     #used_js = set()
     mask = np.where(~mask)[0]
-    
+    affected_indices = set()
     gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
     for i in indices:
 
+        #######################################################################
+        # Determine the points wich lie in the vicinity of the point i
         r = random.uniform()
         x_diff = x[mask] - np.repeat(np.array([x[i]]), x[mask].shape[0], axis=0)
         x_diff = np.sum(x_diff**2, axis=1)
@@ -352,16 +361,19 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
         p[i1] = 1. - p[i1]
         p *= 2.
         inds1 = np.where(p >= r)[0]
+        #######################################################################
         
-        p1 = np.exp(thetas[inds1])
-        p1 -= 0.5
-        p1 = np.abs(p1) + 1e-10
-        p1 /= np.sum(p1)
+        affected_indices.add(i)
+        affected_indices.update(inds1)
         
-        #inds_train = np.array([i])
-        inds_train = np.random.choice(inds1, min(20, len(inds1)), p=p1)
+        p1 = get_probs(thetas[inds1])
+
+        inds_train = np.array([i])
+        '''
+        if len(p1) > 0:
+            inds_train = np.concatenate((inds_train, np.random.choice(inds1, min(4, len(inds1)), p=p1)))
         inds1 = np.setdiff1d(inds1, inds_train)
-        
+        '''
         #######################################################################
         # Do aligning of the chosen training vectors
         # based on most likely direction
@@ -419,7 +431,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             reverse(y, y_sign, mask[inds_test][sim_indices])
             #np.testing.assert_almost_equal(y_sign, y_sign_copy)
             #np.testing.assert_almost_equal(y, y_copy)
-
+    return affected_indices
 '''
 #################
 # Simple aligning
@@ -456,30 +468,23 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
         reverse(y, y_sign, mask[close_by_inds][sim_indices])
 '''
 
-    
-def get_random_indices(x, n, length_scale, unused_indices, thetas):
-    p = np.exp(thetas[unused_indices])
-    p -= 0.5
-    p = np.abs(p) + 1e-10
-    p /= np.sum(p)
+def get_random_indices(x, n, length_scale, thetas):
+    p = get_probs(thetas)
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(unused_indices, min(max(1, int(1./(np.pi*length_scale**2))), 1), replace=False, p=p)
+    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 1), replace=False, p=p)
     i = 0
-    unused_index_filter = np.ones_like(unused_indices, dtype=bool)
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
         ri = random_indices[i]
-        unused_index_filter[i] = False
         for rj in np.arange(0, n):
             x_diff = x[rj] - x[ri]
             if (np.dot(x_diff, x_diff) < length_scale**2):
                 for j in np.arange(i + 1, len(random_indices)):
                     if random_indices[j] == rj:
                         random_index_filter[j] = False
-                unused_index_filter[unused_indices == rj] = False
         random_indices = random_indices[random_index_filter]
         i += 1
-    return random_indices, unused_indices[unused_index_filter]
+    return random_indices
 
 def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     print(sig_var)
@@ -500,7 +505,6 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
     
     temp = initial_temp
     
-    unused_indices = np.arange(0, n)
     while  max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
         iteration += 1
         print("num_tries", num_tries)
@@ -542,13 +546,12 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
-        random_indices, unused_indices_new = get_random_indices(x, n, length_scale, unused_indices, thetas)
-        print("len(unused_indices)", len(unused_indices))
+        random_indices = get_random_indices(x, n, length_scale, thetas)
 
 
         start = time.time()
 
-        align2(x, y, y_sign, random_indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
+        affected_indices = align2(x, y, y_sign, random_indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
         end = time.time()
         print("Align took: " + str(end - start))
@@ -565,20 +568,21 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
 
         if loglik1 > loglik:
             loglik = loglik1
+
+            for ri in np.arange(0, n):
+                if ri in affected_indices:
+                    if y_sign[ri] > 0:
+                        num_positive[ri] += 1.0
+                    else:
+                        num_negative[ri] += 1.0
+                    if num_positive[ri] + num_negative[ri] >= 10:
+                        theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
+                        thetas[ri] = np.log(theta)
+                    print("num_positive, num_negative:", num_positive[ri], num_negative[ri])
         else:
             y = y_last
             y_sign = y_sign_last
             
-        for ri in np.arange(0, n):
-            if ri not in unused_indices_new and ri in unused_indices:
-                if y_sign[ri] > 0:
-                    num_positive[ri] += 1.0
-                else:
-                    num_negative[ri] += 1.0
-                if num_positive[ri] + num_negative[ri] >= 10:
-                    theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-                    thetas[ri] = np.log(theta)
-                print("num_positive, num_negative:", num_positive[ri], num_negative[ri])
 
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
@@ -588,9 +592,6 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
 
         do_plots(y)
 
-        unused_indices = unused_indices_new
-        if len(unused_indices) == 0:
-            unused_indices = np.arange(0, n)
 
     do_plots(y)
 
@@ -610,9 +611,7 @@ if not inference:
     noise_var=0.1*sig_var
 
 
-print("******************** Algorithm a ********************")
 prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale)
-print("******************** Algorithm b ********************")
 
 
 Q_a_1 = ax2.quiver(x[:,0], x[:,1], field_a_x, field_a_y, units='width', color='g', linestyle=':')
