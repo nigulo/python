@@ -39,8 +39,8 @@ import copy
 import os.path
 from astropy.io import fits
 
-#hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
-hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+#hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
 dat = hdul[0].data[:,::4,::4]
 b = dat[0]
 theta = dat[1]
@@ -223,9 +223,11 @@ print(n)
 
 # define the parameters with their associated priors
 
-data_var = (np.var(y[:,0]) + np.var(y[:,1]))/2
-print("data_var:", data_var)
+data_var = (np.var(y[:,0]) + np.var(y[:,1]))
 #noise_var = .01*data_var
+#forced_noise_var = data_var - (np.var(np.abs(y[:,0])) + np.var(np.abs(y[:,1])))/2
+#data_var -= forced_noise_var
+print("data_var:", data_var)
 
 
 
@@ -314,7 +316,7 @@ def reverse(y, y_sign, ii):
     y[ii]*=norm
     y[ii,0] += bx_offset[ii]
     y[ii,1] += by_offset[ii]
-    y[ii,:] *= -1.
+    y[ii,:] *= -1
     y[ii,0] -= bx_offset[ii]
     y[ii,1] -= by_offset[ii]
     y[ii]/=norm
@@ -322,19 +324,20 @@ def reverse(y, y_sign, ii):
 
     #np.testing.assert_almost_equal(yc_sign, y_sign)
     #np.testing.assert_almost_equal(yc, y)
+
     
-def get_b(y):
+def get_b(y, ii):
     y1 = y * norm
-    y1[:,0] += bx_offset
-    y1[:,1] += by_offset
+    y1[:,0] += bx_offset[ii]
+    y1[:,1] += by_offset[ii]
     return y1
 
 def get_probs(thetas):
     p = np.exp(thetas)
     p -= 0.5
     p = np.abs(p)*2.
-    p[p > 0.8] = 0.8
-    p[p < 0.2] = 0.2
+    p[p > 0.9] = 0.9
+    p[p < 0.1] = 0.1
     p /= np.sum(p)
     return p    
 
@@ -369,26 +372,26 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
         p1 = get_probs(thetas[inds1])
 
         inds_train = np.array([i])
-        '''
+        
         if len(p1) > 0:
-            inds_train = np.concatenate((inds_train, np.random.choice(inds1, min(4, len(inds1)), p=p1)))
+            inds_train = np.concatenate((inds_train, np.random.choice(inds1, min(2, len(inds1)), p=p1)))
         inds1 = np.setdiff1d(inds1, inds_train)
-        '''
+        
         #######################################################################
         # Do aligning of the chosen training vectors
         # based on most likely direction
         r = random.uniform()
         for ri in inds_train:
             #r = np.log(random.uniform())
-            if num_positive[ri] + num_negative[ri] <= 10:
+            if num_positive[ri] + num_negative[ri] < 1:
                 theta = 0.5
             else:
                 theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
             th = theta
-            if th < 0.2:
-                th = 0.2
-            if th > 0.8:
-                th = 0.8
+            if th < 0.1:
+                th = 0.1
+            if th > 0.9:
+                th = 0.9
             if r < th:
                 if y_sign[ri] < 0:
                     reverse(y, y_sign, ri)
@@ -424,13 +427,22 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             gp.init(x_train, y_train_flat)
             
             y_test_mean = gp.fit(x_test, calc_var = False)
-            
-            sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
+            y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
+            b_test_mean = get_b(y_test_mean, mask[inds_test])
+            b_test_obs = get_b(y_test_obs, mask[inds_test])
+
+            sim = np.sum(b_test_obs*b_test_mean, axis=1)
+            #sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
     
-            sim_indices = np.where(sim < 0)[0]
+            sim_indices = np.where(sim < 0.)[0]
+            #y_copy=np.array(y)
+            #y_sign_copy=np.array(y_sign)
             reverse(y, y_sign, mask[inds_test][sim_indices])
-            #np.testing.assert_almost_equal(y_sign, y_sign_copy)
-            #np.testing.assert_almost_equal(y, y_copy)
+            #y_copy1=np.array(y)
+            #y_sign_copy1=np.array(y_sign)
+            #reverse(y_copy1, y_sign_copy1, mask[inds_test][sim_indices])
+            #np.testing.assert_almost_equal(y_sign_copy, y_sign_copy1)
+            #np.testing.assert_almost_equal(y_copy, y_copy1)
     return affected_indices
 '''
 #################
@@ -471,14 +483,14 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
 def get_random_indices(x, n, length_scale, thetas):
     p = get_probs(thetas)
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 1), replace=False, p=p)
+    random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 20), replace=False, p=p)
     i = 0
     while i < len(random_indices):
         random_index_filter = np.ones_like(random_indices, dtype=bool)
         ri = random_indices[i]
         for rj in np.arange(0, n):
             x_diff = x[rj] - x[ri]
-            if (np.dot(x_diff, x_diff) < length_scale**2):
+            if (np.dot(x_diff, x_diff) < (3.*length_scale)**2):
                 for j in np.arange(i + 1, len(random_indices)):
                     if random_indices[j] == rj:
                         random_index_filter[j] = False
@@ -546,12 +558,12 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
-        random_indices = get_random_indices(x, n, length_scale, thetas)
+        random_indices = get_random_indices(x, n, temp*length_scale, thetas)
 
 
         start = time.time()
 
-        affected_indices = align2(x, y, y_sign, random_indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
+        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
         end = time.time()
         print("Align took: " + str(end - start))
@@ -588,7 +600,8 @@ def algorithm_a(x, y, sig_var=None, length_scale=None, noise_var=None):
         by_dis = y[:,1]*norm + by_offset
     
         energy1 = np.sum(bx_dis**2 + by_dis**2)
-        np.testing.assert_almost_equal(energy1, energy)
+        print("Energy diff:", (energy1-energy)/energy)
+        #np.testing.assert_almost_equal(energy1, energy)
 
         do_plots(y)
 
