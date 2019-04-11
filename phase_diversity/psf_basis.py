@@ -51,8 +51,6 @@ def Vnmf(radius, f, n, m):
     #assert(lmax == int(lmax))
     lmax = int(lmax)
     
-    ii = 1.j
-    
     Vnm = np.zeros_like(radius, dtype='complex')
     
     for l in np.arange(1, lmax + 1):
@@ -68,9 +66,9 @@ def Vnmf(radius, f, n, m):
                 for ix in np.arange(0, np.shape(radius)[0]):
                     for iy in np.arange(0, np.shape(radius)[1]):
                         sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius[ix,iy]+epsilon)) / (l*(2.0*np.pi*(radius[ix,iy]+epsilon))**l)
-        Vnm += sum_ * (-2.0*ii*f)**(l-1)
+        Vnm += sum_ * (-2.0*1.j*f)**(l-1)
         
-    Vnm *= epsm * np.exp(ii*f)
+    Vnm *= epsm * np.exp(1.j*f)
     #if n == 0 and m == 0:
     #    if f == 0.:
     #        res = special.jv(1, 2*np.pi*radius+epsilon)/(2.*np.pi*radius+epsilon)
@@ -131,11 +129,11 @@ class psf_basis:
         print('Diffraction limit, arcsec_per_px', diffraction, arcsec_per_px)
         
         # Generate pupil plane
-        x_diff = np.linspace(0, nx-1, nx)*arcsec_per_px
+        x_diff = np.linspace(-float(nx)/2, float(nx)/2, nx)*arcsec_per_px
         print(len(x_diff))
         
         # Angular separation of pixels measured from the center (in arceconds)
-        x_diff = x_diff - x_diff[int(nx/2)]
+        #x_diff = x_diff - x_diff[int(nx/2)]
         
         # Angular separation of resolved pixels measured from the center (in arceconds)
         x_diff = x_diff / diffraction
@@ -144,6 +142,8 @@ class psf_basis:
         
         radius = np.zeros((nx,nx))
         phi = np.zeros((nx,nx))
+        
+        print("PSF_BASIS x_limit", x_diff[0], x_diff[-1])
         
         coords = np.dstack(np.meshgrid(x_diff, x_diff)[::-1])
         print("psf_basis_coords", np.min(coords, axis=(0,1)), np.max(coords, axis=(0,1)), np.shape(coords))

@@ -125,6 +125,7 @@ class psf():
         
         #coh_vals = np.zeros((nx, ny))
         xs = np.linspace(-x_limit, x_limit, self.nx)
+        print("PSF x_limit", xs[0], xs[-1])
         assert(len(xs) == self.nx)
         self.coords = np.dstack(np.meshgrid(xs, xs)[::-1])
         print("psf_coords", np.min(self.coords, axis=(0,1)), np.max(self.coords, axis=(0,1)), np.shape(self.coords))

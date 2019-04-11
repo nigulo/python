@@ -46,16 +46,16 @@ jmax = 5
 arcsec_per_px = 0.055
 diameter = 20.0
 wavelength = 5250.0
-f = 0#0.1
+defocus = .1
 gamma = 1.0
 
 
 aperture_func = lambda xs: utils.aperture_circ(xs, 1.0, 15.0)
 #defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
-defocus_func = lambda xs: 0.#np.sum(xs*xs, axis=2)
+defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 
 
-psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = f)
+psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
 psf_b.create_basis()
 
 my_plot = plot.plot_map(nrows=num_frames + 1, ncols=5)
@@ -68,7 +68,7 @@ image_norm = misc.normalize(image)
 
 wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
-sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
+sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 for trial in np.arange(0, num_frames):
     
     #pa = psf.phase_aberration(np.random.normal(size=5)*2)
@@ -79,7 +79,7 @@ for trial in np.arange(0, num_frames):
     
     D, D_d = psf_.multiply(fimage)
     
-    betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")    
+    betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
     image_est = psf_basis.maybe_invert(image_est, image)
 
