@@ -35,7 +35,6 @@ import kiss_gp
 from scipy.integrate import simps
 
 import time
-import copy
 import os.path
 from astropy.io import fits
 
