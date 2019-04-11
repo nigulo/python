@@ -52,6 +52,8 @@ class plot_map:
                 if z_max > z_min:
                     scale = np.log10(z_max-z_min)
                     colorbar_prec = int(np.floor(scale))
+                else:
+                    colorbar_prec = 1
                 if colorbar_prec < 0:
                     l_f = FormatStrFormatter('%1.' + str(abs(colorbar_prec)) +'f')
                 else:

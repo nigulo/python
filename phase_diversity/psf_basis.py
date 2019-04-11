@@ -91,14 +91,14 @@ class psf_basis:
         diameter is in centimeters
         wavelength is in Angstroms
     '''
-    def __init__(self, jmax, nx, arcsec_per_px, diameter, wavelength, F_D):
+    def __init__(self, jmax, nx, arcsec_per_px, diameter, wavelength, defocus):
         
         self.jmax = jmax
         self.arcsec_per_px = arcsec_per_px
         self.diameter = diameter
         self.wavelength = wavelength
         self.nx = nx
-        self.F_D = F_D
+        self.defocus = defocus
         
     def create_basis(self, do_fft=True, do_defocus=True):
         print("do_defocus", do_defocus)
@@ -108,7 +108,6 @@ class psf_basis:
         diameter = self.diameter
         wavelength = self.wavelength
         nx = self.nx
-        F_D = self.F_D
         
         self.Xs = np.zeros((jmax+1, jmax+1, nx, nx))
         self.Ys = np.zeros((jmax+1, jmax+1, nx, nx))
@@ -161,15 +160,17 @@ class psf_basis:
         if do_defocus:
             defocus_array.append(True)
             
-        for defocus in defocus_array:
+        for is_defocus in defocus_array:
             f = 0.0
             
-            if defocus:
-                d_lambda = 8.0 * F_D**2
-                f = np.pi * d_lambda / (4 * (F_D)**2)
-                defocus_mm = d_lambda * wavelength*1.e-7
+            if is_defocus:
+                #d_lambda = 8.0 * F_D**2
+                #f = np.pi * d_lambda / (4 * (F_D)**2)
+                #defocus_mm = d_lambda * wavelength*1.e-7
         
-                print('Defocus in mm = ', defocus_mm)
+                #print('Defocus in mm = ', defocus_mm)
+                
+                f = self.defocus
                 print('Defocus f = ', f)
         
         
@@ -208,7 +209,7 @@ class psf_basis:
                     X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
                     Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
                     
-                    if defocus:
+                    if is_defocus:
                         self.Xs_d[j, k] = X
                         self.Ys_d[j, k]  = Y
                     else:
@@ -224,7 +225,7 @@ class psf_basis:
                         #FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
                         FY = fft.fft2(Y)
                         #FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
-                        if defocus:
+                        if is_defocus:
                             self.FXs_d[j, k] = FX
                             self.FYs_d[j, k] = FY
                         else:
@@ -241,8 +242,8 @@ class psf_basis:
                     defocus_array = [False, True]
                 else:
                     defocus_array = [False]
-                for defocus1 in defocus_array:
-                    FX, FY = self.get_FXFY(j, k, defocus = defocus1)
+                for is_defocus in defocus_array:
+                    FX, FY = self.get_FXFY(j, k, defocus = is_defocus)
                     if j == 0:
                         betas_j = 1.
                     else:
@@ -258,7 +259,7 @@ class psf_basis:
                         FX1 *= 0.5
                         FY1 *= 0.5
                     
-                    if defocus1:
+                    if is_defocus:
                         ret_val_d += dat_F*(FX1 + FY1)
                     else:
                         ret_val += dat_F*(FX1 + FY1)
@@ -282,10 +283,10 @@ class psf_basis:
         P, P_d = self.get_FP(betas)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-        
+
         P_conj = P.conjugate()
         P_d_conj = P_d.conjugate()
-        
+
         F_image = D * P_conj + gamma * D_d * P_d_conj
         F_image /= P*P_conj + gamma * P_d * P_d_conj
         
@@ -435,4 +436,10 @@ class psf_basis:
         #print("likelihood_grad", theta, grads)
         return grads
 
-
+def maybe_invert(image_est, image):
+    mse = np.sum((image_est-image)**2)
+    mse_neg = np.sum((-image_est-image)**2)
+    if mse_neg < mse:
+        return -image_est
+    else:
+        return image_est
