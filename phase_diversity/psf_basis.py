@@ -264,9 +264,9 @@ class psf_basis:
                     else:
                         ret_val += dat_F*(FX1 + FY1)
         if defocus:
-            return (ret_val, ret_val_d)
+            return [ret_val, ret_val_d]
         else:
-            return ret_val
+            return [ret_val]
         
     def convolve(self, dat, betas, defocus = True):
         dat_F = fft.fft2(dat)

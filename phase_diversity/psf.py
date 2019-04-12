@@ -8,7 +8,9 @@ import copy
 __DEBUG__ = True
 if __DEBUG__:
     import sys
-    sys.path.append('../utils')
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+    #sys.path.append('../utils')
     import plot
 
 class phase_aberration():
@@ -104,6 +106,21 @@ class coh_trans_func():
         return self.pupil*np.exp(1.j * phase)
 
 
+def get_coords(nx, arcsec_per_px, diameter, wavelength):      
+    rad2deg=180.0/np.pi
+    scale_angle2CCD=arcsec_per_px/(rad2deg*3600.0)
+    diff_limit = wavelength*1.e-8/diameter
+    q_number=diff_limit/(scale_angle2CCD)
+    rc=1./q_number # telescope_d in pupil space
+    print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
+     
+    x_limit = nx*rc
+    
+    #coh_vals = np.zeros((nx, ny))
+    xs = np.linspace(-x_limit, x_limit, nx)
+    print("PSF x_limit", xs[0], xs[-1])
+    return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
+
 class psf():
 
     '''
@@ -111,23 +128,9 @@ class psf():
         wavelength in Angstroms
     '''
     def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength):
-        
         self.nx= nx
-          
-        rad2deg=180.0/np.pi
-        scale_angle2CCD=arcsec_per_px/(rad2deg*3600.0)
-        diff_limit = wavelength*1.e-8/diameter
-        q_number=diff_limit/(scale_angle2CCD)
-        rc=1./q_number # telescope_d in pupil space
-        print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
-         
-        x_limit = self.nx*rc
-        
-        #coh_vals = np.zeros((nx, ny))
-        xs = np.linspace(-x_limit, x_limit, self.nx)
-        print("PSF x_limit", xs[0], xs[-1])
-        assert(len(xs) == self.nx)
-        self.coords = np.dstack(np.meshgrid(xs, xs)[::-1])
+        coords, rc, x_limit = get_coords(nx, arcsec_per_px, diameter, wavelength)
+        self.coords = coords
         print("psf_coords", np.min(self.coords, axis=(0,1)), np.max(self.coords, axis=(0,1)), np.shape(self.coords))
         self.incoh_vals = dict()
         self.otf_vals = dict()
@@ -208,6 +211,9 @@ class psf():
         S_conj = S.conjugate()
         S_d = self.otf_vals[True]
         S_d_conj = S_d.conjugate()
+        print("S*S_conj", S*S_conj)
+        print("S_d*S_d_conj", S_d*S_d_conj)
+        print("S*S_conj + gamma * S_d * S_d_conj", S*S_conj + gamma * S_d * S_d_conj)
         
         F_image = D * S_conj + gamma * D_d * S_d_conj
         np.set_printoptions(threshold=np.inf)

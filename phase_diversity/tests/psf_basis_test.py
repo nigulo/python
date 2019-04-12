@@ -4,6 +4,8 @@ import numpy as np
 import psf_basis
 import numpy.fft as fft
 import unittest
+sys.path.append('../../utils')
+import plot
 
 image = [[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804,  0.45882353, 0.5137255 ],
@@ -130,6 +132,90 @@ D_d = [[ 5.41635689e+02+0.00000000e+00j,  3.68881920e+01-1.19828784e+01j,
 
 class test_psf_basis(unittest.TestCase):
 
+
+    def test_convolve(self):
+        #First test if the same image is returned if betas are zero
+        jmax = 1
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        nx = 10
+        defocus = 0.
+
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+        psf.create_basis(do_fft=True, do_defocus=True)
+
+        #betas = np.random.normal(size=jmax) + 1.j*np.random.normal(size=jmax)
+
+        betas = np.zeros(jmax, dtype='complex')
+        D, D_d = psf.convolve(image, betas)
+
+        # No defocus, so D should be equal to D_d
+        np.testing.assert_almost_equal(D, D_d, 8)
+        
+        my_plot = plot.plot_map(nrows=1, ncols=2)
+        my_plot.plot(image, [0])
+        my_plot.plot(D, [1])
+            
+        my_plot.save("test_deconvolve.png")
+        my_plot.close()
+
+
+        threshold = np.ones_like(D)*0.01
+        np.testing.assert_array_less((D - image)**2, threshold)
+        
+        '''
+        #######################################################################
+        # Now test actual convolution
+
+        n_coefs = 20
+        coefs = np.random.normal(size=n_coefs)*10.
+        pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+
+        ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
+        psf_ = psf.psf(ctf, nx)
+        
+        image1_F = fft.fftshift(fft.fft2(image1))
+        D, D_d = psf_.multiply(image1_F)
+        reconst = psf_.deconvolve(D, D_d, alphas=coefs, gamma=1., do_fft=True)
+        np.testing.assert_almost_equal(reconst, image1, 15)
+        '''
+    
+    
+    '''
+    def test_multiply(self):
+        jmax = 5
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        nx = 10
+        defocus = 1.0
+
+        gamma = 1.
+        
+        
+        fimage = fft.fftshift(fft.fft2(image))
+        
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+        psf.create_basis(do_fft=True, do_defocus=True)
+
+        betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
+
+        D, D_d = psf.multiply(fimage, betas)
+
+        #betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
+        betas = np.zeros(jmax, dtype='complex')
+
+        lik = psf.likelihood(np.concatenate((betas.real, betas.imag)), [D, D_d, gamma])
+        
+        P, P_d = psf.get_FP(betas)
+        num = D_d*P-D*P_d
+        num *= num.conjugate()
+        #lik_expected = np.sum(num/np.sqrt(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
+        lik_expected = np.sum(num/(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
+        np.testing.assert_almost_equal(lik, lik_expected, 6)
+    '''
+    
     def test_likelihood(self):
         
         jmax = 5
@@ -137,11 +223,11 @@ class test_psf_basis(unittest.TestCase):
         diameter = 20.0
         wavelength = 5250.0
         nx = 10
-        F_D = 1.0
+        defocus = 1.0
 
         gamma = 1.
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
@@ -163,11 +249,11 @@ class test_psf_basis(unittest.TestCase):
         diameter = 20.0
         wavelength = 5250.0
         nx = 10
-        F_D = 1.0
+        defocus = 1.0
         
         gamma = 1.
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
@@ -202,13 +288,13 @@ class test_psf_basis(unittest.TestCase):
         diameter = 20.0
         wavelength = 5250.0
         nx = 10
-        F_D = 1.0
+        defocus = 1.0
         
         gamma = 1.
 
         fimage = fft.fftshift(fft.fft2(image))
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 

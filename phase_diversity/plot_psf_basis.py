@@ -21,17 +21,9 @@ def main():
     diameter = 20.0
     wavelength = 5250.0
     nx = 200
-    F_D = 1.0
-    # Ask for some data
-    if False:
-        jmax = int(input('Maximum Noll index? '))
-        arcsec_per_px = float(input('Arcsec per pixel? '))
-        diameter = float(input('Telescope diameter [m]? '))
-        wavelength = float(input('Wavelength [A]? '))
-        nx = int(input('Number of pixel of images? '))
-        F_D = float(input('F/D? '))
+    defocus = 1.0
     
-    psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, F_D = F_D)
+    psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
     psf.create_basis(do_fft=False, do_defocus=True)
     
     for defocus in [False, True]:

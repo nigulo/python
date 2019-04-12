@@ -77,9 +77,15 @@ for trial in np.arange(0, num_frames):
     #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
-    D, D_d = psf_.multiply(fimage)
+    #D, D_d = psf_.multiply(fimage)
+    #betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
+    betas = np.zeros(5, dtype='complex')
+    D, D_d = psf_b.multiply(fimage, betas)
+
     
     betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
+    print("betas", len(betas))
+    print("betas_est", len(betas_est))
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
     image_est = psf_basis.maybe_invert(image_est, image)
 
