@@ -30,7 +30,7 @@ num_frames = 10
 
 image = plt.imread('granulation.png')
 
-image = image[0:20,0:20]
+image = image[0:50,0:50]
 
 nx_orig = np.shape(image)[0]
 
@@ -41,19 +41,19 @@ nx = np.shape(image)[0]
 assert(np.shape(image)[0] == np.shape(image)[1])
 
 fimage = fft.fft2(image)
+fimage = fft.fftshift(fimage)
     
-jmax = 5
+jmax = 20
 arcsec_per_px = 0.055
-diameter = 100.0
+diameter = 70.0
 wavelength = 5250.0
-defocus = .1
+defocus = 0.05
 gamma = 1.0
 
 
-aperture_func = lambda xs: utils.aperture_circ(xs, 1.0, 15.0)
+aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
 #defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
 defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-
 
 psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
 psf_b.create_basis()
@@ -66,31 +66,33 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.2]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=5)
 for trial in np.arange(0, num_frames):
     
-    #pa = psf.phase_aberration(np.random.normal(size=5)*2)
-    pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
+    #pa = psf.phase_aberration([])
+    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
-    #D, D_d = psf_.multiply(fimage)
+    D, D_d = psf_.multiply(fimage)
     #betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
-    betas = np.zeros(5, dtype='complex')
-    D, D_d = psf_b.multiply(fimage, betas)
+    ##betas = np.zeros(5, dtype='complex')
+    #D, D_d = psf_b.multiply(fimage, betas)
 
+    D = fft.ifftshift(D)
+    D_d = fft.ifftshift(D_d)
     
     betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
-    print("betas", len(betas))
     print("betas_est", len(betas_est))
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
     #image_est = psf_basis.maybe_invert(image_est, image)
 
 
     #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
+
 
     D = fft.ifft2(D).real
     D_d = fft.ifft2(D_d).real
