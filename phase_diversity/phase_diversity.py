@@ -40,11 +40,11 @@ nx = np.shape(image)[0]
 
 assert(np.shape(image)[0] == np.shape(image)[1])
 
-fimage = fft.fftshift(fft.fft2(image))
+fimage = fft.fft2(image)
     
 jmax = 5
 arcsec_per_px = 0.055
-diameter = 20.0
+diameter = 100.0
 wavelength = 5250.0
 defocus = .1
 gamma = 1.0
@@ -87,13 +87,13 @@ for trial in np.arange(0, num_frames):
     print("betas", len(betas))
     print("betas_est", len(betas_est))
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
-    image_est = psf_basis.maybe_invert(image_est, image)
+    #image_est = psf_basis.maybe_invert(image_est, image)
 
 
     #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
 
-    D = fft.ifft2(fft.ifftshift(D)).real
-    D_d = fft.ifft2(fft.ifftshift(D_d)).real
+    D = fft.ifft2(D).real
+    D_d = fft.ifft2(D_d).real
 
     #image_min = np.min(image)
     #image_max = np.max(image)

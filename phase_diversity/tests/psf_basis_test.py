@@ -177,7 +177,7 @@ class test_psf_basis(unittest.TestCase):
         image_F = fft.fft2(image)
         D, D_d = psf.multiply(image_F, betas)
         reconst = psf.deconvolve(D, D_d, betas=betas, gamma=1., do_fft=True)
-        np.testing.assert_almost_equal(np.abs(reconst), image, 15)
+        np.testing.assert_almost_equal(reconst, image, 15)
     
     
     def test_likelihood(self):

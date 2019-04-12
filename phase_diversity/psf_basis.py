@@ -301,7 +301,8 @@ class psf_basis:
         if not do_fft:
             return F_image
 
-        image = fft.ifft2(fft.ifftshift(F_image)).real
+        #image = fft.ifft2(fft.ifftshift(F_image)).real
+        image = fft.ifft2(F_image).real
         #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         return image
 
