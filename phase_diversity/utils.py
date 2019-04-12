@@ -37,7 +37,7 @@ def trunc(ds, perc):
                 ds_out[i, j] = p2
     return ds_out
 
-def aperture_circ(xs, r=1.0, coef=5.0):
+def aperture_circ(xs, r, coef=5.0):
     scalar = False
     if len(np.shape(xs)) == 1:
         scalar = True

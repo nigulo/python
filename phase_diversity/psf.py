@@ -211,9 +211,6 @@ class psf():
         S_conj = S.conjugate()
         S_d = self.otf_vals[True]
         S_d_conj = S_d.conjugate()
-        print("S*S_conj", S*S_conj)
-        print("S_d*S_d_conj", S_d*S_d_conj)
-        print("S*S_conj + gamma * S_d * S_d_conj", S*S_conj + gamma * S_d * S_d_conj)
         
         F_image = D * S_conj + gamma * D_d * S_d_conj
         np.set_printoptions(threshold=np.inf)

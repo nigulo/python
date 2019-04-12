@@ -114,8 +114,6 @@ image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.407843
   0.6,        0.60784316]])
 '''
 
-aperture_func = lambda xs: utils.aperture_circ(xs, 1.0, 15.0)
-
 class test_phase_aberration(unittest.TestCase):
     
     def test(self):
@@ -295,6 +293,8 @@ class test_psf(unittest.TestCase):
         psf_vals = np.zeros((size, size))
             
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
             
@@ -325,6 +325,8 @@ class test_psf(unittest.TestCase):
         size = 3
             
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
             
@@ -372,11 +374,13 @@ class test_psf(unittest.TestCase):
         n_coefs = 20
         coefs = np.random.normal(size=n_coefs)*10.
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
         image1_F = fft.fftshift(fft.fft2(image1))
+        #image1_F = fft.fft2(image1)
         D, D_d = psf_.multiply(image1_F)
         reconst = psf_.deconvolve(D, D_d, alphas=coefs, gamma=1., do_fft=True)
         np.testing.assert_almost_equal(reconst, image1, 15)
@@ -396,6 +400,7 @@ class test_psf(unittest.TestCase):
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
+        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
@@ -437,7 +442,7 @@ class test_psf(unittest.TestCase):
         diameter = 20.0
         wavelength = 5250.0
         
-        n_coefs = 20
+        n_coefs = 10
         gamma = 1.
         
         nx = np.shape(image10x10)[0]
@@ -445,6 +450,7 @@ class test_psf(unittest.TestCase):
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
+        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
@@ -465,7 +471,7 @@ class test_psf(unittest.TestCase):
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_alphas = alphas*1.0e-7
+        delta_alphas = alphas*1.0e-10
 
         lik = psf_.likelihood(alphas, [D, D_d, gamma])
         liks = np.repeat(lik, len(alphas))
@@ -493,6 +499,7 @@ class test_psf(unittest.TestCase):
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
+        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
@@ -545,7 +552,7 @@ class test_psf(unittest.TestCase):
         #            print(grads[i, j, k], grads_expected[i, j, k])
             
             
-        np.testing.assert_almost_equal(grads, grads_expected, 5)
+        np.testing.assert_almost_equal(grads, grads_expected, 4)
 
 
         
