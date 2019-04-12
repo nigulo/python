@@ -471,7 +471,7 @@ class test_psf(unittest.TestCase):
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_alphas = alphas*1.0e-10
+        delta_alphas = alphas*1.0e-7
 
         lik = psf_.likelihood(alphas, [D, D_d, gamma])
         liks = np.repeat(lik, len(alphas))

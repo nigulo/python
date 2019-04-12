@@ -221,9 +221,9 @@ class psf_basis:
                     if do_fft:
                     # Do the FFT and save the results
                     
-                        FX = fft.fft2(X)
+                        FX = fft.fft2(fft.fftshift(X))
                         #FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
-                        FY = fft.fft2(Y)
+                        FY = fft.fft2(fft.fftshift(Y))
                         #FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
                         if is_defocus:
                             self.FXs_d[j, k] = FX
@@ -237,6 +237,10 @@ class psf_basis:
         if defocus:
             ret_val_d = np.zeros((self.nx, self.nx), dtype='complex')
         for j in np.arange(0, self.jmax+1):
+            if j == 0:
+                betas_j = 1.
+            else:
+                betas_j = betas[j-1]
             for k in np.arange(0, j + 1):
                 if defocus:
                     defocus_array = [False, True]
@@ -244,10 +248,6 @@ class psf_basis:
                     defocus_array = [False]
                 for is_defocus in defocus_array:
                     FX, FY = self.get_FXFY(j, k, defocus = is_defocus)
-                    if j == 0:
-                        betas_j = 1.
-                    else:
-                        betas_j = betas[j-1]
                     if k == 0:
                         betas_k = 1.
                     else:
@@ -260,19 +260,27 @@ class psf_basis:
                         FY1 *= 0.5
                     
                     if is_defocus:
-                        ret_val_d += dat_F*(FX1 + FY1)
+                        ret_val_d += FX1 + FY1
                     else:
-                        ret_val += dat_F*(FX1 + FY1)
+                        ret_val += FX1 + FY1
+        ret_val *= dat_F
         if defocus:
+            ret_val_d *= dat_F
             return [ret_val, ret_val_d]
         else:
             return [ret_val]
         
     def convolve(self, dat, betas, defocus = True):
+        #dat_F = fft.fftshift(fft.fft2(dat))
         dat_F = fft.fft2(dat)
         ret_val = []
         for m_F in self.multiply(dat_F, betas, defocus):
-            m = fft.fftshift(fft.ifft2(m_F).real)
+            m = fft.ifft2(m_F)
+            threshold = np.ones_like(m.imag)*1e-15
+            np.testing.assert_array_less(m.imag, threshold)
+            m = m.real
+            #m = fft.ifft2(fft.ifftshift(m_F)).real
+            
             ret_val.append(m) 
         if defocus:
             return (ret_val[0], ret_val[1])
