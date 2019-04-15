@@ -97,7 +97,16 @@ class psf_basis:
         self.wavelength = wavelength
         self.nx = nx
         self.defocus = defocus
-        
+    
+    def get_state(self):
+        return [self.FXs, self.FYs, self.FXs_d, self.FYs_d]
+    
+    def set_state(self, state):
+        self.FXs = state[0]
+        self.FYs = state[1]
+        self.FXs_d = state[2]
+        self.FYs_d = state[3]
+    
     def create_basis(self, do_fft=True, do_defocus=True):
         print("do_defocus", do_defocus)
         print("do_fft", do_fft)
