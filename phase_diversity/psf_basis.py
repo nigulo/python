@@ -58,16 +58,25 @@ def Vnmf(radius, f, n, m):
         sum_ = np.zeros_like(radius)
         for j in np.arange(0, p + 1):
             if p-j < l:
-                t1 = binomial_coef(abs(m)+j+l-1,l-1)
-                t2 = binomial_coef(j+l-1,l-1)
-                t3 = binomial_coef(l-1,p-j)
-                t4 = binomial_coef(q+l+j,l)
+                t1 = special.binom(abs(m)+j+l-1,l-1)
+                t2 = special.binom(j+l-1,l-1)
+                t3 = special.binom(l-1,p-j)
+                t4 = special.binom(q+l+j,l)
+                
+                #t1a = binomial_coef(abs(m)+j+l-1,l-1)
+                #t2a = binomial_coef(j+l-1,l-1)
+                #t3a = binomial_coef(l-1,p-j)
+                #t4a = binomial_coef(q+l+j,l)
+
+                #np.testing.assert_almost_equal(t1a, t1)
+                #np.testing.assert_almost_equal(t2a, t2)
+                #np.testing.assert_almost_equal(t3a, t3)
+                #np.testing.assert_almost_equal(t4a, t4)
                 ulj = (-1.0)**p * (abs(m)+l+2*j) * t1 * t2 * t3 / t4
-                for ix in np.arange(0, np.shape(radius)[0]):
-                    for iy in np.arange(0, np.shape(radius)[1]):
-                        sum_[ix,iy] += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius[ix,iy]+epsilon)) / (l*(2.0*np.pi*(radius[ix,iy]+epsilon))**l)
+                
+                sum_ += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius+epsilon)) / (l*(2.0*np.pi*(radius+epsilon))**l)
         Vnm += sum_ * (-2.0*1.j*f)**(l-1)
-        
+    
     Vnm *= epsm * np.exp(1.j*f)
     #if n == 0 and m == 0:
     #    if f == 0.:
@@ -292,7 +301,7 @@ class psf_basis:
             
             ret_val.append(m) 
         if defocus:
-            return (ret_val[0], ret_val[1])
+            return [ret_val[0], ret_val[1]]
         else:
             return ret_val[0]
 
@@ -315,13 +324,13 @@ class psf_basis:
         #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         return image
 
-    def get_XY(self, j, k, defocus = False):
+    def get_XY(self, j, k, defocus):
         if defocus:
             return self.Xs_d[j, k], self.Ys_d[j, k]
         else:
             return self.Xs[j, k], self.Ys[j, k]
 
-    def get_FXFY(self, j, k, defocus = False):
+    def get_FXFY(self, j, k, defocus):
         if defocus:
             return self.FXs_d[j, k], self.FYs_d[j, k]
         else:
@@ -349,7 +358,7 @@ class psf_basis:
 
         for j in np.arange(0, self.jmax + 1):
             for k in np.arange(0, j + 1):
-                FX, FY = self.get_FXFY(j, k)
+                FX, FY = self.get_FXFY(j, k, defocus=False)
                 FX_d, FY_d = self.get_FXFY(j, k, defocus=True)
 
                 if j == 0:
@@ -420,11 +429,11 @@ class psf_basis:
                 if j1 == k1:
                     eps = 0.5
                 if k1 > j1:
-                    FX, FY = self.get_FXFY(k1, j1)
+                    FX, FY = self.get_FXFY(k1, j1, defocus=False)
                     FX_d, FY_d = self.get_FXFY(k1, j1, defocus=True)
                     eps *= -1.
                 else:
-                    FX, FY = self.get_FXFY(j1, k1)
+                    FX, FY = self.get_FXFY(j1, k1, defocus=False)
                     FX_d, FY_d = self.get_FXFY(j1, k1, defocus=True)
                 if k1 == 0:
                     betas_k1 = 1.

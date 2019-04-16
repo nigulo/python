@@ -29,20 +29,22 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-state_file = "state.pkl"
+state_file = None#state.pkl"
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
 
 print(state_file)
 
 def load(filename):
-    data_file = filename
-    if os.path.isfile(data_file):
-        return pickle.load(open(data_file, 'rb'))
-    else:
-        return None
+    if filename is not None:
+        data_file = filename
+        if os.path.isfile(data_file):
+            return pickle.load(open(data_file, 'rb'))
+    return None
 
 def save(filename, state):
+    if filename is None:
+        filename = "state.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
@@ -51,7 +53,7 @@ num_iterations = 0
 
 image = plt.imread('granulation.png')
 
-image = image[0:100,0:100]
+image = image[0:50,0:50]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -63,15 +65,15 @@ state = load(state_file)
 
 if state == None:
     print("Creating new state")
-    jmax = 50
+    jmax = 10
     arcsec_per_px = 0.055
     diameter = 70.0
     wavelength = 5250.0
-    defocus = 0.001
+    defocus = 0.01
     gamma = 1.0
     nx = np.shape(image)[0]
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*500)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -130,6 +132,9 @@ for trial in np.arange(0, num_frames):
     D = fft.ifftshift(D)
     D_d = fft.ifftshift(D_d)
     
+    #betas_est = np.zeros(jmax, dtype='complex')
+    #D1, D1_d = psf_b.convolve(image, betas_est)
+    
     betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
     print("betas_est", len(betas_est))
     image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
@@ -152,7 +157,7 @@ for trial in np.arange(0, num_frames):
     my_plot.plot(image, [trial, 0])
     my_plot.plot(D, [trial, 1])
     my_plot.plot(D_d, [trial, 2])
-    my_plot.plot(image_est_norm, [trial, 3])
+    my_plot.plot(image_est, [trial, 3])
     my_plot.plot(np.abs(image_est_norm-image_norm), [trial, 4])
     
     #image_est = fft.ifft2(fimage_est).real
