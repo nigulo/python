@@ -39,7 +39,7 @@ class test_defocus(unittest.TestCase):
         #arcsec_per_px = 0.1
         diameter = 20.0
         wavelength = 5250.0
-        defocus = 3.#*np.pi
+        defocus =3.#*np.pi
 
         for downsample_factor in [0, 1, 2]:
             image1 = image
@@ -51,7 +51,7 @@ class test_defocus(unittest.TestCase):
             image2 = utils.upsample(image1)
             nx = np.shape(image2)[0]
     
-            aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+            aperture_func = lambda xs: utils.aperture_circ(xs, r=1.0527, coef=15.0)
         
     
             ###################################################################
@@ -85,7 +85,7 @@ class test_defocus(unittest.TestCase):
             D1 = misc.normalize(D1)
             D1_d = misc.normalize(D1_d)
 
-            psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*1.5)
+            psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
             psf_b.create_basis()
             betas = np.zeros(jmax, dtype='complex')
             D2, D2_d = psf_b.convolve(image2, betas)
@@ -102,7 +102,6 @@ class test_defocus(unittest.TestCase):
             my_plot.close()
         
 
-            print(D2/D1)            
             np.testing.assert_almost_equal(D1, D2, 15)
             np.testing.assert_almost_equal(D1_d, D2_d, 15)
 
