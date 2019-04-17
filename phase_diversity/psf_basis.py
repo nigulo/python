@@ -38,8 +38,10 @@ def Vnmf(radius, f, n, m):
     #real(kind=8) :: t1, t2, t3, t4, ulj, sum(size(radius(:,1)),size(radius(1,:))), epsm
     #complex(kind=8) :: ii, Vnm(size(radius(:,1)),size(radius(1,:)))
 
-    p = int(0.5*(n-abs(m)))
-    q = int(0.5*(n+abs(m)))
+    abs_m = abs(m)
+
+    p = int(0.5*(n-abs_m))
+    q = int(0.5*(n+abs_m))
     
     epsm = 1.0
     if m < 0.0 and odd(m):
@@ -55,10 +57,12 @@ def Vnmf(radius, f, n, m):
     
     for l in np.arange(1, lmax + 1):
 
+        v = 2.0*np.pi*(radius+epsilon)
+        inv_l_v_pow_l = 1./(l*v**l)
         sum_ = np.zeros_like(radius)
         for j in np.arange(0, p + 1):
             if p-j < l:
-                t1 = special.binom(abs(m)+j+l-1,l-1)
+                t1 = special.binom(abs_m+j+l-1,l-1)
                 t2 = special.binom(j+l-1,l-1)
                 t3 = special.binom(l-1,p-j)
                 t4 = special.binom(q+l+j,l)
@@ -72,10 +76,10 @@ def Vnmf(radius, f, n, m):
                 #np.testing.assert_almost_equal(t2a, t2)
                 #np.testing.assert_almost_equal(t3a, t3)
                 #np.testing.assert_almost_equal(t4a, t4)
-                ulj = (-1.0)**p * (abs(m)+l+2*j) * t1 * t2 * t3 / t4
+                ulj = (-1.0)**p * (abs_m+l+2*j) * t1 * t2 * t3 / t4
                 
-                sum_ += ulj * special.jv(abs(m)+l+2*j, 2.0*np.pi*(radius+epsilon)) / (l*(2.0*np.pi*(radius+epsilon))**l)
-        Vnm += sum_ * (-2.0*1.j*f)**(l-1)
+                sum_ += ulj * special.jv(abs_m+l+2.*j, v) * inv_l_v_pow_l
+        Vnm += sum_ * (-2.j*f)**(l-1)
     
     Vnm *= epsm * np.exp(1.j*f)
     #if n == 0 and m == 0:

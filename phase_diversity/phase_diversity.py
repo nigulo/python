@@ -67,13 +67,14 @@ if state == None:
     print("Creating new state")
     jmax = 10
     arcsec_per_px = 0.055
-    diameter = 70.0
+    #arcsec_per_px = 0.011
+    diameter = 20.0
     wavelength = 5250.0
-    defocus = 0.01
+    defocus = 2.*np.pi
     gamma = 1.0
     nx = np.shape(image)[0]
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*500)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)#*500)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -119,9 +120,9 @@ betass = []
 for trial in np.arange(0, num_frames):
     
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
-    #pa = psf.phase_aberration([])
-    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    pa = psf.phase_aberration([])
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)

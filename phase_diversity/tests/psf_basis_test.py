@@ -256,7 +256,8 @@ class test_psf_basis(unittest.TestCase):
         
         gamma = 1.
 
-        fimage = fft.fftshift(fft.fft2(image))
+        #fimage = fft.fftshift(fft.fft2(image))
+        fimage = fft.fft2(image)
         
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
