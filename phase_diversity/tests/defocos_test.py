@@ -7,6 +7,7 @@ import psf
 import unittest
 import plot
 import utils
+import misc
 
 image = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804,  0.45882353, 0.5137255 ],
@@ -34,7 +35,8 @@ class test_defocus(unittest.TestCase):
     def test(self):
 
         jmax = 10
-        arcsec_per_px = 0.055
+        arcsec_per_px = 0.057
+        #arcsec_per_px = 0.1
         diameter = 20.0
         wavelength = 5250.0
         defocus = 3.#*np.pi
@@ -80,14 +82,20 @@ class test_defocus(unittest.TestCase):
             ###################################################################
             # Defocus in PSF basis
 
-            psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+            D1 = misc.normalize(D1)
+            D1_d = misc.normalize(D1_d)
+
+            psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*1.5)
             psf_b.create_basis()
-            betas = np.zeros(jmax*10, dtype='complex')
+            betas = np.zeros(jmax, dtype='complex')
             D2, D2_d = psf_b.convolve(image2, betas)
+
+            D2 = misc.normalize(D2)
+            D2_d = misc.normalize(D2_d)
         
             my_plot = plot.plot_map(nrows=2, ncols=2)
             my_plot.plot(D1, [0, 0])
-            my_plot.plot(D2/24, [0, 1])
+            my_plot.plot(D2, [0, 1])
             my_plot.plot(D1_d, [1, 0])
             my_plot.plot(D2_d, [1, 1])
             my_plot.save("defous_test" + str(downsample_factor) + ".png")
@@ -95,7 +103,7 @@ class test_defocus(unittest.TestCase):
         
 
             print(D2/D1)            
-            np.testing.assert_almost_equal(D1, D2/24, 15)
+            np.testing.assert_almost_equal(D1, D2, 15)
             np.testing.assert_almost_equal(D1_d, D2_d, 15)
 
         

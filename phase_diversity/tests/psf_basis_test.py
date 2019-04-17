@@ -136,7 +136,7 @@ class test_psf_basis(unittest.TestCase):
 
     def test_convolve(self):
         #First test if the same image is returned if betas are zero
-        jmax = 1
+        jmax = 10
         arcsec_per_px = 0.055
         diameter = 20.0
         wavelength = 5250.0
@@ -146,25 +146,26 @@ class test_psf_basis(unittest.TestCase):
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
-
         betas = np.zeros(jmax, dtype='complex')
         D, D_d = psf.convolve(image, betas)
+        #Df, Df_d = psf.multiply(fimage, betas)
 
         # No defocus, so D should be equal to D_d
         np.testing.assert_almost_equal(D, D_d, 8)
         
-        my_plot = plot.plot_map(nrows=1, ncols=2)
-        my_plot.plot(image, [0])
-        my_plot.plot(D, [1])
+        #my_plot = plot.plot_map(nrows=1, ncols=2)
+        #my_plot.plot(image, [0])
+        #my_plot.plot(D, [1])
             
-        my_plot.save("test_deconvolve.png")
-        my_plot.close()
+        #my_plot.save("test_deconvolve.png")
+        #my_plot.close()
 
 
-        #TODO Normalization needs to be resolved
-        threshold = np.ones_like(D)*0.2
-        print(D/image)
-        np.testing.assert_array_less((misc.normalize(D) - misc.normalize(image))**2, threshold)
+        ##TODO Normalization needs to be resolved
+        ##There is still the Airy disk convolution, so one cannot
+        ##expect equlity with the original image
+        #threshold = np.ones_like(D)*0.18
+        #np.testing.assert_array_less((misc.normalize(D) - misc.normalize(image))**2, threshold)
         
         #######################################################################
         # Now test actual convolution
