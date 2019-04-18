@@ -37,13 +37,40 @@ from scipy.integrate import simps
 import time
 import os.path
 from astropy.io import fits
+from scipy.io import readsav
 
-hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
-#hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
-dat = hdul[0].data[:,::4,::4]
-b = dat[0]
-theta = dat[1]
-phi = dat[2]
+if True:
+    idl_dict = readsav('data/IVM_AR9026.sav')
+    #idl_dict = readsav('data/fan_simu_ts56.sav')
+    
+    lat = idl_dict['b'][0][1]
+    long = idl_dict['b'][0][2]
+    b_long = idl_dict['b'][0][3]
+    b_trans = idl_dict['b'][0][4]
+    b_azim = idl_dict['b'][0][5]
+    
+    #print(lat)
+    #print(long)
+    #print(b_long)
+    #print(b_trans)
+    #print(b_azim)
+    
+    b = np.sqrt(b_long**2 + b_trans**2)
+    phi = b_azim*np.pi/180
+    theta = np.arccos((b_long+1e-10)/(b+1e-10))
+    
+    print(b)
+    print(phi)
+    print(theta)
+
+else:
+
+    hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+    #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+    dat = hdul[0].data[:,::4,::4]
+    b = dat[0]
+    theta = dat[1]
+    phi = dat[2]
 
 inference = True
 sample_or_optimize = False
@@ -98,7 +125,7 @@ x_flat = np.reshape(x, (2*n, -1))
 
 def calc_p(x, y):
     xs = np.dstack(x_mesh)
-    print("xs:",xs)
+    #print("xs:",xs)
     r = xs - np.array([x, y])
     r = np.sqrt(np.sum(r*r, axis=2))
     indices = np.where(r == 0.)
