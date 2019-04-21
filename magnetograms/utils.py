@@ -5,6 +5,7 @@ Created on Tue Dec 11 14:02:01 2018
 @author: olspern1
 """
 import numpy as np
+import numpy.random as random
 
 def bilinear_interp(xs, ys, x, y):
     coefs = np.zeros(len(xs)*len(ys))

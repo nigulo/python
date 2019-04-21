@@ -38,8 +38,11 @@ import time
 import os.path
 from astropy.io import fits
 from scipy.io import readsav
+import pickle
 
-if True:
+mode = 2
+
+if mode == 0:
     idl_dict = readsav('data/IVM_AR9026.sav')
     #idl_dict = readsav('data/fan_simu_ts56.sav')
     
@@ -63,7 +66,7 @@ if True:
     print(phi)
     print(theta)
 
-else:
+elif mode == 1:
 
     hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
     #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
@@ -71,6 +74,64 @@ else:
     b = dat[0]
     theta = dat[1]
     phi = dat[2]
+else:
+    
+    if os.path.isfile('data3d.pkl'):
+        y = pickle.load(open('data3d.pkl', 'rb'))
+    else:
+        n1, n2, n3 = 40, 40, 10
+        n = n1 * n2 * n3
+        x1_range, x2_range, x3_range = 1., 1., 1.
+        
+        x1 = np.linspace(0, x1_range, n1)
+        x2 = np.linspace(0, x2_range, n2)
+        x3 = np.linspace(0, x3_range, n3)
+        x_mesh = np.meshgrid(x1, x2, x3)
+        x = np.dstack(x_mesh).reshape(-1, 3)
+        
+        sig_var_train = 1.0
+        length_scale_train = .2
+        noise_var_train = 0.1
+        mean_train = 0.
+
+        gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+        K = gp_train.calc_cov(x, x, True)
+
+        print("SIIN")
+        for i in np.arange(0, n1):
+            for j in np.arange(0, n2):
+                assert(K[i, j]==K[j, i])
+        
+        L = la.cholesky(K)
+        s = np.random.normal(0.0, 1.0, 3*n)
+        
+        y = np.repeat(mean_train, 3*n) + np.dot(L, s)
+        
+        y = np.reshape(y, (n1, n2, n3, 3))
+        
+        with open('data3d.pkl', 'wb') as f:
+            pickle.dump(y, f)    
+    
+    print(y.shape)
+    bx = y[4, :, :, 0]
+    by = y[4, :, :, 1]
+    bz = y[4, :, :, 2]
+    b = np.sqrt(bx**2 + by**2 + bz**2)
+    phi = np.arctan2(by, bx)
+    theta = np.arccos((bz+1e-10)/(b+1e-10))
+
+
+    truth_plot = plot.plot_map(nrows=2, ncols=3)
+    truth_plot.set_color_map('bwr')
+    
+    truth_plot.plot(bx, [0, 0])
+    truth_plot.plot(by, [0, 1])
+    truth_plot.plot(phi, [0, 2])
+    
+    truth_plot.save("truth.png")
+    truth_plot.close()
+
+
 
 inference = True
 sample_or_optimize = False
@@ -111,6 +172,7 @@ phi = phi[:-1,:-1]
 bxy = b*np.sin(theta)
 bx = bxy*np.cos(phi)
 by = bxy*np.sin(phi)
+    
 
 n1 -= 1
 n2 -= 1
@@ -121,6 +183,15 @@ x2 = np.linspace(0, x2_range, n2)
 x_mesh = np.meshgrid(x2, x1)
 x = np.dstack(x_mesh).reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
+
+
+if mode == 2:
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, sharex=True)
+    fig.set_size_inches(6, 6)
+    
+    ax1.quiver(x_mesh[0], x_mesh[1], bx, by, units='width', color = 'k')
+    fig.savefig("truth_field.png")
+    plt.close(fig)
 
 
 def calc_p(x, y):
@@ -228,17 +299,6 @@ by_norm = y[:,1]*norm+by_offset
 energy = np.sum(bx**2 + by**2)
 
 do_plots(None)
-
-fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True)
-fig.set_size_inches(6, 12)
-
-ax1.set_title('Input field')
-ax2.set_title('Inferred field')
-
-#ax1.quiver(x_mesh[0], x_mesh[1], y_orig[:,0], y_orig[:,1], units='width', color = 'k')
-ax1.quiver(x_mesh[0], x_mesh[1], y[:,0], y[:,1], units='width', color = 'k')
-fig.savefig("field.png")
-
 
 print(np.shape(x))
 print(np.shape(y))
@@ -653,8 +713,3 @@ if not inference:
 prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale)
 
 
-Q_a_1 = ax2.quiver(x[:,0], x[:,1], field_a_x, field_a_y, units='width', color='g', linestyle=':')
-
-#Q_a_1 = ax3.quiver(x[:,0], x[:,1], field_b[:,0], field_b[:,1], units='width', color='g', linestyle=':')
-
-fig.savefig("field.png")

@@ -25,6 +25,8 @@ class GPR_div_free:
             # We only calculate gradients in the constant noise case
             assert(np.isscalar(self.noise_var))
         K = np.zeros((np.size(x1), np.size(x2)))
+        assert(x1.shape[1] == x2.shape[1])
+        dim = x1.shape[1]
         # Gradients for sigvar, length_scale and noise_var
         if calc_grad:
             K_grads = np.zeros((3, np.size(x1), np.size(x2)))
@@ -32,15 +34,15 @@ class GPR_div_free:
             for j in np.arange(0, np.shape(x2)[0]):
                 x_diff = x1[i] - x2[j]
                 x_diff_sq = np.dot(x_diff, x_diff)
-                for i1 in np.arange(0, np.shape(x1)[1]):
-                    i_abs = 2*i + i1
-                    for j1 in np.arange(0, np.shape(x2)[1]):
-                        j_abs = 2*j + j1
+                for i1 in np.arange(0, dim):
+                    i_abs = dim*i + i1
+                    for j1 in np.arange(0, dim):
+                        j_abs = dim*j + j1
                         K[i_abs, j_abs] = x_diff[i1] * x_diff[j1] * self.inv_length_scale_sq
                         if calc_grad:
                             K_grads[1, i_abs, j_abs] = -2.0 * x_diff[i1] * x_diff[j1] * self.inv_length_scale_qb
                         if (i1 == j1):
-                            K[i_abs, j_abs] += 1 - x_diff_sq * self.inv_length_scale_sq
+                            K[i_abs, j_abs] += (dim - 1.) - x_diff_sq * self.inv_length_scale_sq
                             if calc_grad:
                                 K_grads[1, i_abs, j_abs] += 2.0 * x_diff_sq * self.inv_length_scale_qb
                         exp_fact = np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
