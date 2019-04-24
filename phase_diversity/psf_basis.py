@@ -243,10 +243,10 @@ class psf_basis:
                     if do_fft:
                     # Do the FFT and save the results
                     
+                        #FX = fft.fft2(X)
                         FX = fft.fft2(fft.fftshift(X))
-                        #FX = np.roll(np.roll(FX, int(nx/2), axis=0), int(nx/2), axis=1)
+                        #FY = fft.fft2(Y)
                         FY = fft.fft2(fft.fftshift(Y))
-                        #FY = np.roll(np.roll(FY, int(nx/2), axis=0), int(nx/2), axis=1)
                         if is_defocus:
                             self.FXs_d[j, k] = FX
                             self.FYs_d[j, k] = FY
@@ -264,16 +264,16 @@ class psf_basis:
             else:
                 betas_j = betas[j-1]
             for k in np.arange(0, j + 1):
+                if k == 0:
+                    betas_k = 1.
+                else:
+                    betas_k = betas[k-1]
                 if defocus:
                     defocus_array = [False, True]
                 else:
                     defocus_array = [False]
                 for is_defocus in defocus_array:
                     FX, FY = self.get_FXFY(j, k, defocus = is_defocus)
-                    if k == 0:
-                        betas_k = 1.
-                    else:
-                        betas_k = betas[k-1]
                     FX1 = FX * (betas_j*betas_k.conjugate()).real
                     FY1 = FY * (betas_j*betas_k.conjugate()).imag
                     
@@ -297,8 +297,9 @@ class psf_basis:
         dat_F = fft.fft2(dat)
         ret_val = []
         for m_F in self.multiply(dat_F, betas, defocus):
+            #m = fft.ifft2(fft.ifftshift(m_F))
             m = fft.ifft2(m_F)
-            threshold = np.ones_like(m.imag)*1e-15
+            threshold = np.ones_like(m.imag)*1e-14
             np.testing.assert_array_less(m.imag, threshold)
             m = m.real
             #m = fft.ifft2(fft.ifftshift(m_F)).real
