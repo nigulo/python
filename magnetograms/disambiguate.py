@@ -1,9 +1,9 @@
 import os
-os.environ["OMP_NUM_THREADS"] = "4" # export OMP_NUM_THREADS=4
-os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4 
-os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
-os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
-os.environ["NUMEXPR_NUM_THREADS"] = "4" # export NUMEXPR_NUM_THREADS=6
+os.environ["OMP_NUM_THREADS"] = "16" # export OMP_NUM_THREADS=4
+os.environ["OPENBLAS_NUM_THREADS"] = "16" # export OPENBLAS_NUM_THREADS=4 
+os.environ["MKL_NUM_THREADS"] = "16" # export MKL_NUM_THREADS=6
+os.environ["VECLIB_MAXIMUM_THREADS"] = "16" # export VECLIB_MAXIMUM_THREADS=4
+os.environ["NUMEXPR_NUM_THREADS"] = "16" # export NUMEXPR_NUM_THREADS=6
 
 import sys
 sys.path.append('../utils')
@@ -79,7 +79,7 @@ else:
     if os.path.isfile('data3d.pkl'):
         y = pickle.load(open('data3d.pkl', 'rb'))
     else:
-        n1, n2, n3 = 40, 40, 10
+        n1, n2, n3 = 50, 50, 10
         n = n1 * n2 * n3
         x1_range, x2_range, x3_range = 1., 1., 1.
         
@@ -90,7 +90,7 @@ else:
         x = np.dstack(x_mesh).reshape(-1, 3)
         
         sig_var_train = 1.0
-        length_scale_train = .2
+        length_scale_train = .3
         noise_var_train = 0.1
         mean_train = 0.
 
@@ -113,9 +113,9 @@ else:
             pickle.dump(y, f)    
     
     print(y.shape)
-    bx = y[4, :, :, 0]
-    by = y[4, :, :, 1]
-    bz = y[4, :, :, 2]
+    bx = y[9, :, :, 0]
+    by = y[9, :, :, 1]
+    bz = y[9, :, :, 2]
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)
     theta = np.arccos((bz+1e-10)/(b+1e-10))
@@ -239,8 +239,8 @@ for i in np.arange(0, n):
 
 #bx_offset = np.zeros_like(bx)#bxy + bz
 #by_offset = np.zeros_like(by)#bxy + bz
-bx_offset = dbzx*np.std(bx)/np.std(dbzx)
-by_offset = dbzy*np.std(by)/np.std(dbzy)
+bx_offset = dbzx*np.std(bx)/np.std(dbzx) - 0.1*by
+by_offset = dbzy*np.std(by)/np.std(dbzy) - 0.1*bx
 bx1 = bx - bx_offset
 by1 = by - by_offset
 #bx_mean = np.mean(bx)
@@ -354,7 +354,7 @@ def sample(x, y):
         min_res = None
         for trial_no in np.arange(0, num_samples):
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.1], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.25, data_var, data_var*.01], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, .5), (data_var*.1, data_var*2.), (data_var*.001, data_var*.2)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
