@@ -38,6 +38,7 @@ import time
 import os.path
 from astropy.io import fits
 from scipy.io import readsav
+import scipy.signal as signal
 import pickle
 
 mode = 2
@@ -78,6 +79,8 @@ else:
     
     if os.path.isfile('data3d.pkl'):
         y = pickle.load(open('data3d.pkl', 'rb'))
+#    if os.path.isfile('data3d50x50x10.pkl'):
+#        y = pickle.load(open('data3d50x50x10.pkl', 'rb'))
     else:
         n1, n2, n3 = 50, 50, 10
         n = n1 * n2 * n3
@@ -90,8 +93,8 @@ else:
         x = np.dstack(x_mesh).reshape(-1, 3)
         
         sig_var_train = 1.0
-        length_scale_train = .3
-        noise_var_train = 0.1
+        length_scale_train = .1
+        noise_var_train = 0.01
         mean_train = 0.
 
         gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
@@ -113,20 +116,20 @@ else:
             pickle.dump(y, f)    
     
     print(y.shape)
-    bx = y[9, :, :, 0]
-    by = y[9, :, :, 1]
-    bz = y[9, :, :, 2]
+    bx = y[:, :, 4, 0]
+    by = y[:, :, 4, 1]
+    bz = y[:, :, 4, 2]
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)
     theta = np.arccos((bz+1e-10)/(b+1e-10))
 
 
-    truth_plot = plot.plot_map(nrows=2, ncols=3)
+    truth_plot = plot.plot(nrows=1, ncols=3)
     truth_plot.set_color_map('bwr')
     
-    truth_plot.plot(bx, [0, 0])
-    truth_plot.plot(by, [0, 1])
-    truth_plot.plot(phi, [0, 2])
+    truth_plot.colormap(bx, [0])
+    truth_plot.colormap(by, [1])
+    truth_plot.colormap(phi, [2])
     
     truth_plot.save("truth.png")
     truth_plot.close()
@@ -163,8 +166,11 @@ m2 = 10
 
 
 bz = b*np.cos(theta)
+bz = signal.convolve2d(bz, np.ones((5,5)), mode = 'same') #Smooth it a little
 dbzy = bz[1:,:-1]-bz[:-1,:-1]
 dbzx = bz[:-1,1:]-bz[:-1,:-1]
+
+
 b = b[:-1,:-1]
 bz = bz[:-1,:-1]
 theta = theta[:-1,:-1]
@@ -172,6 +178,9 @@ phi = phi[:-1,:-1]
 bxy = b*np.sin(theta)
 bx = bxy*np.cos(phi)
 by = bxy*np.sin(phi)
+
+#bx = signal.convolve2d(bx, np.ones((5,5)), mode = 'same') #Smooth it a little
+#by = signal.convolve2d(by, np.ones((5,5)), mode = 'same') #Smooth it a little
     
 
 n1 -= 1
@@ -186,12 +195,14 @@ x_flat = np.reshape(x, (2*n, -1))
 
 
 if mode == 2:
-    fig, ax1 = plt.subplots(nrows=1, ncols=1, sharex=True)
-    fig.set_size_inches(6, 6)
     
-    ax1.quiver(x_mesh[0], x_mesh[1], bx, by, units='width', color = 'k')
-    fig.savefig("truth_field.png")
-    plt.close(fig)
+    truth_plot = plot.plot(nrows=1, ncols=1)
+    truth_plot.set_color_map('bwr')
+    
+    truth_plot.colormap(bz)
+    truth_plot.vectors(x_mesh[0], x_mesh[1], bx, by, [], units='width', color = 'k')
+    truth_plot.save("truth_field.png")
+    truth_plot.close()
 
 
 def calc_p(x, y):
@@ -237,10 +248,12 @@ for i in np.arange(0, n):
         bx[i] *= -1
         by[i] *= -1
 
-#bx_offset = np.zeros_like(bx)#bxy + bz
-#by_offset = np.zeros_like(by)#bxy + bz
-bx_offset = dbzx*np.std(bx)/np.std(dbzx) - 0.1*by
-by_offset = dbzy*np.std(by)/np.std(dbzy) - 0.1*bx
+bx_offset = np.zeros_like(bx)#bxy + bz
+by_offset = np.zeros_like(by)#bxy + bz
+#bx_offset = dbzx*np.std(bx)/np.std(dbzx)
+#by_offset = dbzy*np.std(by)/np.std(dbzy)
+#bx_offset = dbzx*np.std(bx)/np.std(dbzx) - 0.1*by
+#by_offset = dbzy*np.std(by)/np.std(dbzy) - 0.1*bx
 bx1 = bx - bx_offset
 by1 = by - by_offset
 #bx_mean = np.mean(bx)
@@ -259,32 +272,32 @@ print(y_orig)
 print(y.shape)
 
 def do_plots(y):
-    components_plot = plot.plot_map(nrows=2, ncols=3)
+    components_plot = plot.plot(nrows=2, ncols=3)
     components_plot.set_color_map('bwr')
     
     bx_norm = y_orig[:,0]*norm+bx_offset
     by_norm = y_orig[:,1]*norm+by_offset
     
-    components_plot.plot(np.reshape(bx_norm, (n1, n2)), [0, 0])
-    components_plot.plot(np.reshape(by_norm, (n1, n2)), [0, 1])
-    components_plot.plot(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
+    components_plot.colormap(np.reshape(bx_norm, (n1, n2)), [0, 0])
+    components_plot.colormap(np.reshape(by_norm, (n1, n2)), [0, 1])
+    components_plot.colormap(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
     
-    components_plot2 = plot.plot_map(nrows=2, ncols=2)
+    components_plot2 = plot.plot(nrows=2, ncols=2)
     components_plot2.set_color_map('bwr')
-    components_plot2.plot(np.reshape(dbzx, (n1, n2)), [0, 0])
-    components_plot2.plot(np.reshape(dbzy, (n1, n2)), [0, 1])
+    components_plot2.colormap(np.reshape(dbzx, (n1, n2)), [0, 0])
+    components_plot2.colormap(np.reshape(dbzy, (n1, n2)), [0, 1])
     
 
     if y is not None:    
         bx_dis = y[:,0]*norm + bx_offset
         by_dis = y[:,1]*norm + by_offset
        
-        components_plot.plot(np.reshape(bx_dis, (n1, n2)), [1, 0])
-        components_plot.plot(np.reshape(by_dis, (n1, n2)), [1, 1])
-        components_plot.plot(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
+        components_plot.colormap(np.reshape(bx_dis, (n1, n2)), [1, 0])
+        components_plot.colormap(np.reshape(by_dis, (n1, n2)), [1, 1])
+        components_plot.colormap(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
     
-        components_plot2.plot(np.reshape(y[:,0], (n1, n2)), [1, 0])
-        components_plot2.plot(np.reshape(y[:,1], (n1, n2)), [1, 1])
+        components_plot2.colormap(np.reshape(y[:,0], (n1, n2)), [1, 0])
+        components_plot2.colormap(np.reshape(y[:,1], (n1, n2)), [1, 1])
 
     components_plot.save("components.png")
     components_plot2.save("components2.png")
@@ -354,7 +367,7 @@ def sample(x, y):
         min_res = None
         for trial_no in np.arange(0, num_samples):
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [.25, data_var, data_var*.01], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, .5), (data_var*.1, data_var*2.), (data_var*.001, data_var*.2)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [.25, data_var, data_var*.005], method='L-BFGS-B', jac=grad_fn, bounds = [(.05, 1.), (data_var*.1, data_var*2.), (data_var*.001, data_var*.01)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:

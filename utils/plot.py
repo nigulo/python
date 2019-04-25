@@ -12,7 +12,7 @@ import numpy as np
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
-class plot_map:
+class plot:
 
     def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., extent=[0., 1., 0., 1.]):
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
@@ -34,7 +34,7 @@ class plot_map:
     def set_title(self, title):
         self.title = title
 
-    def plot(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True, colorbar_prec=None):
+    def colormap(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True, colorbar_prec=None):
         if len(ax_index) == 2:
             ax = self.axes[ax_index[0]][ax_index[1]]
         elif len(ax_index) == 1:
@@ -74,6 +74,14 @@ class plot_map:
             if self.title is not None:
                 ax.set_title(self.title)
 
+    def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', color = 'k'):
+        if len(ax_index) == 2:
+            ax = self.axes[ax_index[0]][ax_index[1]]
+        elif len(ax_index) == 1:
+            ax = self.axes[ax_index[0]]
+        else:
+            ax = self.axes
+        ax.quiver(x1s, x2s, y1s, y2s, units=units, color = color)
 
     def save(self, file_name):
         self.fig.savefig(file_name)
