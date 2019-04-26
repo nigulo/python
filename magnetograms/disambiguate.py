@@ -41,10 +41,17 @@ from scipy.io import readsav
 import scipy.signal as signal
 import pickle
 
+
+state_file = None#state.pkl"
+if len(sys.argv) > 1:
+    state_file = sys.argv[1]
+
 mode = 2
 
 if mode == 0:
-    idl_dict = readsav('data/IVM_AR9026.sav')
+    if state_file is None:
+        state_file = 'data/IVM_AR9026.sav'
+    idl_dict = readsav(state_file)
     #idl_dict = readsav('data/fan_simu_ts56.sav')
     
     lat = idl_dict['b'][0][1]
@@ -68,8 +75,9 @@ if mode == 0:
     print(theta)
 
 elif mode == 1:
-
-    hdul = fits.open('pi-ambiguity-test/amb_turb.fits')
+    if state_file is None:
+        state_file = 'pi-ambiguity-test/amb_turb.fits'
+    hdul = fits.open(state_file)
     #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
     dat = hdul[0].data[:,::4,::4]
     b = dat[0]
@@ -77,8 +85,10 @@ elif mode == 1:
     phi = dat[2]
 else:
     
-    if os.path.isfile('data3d.pkl'):
-        y = pickle.load(open('data3d.pkl', 'rb'))
+    if state_file is None:
+        state_file = 'data3d.pkl'
+    if os.path.isfile(state_file):
+        y = pickle.load(open(state_file, 'rb'))
 #    if os.path.isfile('data3d50x50x10.pkl'):
 #        y = pickle.load(open('data3d50x50x10.pkl', 'rb'))
     else:
@@ -112,7 +122,7 @@ else:
         
         y = np.reshape(y, (n1, n2, n3, 3))
         
-        with open('data3d.pkl', 'wb') as f:
+        with open(state_file, 'wb') as f:
             pickle.dump(y, f)    
     
     print(y.shape)
