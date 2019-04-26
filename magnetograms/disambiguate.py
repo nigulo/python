@@ -92,15 +92,24 @@ else:
 #    if os.path.isfile('data3d50x50x10.pkl'):
 #        y = pickle.load(open('data3d50x50x10.pkl', 'rb'))
     else:
-        n1, n2, n3 = 50, 50, 10
+        n1, n2, n3 = 30, 30, 10
         n = n1 * n2 * n3
         x1_range, x2_range, x3_range = 1., 1., 1.
         
         x1 = np.linspace(0, x1_range, n1)
         x2 = np.linspace(0, x2_range, n2)
         x3 = np.linspace(0, x3_range, n3)
-        x_mesh = np.meshgrid(x1, x2, x3)
-        x = np.dstack(x_mesh).reshape(-1, 3)
+        x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
+        assert np.all(x1_mesh[:,0,0] == x1)
+        assert np.all(x2_mesh[0,:,0] == x2)
+        assert np.all(x3_mesh[0,0,:] == x3)
+        x = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
+        print("x1_mesh", x1_mesh)
+        print("x2_mesh", x2_mesh)
+        print("x3_mesh", x3_mesh)
+        print("x", x)
+        x = x.reshape(-1, 3)
+        print("x", x)
         
         sig_var_train = 1.0
         length_scale_train = .1
@@ -258,10 +267,10 @@ for i in np.arange(0, n):
         bx[i] *= -1
         by[i] *= -1
 
-bx_offset = np.zeros_like(bx)#bxy + bz
-by_offset = np.zeros_like(by)#bxy + bz
-#bx_offset = dbzx*np.std(bx)/np.std(dbzx)
-#by_offset = dbzy*np.std(by)/np.std(dbzy)
+#bx_offset = np.zeros_like(bx)#bxy + bz
+#by_offset = np.zeros_like(by)#bxy + bz
+bx_offset = dbzx*np.std(bx)/np.std(dbzx)
+by_offset = dbzy*np.std(by)/np.std(dbzy)
 #bx_offset = dbzx*np.std(bx)/np.std(dbzx) - 0.1*by
 #by_offset = dbzy*np.std(by)/np.std(dbzy) - 0.1*bx
 bx1 = bx - bx_offset

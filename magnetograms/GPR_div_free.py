@@ -38,6 +38,7 @@ class GPR_div_free:
                     i_abs = dim*i + i1
                     for j1 in np.arange(0, dim):
                         j_abs = dim*j + j1
+                        #TODO: Simplify for diagonal elements
                         K[i_abs, j_abs] = x_diff[i1] * x_diff[j1] * self.inv_length_scale_sq
                         if calc_grad:
                             K_grads[1, i_abs, j_abs] = -2.0 * x_diff[i1] * x_diff[j1] * self.inv_length_scale_qb
