@@ -31,13 +31,13 @@ class test_defocus(unittest.TestCase):
         #arcsec_per_px = 0.1
         diameter = 20.0
         wavelength = 5250.0
-        defocus = 2.#*np.pi
+        defocus = 2.
 
-        for downsample_factor in [0, 1, 2]:
+        counter = 0
+        #for arcsec_per_px in[0.057, 0.02579]:
+        for defocus in[1., 2., 3.]:
+
             image1 = image
-            if downsample_factor > 0:
-                image1 = image[::downsample_factor, ::downsample_factor]
-            
             nx_orig = np.shape(image1)[0]
     
             image2 = utils.upsample(image1)
@@ -63,9 +63,9 @@ class test_defocus(unittest.TestCase):
             psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
             D1, D1_d = psf1.convolve(image2)
 
-            #my_plot = plot.plot_map(nrows=1, ncols=2)
-            #my_plot.plot(D0, [0])
-            #my_plot.plot(D1_d, [1])
+            #my_plot = plot.plot(nrows=1, ncols=2)
+            #my_plot.colormap(D0, [0])
+            #my_plot.colormap(D1_d, [1])
             #my_plot.save("defous_test" + str(downsample_factor) + ".png")
             #my_plot.close()
 
@@ -78,25 +78,28 @@ class test_defocus(unittest.TestCase):
             D1 = misc.normalize(D1)
             D1_d = misc.normalize(D1_d)
 
-            psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px*2, diameter = diameter, wavelength = wavelength, defocus = defocus*2.21075039)
+            psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px*2, diameter = diameter, wavelength = wavelength, defocus = defocus)#*2.21075039)
             psf_b.create_basis()
             betas = np.zeros(jmax, dtype='complex')
             D2, D2_d = psf_b.convolve(image2, betas)
+            D2 = np.roll(np.roll(D2, 1, axis=0), 1, axis=1)
+            D2_d = np.roll(np.roll(D2_d, 1, axis=0), 1, axis=1)
 
             D2 = misc.normalize(D2)
             D2_d = misc.normalize(D2_d)
         
-            my_plot = plot.plot_map(nrows=2, ncols=2)
-            my_plot.plot(D1, [0, 0])
-            my_plot.plot(D2, [0, 1])
-            my_plot.plot(D1_d, [1, 0])
-            my_plot.plot(D2_d, [1, 1])
-            my_plot.save("defous_test" + str(downsample_factor) + ".png")
+            my_plot = plot.plot(nrows=2, ncols=2)
+            my_plot.colormap(D1, [0, 0])
+            my_plot.colormap(D2, [0, 1])
+            my_plot.colormap(D1_d, [1, 0])
+            my_plot.colormap(D2_d, [1, 1])
+            my_plot.save("defous_test" + str(counter) + ".png")
             my_plot.close()
         
-
-            np.testing.assert_almost_equal(D1, D2, 15)
-            np.testing.assert_almost_equal(D1_d, D2_d, 15)
+            np.testing.assert_almost_equal(D1, D2, 2)
+            np.testing.assert_almost_equal(D1_d, D2_d, 1)
+            
+            counter += 1
 
         
 if __name__ == '__main__':

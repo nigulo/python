@@ -94,9 +94,9 @@ class coh_trans_func():
         phase = self.phase_aberr()
 
         if __DEBUG__:
-            my_plot = plot.plot_map(nrows=1, ncols=2)
-            my_plot.plot(self.pupil, [0])
-            my_plot.plot(self.pupil*phase, [1])
+            my_plot = plot.plot(nrows=1, ncols=2)
+            my_plot.colormap(self.pupil, [0])
+            my_plot.colormap(self.pupil*phase, [1])
             
             my_plot.save("aperture_test.png")
             my_plot.close()
@@ -190,9 +190,11 @@ class psf():
             
     def convolve(self, dat, defocus = True):
         dat_F = fft.fftshift(fft.fft2(dat))
+        #dat_F = fft.fft2(fft.fftshift(dat))
         ret_val = []
         for m_F in self.multiply(dat_F, defocus):
             m = fft.ifft2(fft.ifftshift(m_F))
+            #m = fft.ifftshift(fft.ifft2(m_F))
             ret_val.append(m.real)
         if defocus:
             return (ret_val[0], ret_val[1])
@@ -363,10 +365,6 @@ class psf():
 
         np.testing.assert_almost_equal(grads_test, grads1_test)
 
-      
-        
-        
-        
         test1 = 1.j*(H2*Z_conv_H + H2_d*Z_conv_H_d)# - (H.conj()*Z_conv_H_conj + H_d.conj()*Z_conv_H_d_conj)
         test1 += test1.conj()
         test2 = 1.j*(H2.conj()*Z_conv_H_1 + H2_d.conj()*Z_conv_H_d_1)

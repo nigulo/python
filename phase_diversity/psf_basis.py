@@ -158,7 +158,7 @@ class psf_basis:
         #x_diff = x_diff - x_diff[int(nx/2)]
         
         # Angular separation of resolved pixels measured from the center (in arceconds)
-        x_diff = x_diff / diffraction
+        x_diff /= diffraction
         
         print("scale_factor", arcsec_per_px/diffraction)
         
@@ -192,7 +192,7 @@ class psf_basis:
         
                 #print('Defocus in mm = ', defocus_mm)
                 
-                f = self.defocus
+                f = self.defocus*(x_diff[0]) #scale it with r
                 print('Defocus f = ', f)
         
         
@@ -294,11 +294,13 @@ class psf_basis:
         
     def convolve(self, dat, betas, defocus = True):
         #dat_F = fft.fftshift(fft.fft2(dat))
-        dat_F = fft.fft2(dat)
+        dat_F = fft.fft2(fft.fftshift(dat))
+        #dat_F = fft.fft2(dat)
         ret_val = []
         for m_F in self.multiply(dat_F, betas, defocus):
             #m = fft.ifft2(fft.ifftshift(m_F))
-            m = fft.ifft2(m_F)
+            #m = fft.ifft2(m_F)
+            m = fft.ifftshift(fft.ifft2(m_F))
             threshold = np.ones_like(m.imag)*1e-14
             np.testing.assert_array_less(m.imag, threshold)
             m = m.real

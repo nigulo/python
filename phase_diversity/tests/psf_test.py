@@ -175,9 +175,9 @@ def calc_psf_via_corr(wfs, mask):
     
     mser = np.sum(psf.real**2)
     msei = np.sum(psf.imag**2)
-    my_plot = plot.plot_map(nrows=1, ncols=2)
-    my_plot.plot(psf.real, [0])
-    my_plot.plot(psf.imag, [1])
+    my_plot = plot.plot(nrows=1, ncols=2)
+    my_plot.plotcolormap(psf.real, [0])
+    my_plot.plotcolormap(psf.imag, [1])
     my_plot.save("power.png")
     my_plot.close()
     print("mser, msei", mser, msei)
@@ -207,9 +207,9 @@ def calc_psf_via_fft(wfs, mask):
     #pupil_full = np.roll(np.roll(pupil_full, int(nx/2), axis=0), int(ny/2), axis=1)
     
     
-    my_plot = plot.plot_map(nrows=1, ncols=2)
-    my_plot.plot(pupil_full.real, [0])
-    my_plot.plot(pupil_full.imag, [1])
+    my_plot = plot.plot(nrows=1, ncols=2)
+    my_plot.colormap(pupil_full.real, [0])
+    my_plot.colormap(pupil_full.imag, [1])
         
     my_plot.save("pupil_full.png")
     my_plot.close()
@@ -357,9 +357,9 @@ class test_psf(unittest.TestCase):
         # No defocus, so D should be equal to D_d
         np.testing.assert_almost_equal(D, D_d, 8)
         
-        my_plot = plot.plot_map(nrows=1, ncols=2)
-        my_plot.plot(image1, [0])
-        my_plot.plot(D, [1])
+        my_plot = plot.plot(nrows=1, ncols=2)
+        my_plot.colormap(image1, [0])
+        my_plot.colormap(D, [1])
             
         my_plot.save("test_deconvolve.png")
         my_plot.close()
@@ -536,12 +536,12 @@ class test_psf(unittest.TestCase):
         grads_expected = (Ss1 - Ss) / delta_alphas1
         
         num_plots = min(4, len(alphas))
-        my_plot = plot.plot_map(nrows=4, ncols=num_plots)
+        my_plot = plot.plot(nrows=4, ncols=num_plots)
         for i in np.arange(0, num_plots):
-            my_plot.plot(grads[i].real, [0, i])
-            my_plot.plot(np.abs(grads_expected[i].real-grads[i].real), [1, i])
-            my_plot.plot(grads[i].imag, [2, i])
-            my_plot.plot(np.abs(grads_expected[i].imag-grads[i].imag), [3, i])
+            my_plot.colormap(grads[i].real, [0, i])
+            my_plot.colormap(np.abs(grads_expected[i].real-grads[i].real), [1, i])
+            my_plot.colormap(grads[i].imag, [2, i])
+            my_plot.colormap(np.abs(grads_expected[i].imag-grads[i].imag), [3, i])
             
         my_plot.save("test_S_prime.png")
         my_plot.close()
