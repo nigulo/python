@@ -131,7 +131,10 @@ class psf():
         self.nx= nx
         coords, rc, x_limit = get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
-        print("psf_coords", np.min(self.coords, axis=(0,1)), np.max(self.coords, axis=(0,1)), np.shape(self.coords))
+        x_min = np.min(self.coords, axis=(0,1))
+        x_max = np.max(self.coords, axis=(0,1))
+        print("psf_coords", x_min, x_max, np.shape(self.coords))
+        np.testing.assert_array_almost_equal(x_min, -x_max)
         self.incoh_vals = dict()
         self.otf_vals = dict()
         self.corr = dict() # only for testing purposes

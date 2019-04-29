@@ -66,15 +66,17 @@ state = load(state_file)
 if state == None:
     print("Creating new state")
     jmax = 10
-    arcsec_per_px = 0.057
+    #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
     wavelength = 5250.0
-    defocus = 0.75#.*np.pi
+    defocus = 0.3#.*np.pi
     gamma = 1.0
     nx = np.shape(image)[0]
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px*2, diameter = diameter, wavelength = wavelength, defocus = defocus)#*500)
+    arcsec_per_px=0.22*wavelength/diameter*1e-8*180/np.pi*3600
+
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*10)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -90,7 +92,7 @@ else:
     
     assert(nx == np.shape(image)[0])
     
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px*2, diameter = diameter, wavelength = wavelength, defocus = defocus)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*10)
     psf_b.set_state(state[7])
     
 
@@ -98,7 +100,7 @@ fimage = fft.fft2(image)
 fimage = fft.fftshift(fimage)
 
 #aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
-aperture_func = lambda xs: utils.aperture_circ(xs, 1.0527, 15.0)
+aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0)
 #defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)

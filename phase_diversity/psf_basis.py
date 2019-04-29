@@ -151,6 +151,7 @@ class psf_basis:
         print('Diffraction limit, arcsec_per_px', diffraction, arcsec_per_px)
         
         # Generate pupil plane
+        #x_diff = np.linspace(-2., 2., nx)*arcsec_per_px
         x_diff = np.linspace(-float(nx)/2, float(nx)/2, nx)*arcsec_per_px
         print(len(x_diff))
         
@@ -192,7 +193,7 @@ class psf_basis:
         
                 #print('Defocus in mm = ', defocus_mm)
                 
-                f = self.defocus*(x_diff[0]) #scale it with r
+                f = self.defocus #scale it with r
                 print('Defocus f = ', f)
         
         
