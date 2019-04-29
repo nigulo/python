@@ -52,14 +52,19 @@ def Vnmf(radius, f, n, m):
     #    print(lmax)
     #assert(lmax == int(lmax))
     lmax = int(lmax)
+    #lmax = min(20, lmax)
     
     Vnm = np.zeros_like(radius, dtype='complex')
     
     for l in np.arange(1, lmax + 1):
 
         v = 2.0*np.pi*(radius+epsilon)
-        inv_l_v_pow_l = 1./(l*v**l)
-        sum_ = np.zeros_like(radius)
+        if f > 0.:
+            ids = np.where(v/f > .001)
+            v = v[ids]
+
+        #inv_l_v_pow_l = 1./(l*v**l)
+        sum_ = np.zeros_like(v)
         for j in np.arange(0, p + 1):
             if p-j < l:
                 t1 = special.binom(abs_m+j+l-1,l-1)
@@ -78,8 +83,17 @@ def Vnmf(radius, f, n, m):
                 #np.testing.assert_almost_equal(t4a, t4)
                 ulj = (-1.0)**p * (abs_m+l+2*j) * t1 * t2 * t3 / t4
                 
-                sum_ += ulj * special.jv(abs_m+l+2.*j, v) * inv_l_v_pow_l
-        Vnm += sum_ * (-2.j*f)**(l-1)
+                #sum_ += ulj * special.jv(abs_m+l+2.*j, v) * inv_l_v_pow_l
+                sum_ += ulj * special.jv(abs_m+l+2.*j, v)
+        #inv_l_v_pow_l = 1./(l*v**l)
+        #sum_ *= inv_l_v_pow_l
+        #Vnm += sum_ * (-2.j*f)**(l-1)
+        if f > 0:
+            Vnm[ids] += sum_ * (-2.j*f/v)**l/(-2.j*f*l)
+        else:
+            if l == 1:
+                Vnm += sum_
+            
     
     Vnm *= epsm * np.exp(1.j*f)
     #if n == 0 and m == 0:
@@ -302,7 +316,7 @@ class psf_basis:
             #m = fft.ifft2(fft.ifftshift(m_F))
             #m = fft.ifft2(m_F)
             m = fft.ifftshift(fft.ifft2(m_F))
-            threshold = np.ones_like(m.imag)*1e-14
+            threshold = np.ones_like(m.imag)*1e-12
             np.testing.assert_array_less(m.imag, threshold)
             m = m.real
             #m = fft.ifft2(fft.ifftshift(m_F)).real

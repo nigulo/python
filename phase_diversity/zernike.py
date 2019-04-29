@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.misc as misc
+import scipy.special as special
 
 class zernike():
     
@@ -28,9 +28,9 @@ class zernike():
         nmm2 = (self.n-self.abs_m)/2
         npm2 = (self.n+self.abs_m)/2
         k_fac = 1.0
-        nmk_fac = misc.factorial(self.n)
-        npm2_fac = misc.factorial(npm2)
-        nmm2_fac = misc.factorial(nmm2)
+        nmk_fac = special.factorial(self.n)
+        npm2_fac = special.factorial(npm2)
+        nmm2_fac = special.factorial(nmm2)
         for k in np.arange(0, nmm2+1):
             R1 = np.power(rhos, self.n-2*k) * nmk_fac / k_fac / npm2_fac / nmm2_fac
             if k % 2 != 0:
