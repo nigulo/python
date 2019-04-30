@@ -60,8 +60,8 @@ def Vnmf(radius, f, n, m):
 
         v = 2.0*np.pi*(radius+epsilon)
         if f > 0.:
-            ids = np.where(v/f > .001)
-            v = v[ids]
+            inds = np.where(np.log(f/v)*l < 709) #Overflow of exponentiation
+            v = v[inds]
 
         #inv_l_v_pow_l = 1./(l*v**l)
         sum_ = np.zeros_like(v)
@@ -89,7 +89,7 @@ def Vnmf(radius, f, n, m):
         #sum_ *= inv_l_v_pow_l
         #Vnm += sum_ * (-2.j*f)**(l-1)
         if f > 0:
-            Vnm[ids] += sum_ * (-2.j*f/v)**l/(-2.j*f*l)
+            Vnm[inds] += sum_ * (-2.j*f/v)**l/(-2.j*f*l)
         else:
             if l == 1:
                 Vnm += sum_ / (l*v**l)

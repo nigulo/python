@@ -49,7 +49,7 @@ class test_defocus(unittest.TestCase):
 
     def test(self):
 
-        jmax = 10
+        jmax = 5
         #arcsec_per_px = 0.1
         diameter = 20.0
         wavelength = 5250.0
@@ -61,10 +61,10 @@ class test_defocus(unittest.TestCase):
         defocus = 2.
 
         counter = 0
-        for image in [image_b, image_a]:
+        for image in [image_a, image_b]:
             #for arcsec_per_px in[0.22*wavelength/diameter*1e-8*180/np.pi*3600]:#, 2.*wavelength/diameter*1e-8*180/np.pi*3600]:
-            for arcsec_per_px in[0.24*wavelength/diameter*1e-8*180/np.pi*3600]:#, 2.*wavelength/diameter*1e-8*180/np.pi*3600]:
-                for defocus in[0.3, 0.4, 0.5]:
+            for arcsec_per_px in[wavelength/diameter*1e-8*180/np.pi*3600]:
+                for defocus in[0.01, 0.02]:
         
                     #defocus /= 10.999999999999998
                     image1 = image
@@ -104,7 +104,7 @@ class test_defocus(unittest.TestCase):
                     ###################################################################
                     # Defocus in PSF basis
         
-                    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*10)
+                    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px/5, diameter = diameter, wavelength = wavelength, defocus = defocus*nx*nx/2.2)
                     psf_b.create_basis()
                     betas = np.zeros(jmax, dtype='complex')
                     D2, D2_d = psf_b.convolve(image2, betas)
@@ -126,8 +126,8 @@ class test_defocus(unittest.TestCase):
                     D2 = misc.normalize(D2)
                     D2_d = misc.normalize(D2_d)
                 
-                    #np.testing.assert_almost_equal(D1, D2, 2)
-                    #np.testing.assert_almost_equal(D1_d, D2_d, 1)
+                    np.testing.assert_almost_equal(D1, D2, 1)
+                    np.testing.assert_almost_equal(D1_d, D2_d, 1)
                     
                     counter += 1
 
