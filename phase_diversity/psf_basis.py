@@ -60,7 +60,7 @@ def Vnmf(radius, f, n, m):
 
         v = 2.0*np.pi*(radius+epsilon)
         if f > 0.:
-            inds = np.where(np.log(f/v)*l < 709) #Overflow of exponentiation
+            inds = np.where(np.log(f/v)*l < 690) #Overflow of exponentiation
             v = v[inds]
 
         #inv_l_v_pow_l = 1./(l*v**l)

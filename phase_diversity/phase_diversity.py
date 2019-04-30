@@ -29,6 +29,29 @@ import matplotlib.pyplot as plt
 import pickle
 
 
+image = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+                  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ]
+                  ])
+
 state_file = None#state.pkl"
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
@@ -53,7 +76,7 @@ num_iterations = 0
 
 image = plt.imread('granulation.png')
 print("Image shape", image.shape)
-image = image[0:22,0:22]
+image = image[0:51,0:51]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -70,13 +93,14 @@ if state == None:
     #arcsec_per_px = 0.011
     diameter = 20.0
     wavelength = 5250.0
-    defocus = 0.005#.*np.pi
+    defocus = 0.007/50*21/2#.*np.pi
     gamma = 1.0
     nx = np.shape(image)[0]
 
     arcsec_per_px=wavelength/diameter*1e-8*180/np.pi*3600
+    arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/5
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px/5, diameter = diameter, wavelength = wavelength, defocus = defocus*nx*nx/1.7)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.6)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -89,15 +113,17 @@ else:
     defocus = state[4]
     gamma = state[5]
     nx = state[6]
+    arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/5
     
     assert(nx == np.shape(image)[0])
     
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px/5, diameter = diameter, wavelength = wavelength, defocus = defocus*nx*nx/2.2)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.6)
     psf_b.set_state(state[7])
     
 
 fimage = fft.fft2(image)
 fimage = fft.fftshift(fimage)
+
 
 #aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
 aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0)
@@ -131,7 +157,7 @@ for trial in np.arange(0, num_frames):
     
     D, D_d = psf_.multiply(fimage)
     #betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
-    ##betas = np.zeros(5, dtype='complex')
+    #betas = np.zeros(jmax, dtype='complex')
     #D, D_d = psf_b.multiply(fimage, betas)
 
     D = fft.ifftshift(D)

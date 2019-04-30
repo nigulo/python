@@ -194,7 +194,7 @@ class test_psf_basis(unittest.TestCase):
                     #            print(f, n, m, radius[i, j], result[i, j], expected[i, j], result[i, j] - expected[i, j])
                     #        np.testing.assert_almost_equal(result[i, j], expected[i, j])
                     np.testing.assert_array_almost_equal(result, expected)
-'''
+
     def test_convolve(self):
         #First test if the same image is returned if betas are zero
         jmax = 10
@@ -333,7 +333,7 @@ class test_psf_basis(unittest.TestCase):
 
         np.testing.assert_almost_equal(image_back, image, 10)
         #np.testing.assert_almost_equal(fimage_back, fimage, 8)
-'''
+
         
 if __name__ == '__main__':
     unittest.main()

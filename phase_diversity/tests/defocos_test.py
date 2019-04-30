@@ -55,23 +55,27 @@ class test_defocus(unittest.TestCase):
         wavelength = 5250.0
         #arcsec_per_px = 0.057
         arcsec_per_px = wavelength/diameter*1e-8*180/np.pi*3600
-        print("arcsec_per_px=", arcsec_per_px)
 
 
         defocus = 2.
 
+
+        arcsec_per_px_base = wavelength/diameter*1e-8*180/np.pi*3600
+        arcsec_per_px1 = arcsec_per_px_base/5
+
         counter = 0
         for image in [image_a, image_b]:
+            image1 = image
+            nx_orig = np.shape(image1)[0]
+    
+            image2 = utils.upsample(image1)
+            nx = np.shape(image2)[0]
+
             #for arcsec_per_px in[0.22*wavelength/diameter*1e-8*180/np.pi*3600]:#, 2.*wavelength/diameter*1e-8*180/np.pi*3600]:
-            for arcsec_per_px in[wavelength/diameter*1e-8*180/np.pi*3600]:
-                for defocus in[0.01, 0.02]:
-        
-                    #defocus /= 10.999999999999998
-                    image1 = image
-                    nx_orig = np.shape(image1)[0]
-            
-                    image2 = utils.upsample(image1)
-                    nx = np.shape(image2)[0]
+            for arcsec_per_px in[0.75*arcsec_per_px_base, arcsec_per_px_base, 1.5*arcsec_per_px_base]:
+                print("arcsec_per_px=", arcsec_per_px)
+                for defocus in[.1, .2]:
+                    defocus /= nx*arcsec_per_px
             
                     aperture_func = lambda xs: utils.aperture_circ(xs, coef=100.)
                     #aperture_func = lambda xs: utils.aperture_circ(xs, r=.1, coef=100.)
@@ -104,7 +108,7 @@ class test_defocus(unittest.TestCase):
                     ###################################################################
                     # Defocus in PSF basis
         
-                    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px/5, diameter = diameter, wavelength = wavelength, defocus = defocus*nx*nx/2.2)
+                    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.6)
                     psf_b.create_basis()
                     betas = np.zeros(jmax, dtype='complex')
                     D2, D2_d = psf_b.convolve(image2, betas)
