@@ -92,7 +92,7 @@ def Vnmf(radius, f, n, m):
             Vnm[ids] += sum_ * (-2.j*f/v)**l/(-2.j*f*l)
         else:
             if l == 1:
-                Vnm += sum_
+                Vnm += sum_ / (l*v**l)
             
     
     Vnm *= epsm * np.exp(1.j*f)

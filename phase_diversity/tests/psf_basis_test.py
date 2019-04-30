@@ -7,6 +7,8 @@ import unittest
 sys.path.append('../../utils')
 import plot
 import misc
+import utils
+import scipy.special as special
 
 image = [[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804,  0.45882353, 0.5137255 ],
@@ -131,8 +133,62 @@ D_d = [[ 5.41635689e+02+0.00000000e+00j,  3.68881920e+01-1.19828784e+01j,
    1.57626952e+00+6.29222777e-01j, -1.23030366e+00+2.76166909e+01j]]
 
 
+# Comparison method without optomization for large f-s
+def Vnmf1(radius, f, n, m):
+    epsilon = 1.e-10
+
+    abs_m = abs(m)
+
+    p = int(0.5*(n-abs_m))
+    q = int(0.5*(n+abs_m))
+    
+    epsm = 1.0
+    if m < 0.0 and (m % 2) == 1:
+        epsm = -1.0
+    
+    lmax = 3.5*abs(f)+1
+    lmax = int(lmax)
+    
+    Vnm = np.zeros_like(radius, dtype='complex')
+    
+    for l in np.arange(1, lmax + 1):
+
+        v = 2.0*np.pi*(radius+epsilon)
+        inv_l_v_pow_l = 1./(l*v**l)
+        sum_ = np.zeros_like(v)
+        for j in np.arange(0, p + 1):
+            if p-j < l:
+                t1 = special.binom(abs_m+j+l-1,l-1)
+                t2 = special.binom(j+l-1,l-1)
+                t3 = special.binom(l-1,p-j)
+                t4 = special.binom(q+l+j,l)
+                ulj = (-1.0)**p * (abs_m+l+2*j) * t1 * t2 * t3 / t4
+                
+                sum_ += ulj * special.jv(abs_m+l+2.*j, v) * inv_l_v_pow_l
+        Vnm += sum_ * (-2.j*f)**(l-1)
+    Vnm *= epsm * np.exp(1.j*f)
+    return Vnm
+
 class test_psf_basis(unittest.TestCase):
 
+    
+    def test_Vnmf(self):
+
+        nx = 20
+        x_diff = np.linspace(-float(nx)/2, float(nx)/2, nx)*.01
+        
+        radius = np.zeros((nx,nx))
+        coords = np.dstack(np.meshgrid(x_diff, x_diff)[::-1])
+        radiuses_phis = utils.cart_to_polar(coords)
+        
+        radius = radiuses_phis[:,:,0]
+
+        for f in [0, 1., 3., 5.]:
+            for n in np.arange(0, 10):
+                for m in np.arange(0, 10):
+                    result = psf_basis.Vnmf(radius, f, n, m)
+                    expected = Vnmf1(radius, f, n, m)
+                    np.testing.assert_array_almost_equal(result, expected)
 
     def test_convolve(self):
         #First test if the same image is returned if betas are zero
