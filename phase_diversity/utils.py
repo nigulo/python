@@ -41,6 +41,7 @@ def aperture_circ(xs, r_scale_fact=1., coef=5.0):
     assert(r_scale_fact > 0 and r_scale_fact <= 1.)
     scalar = False
     if len(np.shape(xs)) == 1:
+        assert(False) # Not supported anymore
         scalar = True
         xs = np.array([xs])
     r = np.max(xs)*r_scale_fact

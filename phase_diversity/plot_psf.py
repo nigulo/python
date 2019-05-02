@@ -13,7 +13,7 @@ from matplotlib import cm
 #Z = opticspy.zernike.Coefficient(Z11=1) 
 #Z.zernikesurface()
 
-nx = 100
+nx = 51
 
 extent=[0., 1., 0., 1.]
 plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
@@ -29,18 +29,16 @@ num_rows = 5
 num_cols = 5
 num_tests = num_rows * num_cols
 
-aperture_func = lambda xs: utils.aperture_circ(xs, 1.0, 15.0)
+aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 6)
 
-vals = np.zeros((nx, nx))
-for x in np.arange(0, nx):
-    for y in np.arange(0, nx):
-        x1 = 2.0*(float(x) - nx/2) / nx
-        y1 = 2.0*(float(y) - nx/2) / nx
-        vals[x, y] = aperture_func(np.array([x1, y1]))
-ax.imshow(vals.T,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(vals), vmax=np.max(vals))
+xs2 = np.linspace(float(-nx/2), float(nx/2), nx)
+coords2 = np.dstack(np.meshgrid(xs2, xs2)[::-1])
+aperture = np.zeros((nx, nx))
+aperture = aperture_func(coords2)
+ax.imshow(aperture.T,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(aperture), vmax=np.max(aperture))
 ax.set_aspect(aspect=plot_aspect)
 
 fig.savefig('aperture.png')
@@ -56,7 +54,7 @@ fig2.set_size_inches(30, 30)
 axes1 = axes1.flatten()
 axes2 = axes2.flatten()
 
-arcsec_per_px = 0.0055
+arcsec_per_px = 0.1
 diameter = 20.0
 wavelength = 5250.0
 
@@ -94,20 +92,20 @@ for index in np.arange(0, num_tests):
     ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)#np.sum(u**2))
     #ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)#np.sum(u**2))
 
-    fig3, (ax31, ax32) = plt.subplots(nrows=2, ncols=1)
-    fig3.set_size_inches(4, 6)
-
     psf_vals = psf.psf(ctf, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength).calc()
-    ax31.hist(psf_vals.flatten(), bins=100)
-    print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
-    psf_vals = utils.trunc(psf_vals, 1e-3)
-    ax32.hist(psf_vals.flatten(), bins=100)
-    print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
 
-    fig3.savefig('hist' + str(index) + '.png')
-    plt.close(fig3)
+
+    #fig3, (ax31, ax32) = plt.subplots(nrows=2, ncols=1)
+    #fig3.set_size_inches(4, 6)
+    #ax31.hist(psf_vals.flatten(), bins=100)
+    #print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
+    #psf_vals = utils.trunc(psf_vals, 1e-3)
+    #ax32.hist(psf_vals.flatten(), bins=100)
+    #print(np.min(psf_vals), np.max(psf_vals), np.mean(psf_vals))
+    #fig3.savefig('hist' + str(index) + '.png')
+    #plt.close(fig3)
     
-    psf_vals = psf_vals[int(0.4*nx*2):int(0.6*nx*2),int(0.4*nx*2):int(0.6*nx*2)]
+    #psf_vals = psf_vals[int(0.4*nx*2):int(0.6*nx*2),int(0.4*nx*2):int(0.6*nx*2)]
     #psf_vals = np.log(psf_vals)
     ax = axes2[index]
     ax.imshow(psf_vals,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))

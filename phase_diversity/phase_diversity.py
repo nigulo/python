@@ -93,14 +93,14 @@ if state == None:
     #arcsec_per_px = 0.011
     diameter = 20.0
     wavelength = 5250.0
-    defocus = 0.007/50*21/2#.*np.pi
+    defocus = 0.0007/50*21/2#.*np.pi
     gamma = 1.0
     nx = np.shape(image)[0]
 
     arcsec_per_px=wavelength/diameter*1e-8*180/np.pi*3600
-    arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/5
+    arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.6)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.77)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -113,11 +113,11 @@ else:
     defocus = state[4]
     gamma = state[5]
     nx = state[6]
-    arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/5
+    arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
     
     assert(nx == np.shape(image)[0])
     
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.6)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.77)
     psf_b.set_state(state[7])
     
 
@@ -129,7 +129,7 @@ fimage = fft.fftshift(fimage)
 aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0)
 #defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
+defocus_func = lambda xs: 0.#defocus*2*np.sum(xs*xs, axis=2)
 
 
 my_plot = plot.plot(nrows=num_frames + 1, ncols=5)

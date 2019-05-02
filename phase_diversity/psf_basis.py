@@ -317,7 +317,7 @@ class psf_basis:
             #m = fft.ifft2(m_F)
             m = fft.ifftshift(fft.ifft2(m_F))
             threshold = np.ones_like(m.imag)*1e-12
-            np.testing.assert_array_less(m.imag, threshold)
+            np.testing.assert_array_less(abs(m.imag), threshold)
             m = m.real
             #m = fft.ifft2(fft.ifftshift(m_F)).real
             

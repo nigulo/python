@@ -17,11 +17,11 @@ def main():
     
     zoom_factor = 1.0
     jmax = 6
-    arcsec_per_px = 0.055
+    arcsec_per_px = 0.05
     diameter = 20.0
     wavelength = 5250.0
-    nx = 200
-    defocus = 1.0
+    nx = 41
+    defocus = 5.0
     
     psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
     psf.create_basis(do_fft=False, do_defocus=True)
