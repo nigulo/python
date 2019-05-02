@@ -130,7 +130,7 @@ class test_defocus(unittest.TestCase):
                     D2 = misc.normalize(D2)
                     D2_d = misc.normalize(D2_d)
                 
-                    np.testing.assert_almost_equal(D1, D2, 1)
+                    np.testing.assert_almost_equal(D1, D2, 2)
                     np.testing.assert_almost_equal(D1_d, D2_d, 1)
                     
                     counter += 1
