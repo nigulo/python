@@ -13,9 +13,9 @@ from matplotlib import cm
 #Z = opticspy.zernike.Coefficient(Z11=1) 
 #Z.zernikesurface()
 
-nx = 41
+nx = 82
 
-arcsec_per_px = 0.005
+arcsec_per_px = 0.0025
 diameter = 20.0
 wavelength = 5250.0
 
@@ -106,7 +106,7 @@ for index in np.arange(0, num_tests):
     #fig3.savefig('hist' + str(index) + '.png')
     #plt.close(fig3)
     
-    psf_vals = psf_vals[int(0.4*nx*2):int(0.6*nx*2),int(0.4*nx*2):int(0.6*nx*2)]
+    #psf_vals = psf_vals[int(0.4*nx*2):int(0.6*nx*2),int(0.4*nx*2):int(0.6*nx*2)]
     #psf_vals = np.log(psf_vals)
     ax = axes2[index]
     ax.imshow(psf_vals,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))

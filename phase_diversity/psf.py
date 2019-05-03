@@ -108,7 +108,7 @@ class coh_trans_func():
 
 def get_coords(nx, arcsec_per_px, diameter, wavelength):      
     rad2deg=180.0/np.pi
-    scale_angle2CCD=2.*arcsec_per_px/(rad2deg*3600.0)
+    scale_angle2CCD=arcsec_per_px/(rad2deg*3600.0)
     diff_limit = wavelength*1.e-8/diameter
     q_number=diff_limit/(scale_angle2CCD)
     rc=1./q_number # telescope_d in pupil space

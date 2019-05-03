@@ -59,9 +59,11 @@ class test_defocus(unittest.TestCase):
 
         defocus = 2.
 
-
-        arcsec_per_px_base = 0.01#wavelength/diameter*1e-8*180/np.pi*3600
-        arcsec_per_px1 = arcsec_per_px_base/4.58
+        arcsec_per_px_base = 0.05#wavelength/diameter*1e-8*180/np.pi*3600
+        arcsec_per_px1 = arcsec_per_px_base
+        
+        app_coef = 4.
+        app_coef1 = 2.
 
         counter = 0
         for image in [image_a, image_b]:
@@ -71,10 +73,14 @@ class test_defocus(unittest.TestCase):
             image2 = utils.upsample(image1)
             nx = np.shape(image2)[0]
             
+            app_coef /= 4
+            app_coef1 /= 2
+
+            
             #for arcsec_per_px in[0.22*wavelength/diameter*1e-8*180/np.pi*3600]:#, 2.*wavelength/diameter*1e-8*180/np.pi*3600]:
             for arcsec_per_px in[0.5*arcsec_per_px_base, arcsec_per_px_base, 2*arcsec_per_px_base]:
                 print("arcsec_per_px=", arcsec_per_px)
-                for defocus in[.5]:#, 1.]:
+                for defocus in[1.2, 1.5]:
                     defocus1 = defocus#/(nx*arcsec_per_px)
             
                     aperture_func = lambda xs: utils.aperture_circ(xs, coef=100., radius =1.)
@@ -84,7 +90,7 @@ class test_defocus(unittest.TestCase):
                     # Defocus via fourth Zernike term
                     pa0 = psf.phase_aberration([defocus1])
                     ctf0 = psf.coh_trans_func(aperture_func, pa0, lambda xs: 0.)
-                    psf0 = psf.psf(ctf0, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+                    psf0 = psf.psf(ctf0, nx_orig, arcsec_per_px = arcsec_per_px*app_coef, diameter = diameter, wavelength = wavelength)
                     #pa0.set_alphas([1.])
                     D0, D0_d = psf0.convolve(image2)
                     
@@ -93,7 +99,7 @@ class test_defocus(unittest.TestCase):
                     pa1 = psf.phase_aberration([])
                     defocus_func = lambda xs: defocus1*2*np.sum(xs*xs, axis=2)
                     ctf1 = psf.coh_trans_func(aperture_func, pa1, defocus_func)
-                    psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+                    psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px*app_coef, diameter = diameter, wavelength = wavelength)
                     D1, D1_d = psf1.convolve(image2)
         
                     #my_plot = plot.plot(nrows=1, ncols=2)
@@ -109,7 +115,7 @@ class test_defocus(unittest.TestCase):
                     # Defocus in PSF basis
         
                     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.77)
-                    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px*8, diameter = diameter, wavelength = wavelength, defocus = defocus)#/(arcsec_per_px**2)/1000)
+                    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px*2.6*app_coef1, diameter = diameter, wavelength = wavelength, defocus = defocus*2.2)#/(arcsec_per_px**2)/1000)
                     psf_b.create_basis()
                     betas = np.zeros(jmax, dtype='complex')
                     D2, D2_d = psf_b.convolve(image2, betas)
