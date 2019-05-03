@@ -37,14 +37,17 @@ def trunc(ds, perc):
                 ds_out[i, j] = p2
     return ds_out
 
-def aperture_circ(xs, r_scale_fact=1., coef=5.0):
+def aperture_circ(xs, r_scale_fact=1., coef=5.0, radius = None):
     assert(r_scale_fact > 0 and r_scale_fact <= 1.)
     scalar = False
     if len(np.shape(xs)) == 1:
         assert(False) # Not supported anymore
         scalar = True
         xs = np.array([xs])
-    r = np.max(xs)*r_scale_fact
+    if radius is not None:
+        r = radius
+    else:
+        r = np.max(xs)*r_scale_fact
 
     if coef > 0.0:
         ret_val = 0.5+0.5*special.erf(coef*(r-np.sqrt(np.sum(xs**2, axis=xs.ndim-1))))

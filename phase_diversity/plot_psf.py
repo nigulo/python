@@ -13,7 +13,12 @@ from matplotlib import cm
 #Z = opticspy.zernike.Coefficient(Z11=1) 
 #Z.zernikesurface()
 
-nx = 51
+nx = 41
+
+arcsec_per_px = 0.005
+diameter = 20.0
+wavelength = 5250.0
+
 
 extent=[0., 1., 0., 1.]
 plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
@@ -29,7 +34,7 @@ num_rows = 5
 num_cols = 5
 num_tests = num_rows * num_cols
 
-aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0)
+aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=1.)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 6)
@@ -53,10 +58,6 @@ fig2.set_size_inches(30, 30)
 
 axes1 = axes1.flatten()
 axes2 = axes2.flatten()
-
-arcsec_per_px = 0.1
-diameter = 20.0
-wavelength = 5250.0
 
 for index in np.arange(0, num_tests):
     if index == 0:
@@ -105,7 +106,7 @@ for index in np.arange(0, num_tests):
     #fig3.savefig('hist' + str(index) + '.png')
     #plt.close(fig3)
     
-    #psf_vals = psf_vals[int(0.4*nx*2):int(0.6*nx*2),int(0.4*nx*2):int(0.6*nx*2)]
+    psf_vals = psf_vals[int(0.4*nx*2):int(0.6*nx*2),int(0.4*nx*2):int(0.6*nx*2)]
     #psf_vals = np.log(psf_vals)
     ax = axes2[index]
     ax.imshow(psf_vals,extent=extent,cmap=reverse_colourmap(plt.get_cmap('binary')),origin='lower', vmin=np.min(psf_vals), vmax=np.max(psf_vals))
