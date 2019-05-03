@@ -76,7 +76,7 @@ num_iterations = 0
 
 image = plt.imread('granulation.png')
 print("Image shape", image.shape)
-image = image[0:51,0:51]
+image = image[0:20,0:20]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -85,6 +85,14 @@ assert(np.shape(image)[0] == np.shape(image)[1])
 image_orig = np.array(image)
 
 state = load(state_file)
+
+def get_params(nx):
+    coef1 = 4.**(-np.log2(float(nx)/50))
+    coef2 = 2.**(-np.log2(float(nx)/50))
+    print("coef1, coef2", coef1, coef2)
+    arcsec_per_px = coef1*0.01
+    defocus = coef1*3.
+    return arcsec_per_px, defocus
 
 def calibrate(arcsec_per_px, nx):
     coef = np.log2(float(nx)/11)
@@ -98,11 +106,10 @@ if state == None:
     #arcsec_per_px = 0.011
     diameter = 20.0
     wavelength = 5250.0
-    defocus = 3.
     gamma = 1.0
     nx = np.shape(image)[0]
 
-    arcsec_per_px=0.01#wavelength/diameter*1e-8*180/np.pi*3600
+    arcsec_per_px, defocus = get_params(nx_orig)#wavelength/diameter*1e-8*180/np.pi*3600
     #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
 
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2)
@@ -155,9 +162,9 @@ betass = []
 for trial in np.arange(0, num_frames):
     
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
-    #pa = psf.phase_aberration([])
-    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    pa = psf.phase_aberration([])
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
