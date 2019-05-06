@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-image = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
+image1 = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
                   [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
                   [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
                   [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
@@ -52,7 +52,7 @@ image = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0
                   [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ]
                   ])
 
-image1 = np.array([[0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. ],
+image = np.array([[0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. ],
                     [0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. ],
                     [0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. ],
                     [0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. ],
@@ -117,12 +117,12 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
-num_frames = 10
+num_frames = 1
 num_iterations = 0
 
-#image = plt.imread('granulation.png')
+image = plt.imread('granulation.png')
 print("Image shape", image.shape)
-#image = image[0:20,0:20]
+image = image[0:100,0:100]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -136,19 +136,19 @@ def get_params(nx):
     coef1 = 4.**(-np.log2(float(nx)/11))
     coef2 = 2.**(-np.log2(float(nx)/11))
     print("coef1, coef2", coef1, coef2)
-    arcsec_per_px = coef1*0.1
+    arcsec_per_px = coef1*0.05
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 1.5
-    return arcsec_per_px, defocus
+    return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
-    coef = np.log2(float(nx))
-    return 2.6*arcsec_per_px*2.**coef
+    coef = np.log2(float(nx)/11)
+    return 2.8*arcsec_per_px*2.**coef
 
 
 if state == None:
     print("Creating new state")
-    jmax = 3
+    jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
@@ -181,15 +181,14 @@ else:
     
 
 fimage = fft.fft2(image)
-#fimage = fft.fftshift(fimage)
+fimage = fft.fftshift(fimage)
 
 
 #aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
-aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0)
+aperture_func = lambda xs: utils.aperture_circ(xs, coef=15., radius =1.)
 #defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
-
 
 my_plot = plot.plot(nrows=num_frames + 1, ncols=5)
 
@@ -214,13 +213,13 @@ for trial in np.arange(0, num_frames):
     #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
-    #D, D_d = psf_.multiply(fimage)
+    D, D_d = psf_.multiply(fimage)
     #betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
-    betas = np.zeros(jmax, dtype='complex')
-    D, D_d = psf_b.multiply(fimage, betas)
+    #betas = np.zeros(jmax, dtype='complex')
+    #D, D_d = psf_b.multiply(fimage, betas)
 
-    #D = fft.ifftshift(D)
-    #D_d = fft.ifftshift(D_d)
+    D = fft.ifftshift(D)
+    D_d = fft.ifftshift(D_d)
     
     #betas_est = np.zeros(jmax, dtype='complex')
     #D1, D1_d = psf_b.convolve(image, betas_est)

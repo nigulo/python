@@ -108,13 +108,8 @@ class test_defocus(unittest.TestCase):
         #arcsec_per_px = 0.057
         #arcsec_per_px = wavelength/diameter*1e-8*180/np.pi*3600
 
-
-        defocus = 2.
-
-        arcsec_per_px_base = 0.05#wavelength/diameter*1e-8*180/np.pi*3600
+        arcsec_per_px_base = 0.1#wavelength/diameter*1e-8*180/np.pi*3600
         
-        app_coef = 4.
-
         counter = 0
         for image in [image_a, image_b, image_c]:
             image1 = image
@@ -123,13 +118,13 @@ class test_defocus(unittest.TestCase):
             image2 = utils.upsample(image1)
             nx = np.shape(image2)[0]
             
-            app_coef /= 4
-            
+            app_coef = 4.**(-np.log2(float(nx_orig)/11))
+       
             #for arcsec_per_px in[0.22*wavelength/diameter*1e-8*180/np.pi*3600]:#, 2.*wavelength/diameter*1e-8*180/np.pi*3600]:
-            for arcsec_per_px in[0.5*arcsec_per_px_base, arcsec_per_px_base, 2*arcsec_per_px_base]:
+            for arcsec_per_px in[0.5*arcsec_per_px_base]:#, arcsec_per_px_base, 2*arcsec_per_px_base]:
                 arcsec_per_px *= app_coef
                 print("arcsec_per_px=", arcsec_per_px)
-                for defocus in[1.2, 2.]:
+                for defocus in[1.5]:#, 2.]:
             
                     aperture_func = lambda xs: utils.aperture_circ(xs, coef=100., radius =1.)
                     #aperture_func = lambda xs: utils.aperture_circ(xs, r=.1, coef=100.)
