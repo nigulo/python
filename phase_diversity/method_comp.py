@@ -130,8 +130,6 @@ def main():
     fimage = fft.fft2(image)
     fimage = fft.fftshift(fimage)
 
-
-
     
     aperture_func = lambda xs: utils.aperture_circ(xs, coef=15., radius =1.)
     defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
@@ -201,18 +199,18 @@ def main():
             ###################################################################
             # Create convolved image and do the estimation
             DF, DF_d = psf_true.multiply(fimage)
+
+            DF = fft.ifftshift(DF)
+            DF_d = fft.ifftshift(DF_d)
             
             alphas_est = sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
             image_est = psf_.deconvolve(DF, DF_d, alphas_est, gamma, do_fft = True)
             
-            DF1 = DF#utils.downsample(DF)
-            DF1_d = DF_d#utils.downsample(DF_d) 
-
-            betas_est = sampler_b.sample(DF1, DF1_d, "samples_b" + str(j) + ".png")
-            image_est_b = psf_b.deconvolve(DF1, DF1_d, betas_est, gamma, do_fft = True)
+            betas_est = sampler_b.sample(DF, DF_d, "samples_b" + str(j) + ".png")
+            image_est_b = psf_b.deconvolve(DF, DF_d, betas_est, gamma, do_fft = True)
         
-            D = fft.ifft2(fft.ifftshift(DF)).real
-            D_d = fft.ifft2(fft.ifftshift(DF_d)).real
+            D = fft.ifft2(DF).real
+            D_d = fft.ifft2(DF_d).real
         
             #image_min = np.min(image)
             #image_max = np.max(image)
