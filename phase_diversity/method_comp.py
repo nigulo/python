@@ -137,8 +137,7 @@ def main():
     wavefront = kolmogorov.kolmogorov(fried, num_realizations, nx_orig*4, sampling=1.)
     
     x1 = np.linspace(-1., 1., nx)
-    x2 = np.linspace(-1., 1., ny)
-    pupil_coords = np.dstack(np.meshgrid(x1, x2))
+    pupil_coords = np.dstack(np.meshgrid(x1, x1))
     pupil = aperture_func(pupil_coords)
 
     my_plot = plot.plot(nrows=1, ncols=1)
@@ -182,9 +181,9 @@ def main():
             #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
 
             #pa_true = psf.phase_aberration(np.random.normal(size=5)*.001)
-            #pa_true = psf.phase_aberration([])
-            #ctf_true = psf.coh_trans_func(aperture_func, pa, defocus_func)
-            ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
+            pa_true = psf.phase_aberration([])
+            ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+            #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
             psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
             psf_vals_true = psf_true.calc(defocus=False)
             psf_vals_d_true = psf_true.calc(defocus=True)
@@ -203,7 +202,7 @@ def main():
             DF = fft.ifftshift(DF)
             DF_d = fft.ifftshift(DF_d)
             
-            alphas_est = sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
+            alphas_est = np.ones(jmax)#sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
             image_est = psf_.deconvolve(DF, DF_d, alphas_est, gamma, do_fft = True)
             
             betas_est = sampler_b.sample(DF, DF_d, "samples_b" + str(j) + ".png")
@@ -235,15 +234,13 @@ def main():
             plot_res.colormap(image_est_b, [j, 5])
             plot_res.colormap(np.abs(image_est_b-image), [j, 6])
             
-            #image_est = fft.ifft2(fimage_est).real
-            #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
             image_est_mean += image_est_norm
             image_est_b_mean += image_est_b_norm
         
             D_mean += D_norm
             D_d_mean += D_d_norm
         
-            plot_res.save("estimates.png")
+            plot_res.save("method_comp.png")
             
             
     image_est_mean /= num_realizations

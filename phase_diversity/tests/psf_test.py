@@ -176,8 +176,8 @@ def calc_psf_via_corr(wfs, mask):
     mser = np.sum(psf.real**2)
     msei = np.sum(psf.imag**2)
     my_plot = plot.plot(nrows=1, ncols=2)
-    my_plot.plotcolormap(psf.real, [0])
-    my_plot.plotcolormap(psf.imag, [1])
+    my_plot.colormap(psf.real, [0])
+    my_plot.colormap(psf.imag, [1])
     my_plot.save("power.png")
     my_plot.close()
     print("mser, msei", mser, msei)
@@ -293,7 +293,7 @@ class test_psf(unittest.TestCase):
         psf_vals = np.zeros((size, size))
             
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
-        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
@@ -325,7 +325,7 @@ class test_psf(unittest.TestCase):
         size = 3
             
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
-        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
@@ -374,7 +374,7 @@ class test_psf(unittest.TestCase):
         n_coefs = 20
         coefs = np.random.normal(size=n_coefs)*10.
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
-        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
@@ -400,7 +400,7 @@ class test_psf(unittest.TestCase):
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
-        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
@@ -450,7 +450,7 @@ class test_psf(unittest.TestCase):
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
-        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
@@ -499,7 +499,7 @@ class test_psf(unittest.TestCase):
         #######################################################################
         # Create data
         pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
-        aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
