@@ -136,7 +136,7 @@ def main():
     aperture_func = lambda xs: utils.aperture_circ(xs, coef=15., radius =1.)
     defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
 
-    wavefront = kolmogorov.kolmogorov(fried, num_realizations, nx*4, sampling=1.)
+    wavefront = kolmogorov.kolmogorov(fried, num_realizations, nx_orig*4, sampling=1.)
     
     x1 = np.linspace(-1., 1., nx)
     x2 = np.linspace(-1., 1., ny)
@@ -144,7 +144,7 @@ def main():
     pupil = aperture_func(pupil_coords)
 
     my_plot = plot.plot(nrows=1, ncols=1)
-    my_plot.color_map(pupil)
+    my_plot.colormap(pupil)
     my_plot.save("pupil.png")
     my_plot.close()
 
@@ -163,10 +163,10 @@ def main():
     
     plot_res = plot.plot(nrows=num_realizations + 1, ncols=7)
     
-    image_est_mean = np.zeros((nx*2-1, nx*2-1))
+    image_est_mean = np.zeros((nx, nx))
     image_est_b_mean = np.zeros((nx, nx))
-    D_mean = np.zeros((nx*2-1, nx*2-1))
-    D_d_mean = np.zeros((nx*2-1, nx*2-1))
+    D_mean = np.zeros((nx, nx))
+    D_d_mean = np.zeros((nx, nx))
             
     image_norm = misc.normalize(image)
 
@@ -175,7 +175,7 @@ def main():
         for j in np.arange(0, num_realizations):
             print("Realization: " + str(j))
             my_plot = plot.plot(nrows=1, ncols=1)
-            my_plot.color_map(wavefront[i,j,:,:])
+            my_plot.colormap(wavefront[i,j,:,:])
             my_plot.save("kolmogorov" + str(i) + "_" + str(j) + ".png")
             my_plot.close()
 
@@ -191,9 +191,9 @@ def main():
             psf_vals_true = psf_true.calc(defocus=False)
             psf_vals_d_true = psf_true.calc(defocus=True)
 
-            plot_psf = plot.plot_map(nrows=1, ncols=2)
-            plot_psf.plot(psf_vals_true, [0])
-            plot_psf.plot(psf_vals_d_true, [1])
+            plot_psf = plot.plot(nrows=1, ncols=2)
+            plot_psf.colormap(psf_vals_true, [0])
+            plot_psf.colormap(psf_vals_d_true, [1])
 
             plot_psf.save("psf" + str(i) + "_" + str(j) + ".png")
             plot_psf.close()
@@ -205,8 +205,8 @@ def main():
             alphas_est = sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
             image_est = psf_.deconvolve(DF, DF_d, alphas_est, gamma, do_fft = True)
             
-            DF1 = utils.downscale(DF)
-            DF1_d = utils.downscale(DF_d) 
+            DF1 = DF#utils.downsample(DF)
+            DF1_d = DF_d#utils.downsample(DF_d) 
 
             betas_est = sampler_b.sample(DF1, DF1_d, "samples_b" + str(j) + ".png")
             image_est_b = psf_b.deconvolve(DF1, DF1_d, betas_est, gamma, do_fft = True)
@@ -229,13 +229,13 @@ def main():
             #my_plot.plot(image_est_norm, [trial, 3])
             #my_plot.plot(np.abs(image_est_norm-image_norm), [trial, 4])
         
-            plot_res.color_map(image, [j, 0])
-            plot_res.color_map(D, [j, 1])
-            plot_res.color_map(D_d, [j, 2])
-            plot_res.color_map(image_est, [j, 3])
-            plot_res.color_map(np.abs(image_est-image), [j, 4])
-            plot_res.color_map(image_est_b, [j, 5])
-            plot_res.color_map(np.abs(image_est_b-image), [j, 6])
+            plot_res.colormap(image, [j, 0])
+            plot_res.colormap(D, [j, 1])
+            plot_res.colormap(D_d, [j, 2])
+            plot_res.colormap(image_est, [j, 3])
+            plot_res.colormap(np.abs(image_est-image), [j, 4])
+            plot_res.colormap(image_est_b, [j, 5])
+            plot_res.colormap(np.abs(image_est_b-image), [j, 6])
             
             #image_est = fft.ifft2(fimage_est).real
             #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
@@ -253,13 +253,13 @@ def main():
     D_mean /= num_realizations
     D_d_mean /= num_realizations
     
-    plot_res.color_map(image_norm, [num_realizations, 0])
-    plot_res.color_map(D_mean, [num_realizations, 1])
-    plot_res.color_map(D_d_mean, [num_realizations, 2])
-    plot_res.color_map(image_est_mean, [num_realizations, 3])
-    plot_res.color_map(np.abs(image_est_mean-image_norm), [num_realizations, 4])
-    plot_res.color_map(image_est_b_mean, [num_realizations, 5])
-    plot_res.color_map(np.abs(image_est_b_mean-image_norm), [num_realizations, 6])
+    plot_res.colormap(image_norm, [num_realizations, 0])
+    plot_res.colormap(D_mean, [num_realizations, 1])
+    plot_res.colormap(D_d_mean, [num_realizations, 2])
+    plot_res.colormap(image_est_mean, [num_realizations, 3])
+    plot_res.colormap(np.abs(image_est_mean-image_norm), [num_realizations, 4])
+    plot_res.colormap(image_est_b_mean, [num_realizations, 5])
+    plot_res.colormap(np.abs(image_est_b_mean-image_norm), [num_realizations, 6])
     
     plot_res.save("method_comp.png")
     plot_res.close()
