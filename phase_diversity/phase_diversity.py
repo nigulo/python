@@ -117,12 +117,12 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
-num_frames = 1
+num_frames = 5
 num_iterations = 0
 
-image = plt.imread('granulation.png')
+image = plt.imread('granulation1.png')
 print("Image shape", image.shape)
-image = image[0:100,0:100]
+image = image[0:200,0:200, 0]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -136,19 +136,19 @@ def get_params(nx):
     coef1 = 4.**(-np.log2(float(nx)/11))
     coef2 = 2.**(-np.log2(float(nx)/11))
     print("coef1, coef2", coef1, coef2)
-    arcsec_per_px = coef1*0.05
+    arcsec_per_px = coef1*0.1
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 1.5
+    defocus = 3.
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
     coef = np.log2(float(nx)/11)
-    return 2.8*arcsec_per_px*2.**coef
+    return 3.0*arcsec_per_px*2.**coef
 
 
 if state == None:
     print("Creating new state")
-    jmax = 10
+    jmax = 3
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
@@ -159,7 +159,7 @@ if state == None:
     arcsec_per_px, defocus = get_params(nx_orig)#wavelength/diameter*1e-8*180/np.pi*3600
     #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -176,7 +176,7 @@ else:
     
     assert(nx == np.shape(image)[0])
     
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2)
     psf_b.set_state(state[7])
     
 
@@ -198,7 +198,7 @@ D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
 
-wavefront = kolmogorov.kolmogorov(fried = np.array([.25]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.1]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
@@ -208,9 +208,9 @@ betass = []
 for trial in np.arange(0, num_frames):
     
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
-    pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    #pa = psf.phase_aberration([])
+    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
