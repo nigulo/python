@@ -199,11 +199,11 @@ def main():
             # Create convolved image and do the estimation
             DF, DF_d = psf_true.multiply(fimage)
 
+            alphas_est = sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
+            image_est = psf_.deconvolve(DF, DF_d, alphas_est, gamma, do_fft = True)
+
             DF = fft.ifftshift(DF)
             DF_d = fft.ifftshift(DF_d)
-            
-            alphas_est = np.ones(jmax)#sampler.sample(DF, DF_d, "samples" + str(j) + ".png")
-            image_est = psf_.deconvolve(DF, DF_d, alphas_est, gamma, do_fft = True)
             
             betas_est = sampler_b.sample(DF, DF_d, "samples_b" + str(j) + ".png")
             image_est_b = psf_b.deconvolve(DF, DF_d, betas_est, gamma, do_fft = True)

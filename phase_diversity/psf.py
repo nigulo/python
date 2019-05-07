@@ -161,7 +161,6 @@ class psf():
         coh_vals = self.coh_trans_func(defocus)
         
         corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
-        
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
 
         if normalize:
@@ -206,6 +205,7 @@ class psf():
             return ret_val[0]
 
     def deconvolve(self, D, D_d, alphas, gamma, do_fft = True):
+        regularizer_eps = 1e-10
         assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
@@ -218,10 +218,10 @@ class psf():
         S_d = self.otf_vals[True]
         S_d_conj = S_d.conjugate()
         
-        F_image = D * S_conj + gamma * D_d * S_d_conj
+        F_image = D * S_conj + gamma * D_d * S_d_conj + regularizer_eps
         np.set_printoptions(threshold=np.inf)
-        F_image /= S*S_conj + gamma * S_d * S_d_conj
-        
+        F_image /= (S*S_conj + gamma * S_d * S_d_conj + regularizer_eps)
+
         F_image = fft.ifftshift(F_image)
         
         if not do_fft:
