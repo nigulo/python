@@ -53,8 +53,8 @@ def save(filename, state):
 
 ###############################################################################
 # Parameters
-fried = np.linspace(0.25, 2., 1) # Fried parameter (in meters).
-num_realizations = 10    # Number of realizations per fried parameter. 
+fried = np.linspace(0.2, 2., 1) # Fried parameter (in meters).
+num_realizations = 5    # Number of realizations per fried parameter. 
 #jmax = 5
 #arcsec_per_px = 0.055
 #diameter = 50.0
@@ -79,11 +79,8 @@ def calibrate(arcsec_per_px, nx):
 
 def main():
     image = plt.imread('granulation1.png')
-    image = image[0:30,0:30,0]
+    image = image[0:100,0:100,0]
     
-    ny = np.shape(image)[1]
-    
-
     nx_orig = np.shape(image)[0]
     image = utils.upsample(image)
     assert(np.shape(image)[0] == np.shape(image)[1])
@@ -181,9 +178,9 @@ def main():
             #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
 
             #pa_true = psf.phase_aberration(np.random.normal(size=5)*.001)
-            pa_true = psf.phase_aberration([])
-            ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-            #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
+            #pa_true = psf.phase_aberration([])
+            #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+            ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
             psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
             psf_vals_true = psf_true.calc(defocus=False)
             psf_vals_d_true = psf_true.calc(defocus=True)
@@ -230,9 +227,9 @@ def main():
             plot_res.colormap(D, [j, 1])
             plot_res.colormap(D_d, [j, 2])
             plot_res.colormap(image_est, [j, 3])
-            plot_res.colormap(np.abs(image_est-image), [j, 4])
+            plot_res.colormap(np.abs(image_est_norm-image_norm), [j, 4])
             plot_res.colormap(image_est_b, [j, 5])
-            plot_res.colormap(np.abs(image_est_b-image), [j, 6])
+            plot_res.colormap(np.abs(image_est_b_norm-image_norm), [j, 6])
             
             image_est_mean += image_est_norm
             image_est_b_mean += image_est_b_norm

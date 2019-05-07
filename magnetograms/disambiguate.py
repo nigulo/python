@@ -239,11 +239,6 @@ for i in np.arange(0, len(x1)):
         p[i, j] = calc_p(x1[i], x2[j])
 print("p:", p)
 
-bx_smooth = signal.convolve2d(bx, np.ones((5,5)), mode = 'same') #Smooth it a little
-by_smooth = signal.convolve2d(by, np.ones((5,5)), mode = 'same') #Smooth it a little
-bx_smooth = np.reshape(bx_smooth, n)
-by_smooth = np.reshape(by_smooth, n)
-
 bx = np.reshape(bx, n)
 by = np.reshape(by, n)
 bz = np.reshape(bz, n)
@@ -263,12 +258,21 @@ print(x_mesh)
 
 for i in np.arange(0, n):
     #if np.random.uniform() < 0.5:
-        #bx[i] *= -1
-        #by[i] *= -1
+    #    bx[i] *= -1
+    #    by[i] *= -1
+
     bx[i] = abs(bx[i])
     by[i] = abs(by[i])
 
-alpha = 0.0
+
+bx_temp = np.reshape(bx, (n1, n2))
+by_temp = np.reshape(by, (n1, n2))
+bx_smooth = signal.convolve2d(bx_temp, np.ones((5,5)), mode = 'same') #Smooth it a little
+by_smooth = signal.convolve2d(by_temp, np.ones((5,5)), mode = 'same') #Smooth it a little
+bx_smooth = np.reshape(bx_smooth, n)
+by_smooth = np.reshape(by_smooth, n)
+
+alpha = .001
 #bx_offset = np.zeros_like(bx)#bxy + bz
 #by_offset = np.zeros_like(by)#bxy + bz
 #bx_offset = dbzx*np.std(bx)/np.std(dbzx)
@@ -335,6 +339,7 @@ bx_norm = y[:,0]*norm+bx_offset+bx_offset1
 by_norm = y[:,1]*norm+by_offset+by_offset1
 
 energy = np.sum(bx**2 + by**2)
+np.testing.assert_array_almost_equal(np.sum(bx_norm**2 + by_norm**2), energy)
 
 do_plots(None)
 
@@ -429,15 +434,15 @@ def calc_loglik(K, y):
 
 
 def recalc_offsets(y, bx_offset1, by_offset1):
-    y1 = y*norm
-    y1[:,0] += bx_offset
-    y1[:,1] += by_offset
+    y = y*norm
+    y[:,0] += bx_offset
+    y[:,1] += by_offset
 
-    y1[:,0] += bx_offset1
-    y1[:,1] += by_offset1
+    y[:,0] += bx_offset1
+    y[:,1] += by_offset1
 
-    bx = np.reshape(y1[:,0], (n1, n2))
-    by = np.reshape(y1[:,1], (n1, n2))
+    bx = np.reshape(y[:,0], (n1, n2))
+    by = np.reshape(y[:,1], (n1, n2))
     bx_smooth = signal.convolve2d(bx, np.ones((5,5)), mode = 'same') #Smooth it a little
     by_smooth = signal.convolve2d(by, np.ones((5,5)), mode = 'same') #Smooth it a little
     bx_smooth = np.reshape(bx_smooth, n)
@@ -445,10 +450,17 @@ def recalc_offsets(y, bx_offset1, by_offset1):
 
     bx_offset1 = -alpha*by_smooth
     by_offset1 = -alpha*bx_smooth
-    
-    return (bx_offset1, by_offset1)
 
-def reverse(y, y_sign, ii):
+    y[:,0] -= bx_offset1
+    y[:,1] -= by_offset1
+
+    y[:,0] -= bx_offset
+    y[:,1] -= by_offset
+    y/=norm
+
+    return (y, bx_offset1, by_offset1)
+
+def reverse(y, y_sign, ii, bx_offset1, by_offset1):
     y[ii]*=norm
     y[ii,0] += bx_offset[ii]
     y[ii,1] += by_offset[ii]
@@ -472,8 +484,8 @@ def reverse(y, y_sign, ii):
     
 def get_b(y, ii):
     y1 = y * norm
-    y1[:,0] += bx_offset[ii]+bx_offset[ii]
-    y1[:,1] += by_offset[ii]+by_offset[ii]
+    y1[:,0] += bx_offset[ii]+bx_offset1[ii]
+    y1[:,1] += by_offset[ii]+by_offset1[ii]
     return y1
 
 def get_probs(thetas):
@@ -485,7 +497,7 @@ def get_probs(thetas):
     p /= np.sum(p)
     return p    
 
-def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
+def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative, bx_offset1, by_offset1):
     #inv_ell_sq_two = -1./(2.*length_scale**2)
     inv_ell_sq_two = 1./(2.*length_scale)
     #normal_dist = stats.norm(0.0, length_scale)
@@ -538,12 +550,12 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
                 th = 0.8
             if r < th:
                 if y_sign[ri] < 0:
-                    reverse(y, y_sign, ri)
+                    reverse(y, y_sign, ri, bx_offset1, by_offset1)
                     y_sign[ri] = 1 # overwrite sign
                     #sign_change[ri] = True
             else:
                 if y_sign[ri] > 0:
-                    reverse(y, y_sign, ri)
+                    reverse(y, y_sign, ri, bx_offset1, by_offset1)
                     y_sign[ri] = -1 # overwrite sign
                     #sign_change[ri] = True
             #print(np.exp(thetas[ri]))
@@ -581,7 +593,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             sim_indices = np.where(sim < 0.)[0]
             #y_copy=np.array(y)
             #y_sign_copy=np.array(y_sign)
-            reverse(y, y_sign, mask[inds_test][sim_indices])
+            reverse(y, y_sign, mask[inds_test][sim_indices], bx_offset1, by_offset1)
             #y_copy1=np.array(y)
             #y_sign_copy1=np.array(y_sign)
             #reverse(y_copy1, y_sign_copy1, mask[inds_test][sim_indices])
@@ -707,7 +719,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
 
         start = time.time()
 
-        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
+        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative, bx_offset1, by_offset1)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
         end = time.time()
         print("Align took: " + str(end - start))
@@ -724,7 +736,13 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
 
         if loglik1 > loglik:
             loglik = loglik1
-            bx_offset1, by_offset1 = recalc_offsets(y, bx_offset1, by_offset1)
+            bx_dis = y[:,0]*norm + bx_offset+bx_offset1
+            by_dis = y[:,1]*norm + by_offset+by_offset1
+        
+            energy1 = np.sum(bx_dis**2 + by_dis**2)
+            print("Energy diff before:", (energy1-energy)/energy)
+            y, bx_offset1, by_offset1 = recalc_offsets(y, bx_offset1, by_offset1)
+
 
             for ri in np.arange(0, n):
                 if ri in affected_indices:

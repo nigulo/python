@@ -160,7 +160,8 @@ class psf():
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
-        corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
+        #corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
+        corr = signal.fftconvolve(coh_vals, coh_vals[::-1, ::-1].conj(), mode='full')/(self.nx*self.nx)
         vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
 
         if normalize:
