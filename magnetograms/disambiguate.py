@@ -256,13 +256,13 @@ print("u_mesh=", u_mesh)
 print("u=", u)
 print(x_mesh)
 
-for i in np.arange(0, n):
+#for i in np.arange(0, n):
     #if np.random.uniform() < 0.5:
     #    bx[i] *= -1
     #    by[i] *= -1
 
-    bx[i] = abs(bx[i])
-    by[i] = abs(by[i])
+#    bx[i] = abs(bx[i])
+#    by[i] = abs(by[i])
 
 
 bx_temp = np.reshape(bx, (n1, n2))
@@ -272,15 +272,17 @@ by_smooth = signal.convolve2d(by_temp, np.ones((5,5)), mode = 'same') #Smooth it
 bx_smooth = np.reshape(bx_smooth, n)
 by_smooth = np.reshape(by_smooth, n)
 
-alpha = .001
-#bx_offset = np.zeros_like(bx)#bxy + bz
-#by_offset = np.zeros_like(by)#bxy + bz
+alpha = 0.0
+bx_offset = np.zeros_like(bx)#bxy + bz
+by_offset = np.zeros_like(by)#bxy + bz
 #bx_offset = dbzx*np.std(bx)/np.std(dbzx)
 #by_offset = dbzy*np.std(by)/np.std(dbzy)
-bx_offset = dbzx*np.std(bx)/np.std(dbzx)
-by_offset = dbzy*np.std(by)/np.std(dbzy)
-bx_offset1 = -alpha*by_smooth
-by_offset1 = -alpha*bx_smooth
+
+#bx_offset1 = -alpha*by_smooth
+#by_offset1 = -alpha*bx_smooth
+bx_offset1 = -alpha*dbzy*np.std(by)/np.std(dbzy)
+by_offset1 = -alpha*dbzx*np.std(bx)/np.std(dbzx)
+
 
 bx1 = bx - bx_offset - bx_offset1
 by1 = by - by_offset - by_offset1
@@ -396,12 +398,12 @@ def sample(x, y):
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
-            ell_min = .05
-            ell_max = 1.
+            ell_min = 0.2#.05
+            ell_max = 0.5#1.
             sig_var_min = data_var*.1
             sig_var_max = data_var*2.
-            noise_var_min = data_var*.001
-            noise_var_max = data_var*.5
+            noise_var_min = data_var*0.0001#*.001
+            noise_var_max = data_var*0.01#*.5
             ell_init = random.uniform(ell_min, ell_max)
             sig_var_init = random.uniform(sig_var_min, sig_var_max)
             noise_var_init = random.uniform(noise_var_min, noise_var_max)
@@ -488,14 +490,17 @@ def get_b(y, ii):
     y1[:,1] += by_offset[ii]+by_offset1[ii]
     return y1
 
-def get_probs(thetas):
-    p = np.exp(thetas)
-    p -= 0.5
-    p = np.abs(p)*2.
-    p[p > 0.9] = 0.9
-    p[p < 0.1] = 0.1
-    p /= np.sum(p)
-    return p    
+def get_probs(thetas, y):
+    b = np.sqrt(np.sum(y*y, axis=1))
+    return b/np.sum(b)
+    
+    #p = np.exp(thetas)
+    #p -= 0.5
+    #p = np.abs(p)*2.
+    #p[p > 0.8] = 0.8
+    #p[p < 0.2] = 0.2
+    #p /= np.sum(p)
+    #return p    
 
 def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative, bx_offset1, by_offset1):
     #inv_ell_sq_two = -1./(2.*length_scale**2)
@@ -525,7 +530,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
         affected_indices.add(i)
         affected_indices.update(inds1)
         
-        p1 = get_probs(thetas[inds1])
+        p1 = get_probs(thetas[inds1], y[inds1])
 
         inds_train = np.array([i])
         
@@ -636,8 +641,8 @@ def align(x, y, y_sign, indices, n, length_scale, thetas):
         reverse(y, y_sign, mask[close_by_inds][sim_indices])
 '''
 
-def get_random_indices(x, n, length_scale, thetas):
-    p = get_probs(thetas)
+def get_random_indices(x, n, length_scale, thetas, y):
+    p = get_probs(thetas, y)
     #random_indices = np.random.choice(n, size=int(n/2), replace=False)
     random_indices = np.random.choice(n, min(max(1, int(1./(np.pi*length_scale**2))), 20), replace=False, p=p)
     i = 0
@@ -714,7 +719,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
-        random_indices = get_random_indices(x, n, temp*length_scale, thetas)
+        random_indices = get_random_indices(x, n, temp*length_scale, thetas, y)
 
 
         start = time.time()
@@ -741,7 +746,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
         
             energy1 = np.sum(bx_dis**2 + by_dis**2)
             print("Energy diff before:", (energy1-energy)/energy)
-            y, bx_offset1, by_offset1 = recalc_offsets(y, bx_offset1, by_offset1)
+            #y, bx_offset1, by_offset1 = recalc_offsets(y, bx_offset1, by_offset1)
 
 
             for ri in np.arange(0, n):

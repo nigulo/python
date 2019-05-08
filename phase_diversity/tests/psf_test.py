@@ -9,6 +9,7 @@ import unittest
 import utils
 sys.path.append('../../utils')
 import plot
+import misc
 
 image10x10 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804,  0.45882353, 0.5137255 ],
@@ -170,6 +171,15 @@ def calc_psf_via_corr(wfs, mask):
  
     #psf = np.zeros((2*wfs.shape[0]-1, 2*wfs.shape[1]-1))
     pupil = mask*np.exp(1.j*wfs)
+    
+    
+    my_plot = plot.plot(nrows=1, ncols=2)
+    my_plot.colormap(pupil.real, [0])
+    my_plot.colormap(pupil.imag, [1])
+        
+    my_plot.save("pupil_corr.png")
+    my_plot.close()
+    
     corr = signal.correlate2d(pupil, pupil, mode='full')/pupil.shape[0]/pupil.shape[1]
     psf = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
     
@@ -188,68 +198,30 @@ def calc_psf_via_corr(wfs, mask):
 
 def calc_psf_via_fft(wfs, mask):
     pupil = mask*np.exp(1j*wfs)
-    #pupil = fft.ifftshift(pupil)
-    #pupil -= np.mean(pupil)
-    
-    nx = pupil.shape[0]
-    ny = pupil.shape[1]
-    pupil_mirror_x = pupil#[::-1,:]
-    pupil_mirror_y = pupil#[:,::-1]
-    pupil_mirror_xy = pupil#[::-1,::-1]
-    
-    #pupil_full = utils.resize(pupil.real) + 1.j*utils.resize(pupil.imag)
-    pupil_full = np.zeros((nx*2 - 1, ny*2 - 1), dtype='complex')
-    pupil_full[:nx, :ny] = pupil
-    pupil_full[:nx, :ny] += pupil_mirror_xy
-    #pupil_full[nx-1:, :ny] = pupil_mirror_x
-    #pupil_full[:nx, ny-1:] = pupil_mirror_y
-    #pupil_full[nx-1:, ny-1:] = pupil_mirror_xy
-    #pupil_full = np.roll(np.roll(pupil_full, int(nx/2), axis=0), int(ny/2), axis=1)
-    
     
     my_plot = plot.plot(nrows=1, ncols=2)
-    my_plot.colormap(pupil_full.real, [0])
-    my_plot.colormap(pupil_full.imag, [1])
+    my_plot.colormap(pupil.real, [0])
+    my_plot.colormap(pupil.imag, [1])
         
-    my_plot.save("pupil_full.png")
+    my_plot.save("pupil_fft.png")
     my_plot.close()
     
-    #pupil += pupil[::-1,::-1]#.conjugate()
-    #pupil -= np.mean(pupil)
-    #pupil /= np.std(pupil)
-
-    #i_m = pupil.shape[0]/2
-    #j_m = pupil.shape[1]/2
-    #for i in np.arange(0, pupil.shape[0]):
-    #    for j in np.arange(0, pupil.shape[1]):
-    #        pupil[i, j] *= 4.*(np.abs(i-i_m)*np.abs(j-j_m)/pupil.shape[0]/pupil.shape[1])
-
     vals = fft.ifft2(pupil)
     vals = (vals*vals.conjugate()).real
     vals = fft.ifftshift(vals)
     
-    #vals /= vals.sum()
-    #vals += vals.T
-    #vals += vals[::-1,::-1]
-
-    #vals2 = fft.ifft2(pupil[::-1,::-1])
-    #vals2 = (vals2*vals2.conjugate()).real
-    #vals2 = fft.fftshift(vals2)
-
-    #vals += vals2
-    #print("MEAN:",np.mean(vals))
     vals -= np.mean(vals)
-    #print("VALS:", vals, vals[::-1,::-1])
-    #print("VALS:", vals.T)
 
     return vals
 
 
 class test_psf(unittest.TestCase):
 
-    '''
     def test_calc2(self):
-        aperture_func = lambda xs: utils.aperture_circ(xs, 0.2, 15.0)
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=0.2)
 
         n_coefs = 25
         coefs = np.random.normal(size=n_coefs)*10
@@ -260,27 +232,35 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
         #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
-            
-        _ = psf.psf(ctf, size, size).calc()
+        
+        psf_ = psf.psf(ctf, size, arcsec_per_px, diameter, wavelength)
+        _ = psf_.calc()
 
-        x1 = np.linspace(-1., 1., size)/np.sqrt(2)
-        x2 = np.linspace(-1., 1., size)/np.sqrt(2)
-        coords = np.dstack(np.meshgrid(x1, x2))
+        xs = np.linspace(-1., 1., size)/np.sqrt(2)
+        coords = np.dstack(np.meshgrid(xs, xs))
         pupil = aperture_func(coords)
         
         psf_vals = calc_psf_via_corr(pa(), pupil)
+        
         psf_vals_expected = calc_psf_via_fft(pa(), pupil)
+        psf_vals_expected = utils.upsample(psf_vals_expected)
 
-        my_plot = plot.plot_map(nrows=1, ncols=2)
-        my_plot.plot(psf_vals, [0])
-        my_plot.plot(psf_vals_expected, [1])
+        psf_vals = misc.normalize(psf_vals)
+        psf_vals_expected = misc.normalize(psf_vals_expected)
+
+        psf_vals_expected = np.roll(np.roll(psf_vals_expected, -1, axis=0), -1, axis=1)
+
+        my_plot = plot.plot(nrows=2, ncols=2)
+        my_plot.colormap(psf_vals, [0, 0])
+        my_plot.colormap(psf_vals_expected, [0, 1])
+
+        my_plot.colormap(psf_vals, [1, 0])
+        my_plot.colormap(psf_vals_expected, [1, 1])
             
         my_plot.save("test_calc2.png")
         my_plot.close()
 
-        np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 8)
-    '''
-    
+        np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 1)
     
     def test_calc(self):
         arcsec_per_px = 0.055
@@ -553,7 +533,6 @@ class test_psf(unittest.TestCase):
             
             
         np.testing.assert_almost_equal(grads, grads_expected, 4)
-
 
         
 if __name__ == '__main__':
