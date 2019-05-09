@@ -67,7 +67,7 @@ def get_params(nx):
     coef1 = 4.**(-np.log2(float(nx)/11))
     coef2 = 2.**(-np.log2(float(nx)/11))
     print("coef1, coef2", coef1, coef2)
-    arcsec_per_px = coef1*0.1
+    arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 3.
     return (arcsec_per_px, defocus)
@@ -79,7 +79,7 @@ def calibrate(arcsec_per_px, nx):
 
 def main():
     image = plt.imread('granulation1.png')
-    image = image[0:100,0:100,0]
+    image = image[125:225,125:225,0]
     
     nx_orig = np.shape(image)[0]
     image = utils.upsample(image)
@@ -91,7 +91,7 @@ def main():
 
     if state == None:
         print("Creating new state")
-        jmax = 3
+        jmax = 10
         #arcsec_per_px = 0.057
         #arcsec_per_px = 0.011
         diameter = 20.0
@@ -145,11 +145,11 @@ def main():
     
     ###########################################################################
     # Create objects for image reconstruction
-    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax*2), defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=1)
 
-    sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
+    sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=3)
 
 
 
@@ -166,6 +166,7 @@ def main():
 
     
     for i in np.arange(0, len(fried)):
+        D0 = None
         for j in np.arange(0, num_realizations):
             print("Realization: " + str(j))
             my_plot = plot.plot(nrows=1, ncols=1)
@@ -216,6 +217,22 @@ def main():
             image_est_norm = misc.normalize(image_est)
             image_est_b_norm = misc.normalize(image_est_b)
             
+            if D0 is not None:
+                corr = signal.correlate2d(D0, D_norm, mode='full')
+                plot_corr = plot.plot(nrows=1, ncols=1)
+                plot_corr.colormap(corr)
+                plot_corr.save("corr.png")
+                plot_corr.close()
+                
+                shift = np.unravel_index(np.argmax(corr, axis=None), corr.shape) - np.array([int(corr.shape[0]/2), int(corr.shape[1]/2)])
+                print("shift:", shift)
+                D_norm = np.roll(np.roll(D_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+                D_d_norm = np.roll(np.roll(D_d_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+                image_est_norm = np.roll(np.roll(image_est_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+                image_est_b_norm = np.roll(np.roll(image_est_b_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+
+            else:
+                D0 = D_norm
         
             #my_plot.plot(image_norm, [trial, 0])
             #my_plot.plot(D_norm, [trial, 1])
@@ -224,8 +241,8 @@ def main():
             #my_plot.plot(np.abs(image_est_norm-image_norm), [trial, 4])
         
             plot_res.colormap(image, [j, 0])
-            plot_res.colormap(D, [j, 1])
-            plot_res.colormap(D_d, [j, 2])
+            plot_res.colormap(D_norm, [j, 1])
+            plot_res.colormap(D_d_norm, [j, 2])
             plot_res.colormap(image_est, [j, 3])
             plot_res.colormap(np.abs(image_est_norm-image_norm), [j, 4])
             plot_res.colormap(image_est_b, [j, 5])

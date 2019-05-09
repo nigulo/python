@@ -128,7 +128,7 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True):
         self.nx= nx
         coords, rc, x_limit = get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
@@ -156,25 +156,38 @@ class psf():
         self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
         self.coh_trans_func2.calc(coords2, rc)
         
+        self.corr_or_fft = corr_or_fft
+        
         
     def calc(self, defocus = True, normalize = True):
         coh_vals = self.coh_trans_func(defocus)
         
-        #corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
-        corr = signal.fftconvolve(coh_vals, coh_vals[::-1, ::-1].conj(), mode='full')/(self.nx*self.nx)
-        vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
+        if self.corr_or_fft:
+            #corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
+            corr = signal.fftconvolve(coh_vals, coh_vals[::-1, ::-1].conj(), mode='full')/(self.nx*self.nx)
+            vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr))).real
+        else:
+            vals = fft.ifft2(coh_vals)
+            vals = (vals*vals.conjugate()).real
+            vals = fft.ifftshift(vals)
+            vals = utils.upsample(vals)
+            # In principle there shouldn't be negative values, but ...
+            vals[vals < 0] = 0. # Set negative values to zero
+            corr = fft.fftshift(fft.fft2(fft.ifftshift(vals)))
 
+        
         if normalize:
             vals /= vals.sum()
         self.incoh_vals[defocus] = vals
         self.otf_vals[defocus] = corr
+
         return vals
     
     def calc_otf(self, defocus = True, recalc_psf=True):
         if recalc_psf:
             self.calc(defocus)
-        #vals = fft.fft2(fft.ifftshift(self.incoh_vals[defocus]))
-        ##np.testing.assert_almost_equal(fft.fftshift(vals), self.corr[defocus])
+            #vals = fft.fft2(fft.ifftshift(self.incoh_vals[defocus]))
+            #np.testing.assert_almost_equal(fft.fftshift(vals), self.otf_vals[defocus])
         #vals = fft.fftshift(vals)
         #self.otf_vals[defocus] = vals
         #return vals

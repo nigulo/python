@@ -15,7 +15,7 @@ mpl.rcParams['figure.figsize'] = (20, 30)
 import numpy as np
 #import pylab as plt
 #import pandas as pd
-import GPR_div_free as GPR_div_free
+import cov_div_free as cov_div_free
 import scipy.misc
 import numpy.random as random
 import scipy.sparse.linalg as sparse
@@ -116,7 +116,7 @@ else:
         noise_var_train = 0.01
         mean_train = 0.
 
-        gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+        gp_train = cov_div_free.cov_div_free(sig_var_train, length_scale_train, noise_var_train)
         K = gp_train.calc_cov(x, x, True)
 
         print("SIIN")
@@ -365,7 +365,7 @@ print("data_var:", data_var)
 def sample(x, y):
 
     def cov_func(sig_var, ell, noise_var, u):
-        gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
         U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
         return  U, U_grads
 
@@ -512,7 +512,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     #used_js = set()
     mask = np.where(~mask)[0]
     affected_indices = set()
-    gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+    gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
     for i in indices:
 
         #######################################################################
@@ -696,7 +696,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
             
 
         if loglik is None:
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+            gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
             W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
@@ -712,7 +712,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 

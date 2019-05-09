@@ -8,7 +8,7 @@ mpl.rcParams['figure.figsize'] = (20, 30)
 import numpy as np
 #import pylab as plt
 #import pandas as pd
-import GPR_div_free as GPR_div_free
+import cov_div_free as cov_div_free
 import scipy.misc
 import numpy.random as random
 import scipy.interpolate as interp
@@ -110,7 +110,7 @@ length_scale_train = 0.1
 noise_var_train = 0.000001
 mean_train = 0.0
 
-gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+gp_train = cov_div_free.cov_div_free(sig_var_train, length_scale_train, noise_var_train)
 K = gp_train.calc_cov(x, x, True)
 #U = gp_train.calc_cov(u, u, data_or_test=True)
 #W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
@@ -238,7 +238,7 @@ def test():
     logliks_true = np.zeros(len(length_scales))
     for test_no in np.arange(0, len(length_scales)):
         length_scale = length_scales[test_no]
-        gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale, noise_var_train)
+        gp = cov_div_free.cov_div_free(sig_var_train, length_scale, noise_var_train)
         K = gp.calc_cov(x, x, data_or_test=True)
         U = gp.calc_cov(u, u, data_or_test=True)
         #print K

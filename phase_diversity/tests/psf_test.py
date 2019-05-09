@@ -196,7 +196,7 @@ def calc_psf_via_corr(wfs, mask):
     return psf
 
 
-def calc_psf_via_fft(wfs, mask):
+def calc_psf_via_fft(wfs, mask, normalize = True):
     pupil = mask*np.exp(1j*wfs)
     
     my_plot = plot.plot(nrows=1, ncols=2)
@@ -210,14 +210,17 @@ def calc_psf_via_fft(wfs, mask):
     vals = (vals*vals.conjugate()).real
     vals = fft.ifftshift(vals)
     
-    vals -= np.mean(vals)
+    if normalize:
+        vals /= vals.sum()
+    
+    #vals -= np.mean(vals)
 
     return vals
 
 
 class test_psf(unittest.TestCase):
 
-    def test_calc2(self):
+    def test_corr_vs_fft(self):
         arcsec_per_px = 0.055
         diameter = 20.0
         wavelength = 5250.0
@@ -257,12 +260,12 @@ class test_psf(unittest.TestCase):
         my_plot.colormap(psf_vals, [1, 0])
         my_plot.colormap(psf_vals_expected, [1, 1])
             
-        my_plot.save("test_calc2.png")
+        my_plot.save("test_corr_vs_fft.png")
         my_plot.close()
 
         np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 1)
     
-    def test_calc(self):
+    def test_calc_via_corr(self):
         arcsec_per_px = 0.055
         diameter = 20.0
         wavelength = 5250.0
@@ -294,6 +297,40 @@ class test_psf(unittest.TestCase):
         threshold = np.zeros_like(psf_vals)
         np.testing.assert_array_less(-psf_vals, threshold)
         
+
+    def test_calc_via_fft(self):
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+
+        n_coefs = 25
+        coefs = np.random.normal(size=n_coefs)
+        size = 20
+        psf_vals = np.zeros((size, size))
+            
+        pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
+        
+        ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 0.0)
+        #ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)
+        
+        psf_ = psf.psf(ctf, size, arcsec_per_px, diameter, wavelength, corr_or_fft=False)
+        psf_vals = psf_.calc(normalize = False)
+
+        coords = psf_.coords
+        pupil = aperture_func(coords)
+        
+        psf_vals_expected = calc_psf_via_fft(pa(), pupil, normalize = False)
+        psf_vals_expected = utils.upsample(psf_vals_expected)
+
+        my_plot = plot.plot(nrows=1, ncols=2)
+        my_plot.colormap(psf_vals, [0])
+        my_plot.colormap(psf_vals_expected, [1])
+
+        my_plot.save("test_calc_via_fft.png")
+        my_plot.close()
+
+        np.testing.assert_almost_equal(psf_vals, psf_vals_expected, 8)
 
     def test_calc_otf(self):
         arcsec_per_px = 0.055

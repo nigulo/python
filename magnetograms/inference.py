@@ -15,7 +15,7 @@ mpl.rcParams['figure.figsize'] = (20, 30)
 import numpy as np
 #import pylab as plt
 #import pandas as pd
-import GPR_div_free as GPR_div_free
+import cov_div_free as cov_div_free
 import scipy.misc
 import numpy.random as random
 import scipy.interpolate as interp
@@ -97,7 +97,7 @@ print(x_mesh)
 
 if not data_loaded:    
     
-    gp_train = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+    gp_train = cov_div_free.cov_div_free(sig_var_train, length_scale_train, noise_var_train)
     K = gp_train.calc_cov(x, x, True)
     #U = gp_train.calc_cov(u, u, data_or_test=True)
     #W = calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
@@ -167,7 +167,7 @@ def sample(x, y):
         sig_var = pm.HalfNormal('sig_var', sd=1.0)
         
     def cov_func(sig_var, ell, noise_var, u):
-        gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
         U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
         return  U, U_grads
     
@@ -290,7 +290,7 @@ def algorithm_a(x, y, y_orig, sig_var=None, length_scale=None):
             
 
         if loglik is None:
-            gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+            gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
             W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
@@ -305,7 +305,7 @@ def algorithm_a(x, y, y_orig, sig_var=None, length_scale=None):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
@@ -517,7 +517,7 @@ def algorithm_b(x, y, y_orig):
             #mean=mean_train
             length_scale=length_scale_train
 
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
         #loglik = gp.init(x, y)
         U = gp.calc_cov(u, u, data_or_test=True)
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
@@ -532,7 +532,7 @@ def algorithm_b(x, y, y_orig):
             num_tries = 1
             max_loglik = loglik
         
-        gp = GPR_div_free.GPR_div_free(sig_var, length_scale, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         
@@ -599,7 +599,7 @@ print("******************** Algorithm b ********************")
 perf_b = perf_a 
 field_b = field_a
 
-gp = GPR_div_free.GPR_div_free(sig_var_train, length_scale_train, noise_var_train)
+gp = cov_div_free.cov_div_free(sig_var_train, length_scale_train, noise_var_train)
 U = gp.calc_cov(u, u, data_or_test=True)
 W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 loglik_true = calc_loglik_approx(U, W, np.reshape(y_orig, (2*n, -1)))

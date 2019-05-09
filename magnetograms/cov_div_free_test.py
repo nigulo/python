@@ -1,8 +1,8 @@
 import numpy as np
-import GPR_div_free
+import cov_div_free
 import unittest
 
-class test_GPR_div_feee(unittest.TestCase):
+class test_cov_div_feee(unittest.TestCase):
 
     def test_calc_cov(self):
         
@@ -19,7 +19,7 @@ class test_GPR_div_feee(unittest.TestCase):
         sig_var = 0.5
         ell = 0.2
         noise_var = 0.07        
-        gp = GPR_div_free.GPR_div_free(sig_var, ell, noise_var)
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
         
         K, K_grads = gp.calc_cov(x, x, data_or_test=True, calc_grad = True)
         
@@ -74,32 +74,32 @@ class test_GPR_div_feee(unittest.TestCase):
         delta_ell = ell * 1.0e-10
         delta_noise_var = noise_var * 1.0e-5
 
-        gp1 = GPR_div_free.GPR_div_free(sig_var + delta_sig_var, ell, noise_var)
+        gp1 = cov_div_free.cov_div_free(sig_var + delta_sig_var, ell, noise_var)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = (K1 - K) / delta_sig_var
         np.testing.assert_almost_equal(K_grads[0,:,:], K_grads_expected, 10)
         
-        gp1 = GPR_div_free.GPR_div_free(sig_var - delta_sig_var, ell, noise_var)
+        gp1 = cov_div_free.cov_div_free(sig_var - delta_sig_var, ell, noise_var)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = -(K1 - K) /delta_sig_var
         np.testing.assert_almost_equal(K_grads[0,:,:], K_grads_expected, 10)
 
-        gp1 = GPR_div_free.GPR_div_free(sig_var, ell + delta_ell, noise_var)
+        gp1 = cov_div_free.cov_div_free(sig_var, ell + delta_ell, noise_var)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = (K1 - K) / delta_ell
         np.testing.assert_almost_equal(K_grads[1,:,:], K_grads_expected, 9)
         
-        gp1 = GPR_div_free.GPR_div_free(sig_var, ell - delta_ell, noise_var)
+        gp1 = cov_div_free.cov_div_free(sig_var, ell - delta_ell, noise_var)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = -(K1 - K) / delta_ell
         np.testing.assert_almost_equal(K_grads[1,:,:], K_grads_expected, 9)
 
-        gp1 = GPR_div_free.GPR_div_free(sig_var, ell, noise_var + delta_noise_var)
+        gp1 = cov_div_free.cov_div_free(sig_var, ell, noise_var + delta_noise_var)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = (K1 - K) / delta_noise_var
         np.testing.assert_almost_equal(K_grads[2,:,:], K_grads_expected, 10)
         
-        gp1 = GPR_div_free.GPR_div_free(sig_var, ell, noise_var - delta_noise_var)
+        gp1 = cov_div_free.cov_div_free(sig_var, ell, noise_var - delta_noise_var)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = -(K1 - K) / delta_noise_var
         np.testing.assert_almost_equal(K_grads[2,:,:], K_grads_expected, 10)

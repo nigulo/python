@@ -136,7 +136,7 @@ def get_params(nx):
     coef1 = 4.**(-np.log2(float(nx)/11))
     coef2 = 2.**(-np.log2(float(nx)/11))
     print("coef1, coef2", coef1, coef2)
-    arcsec_per_px = coef1*0.1
+    arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 3.
     return (arcsec_per_px, defocus)
@@ -148,7 +148,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 3
+    jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
@@ -205,6 +205,7 @@ sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
 betass = []
 
+D0 = None
 for trial in np.arange(0, num_frames):
     
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
@@ -242,6 +243,24 @@ for trial in np.arange(0, num_frames):
     D_norm = misc.normalize(D)
     D_d_norm = misc.normalize(D_d)
     image_est_norm = misc.normalize(image_est)
+
+
+    if D0 is not None:
+        corr = signal.correlate2d(D0, D_norm, mode='full')
+        plot_corr = plot.plot(nrows=1, ncols=1)
+        plot_corr.colormap(corr)
+        plot_corr.save("corr.png")
+        plot_corr.close()
+        
+        shift = np.unravel_index(np.argmax(corr, axis=None), corr.shape) - np.array([int(corr.shape[0]/2), int(corr.shape[1]/2)])
+        print("shift:", shift)
+        D_norm = np.roll(np.roll(D_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+        D_d_norm = np.roll(np.roll(D_d_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+        image_est_norm = np.roll(np.roll(image_est_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+
+    else:
+        D0 = D_norm
+
 
     my_plot.colormap(image, [trial, 0])
     my_plot.colormap(D, [trial, 1])
