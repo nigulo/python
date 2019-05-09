@@ -85,18 +85,33 @@ class psf_basis_sampler():
     
             min_loglik = None
             min_res = None
-            for trial_no in np.arange(0, self.num_samples):
-                res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-                #lower_bounds = np.zeros(jmax*2)
-                #upper_bounds = np.ones(jmax*2)*1e10
-                #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
-                loglik = res['fun']
-                #assert(loglik == lik_fn(res['x']))
-                if min_loglik is None or loglik < min_loglik:
-                    min_loglik = loglik
-                    min_res = res
-            for i in np.arange(0, jmax):
-                betas_est[i] = min_res['x'][i] + 1.j*min_res['x'][jmax + i]
+            if False:
+                for trial_no in np.arange(0, self.num_samples):
+                    res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
+                    #lower_bounds = np.zeros(jmax*2)
+                    #upper_bounds = np.ones(jmax*2)*1e10
+                    #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
+                    loglik = res['fun']
+                    #assert(loglik == lik_fn(res['x']))
+                    if min_loglik is None or loglik < min_loglik:
+                        min_loglik = loglik
+                        min_res = res
+                for i in np.arange(0, jmax):
+                    betas_est[i] = min_res['x'][i] + 1.j*min_res['x'][jmax + i]
+            else:
+                for trial_no in np.arange(0, self.num_samples):
+                    #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
+                    res = scipy.optimize.fmin_cg(lik_fn, np.random.normal(size=jmax*2), fprime=grad_fn, args=(), full_output=True)
+                    #lower_bounds = np.zeros(jmax*2)
+                    #upper_bounds = np.ones(jmax*2)*1e10
+                    #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
+                    loglik = res[1]
+                    #assert(loglik == lik_fn(res['x']))
+                    if min_loglik is None or loglik < min_loglik:
+                        min_loglik = loglik
+                        min_res = res
+                for i in np.arange(0, jmax):
+                    betas_est[i] = min_res[0][i] + 1.j*min_res[0][jmax + i]
             
         print(betas_est)
         #betas_est = np.random.normal(size=psf.jmax) + np.random.normal(size=psf.jmax)*1.j
