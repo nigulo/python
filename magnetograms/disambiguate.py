@@ -134,6 +134,23 @@ else:
         with open(state_file, 'wb') as f:
             pickle.dump(y, f)    
     
+    ###########################################################################
+    # Plotting the whole qube
+    x1_range, x2_range = 1., 1.
+    x1 = np.linspace(0, x1_range, y.shape[0])
+    x2 = np.linspace(0, x2_range, y.shape[1])
+    x_mesh = np.meshgrid(x2, x1)
+
+    for i in np.arange(0, y.shape[3]):
+        test_plot = plot.plot(nrows=1, ncols=1)
+        test_plot.set_color_map('bwr')
+        
+        test_plot.colormap(y[:, :, i, 2])
+        test_plot.vectors(x_mesh[0], x_mesh[1], y[:, :, i, 0], y[:, :, i, 1], [], units='width', color = 'k')
+        test_plot.save("test_field" + str(i) +".png")
+        test_plot.close()
+    ###########################################################################
+    
     print(y.shape)
     bx = y[:, :, 4, 0]
     by = y[:, :, 4, 1]

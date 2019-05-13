@@ -72,7 +72,6 @@ x_test2 = np.linspace(-1., 1., n_test2)
 x_test_mesh = np.meshgrid(x_test2, x_test1)
 x_test = np.dstack(x_test_mesh).reshape(-1, 2)
 x_test = np.column_stack((x_test, np.zeros(n_test)))
-x_test_flat = np.reshape(x_test, (3*n_test, -1))
 print(x_test.shape)
 
 ys = []
@@ -123,19 +122,19 @@ max_loglik = None
 max_loglik1 = None
 i_x = 0
 for x in xs:
-    x_flat = np.reshape(x, (3*n, -1))
+    print("x:", x)
     i_y = 0
     for y in ys:
         y_flat = np.reshape(y, (3*len(y), -1))
-        loglik = gp.init(x_flat, y_flat)
-        y_test_mean = gp.fit(x_test_flat, calc_var = False)
+        loglik = gp.init(x, y_flat)
+        y_test_mean = gp.fit(x_test, calc_var = False)
         y_test_mean = np.reshape(y_test_mean, (n_test, -1))
 
-        loglik1 = gp1.init(x_flat, y_flat)
-        y_test_mean1 = gp1.fit(x_test_flat, calc_var = False)
+        loglik1 = gp1.init(x, y_flat)
+        y_test_mean1 = gp1.fit(x_test, calc_var = False)
         y_test_mean1 = np.reshape(y_test_mean1, (n_test, -1))
         
-        print(y)
+        print("y:", y)
         print("Log-likelihood:", loglik, loglik1)
         if max_loglik is None or loglik > max_loglik:
             max_loglik = loglik
@@ -144,7 +143,7 @@ for x in xs:
             max_i_y = i_y
         myplot = plot.plot()
         myplot.vectors(x[:,0], x[:,1], y[:,0], y[:,1], ax_index = [])
-        myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean[:,0], y_test_mean[:,1], ax_index = [], color = 'g')
+        myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean[:,0], y_test_mean[:,1], ax_index = [], color = 'b')
         myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean1[:,0], y_test_mean1[:,1], ax_index = [], color = 'g')
         myplot.save("simple_test" + str(i_x) + "_" + str(i_y) + ".png")
         myplot.close()
