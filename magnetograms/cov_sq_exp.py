@@ -29,12 +29,14 @@ class cov_sq_exp(cov_func):
                 exp_fact = np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
                 i_abs_1 = dim*i
                 i_abs_2 = i_abs_1 + dim
-                K[i_abs_1:i_abs_2, i_abs_1:i_abs_2] = I * exp_fact
+                j_abs_1 = dim*j
+                j_abs_2 = j_abs_1 + dim
+                K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] = I * exp_fact
                 if calc_grad:
-                    K_grads[0, i_abs_1:i_abs_2, i_abs_1:i_abs_2] = K[i_abs_1:i_abs_2, i_abs_1:i_abs_2]
-                    K_grads[1, i_abs_1:i_abs_2, i_abs_1:i_abs_2] = K[i_abs_1:i_abs_2, i_abs_1:i_abs_2] * x_diff_sq * self.inv_length_scale_qb
-                    K_grads[1, i_abs_1:i_abs_2, i_abs_1:i_abs_2] *= self.sig_var
-                K[i_abs_1:i_abs_2, i_abs_1:i_abs_2] += self.sig_var
+                    K_grads[0, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2]
+                    K_grads[1, i_abs_1:i_abs_2, i_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * x_diff_sq * self.inv_length_scale_qb
+                    K_grads[1, i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
+                K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
                 
         if data_or_test:
             assert(np.size(x1) == np.size(x2))
