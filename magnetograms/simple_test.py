@@ -15,23 +15,51 @@ import numpy as np
 import cov_div_free as cov_div_free
 import cov_sq_exp as cov_sq_exp
 import plot
+import numpy.random as random
 
 
 xs = []
 
-xs.append(np.array([
-    [1., 0., 0.], 
-    [np.cos(np.pi*2/3), np.sin(np.pi*2/3), 0.],
-    [np.cos(np.pi*4/3), np.sin(np.pi*4/3), 0.],
-    [.25, 0., 0.],
-    ]))
 
-xs.append(np.array([
-    [1., 0., 0.], 
-    [np.cos(np.pi*2/3), np.sin(np.pi*2/3), 0.],
-    [np.cos(np.pi*4/3), np.sin(np.pi*4/3), 0.],
-    [.25, 0., 0.],
-    ]))
+x = random.uniform(-1, 1., 20)
+y = random.uniform(-1, 1., 20)
+z = random.uniform(-1, 1., 20)
+
+xs.append(np.column_stack((x, y, z)))
+
+x = random.uniform(-1, 1., 20)
+y = random.uniform(-1, 1., 20)
+z = random.uniform(-1, 1., 20)
+
+xs.append(np.column_stack((x, y, z)))
+
+#xs.append(np.array([
+#    [1., 0., 1.], 
+#    [np.cos(np.pi*2/3), np.sin(np.pi*2/3), -1.],
+#    [np.cos(np.pi*4/3), np.sin(np.pi*4/3), 0.],
+#    [.5, 0., 0.], 
+#    [.5*np.cos(np.pi*2/3), .5*np.sin(np.pi*2/3), -2.],
+#    [.5*np.cos(np.pi*4/3), .5*np.sin(np.pi*4/3), 1.],
+#    [-1, .5, -1.],
+#    [-1, -.5, 1.],
+#    [.5, .5, 1.],
+#    [.5, -.5, 0.],
+#    [.25, 0., 0.],
+#    ]))
+
+#xs.append(np.array([
+#    [1., 0., 0.], 
+#    [np.cos(np.pi*2/3), np.sin(np.pi*2/3), -1.],
+#    [np.cos(np.pi*4/3), np.sin(np.pi*4/3), 0.],
+#    [.5, 0., 0.], 
+#    [.5*np.cos(np.pi*2/3), .5*np.sin(np.pi*2/3), 0.],
+#    [.5*np.cos(np.pi*4/3), .5*np.sin(np.pi*4/3), 0.],
+#    [-1, .5, -1.],
+#    [-1, -.5, 1.],
+#    [.5, .5, 1.],
+#    [.5, -.5, 0.],
+#    [.25, 0., -1.],
+#    ]))
 
 
 n = xs[0].shape[0]
@@ -49,13 +77,27 @@ print(x_test.shape)
 
 ys = []
 
+bx = random.uniform(-1, 1., 20)
+by = random.uniform(-1, 1., 20)
+bz = random.uniform(-1, 1., 20)
 
-ys.append(np.array([
-    [-1., 0., 0.],
-    [-np.cos(np.pi*2/3), -np.sin(np.pi*2/3), 0.],
-    [-np.cos(np.pi*4/3), -np.sin(np.pi*4/3), 0.],
-    [0., 0., 0.]
-    ]))
+
+ys.append(np.column_stack((bx, by, bz)))
+
+
+#ys.append(np.array([
+#    [-1., 0., 0.],
+#    [-np.cos(np.pi*2/3), -np.sin(np.pi*2/3), 0.],
+#    [-np.cos(np.pi*4/3), -np.sin(np.pi*4/3), 0.],
+#    [-.5, 0., 0.],
+#    [-.5*np.cos(np.pi*2/3), -.5*np.sin(np.pi*2/3), 0.],
+#    [-.5*np.cos(np.pi*4/3), -.5*np.sin(np.pi*4/3), 0.],
+#    [-1, .5, -1.],
+#    [-1, -.5, 1.],
+#    [.5, .5, 1.],
+#    [.5, -.5, 0.],
+#    [0., 0., 1.]
+#    ]))
 
 #ys.append(np.array([
 #    [1., 0., 0.],
@@ -73,7 +115,7 @@ ys.append(np.array([
 
 sig_var = 1.
 length_scale = .2
-noise_var = 0.0001
+noise_var = 0.01
 gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
 gp1 = cov_sq_exp.cov_sq_exp(sig_var, length_scale, noise_var)
 
@@ -102,7 +144,7 @@ for x in xs:
             max_i_y = i_y
         myplot = plot.plot()
         myplot.vectors(x[:,0], x[:,1], y[:,0], y[:,1], ax_index = [])
-        #myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean[:,0], y_test_mean[:,1], ax_index = [], color = 'g')
+        myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean[:,0], y_test_mean[:,1], ax_index = [], color = 'g')
         myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean1[:,0], y_test_mean1[:,1], ax_index = [], color = 'g')
         myplot.save("simple_test" + str(i_x) + "_" + str(i_y) + ".png")
         myplot.close()
