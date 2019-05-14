@@ -131,4 +131,3 @@ class kiss_gp:
         self.U = None
 
         return ret_val
-
