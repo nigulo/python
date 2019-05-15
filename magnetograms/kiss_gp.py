@@ -21,7 +21,7 @@ class kiss_gp:
         self.noise_var = data[0]
         print("likelihood params:", self.ell, self.sig_var, self.noise_var)
         self.y = data[1]
-        U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u)
+        U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u, self.u, data_or_test=True)
         self.U_grads = U_grads
 
         (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
@@ -60,7 +60,7 @@ class kiss_gp:
             self.sig_var = theta[1]
             self.noise_var = data[0]
             self.y = data[1]
-            U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u)
+            U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u, self.u, data_or_test=True)
             self.U_grads = U_grads
 
             (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]
@@ -97,7 +97,7 @@ class kiss_gp:
             self.sig_var = theta[1]
             self.noise_var = theta[2]
             self.y = data[0]
-            U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u)
+            U, U_grads = self.cov_func(self.sig_var, self.ell, self.noise_var, self.u, self.u, data_or_test=True)
             self.U_grads = U_grads
 
             (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]
@@ -131,3 +131,16 @@ class kiss_gp:
         self.U = None
 
         return ret_val
+
+
+    def fit(self, x_test, calc_var = True):
+        K_test, _ = self.cov_func(self.sig_var, self.ell, self.noise_var, x_test, self.u, data_or_test=False)
+        f_mean = np.dot(K_test, self.alpha)
+        if calc_var:
+            v = la.solve(self.L, K_test.T)
+            covar, _ = self.cov_func(self.sig_var, self.ell, self.noise_var, x_test, x_test, data_or_test=False)
+            covar -= np.dot(v.T, v)
+            var = np.diag(covar)
+            return (f_mean, var)
+        else:
+            return f_mean

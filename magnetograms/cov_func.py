@@ -39,7 +39,7 @@ class cov_func:
         else:
             self.L = la.cholesky(self.K)
         self.alpha = la.solve(self.L.T, la.solve(self.L, self.y_flat))
-        self.loglik = np.asscalar(-0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi))
+        self.loglik = (-0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)).item()
         return self.loglik
 
     def fit(self, x_test, calc_var = True):

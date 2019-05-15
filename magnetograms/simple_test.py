@@ -148,7 +148,7 @@ for x in xs:
         #myplot.set_color_map('bwr')
         myplot.vectors(x[:,0], x[:,1], y[:,0], y[:,1], ax_index = [])
         myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean[:,0], y_test_mean[:,1], ax_index = [], color = 'b')
-        myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean1[:,0], y_test_mean1[:,1], ax_index = [], color = 'g')
+        #myplot.vectors(x_test[:,0], x_test[:,1], y_test_mean1[:,0], y_test_mean1[:,1], ax_index = [], color = 'g')
         myplot.colormap(y_test_mean[:, 2].reshape((n_test1, n_test2)))
         myplot.save("simple_test" + str(i_x) + "_" + str(i_y) + ".png")
         myplot.close()
