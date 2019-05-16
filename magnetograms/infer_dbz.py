@@ -2,6 +2,7 @@ import numpy as np
 import scipy.signal as signal
 import cov_sq_exp
 import kiss_gp
+import utils
 
 class infer_dbz():
     
@@ -38,16 +39,18 @@ class infer_dbz():
         
         self.x = x
 
-        self.div_xy_flat = np.reshape(div_xy, (n))
+        div_xy_flat = np.reshape(div_xy, (n))
         self.bz_flat = np.reshape(bz[:-1,:-1], (n))
 
         self.sig_var = 1.
         self.length_scale = 2.
         self.noise_var = 0.01
         
-        self.gp = cov_sq_exp.cov_sq_exp(self.sig_var, self.length_scale, self.noise_var)
+        self.gp = cov_sq_exp.cov_sq_exp(self.sig_var, self.length_scale, self.noise_var, dim_out=1)
 
-        self.kgp = kiss_gp.kiss_gp(x, u_mesh, u, self.calc_cov)
+        self.kgp = kiss_gp.kiss_gp(x, u_mesh, u, self.calc_cov, dim=1)
+
+        self.div_uv = np.dot(self.kgp.W.T, div_xy_flat)
 
     def calc_cov(self, sig_var, length_scale, noise_var, u1, u2, data_or_test):
         # Arguments are actually unused
@@ -55,12 +58,17 @@ class infer_dbz():
         assert(length_scale == self.length_scale)
         assert(noise_var == self.noise_var)
         K, K_grads = self.gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
-        K1 = self.div_xy_flat*(self.div_xy_flat*K.T) + K
-        np.testing.assert_almost_equal(np.dot(self.div_xy_flat, np.dot(K, np.diag(self.div_xy_flat))), K1)
+        print(self.div_uv.shape, (K.T).shape)
+        #TODO: optimize
+        #K1 = (self.div_uv*(self.div_uv*K.T).T) + K
+        K1 = np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K
+        #np.testing.assert_almost_equal(np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K, K1)
         
         K1_grads = np.zeros_like(K_grads)
-        for i in K1_grads.shape[0]:
-            K1_grads[i] = self.div_xy_flat*(self.div_xy_flat*K_grads[i].T) + K_grads[i]
+        for i in np.arange(0, K1_grads.shape[0]):
+            #TODO: optimize
+            #K1_grads[i] = self.div_uv*(self.div_uv*K_grads[i].T) + K_grads[i]
+            K1_grads[i] = np.dot(self.div_uv, np.dot(K_grads[i], np.diag(self.div_uv))) + K_grads[i]
         
         return K1, K1_grads
 

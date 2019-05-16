@@ -37,8 +37,8 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
         ys_c[i] = ys[indices_y[i]]
     return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
 
-def calc_W(u_mesh, us, xys):
-    W = np.zeros((np.shape(xys)[0]*2, np.shape(us)[0]*2))
+def calc_W(u_mesh, us, xys, dim = 2):
+    W = np.zeros((np.shape(xys)[0]*dim, np.shape(us)[0]*dim))
     i = 0
     for (x, y) in xys:
         (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
@@ -47,10 +47,14 @@ def calc_W(u_mesh, us, xys):
         for u2_index in indices_u2:
             for u1_index in indices_u1:
                 j = u2_index * len(u_mesh[0]) + u1_index
-                W[2*i,2*j] = coefs[coef_ind]
-                W[2*i,2*j+1] = 0.0#coefs[coef_ind]
-                W[2*i+1,2*j] = 0.0#coefs[coef_ind]
-                W[2*i+1,2*j+1] = coefs[coef_ind]
+                for i1 in np.arange(0, dim):
+                    for j1 in np.arange(0, dim):
+                        if i1 == j1:
+                            W[dim*i+i1,dim*j+j1] = coefs[coef_ind]
+                #W[2*i,2*j] = coefs[coef_ind]
+                #W[2*i,2*j+1] = 0.0#coefs[coef_ind]
+                #W[2*i+1,2*j] = 0.0#coefs[coef_ind]
+                #W[2*i+1,2*j+1] = coefs[coef_ind]
                 coef_ind += 1
         assert(coef_ind == len(coefs))
         i += 1

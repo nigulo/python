@@ -18,7 +18,7 @@ class test_cov_sq_exp(unittest.TestCase):
         sig_var = 0.5
         ell = 0.2
         noise_var = 0.07        
-        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var)
+        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var, dim_out=2)
         
         K, K_grads = gp.calc_cov(x, x, data_or_test=True, calc_grad = True)
         
@@ -60,32 +60,32 @@ class test_cov_sq_exp(unittest.TestCase):
         delta_ell = ell * 1.0e-10
         delta_noise_var = noise_var * 1.0e-5
 
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var + delta_sig_var, ell, noise_var)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var + delta_sig_var, ell, noise_var, dim_out=2)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = (K1 - K) / delta_sig_var
         np.testing.assert_almost_equal(K_grads[0,:,:], K_grads_expected, 10)
         
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var - delta_sig_var, ell, noise_var)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var - delta_sig_var, ell, noise_var, dim_out=2)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = -(K1 - K) /delta_sig_var
         np.testing.assert_almost_equal(K_grads[0,:,:], K_grads_expected, 10)
 
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell + delta_ell, noise_var)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell + delta_ell, noise_var, dim_out=2)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = (K1 - K) / delta_ell
         np.testing.assert_almost_equal(K_grads[1,:,:], K_grads_expected, 9)
         
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell - delta_ell, noise_var)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell - delta_ell, noise_var, dim_out=2)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = -(K1 - K) / delta_ell
         np.testing.assert_almost_equal(K_grads[1,:,:], K_grads_expected, 9)
 
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var + delta_noise_var)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var + delta_noise_var, dim_out=2)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = (K1 - K) / delta_noise_var
         np.testing.assert_almost_equal(K_grads[2,:,:], K_grads_expected, 10)
         
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var - delta_noise_var)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var - delta_noise_var, dim_out=2)
         K1, _ = gp1.calc_cov(x, x, data_or_test=True, calc_grad = True)
         K_grads_expected = -(K1 - K) / delta_noise_var
         np.testing.assert_almost_equal(K_grads[2,:,:], K_grads_expected, 10)
