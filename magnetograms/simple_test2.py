@@ -98,7 +98,7 @@ dbz = idbz.calc()
 
 myplot = plot.plot(nrows=1, ncols=1)
 myplot.set_color_map('bwr')
-myplot.colormap(dbz)
+myplot.colormap(dbz.reshape((n1-1, n2-1)))
 myplot.vectors(x_mesh[0], x_mesh[1], bx, by, [], units='width', color = 'k')
 myplot.save("simple_test2_output.png")
 myplot.close()

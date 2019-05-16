@@ -61,14 +61,14 @@ class infer_dbz():
         print(self.div_uv.shape, (K.T).shape)
         #TODO: optimize
         #K1 = (self.div_uv*(self.div_uv*K.T).T) + K
-        K1 = np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K
+        K1 = K#np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K
         #np.testing.assert_almost_equal(np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K, K1)
         
         K1_grads = np.zeros_like(K_grads)
         for i in np.arange(0, K1_grads.shape[0]):
             #TODO: optimize
             #K1_grads[i] = self.div_uv*(self.div_uv*K_grads[i].T) + K_grads[i]
-            K1_grads[i] = np.dot(self.div_uv, np.dot(K_grads[i], np.diag(self.div_uv))) + K_grads[i]
+            K1_grads[i] = K_grads[i]#np.dot(self.div_uv, np.dot(K_grads[i], np.diag(self.div_uv))) + K_grads[i]
         
         return K1, K1_grads
 
@@ -76,7 +76,7 @@ class infer_dbz():
     def calc(self):
 
         _ = self.kgp.likelihood([self.length_scale, self.sig_var], [self.noise_var, self.bz_flat])
-        bz_mean, f_var = self.kgp.fit(self.x, calc_var = False)
+        bz_mean, f_var = self.kgp.fit(self.x, calc_var = True)
         
         return self.bz_flat - bz_mean
         
