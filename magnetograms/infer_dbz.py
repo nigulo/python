@@ -5,11 +5,8 @@ import kiss_gp
 
 class infer_dbz():
     
-    def __init__(self, x, u_mesh, u, bx, by, bz):
-        self.x = x
-        n1 = x.shape[0]
-        n2 = x.shape[1]
-        n = n1*n2
+    def __init__(self, bx, by, bz):
+        
         #bx = np.reshape(bxy[:, 0], (n1, n2))
         #by = np.reshape(bxy[:, 1], (n1, n2))
         bx_smooth = signal.convolve2d(bx, np.ones((5,5)), mode = 'same') #Smooth it a little
@@ -18,8 +15,31 @@ class infer_dbz():
         dbyy = by_smooth[:-1,1:]-by_smooth[:-1,:-1]
         div_xy = dbxy + dbyy
         
+        n1 = div_xy.shape[0]
+        n2 = div_xy.shape[1]
+        n = n1*n2        
+        
+        x1_range = 1.0
+        x2_range = 1.0
+        n = n1*n2
+        
+        x1 = np.linspace(0, x1_range, n1)
+        x2 = np.linspace(0, x2_range, n2)
+        x_mesh = np.meshgrid(x2, x1)
+        x = np.dstack(x_mesh).reshape(-1, 2)
+        
+        m1 = 10
+        m2 = 10
+        
+        u1 = np.linspace(0, x1_range, m1)
+        u2 = np.linspace(0, x2_range, m2)
+        u_mesh = np.meshgrid(u1, u2)
+        u = np.dstack(u_mesh).reshape(-1, 2)
+        
+        self.x = x
+
         self.div_xy_flat = np.reshape(div_xy, (n))
-        self.bz_flat = np.reshape(bz, (n))
+        self.bz_flat = np.reshape(bz[:-1,:-1], (n))
 
         self.sig_var = 1.
         self.length_scale = 2.
@@ -34,7 +54,7 @@ class infer_dbz():
         assert(sig_var == self.sig_var)
         assert(length_scale == self.length_scale)
         assert(noise_var == self.noise_var)
-        K, K_grads = self.gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = False)
+        K, K_grads = self.gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
         K1 = self.div_xy_flat*(self.div_xy_flat*K.T) + K
         np.testing.assert_almost_equal(np.dot(self.div_xy_flat, np.dot(K, np.diag(self.div_xy_flat))), K1)
         
