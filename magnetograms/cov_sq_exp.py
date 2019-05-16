@@ -23,18 +23,18 @@ class cov_sq_exp(cov_func):
         if calc_grad:
             K_grads = np.zeros((3, np.size(x1), np.size(x2)))
         for i in np.arange(0, np.shape(x1)[0]):
+            i_abs_1 = dim*i
+            i_abs_2 = i_abs_1 + dim
             for j in np.arange(0, np.shape(x2)[0]):
                 x_diff = x1[i] - x2[j]
                 x_diff_sq = np.dot(x_diff, x_diff)
                 exp_fact = np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
-                i_abs_1 = dim*i
-                i_abs_2 = i_abs_1 + dim
                 j_abs_1 = dim*j
                 j_abs_2 = j_abs_1 + dim
                 K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] = I * exp_fact
                 if calc_grad:
                     K_grads[0, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2]
-                    K_grads[1, i_abs_1:i_abs_2, i_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * x_diff_sq * self.inv_length_scale_qb
+                    K_grads[1, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * x_diff_sq * self.inv_length_scale_qb
                     K_grads[1, i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
                 K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
                 

@@ -27,37 +27,32 @@ class test_cov_sq_exp(unittest.TestCase):
         
         K_expected = np.zeros((8, 8))
         for i in np.arange(0, 4):
+            i_abs = 2*i
             for j in np.arange(0, 4):
                 x_diff = x[i] - x[j]
                 x_diff_sq = np.dot(x_diff, x_diff)
-                for i1 in np.arange(0, 2):
-                    i_abs = 2*i + i1
-                    for j1 in np.arange(0, 2):
-                        j_abs = 2*j + j1
-                        K_expected[i_abs, j_abs] *= sig_var * np.exp(-0.5 * x_diff_sq / ell / ell)
+                j_abs = 2*j
+                K_expected[i_abs:i_abs+2, j_abs:j_abs+2] = np.identity(2) * sig_var * np.exp(-0.5 * x_diff_sq / ell / ell)
         K_expected += np.identity(8)*noise_var
         
-        np.testing.assert_almost_equal(K, K_expected, 10)
+        np.testing.assert_almost_equal(K, K_expected, 7)
                 
         #######################################################################        
         # Compare gradients of covariance
 
         K_grads_expected = np.zeros((3, 8, 8))
         for i in np.arange(0, 4):
+            i_abs = 2*i
             for j in np.arange(0, 4):
                 x_diff = x[i] - x[j]
                 x_diff_sq = np.dot(x_diff, x_diff)
-                for i1 in np.arange(0, 2):
-                    i_abs = 2*i + i1
-                    for j1 in np.arange(0, 2):
-                        j_abs = 2*j + j1
-                        K_grads_expected[1, i_abs, j_abs] = -2.0 * x_diff[i1] * x_diff[j1] / ell / ell / ell
-                        exp_fact = np.exp(-0.5 * x_diff_sq / ell / ell)
-                        K_grads_expected[0, i_abs, j_abs] = exp_fact
-                        K_grads_expected[1, i_abs, j_abs] *= sig_var * exp_fact
+                j_abs = 2*j
+                exp_fact = np.exp(-0.5 * x_diff_sq / ell / ell)
+                K_grads_expected[1, i_abs:i_abs+2, j_abs:j_abs+2] = np.identity(2) * sig_var * exp_fact * x_diff_sq / ell / ell / ell
+                K_grads_expected[0, i_abs:i_abs+2, j_abs:j_abs+2] = np.identity(2) * exp_fact
         K_grads_expected[2, :, :] += np.identity(8)
-                
-        np.testing.assert_almost_equal(K_grads, K_grads_expected, 10)
+
+        np.testing.assert_almost_equal(K_grads, K_grads_expected, 7)
 
         #######################################################################        
         # Compare gradients with values calculate using finite difference
