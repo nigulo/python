@@ -74,7 +74,7 @@ xs.append(np.array([
 
 
 
-n_test1 = 5dz_mean
+n_test1 = 5
 n_test2 = 5
 n_test = n_test1*n_test2
 x_test1 = np.linspace(-1., 1., n_test1)
