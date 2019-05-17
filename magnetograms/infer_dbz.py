@@ -39,7 +39,7 @@ class infer_dbz():
         
         self.x = x
 
-        div_xy_flat = np.reshape(div_xy, (n))
+        self.div_xy_flat = np.reshape(div_xy, (n))
         self.bz_flat = np.reshape(bz[:-1,:-1], (n))
 
         self.sig_var = 1.
@@ -50,7 +50,7 @@ class infer_dbz():
 
         self.kgp = kiss_gp.kiss_gp(x, u_mesh, u, self.calc_cov, dim=1)
 
-        self.div_uv = np.dot(self.kgp.W.T, div_xy_flat)
+        self.div_uv = np.dot(self.kgp.W.T, self.div_xy_flat)
 
     def calc_cov(self, sig_var, length_scale, noise_var, u1, u2, data_or_test):
         # Arguments are actually unused
@@ -58,17 +58,26 @@ class infer_dbz():
         assert(length_scale == self.length_scale)
         assert(noise_var == self.noise_var)
         K, K_grads = self.gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
-        print(self.div_uv.shape, (K.T).shape)
         #TODO: optimize
         #K1 = (self.div_uv*(self.div_uv*K.T).T) + K
-        K1 = K#np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K
+        if u2.shape[0] == self.x.shape[0]:
+            A1 = np.diag(self.div_xy_flat)
+        else:
+            A1 = np.diag(self.div_uv)
+
+        if u1.shape[0] == self.x.shape[0]:
+            A2 = np.diag(self.div_xy_flat)
+        else:
+            A2 = np.diag(self.div_uv)
+
+        K1 = np.dot(A2, np.dot(K, A1)) + K
         #np.testing.assert_almost_equal(np.dot(self.div_uv, np.dot(K, np.diag(self.div_uv))) + K, K1)
         
         K1_grads = np.zeros_like(K_grads)
         for i in np.arange(0, K1_grads.shape[0]):
             #TODO: optimize
             #K1_grads[i] = self.div_uv*(self.div_uv*K_grads[i].T) + K_grads[i]
-            K1_grads[i] = K_grads[i]#np.dot(self.div_uv, np.dot(K_grads[i], np.diag(self.div_uv))) + K_grads[i]
+            K1_grads[i] = np.dot(A2, np.dot(K_grads[i], A1)) + K_grads[i]
         
         return K1, K1_grads
 
