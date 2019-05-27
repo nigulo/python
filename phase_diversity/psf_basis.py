@@ -335,10 +335,10 @@ class psf_basis:
         print(D_d)
         print(P)
         print(P_d)
-        np.savetxt("D.txt", D, fmt='%f')
-        np.savetxt("D_d.txt", D, fmt='%f')
-        np.savetxt("P.txt", D, fmt='%f')
-        np.savetxt("P_d.txt", D, fmt='%f')
+        #np.savetxt("D.txt", D, fmt='%f')
+        #np.savetxt("D_d.txt", D, fmt='%f')
+        #np.savetxt("P.txt", D, fmt='%f')
+        #np.savetxt("P_d.txt", D, fmt='%f')
 
 
         P_conj = P.conjugate()
@@ -346,6 +346,8 @@ class psf_basis:
 
         F_image = D * P_conj + gamma * D_d * P_d_conj
         F_image /= P*P_conj + gamma * P_d * P_d_conj
+        
+        #np.savetxt("F.txt", F_image, fmt='%f')
         
         if not do_fft:
             return F_image
