@@ -122,7 +122,7 @@ num_iterations = 0
 
 image = plt.imread('granulation1.png')
 print("Image shape", image.shape)
-image = image[0:200,0:200, 0]
+image = image[0:100,0:100, 0]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -138,7 +138,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 3.
+    defocus = 0.#3.
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -245,21 +245,21 @@ for trial in np.arange(0, num_frames):
     image_est_norm = misc.normalize(image_est)
 
 
-    if D0 is not None:
-        corr = signal.correlate2d(D0, D_norm, mode='full')
-        plot_corr = plot.plot(nrows=1, ncols=1)
-        plot_corr.colormap(corr)
-        plot_corr.save("corr.png")
-        plot_corr.close()
-        
-        shift = np.unravel_index(np.argmax(corr, axis=None), corr.shape) - np.array([int(corr.shape[0]/2), int(corr.shape[1]/2)])
-        print("shift:", shift)
-        D_norm = np.roll(np.roll(D_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
-        D_d_norm = np.roll(np.roll(D_d_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
-        image_est_norm = np.roll(np.roll(image_est_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
-
-    else:
-        D0 = D_norm
+    #if D0 is not None:
+    #    corr = signal.correlate2d(D0, D_norm, mode='full')
+    #    plot_corr = plot.plot(nrows=1, ncols=1)
+    #    plot_corr.colormap(corr)
+    #    plot_corr.save("corr.png")
+    #    plot_corr.close()
+    #    
+    #    shift = np.unravel_index(np.argmax(corr, axis=None), corr.shape) - np.array([int(corr.shape[0]/2), int(corr.shape[1]/2)])
+    #    print("shift:", shift)
+    #    D_norm = np.roll(np.roll(D_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+    #    D_d_norm = np.roll(np.roll(D_d_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+    #    image_est_norm = np.roll(np.roll(image_est_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
+    #
+    #else:
+    #    D0 = D_norm
 
 
     my_plot.colormap(image, [trial, 0])

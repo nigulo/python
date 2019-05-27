@@ -331,6 +331,15 @@ class psf_basis:
         P, P_d = self.get_FP(betas)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+        print(D)
+        print(D_d)
+        print(P)
+        print(P_d)
+        np.savetxt("D.txt", D, fmt='%f')
+        np.savetxt("D_d.txt", D, fmt='%f')
+        np.savetxt("P.txt", D, fmt='%f')
+        np.savetxt("P_d.txt", D, fmt='%f')
+
 
         P_conj = P.conjugate()
         P_d_conj = P_d.conjugate()
