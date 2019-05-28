@@ -99,6 +99,10 @@ class tip_tilt:
         a = res.reshape((self.L, 2))
         f = self.get_f(a)
         print("a, f", a, f)
+        
+        #test_val = self.fun3(res)
+        #print("test_val", test_val)
+        
         return (a, f)
         
 def main():

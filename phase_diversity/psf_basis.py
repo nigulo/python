@@ -153,6 +153,32 @@ class psf_basis:
         self.FYs = state[1]
         self.FXs_d = state[2]
         self.FYs_d = state[3]
+        
+        arcsec_per_px = self.arcsec_per_px/3600*np.pi/180
+        diameter = self.diameter
+        wavelength = self.wavelength
+        nx = self.nx
+        
+        # Diffraction limit or the resolution of the telescope (in arcesonds)
+        #diffraction = 1.22 * wavelength * 1e-8 / diameter
+        diffraction = wavelength * 1e-8 / diameter
+        
+        print('Diffraction limit, arcsec_per_px', diffraction, arcsec_per_px)
+        
+        # Generate pupil plane
+        #x_diff = np.linspace(-2., 2., nx)*arcsec_per_px
+        x_diff = np.linspace(-float(nx)/2, float(nx)/2, nx)*arcsec_per_px
+        print(len(x_diff))
+        
+        # Angular separation of pixels measured from the center (in arceconds)
+        #x_diff = x_diff - x_diff[int(nx/2)]
+        
+        # Angular separation of resolved pixels measured from the center (in arceconds)
+        x_diff /= diffraction
+        
+        coords = np.dstack(np.meshgrid(x_diff, x_diff)[::-1])
+        self.coords = coords
+        
     
     def create_basis(self, do_fft=True, do_defocus=True):
         print("do_defocus", do_defocus)

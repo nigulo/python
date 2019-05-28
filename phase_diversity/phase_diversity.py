@@ -303,14 +303,18 @@ for trial in np.arange(0, num_frames):
 for trial in np.arange(0, num_frames):
     tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_b.coords)
     a, f = tt.calc()
+    tt_phase = np.exp(1.j*np.tensordot(psf_b.coords, a[0], axes=(2, 0)))
 
     P = Ps[trial, 0]
     P_d = Ps[trial, 1]
-    #print(psf_b.coords.shape, a[trial].shape)
-    tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[0], axes=(2, 0)))
-    #tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[trial], axes=(2, 0)))
     P *= tt_phase
     P_d *= tt_phase
+    
+    tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_b.coords)
+    a, f = tt.calc()
+    tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[0], axes=(2, 0)))
+    #tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[trial], axes=(2, 0)))
+
 
     image_est_tt, F, P, P_d = psf_basis.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, betass[trial], gamma, ret_all = True)
     my_plot.colormap(image_est_tt, [trial, 4])
