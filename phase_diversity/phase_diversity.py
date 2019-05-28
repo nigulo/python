@@ -25,6 +25,7 @@ import psf
 import kolmogorov
 import scipy.optimize
 import matplotlib.pyplot as plt
+import tip_tilt
 
 import pickle
 
@@ -118,7 +119,6 @@ def save(filename, state):
         pickle.dump(state, f)
 
 num_frames = 5
-num_iterations = 0
 
 image = plt.imread('granulation1.png')
 print("Image shape", image.shape)
@@ -190,9 +190,10 @@ aperture_func = lambda xs: utils.aperture_circ(xs, coef=15., radius =1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
 
-my_plot = plot.plot(nrows=num_frames + 1, ncols=5)
+my_plot = plot.plot(nrows=num_frames + 1, ncols=7)
 
 image_est_mean = np.zeros((nx, nx))
+image_est_tt_mean = np.zeros((nx, nx))
 D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
@@ -205,13 +206,19 @@ sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
 betass = []
 
+
+Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
+Ps = np.zeros((num_frames, 2, nx, nx), dtype='complex')
+Fs = np.zeros((num_frames, 1, nx, nx), dtype='complex')
+
 D0 = None
 for trial in np.arange(0, num_frames):
     
+    pa = psf.phase_aberration(np.random.normal(size=2)*10, start_index=1)
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
     #pa = psf.phase_aberration([])
-    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
@@ -227,7 +234,13 @@ for trial in np.arange(0, num_frames):
     
     betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
     print("betas_est", len(betas_est))
-    image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
+    image_est, F, P, P_d = psf_b.deconvolve(D, D_d, betas_est, gamma, ret_all = True)
+    Ds[trial, 0] = D
+    Ds[trial, 1] = D_d
+    Ps[trial, 0] = P
+    Ps[trial, 1] = P_d
+    Fs[trial, 0] = F
+
     #image_est = psf_basis.maybe_invert(image_est, image)
 
     betass.append(betas_est)
@@ -266,7 +279,8 @@ for trial in np.arange(0, num_frames):
     my_plot.colormap(D, [trial, 1])
     my_plot.colormap(D_d, [trial, 2])
     my_plot.colormap(image_est, [trial, 3])
-    my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 4])
+
+    my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 5])
     
     #image_est = fft.ifft2(fimage_est).real
     #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
@@ -277,7 +291,37 @@ for trial in np.arange(0, num_frames):
 
     my_plot.save("estimates.png")
 
+
+
+
+#tt = tip_tilt.tip_tilt(Ds, Ps, Fs, psf_b.coords)
+#a, f = tt.calc()
+#tt = tip_tilt.tip_tilt(np.array([np.stack((D, D_d))]), np.array([np.stack((P, P_d))]), np.array([[F]]), psf_b.coords)
+#a, f = tt.calc()
+#F *= np.exp(-1.j*f)
+
+for trial in np.arange(0, num_frames):
+    tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_b.coords)
+    a, f = tt.calc()
+
+    P = Ps[trial, 0]
+    P_d = Ps[trial, 1]
+    #print(psf_b.coords.shape, a[trial].shape)
+    tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[0], axes=(2, 0)))
+    #tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[trial], axes=(2, 0)))
+    P *= tt_phase
+    P_d *= tt_phase
+
+    image_est_tt, F, P, P_d = psf_basis.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, betass[trial], gamma, ret_all = True)
+    my_plot.colormap(image_est_tt, [trial, 4])
+
+    image_est_tt_norm = misc.normalize(image_est_tt)
+    image_est_tt_mean += image_est_tt_norm
+
+    my_plot.colormap(np.abs(image_est_tt_norm-image_norm), [trial, 6])
+
 image_est_mean /= num_frames
+image_est_tt_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
@@ -285,65 +329,11 @@ my_plot.colormap(image_norm, [num_frames, 0])
 my_plot.colormap(D_mean, [num_frames, 1])
 my_plot.colormap(D_d_mean, [num_frames, 2])
 my_plot.colormap(image_est_mean, [num_frames, 3])
-my_plot.colormap(np.abs(image_est_mean-image_norm), [num_frames, 4])
+my_plot.colormap(image_est_tt_mean, [num_frames, 4])
+my_plot.colormap(np.abs(image_est_mean-image_norm), [num_frames, 5])
+my_plot.colormap(np.abs(image_est_tt_mean-image_norm), [num_frames, 6])
 
-my_plot.save("estimates.png")
 
-
-for iter in np.arange(0, num_iterations):
-    
-    image = image_est_mean
-    fimage = fft.fft2(image)
-    fimage = fft.fftshift(fimage)
-
-    image_est_mean = np.zeros((nx, nx))
-    D_mean = np.zeros((nx, nx))
-    D_d_mean = np.zeros((nx, nx))
-    
-    for trial in np.arange(0, num_frames):
-        D, D_d = psf_b.multiply(fimage, betass[trial])
-        D = fft.ifftshift(D)
-        D_d = fft.ifftshift(D_d)
-        
-        betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
-        print("betas_est", len(betas_est))
-        image_est = psf_b.deconvolve(D, D_d, betas_est, gamma, do_fft = True)
-        #image_est = psf_basis.maybe_invert(image_est, image)
-    
-        betass[trial] = betas_est
-    
-        #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
-    
-    
-        D = fft.ifft2(D).real
-        D_d = fft.ifft2(D_d).real
-    
-        #image_max = np.max(image)
-        #image_min = np.min(image)
-        
-        D_norm = misc.normalize(D)
-        D_d_norm = misc.normalize(D_d)
-        image_est_norm = misc.normalize(image_est)
-    
-        my_plot.colormap(image, [trial, 0])
-        my_plot.colormap(D, [trial, 1])
-        my_plot.colormap(D_d, [trial, 2])
-        my_plot.colormap(image_est_norm, [trial, 3])
-        my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 4])
-    
-        my_plot.save("estimates.png")
-
-        image_est_mean += image_est_norm
-    
-        D_mean += D_norm
-        D_d_mean += D_d_norm
-
-    image_est_mean /= num_frames
-    D_mean /= num_frames
-    D_d_mean /= num_frames
-    
-    my_plot.colormap(image_est_mean, [num_frames, 3])
-    my_plot.colormap(np.abs(image_est_mean-image_norm), [num_frames, 4])
 
 my_plot.save("estimates.png")
 my_plot.close()

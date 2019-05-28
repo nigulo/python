@@ -110,6 +110,26 @@ def Vnmf(radius, f, n, m):
                 
     return Vnm
 
+def deconvolve_(D, D_d, P, P_d, betas, gamma, do_fft = True, ret_all=False):
+    P_conj = P.conjugate()
+    P_d_conj = P_d.conjugate()
+
+    F_image = D * P_conj + gamma * D_d * P_d_conj
+    F_image /= P*P_conj + gamma * P_d * P_d_conj
+    
+    #np.savetxt("F.txt", F_image, fmt='%f')
+    
+    if not do_fft and not ret_all:
+        return F_image
+
+    #image = fft.ifft2(fft.ifftshift(F_image)).real
+    image = fft.ifft2(F_image).real
+    #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+    if ret_all:
+        return image, F_image, P, P_d
+    else:
+        return image
+
 
 class psf_basis:
     '''
@@ -183,6 +203,7 @@ class psf_basis:
         print("PSF_BASIS x_limit", x_diff[0], x_diff[-1])
         
         coords = np.dstack(np.meshgrid(x_diff, x_diff)[::-1])
+        self.coords = coords
         print("psf_basis_coords", np.min(coords, axis=(0,1)), np.max(coords, axis=(0,1)), np.shape(coords))
         radiuses_phis = utils.cart_to_polar(coords)
         
@@ -327,35 +348,21 @@ class psf_basis:
         else:
             return ret_val[0]
 
-    def deconvolve(self, D, D_d, betas, gamma, do_fft = True):
+    def deconvolve(self, D, D_d, betas, gamma, do_fft = True, ret_all=False):
         P, P_d = self.get_FP(betas)
+        return deconvolve_(D, D_d, P, P_d, betas, gamma, do_fft = do_fft, ret_all=ret_all)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-        print(D)
-        print(D_d)
-        print(P)
-        print(P_d)
+        #print(D)
+        #print(D_d)
+        #print(P)
+        #print(P_d)
         #np.savetxt("D.txt", D, fmt='%f')
-        #np.savetxt("D_d.txt", D, fmt='%f')
-        #np.savetxt("P.txt", D, fmt='%f')
-        #np.savetxt("P_d.txt", D, fmt='%f')
+        #np.savetxt("D_d.txt", D_d, fmt='%f')
+        #np.savetxt("P.txt", P, fmt='%f')
+        #np.savetxt("P_d.txt", P_d, fmt='%f')
 
 
-        P_conj = P.conjugate()
-        P_d_conj = P_d.conjugate()
-
-        F_image = D * P_conj + gamma * D_d * P_d_conj
-        F_image /= P*P_conj + gamma * P_d * P_d_conj
-        
-        #np.savetxt("F.txt", F_image, fmt='%f')
-        
-        if not do_fft:
-            return F_image
-
-        #image = fft.ifft2(fft.ifftshift(F_image)).real
-        image = fft.ifft2(F_image).real
-        #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-        return image
 
     def get_XY(self, j, k, defocus):
         if defocus:
