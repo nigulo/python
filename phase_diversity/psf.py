@@ -145,6 +145,7 @@ class psf():
         # Repeat the same for bigger grid
         xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
         coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
+        self.coords1 = coords1
 
         self.nx1 = self.nx * 2 - 1
 

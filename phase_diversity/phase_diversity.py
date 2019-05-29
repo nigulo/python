@@ -198,7 +198,7 @@ D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
-
+-12.128653119414565
 wavefront = kolmogorov.kolmogorov(fried = np.array([.1]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
@@ -215,6 +215,7 @@ D0 = None
 for trial in np.arange(0, num_frames):
     
     pa = psf.phase_aberration(np.random.normal(size=2)*10, start_index=1)
+    print("Alphas", pa.alphas)
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
     #pa = psf.phase_aberration([])
     ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
@@ -301,18 +302,18 @@ for trial in np.arange(0, num_frames):
 #F *= np.exp(-1.j*f)
 
 for trial in np.arange(0, num_frames):
-    tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_b.coords)
+    tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
     a, f = tt.calc()
-    tt_phase = np.exp(1.j*np.tensordot(psf_b.coords, a[0], axes=(2, 0)))
+    tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
 
     P = Ps[trial, 0]
     P_d = Ps[trial, 1]
     P *= tt_phase
     P_d *= tt_phase
     
-    tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_b.coords)
-    a, f = tt.calc()
-    tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[0], axes=(2, 0)))
+    #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
+    #a, f = tt.calc()
+    #tt_phase = np.exp(-1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
     #tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[trial], axes=(2, 0)))
 
 

@@ -69,7 +69,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 3.
+    defocus = 0.#3.
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
