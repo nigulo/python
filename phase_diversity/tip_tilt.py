@@ -58,17 +58,24 @@ class tip_tilt:
         return retval
     '''
 
-    def fun3(self, a_in):
+    def fun3(self, a_in, a_old_in):
         a = a_in.reshape((self.L, 2))
+        a_old = a_old_in.reshape((self.L, 2))
         eps = 1e-10
+
+        au_old = np.tensordot(a_old, self.x, axes=(1, 2))
+        phi_old = self.D_T - au_old
+        sin_phi_old = np.sin(phi_old)
+        cos_phi_old = np.cos(phi_old)
+
+        tan_f = (np.sum(self.C_T*sin_phi_old, axis=(0, 1)) + eps)/((np.sum(self.C_T*cos_phi_old, axis=(0, 1))) + eps)
+        cos_f = 1./np.sqrt(1.+tan_f*tan_f)
 
         au = np.tensordot(a, self.x, axes=(1, 2))
         phi = self.D_T - au
         sin_phi = np.sin(phi)
         cos_phi = np.cos(phi)
 
-        tan_f = (np.sum(self.C_T*sin_phi, axis=(0, 1)) + eps)/((np.sum(self.C_T*cos_phi, axis=(0, 1))) + eps)
-        cos_f = 1./np.sqrt(1.+tan_f*tan_f)
         val = self.C_T*cos_f*(sin_phi - tan_f*cos_phi)
         #print(val.shape)
         val1 = np.sum(np.tensordot(val, self.x[:,:,0], axes=([2,3], [0,1])), axis=0)
@@ -79,17 +86,24 @@ class tip_tilt:
         #print(retval)
         return retval
     
-    def second_deriv(self, a_in):
+    def second_deriv(self, a_in, a_old_in):
         a = a_in.reshape((self.L, 2))
+        a_old = a_old_in.reshape((self.L, 2))
         eps = 1e-10
 
+        au_old = np.tensordot(a_old, self.x, axes=(1, 2))
+        phi_old = self.D_T - au_old
+        sin_phi_old = np.sin(phi_old)
+        cos_phi_old = np.cos(phi_old)
+
+        tan_f = (np.sum(self.C_T*sin_phi_old, axis=(0, 1)) + eps)/((np.sum(self.C_T*cos_phi_old, axis=(0, 1))) + eps)
+        cos_f = 1./np.sqrt(1.+tan_f*tan_f)
+        
         au = np.tensordot(a, self.x, axes=(1, 2))
         phi = self.D_T - au
         sin_phi = np.sin(phi)
         cos_phi = np.cos(phi)
-
-        tan_f = (np.sum(self.C_T*sin_phi, axis=(0, 1)) + eps)/((np.sum(self.C_T*cos_phi, axis=(0, 1))) + eps)
-        cos_f = 1./np.sqrt(1.+tan_f*tan_f)
+        
         val = self.C_T*cos_f*(cos_phi + tan_f*sin_phi)
         #print(val.shape)
         val1 = np.sum(np.tensordot(val, self.x[:,:,0]**2, axes=([2,3], [0,1])), axis=0)
@@ -100,27 +114,39 @@ class tip_tilt:
         #print(retval)
         return retval
     
-    def grid_search(self, a0, a1):
-        a_opt = a0
-        min_val = np.ones_like(a0)*np.finfo('d').max
-        for a in np.linspace(a0, a1, 1000):
-            val = np.abs(self.fun3(a))
+    def grid_search(self, a0, a1, a_opt = None, min_val = None, precision = 1000):
+        if a_opt is None:
+            a_opt = a0
+        if min_val is None:
+            min_val = np.ones_like(a0)*np.finfo('d').max
+        for a in np.linspace(a0, a1, precision):
+            val = np.abs(self.fun3(a, a_opt))
 
             indices = np.where(val < min_val)[0]
-            val2 = self.second_deriv(a)
+            #val2 = self.second_deriv(a, a_opt)
             a_opt_new = np.array(a_opt)
             for i in indices:
-                print(val2)
-                if (val2[i] < 0.):
-                    min_val[i] = val[i]
-                    a_opt_new[i] = a[i]
-            val2 = self.second_deriv(a_opt_new)
-            if(np.all(val2 < 0.)):
-                a_opt = a_opt_new
+                #print(val2)
+                #if (val2[i] < 0.):
+                min_val[i] = val[i]
+                a_opt_new[i] = a[i]
+                #else:
+                #    print("BLAAA")
+            #val = np.abs(self.fun3(a, a_opt_new))
+            #indices1 = np.where(val < min_val)[0]
+            #if np.all(indices == indices1):
+                #print("Juhuuu")
+            a_opt = a_opt_new
+                
+            
+                
+            #val2 = self.second_deriv(a_opt_new)
+            #if (np.all(val2 < 0.)):
+            #a_opt = a_opt_new
                 
             #min_val[indices] = val[indices]
             #a_opt[indices] = a[indices]
-            print("min_val", min_val, a_opt)
+            #print("min_val", min_val, a_opt)
         return a_opt, min_val
     
     def get_f(self, a):
@@ -141,10 +167,22 @@ class tip_tilt:
         #res = optimize.fsolve(self.fun2, x0=np.zeros((self.L*2+self.x.shape[0]*self.x.shape[1])), args=(), fprime=None)
         #
         #res = optimize.fsolve(self.fun3, x0=np.zeros(self.L*2), args=(), fprime=None)
-        res, min_val = self.grid_search(np.ones(self.L*2)*-20, np.ones(self.L*2)*20)
-        print("MIN_VAL", min_val)
-        val2 = self.second_deriv(res)
-        np.testing.assert_array_less(val2, np.zeros_like(val2))
+        res = None
+        min_val = None
+        precision = 10000
+        eps = 1./precision
+        d = 50.
+        res, min_val = self.grid_search(np.ones(self.L*2)*d*-1., np.ones(self.L*2)*d, res, min_val, precision)
+        while np.any(min_val > eps):#1./precision):
+            res_old = res
+            #res, min_val = self.grid_search(np.ones(self.L*2)*-20, np.ones(self.L*2)*20, res, min_val, precision)
+            res, min_val = self.grid_search(res - d, res + d, res, min_val, precision)
+            res_diff = np.sqrt(np.sum((res-res_old)**2))
+            print("MIN_VAL", np.sum(min_val), d, res_diff)
+            if res_diff == 0:
+                d *= .9
+        val2 = self.second_deriv(res, res)
+        #np.testing.assert_array_less(val2, np.zeros_like(val2))
         a = res.reshape((self.L, 2))
         f = self.get_f(a)
         print("a, f", a, f)
