@@ -122,6 +122,29 @@ def get_coords(nx, arcsec_per_px, diameter, wavelength):
     print("PSF x_limit", xs[0], xs[-1])
     return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
 
+def deconvolve_(D, D_d, S, S_d, gamma, do_fft = True, fft_shift = True):
+    regularizer_eps = 1e-10
+    assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
+    #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+    #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+    
+    S_conj = S.conjugate()
+    S_d_conj = S_d.conjugate()
+    
+    F_image = D * S_conj + gamma * D_d * S_d_conj + regularizer_eps
+    np.set_printoptions(threshold=np.inf)
+    F_image /= (S*S_conj + gamma * S_d * S_d_conj + regularizer_eps)
+
+    if fft_shift:
+        F_image = fft.ifftshift(F_image)
+    
+    if not do_fft:
+        return F_image
+
+    image = fft.ifft2(F_image).real
+    #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
+    return image
+
 class psf():
 
     '''
@@ -220,32 +243,12 @@ class psf():
             return ret_val[0]
 
     def deconvolve(self, D, D_d, alphas, gamma, do_fft = True):
-        regularizer_eps = 1e-10
-        assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
-        #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-        #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-        
         self.coh_trans_func.phase_aberr.set_alphas(alphas)
         self.calc(defocus=False)
         self.calc(defocus=True)
         S = self.otf_vals[False]
-        S_conj = S.conjugate()
         S_d = self.otf_vals[True]
-        S_d_conj = S_d.conjugate()
-        
-        F_image = D * S_conj + gamma * D_d * S_d_conj + regularizer_eps
-        np.set_printoptions(threshold=np.inf)
-        F_image /= (S*S_conj + gamma * S_d * S_d_conj + regularizer_eps)
-
-        F_image = fft.ifftshift(F_image)
-        
-        if not do_fft:
-            return F_image
-
-        image = fft.ifft2(F_image).real
-        #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-        return image
-
+        return deconvolve_(D, D_d, S, S_d, gamma, do_fft = do_fft)
 
     '''
         Actually this is negative log likelihood

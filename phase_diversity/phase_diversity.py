@@ -120,7 +120,7 @@ def save(filename, state):
 
 num_frames = 5
 
-image = plt.imread('granulation1.png')
+image = plt.imread('granulation.png')
 print("Image shape", image.shape)
 image = image[0:100,0:100, 0]
 
@@ -208,14 +208,22 @@ betass = []
 
 
 Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
-Ps = np.zeros((num_frames, 2, nx, nx), dtype='complex')
+Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 Fs = np.zeros((num_frames, 1, nx, nx), dtype='complex')
+true_alphas = np.zeros((num_frames, 2))
+true_Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
+
+pa_null = psf.phase_aberration([])
+ctf_null = psf.coh_trans_func(aperture_func, pa_null, defocus_func)
+psf_null = psf.psf(ctf_null, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+psf_null.calc(defocus=False)
+psf_null.calc(defocus=True)
 
 D0 = None
 for trial in np.arange(0, num_frames):
     
-    pa = psf.phase_aberration(np.random.normal(size=2)*10, start_index=1)
-    print("Alphas", pa.alphas)
+    pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
+    true_alphas[trial] = pa.alphas
     #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
     #pa = psf.phase_aberration([])
     ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
@@ -226,6 +234,8 @@ for trial in np.arange(0, num_frames):
     #betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
     #betas = np.zeros(jmax, dtype='complex')
     #D, D_d = psf_b.multiply(fimage, betas)
+    true_Ps[trial, 0] = psf_.otf_vals[False]
+    true_Ps[trial, 1] = psf_.otf_vals[True]
 
     D = fft.ifftshift(D)
     D_d = fft.ifftshift(D_d)
@@ -238,8 +248,8 @@ for trial in np.arange(0, num_frames):
     image_est, F, P, P_d = psf_b.deconvolve(D, D_d, betas_est, gamma, ret_all = True)
     Ds[trial, 0] = D
     Ds[trial, 1] = D_d
-    Ps[trial, 0] = P
-    Ps[trial, 1] = P_d
+    #Ps[trial, 0] = P
+    #Ps[trial, 1] = P_d
     Fs[trial, 0] = F
 
     #image_est = psf_basis.maybe_invert(image_est, image)
@@ -294,30 +304,58 @@ for trial in np.arange(0, num_frames):
 
 
 
+print("Alphas", true_alphas)
 
-#tt = tip_tilt.tip_tilt(Ds, Ps, Fs, psf_b.coords)
+tt = tip_tilt.tip_tilt(Ds, Ps, Fs, psf_b.coords, true_alphas)
 #a, f = tt.calc()
+a = true_alphas
+f = tt.get_f(a)
 #tt = tip_tilt.tip_tilt(np.array([np.stack((D, D_d))]), np.array([np.stack((P, P_d))]), np.array([[F]]), psf_b.coords)
 #a, f = tt.calc()
 #F *= np.exp(-1.j*f)
 
-for trial in np.arange(0, num_frames):
-    tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
-    a, f = tt.calc()
-    tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
 
+coords = psf_.coords1
+max_coord = np.max(coords, axis=(0, 1))
+print("max_coord", max_coord)
+k_limit = 1./max_coord
+ks1 = np.linspace(-k_limit[0], k_limit[0], coords.shape[0])
+ks2 = np.linspace(-k_limit[1], k_limit[1], coords.shape[1])
+ks = np.dstack(np.meshgrid(ks1, ks2)[::-1])
+ks = np.roll(np.roll(ks, -int(ks.shape[0]/2), axis=0), -int(ks.shape[1]/2), axis=1)
+coords = np.roll(np.roll(coords, -int(coords.shape[0]/2), axis=0), -int(coords.shape[1]/2), axis=1)
+
+for trial in np.arange(0, num_frames):
+    #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
+    #a, f = tt.calc()
+    #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
+
+    #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[trial], axes=(2, 0)))
+    tt_phase = np.exp(1.j*np.tensordot(2*coords, -a[trial], axes=(2, 0)))
+    #tt_phase = np.exp(1.j*np.tensordot(np.ones_like(psf_.coords1), np.array([100., 0.]), axes=(2, 0)))
+    
+    #tt_phase1 = np.zeros((psf_.coords1.shape[0], psf_.coords1.shape[1]), dtype='complex')
+    #tt_phase1=np.exp(1.j*tt_phase1)
+    #np.testing.assert_array_equal(tt_phase, tt_phase1)
     P = Ps[trial, 0]
     P_d = Ps[trial, 1]
     P *= tt_phase
     P_d *= tt_phase
     
+    #np.testing.assert_array_equal(P, true_Ps[trial, 0])
+    image_est_tt = fft.ifft2(Ds[trial, 0]*tt_phase).real
+    #image_est_tt = np.roll(np.roll(image_est_tt, int(a[trial, 0]*max_coord[0]), axis=0), int(a[trial, 1]*max_coord[1]), axis=1)
+    
+    
+        
     #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
     #a, f = tt.calc()
     #tt_phase = np.exp(-1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
     #tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[trial], axes=(2, 0)))
 
 
-    image_est_tt, F, P, P_d = psf_basis.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, betass[trial], gamma, ret_all = True)
+    #image_est_tt, F, P, P_d = psf_basis.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, betass[trial], gamma, ret_all = True)
+    #image_est_tt = psf.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, gamma, fft_shift = False)
     my_plot.colormap(image_est_tt, [trial, 4])
 
     image_est_tt_norm = misc.normalize(image_est_tt)

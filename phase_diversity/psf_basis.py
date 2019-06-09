@@ -110,7 +110,7 @@ def Vnmf(radius, f, n, m):
                 
     return Vnm
 
-def deconvolve_(D, D_d, P, P_d, betas, gamma, do_fft = True, ret_all=False):
+def deconvolve_(D, D_d, P, P_d, gamma, do_fft = True, ret_all=False):
     P_conj = P.conjugate()
     P_d_conj = P_d.conjugate()
 
@@ -376,7 +376,7 @@ class psf_basis:
 
     def deconvolve(self, D, D_d, betas, gamma, do_fft = True, ret_all=False):
         P, P_d = self.get_FP(betas)
-        return deconvolve_(D, D_d, P, P_d, betas, gamma, do_fft = do_fft, ret_all=ret_all)
+        return deconvolve_(D, D_d, P, P_d, gamma, do_fft = do_fft, ret_all=ret_all)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #print(D)
