@@ -122,7 +122,7 @@ num_frames = 5
 
 image = plt.imread('granulation.png')
 print("Image shape", image.shape)
-image = image[0:100,0:100, 0]
+image = image[0:20,0:20, 0]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -209,7 +209,7 @@ betass = []
 
 Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
 Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
-Fs = np.zeros((num_frames, 1, nx, nx), dtype='complex')
+Fs = np.ones((num_frames, 1, nx, nx), dtype='complex')
 true_alphas = np.zeros((num_frames, 2))
 true_Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 
@@ -250,7 +250,7 @@ for trial in np.arange(0, num_frames):
     Ds[trial, 1] = D_d
     #Ps[trial, 0] = P
     #Ps[trial, 1] = P_d
-    Fs[trial, 0] = F
+    #Fs[trial, 0] = F
 
     #image_est = psf_basis.maybe_invert(image_est, image)
 
@@ -306,24 +306,19 @@ for trial in np.arange(0, num_frames):
 
 print("Alphas", true_alphas)
 
-tt = tip_tilt.tip_tilt(Ds, Ps, Fs, psf_b.coords, true_alphas)
-#a, f = tt.calc()
+coords = psf_.coords1
+max_coord = np.max(coords, axis=(0, 1))
+print("max_coord", max_coord)
+coords = np.roll(np.roll(coords, -int(coords.shape[0]/2), axis=0), -int(coords.shape[1]/2), axis=1)
+
+tt = tip_tilt.tip_tilt(Ds, Ps, Fs, 2.*coords, true_alphas)
+a, f = tt.calc()
 a = true_alphas
 f = tt.get_f(a)
 #tt = tip_tilt.tip_tilt(np.array([np.stack((D, D_d))]), np.array([np.stack((P, P_d))]), np.array([[F]]), psf_b.coords)
 #a, f = tt.calc()
 #F *= np.exp(-1.j*f)
 
-
-coords = psf_.coords1
-max_coord = np.max(coords, axis=(0, 1))
-print("max_coord", max_coord)
-k_limit = 1./max_coord
-ks1 = np.linspace(-k_limit[0], k_limit[0], coords.shape[0])
-ks2 = np.linspace(-k_limit[1], k_limit[1], coords.shape[1])
-ks = np.dstack(np.meshgrid(ks1, ks2)[::-1])
-ks = np.roll(np.roll(ks, -int(ks.shape[0]/2), axis=0), -int(ks.shape[1]/2), axis=1)
-coords = np.roll(np.roll(coords, -int(coords.shape[0]/2), axis=0), -int(coords.shape[1]/2), axis=1)
 
 for trial in np.arange(0, num_frames):
     #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)

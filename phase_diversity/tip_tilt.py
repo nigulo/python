@@ -74,8 +74,8 @@ class tip_tilt:
         num = np.sum(self.C_T*sin_phi_old, axis=(0, 1))
         tan_f = num[indices_not_null]/den[indices_not_null]
         cos_f = 1./np.sqrt(1.+tan_f*tan_f)
-        print("tan_f:", tan_f)
-        print("cos_f:", cos_f)
+        #print("tan_f:", tan_f)
+        #print("cos_f:", cos_f)
 
         au = np.tensordot(a, self.x, axes=(1, 2))
         phi = self.D_T - au
