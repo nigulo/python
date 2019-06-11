@@ -24,7 +24,10 @@ class tip_tilt:
         self.CD2 = np.sum(self.C*self.D, axis = 1)
         self.x = x
         self.L = D.shape[0]
-        self.initial_a = initial_a.reshape(self.L*2)
+        self.initial_a = initial_a
+        
+        if self.initial_a is not None:
+            self.initial_a = self.initial_a.reshape(self.L*2)
         #self.initial_a = np.zeros(self.L, 2)
     
     '''
@@ -59,9 +62,12 @@ class tip_tilt:
         return retval
     '''
 
-    def fun3(self, a_in, a_old_in):
+    def fun3(self, a_in, a_old_in=None):
         a = a_in.reshape((self.L, 2))
-        a_old = a_old_in.reshape((self.L, 2))
+        if a_old_in is None:
+            a_old = a
+        else:
+            a_old = a_old_in.reshape((self.L, 2))
         #eps = 1e-10
 
         au_old = np.tensordot(a_old, self.x, axes=(1, 2))
@@ -180,9 +186,10 @@ class tip_tilt:
         #res = optimize.fsolve(self.fun2, x0=np.zeros((self.L*2+self.x.shape[0]*self.x.shape[1])), args=(), fprime=None)
         #
         #res = optimize.fsolve(self.fun3, x0=np.zeros(self.L*2), args=(), fprime=None)
+        #print("RES", res)
         res = self.initial_a
         min_val = None
-        precision = 1000
+        precision = 10000
         eps = 1e-10
         d = 20.
         res, min_val = self.grid_search(np.ones(self.L*2)*d*-1., np.ones(self.L*2)*d, res, min_val, precision)
