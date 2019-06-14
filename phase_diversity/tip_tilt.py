@@ -30,39 +30,60 @@ class tip_tilt:
             self.initial_a = self.initial_a.reshape(self.L*2)
         #self.initial_a = np.zeros(self.L, 2)
     
-    '''
-    def fun(self, a_in):
-        a = a_in.reshape((self.L, 2))
-        au = np.tensordot(a, self.x, axes=(1, 2))
-        f = self.CD1 - np.sum(self.C2*au, axis=0)
-        f[self.zero_inds] = 0.
-        f[self.non_zero_inds] *= self.C1
-        val = self.CD2 - self.C2*f - au
-        val1 = np.tensordot(val, self.x[:,:,0], axes=([1,2], [0,1]))
-        val2 = np.tensordot(val, self.x[:,:,1], axes=([1,2], [0,1]))
-        #retval = np.concatenate((val1**2, val2**2))
-        retval = np.concatenate((val1, val2))
-        #print(retval)
-        return retval
 
-    def fun2(self, a_in):
-        a = a_in[:self.L*2].reshape((self.L, 2))
-        fu = a_in[self.L*2:].reshape((self.x.shape[0], self.x.shape[1]))
+    def lik(self, theta, data):
+        a = theta[0:2*self.L].reshape((self.L, 2))
+        #f = theta[self.L:self.L+self.x.shape[0]*self.x.shape[1]].reshape((self.x.shape[0], self.x.shape[1]))
         au = np.tensordot(a, self.x, axes=(1, 2))
-        val = np.sin(self.D_T - fu - au)
-        val *= self.C_T
+        f = self.get_f(a)
+        phi = self.D_T - au - f
+        val = np.sum(self.C_T*np.cos(phi))
+        print(val)
+        return val
+    
+    '''
+    def lik_grad(self, theta, data):
+        a = theta[0:2*self.L].reshape((self.L, 2))
+        #f = theta[self.L:self.L+self.x.shape[0]*self.x.shape[1]].reshape((self.x.shape[0], self.x.shape[1]))
+        au = np.tensordot(a, self.x, axes=(1, 2))
+
+        phi = self.D_T - au
+        sin_phi = np.sin(phi)
+
+        val = np.zeros_like(self.C_T)
+        val = self.C_T*(sin_phi)
+        val1 = np.sum(np.tensordot(val, self.x[:,:,0], axes=([2,3], [0,1])), axis=0)
+        val2 = np.sum(np.tensordot(val, self.x[:,:,1], axes=([2,3], [0,1])), axis=0)
+
+        retval = np.concatenate((val1, val2))
+        
+        return retval
+    '''
+
+    def lik_grad(self, theta, data):
+        a = theta[0:2*self.L].reshape((self.L, 2))
+        #f = theta[self.L:self.L+self.x.shape[0]*self.x.shape[1]].reshape((self.x.shape[0], self.x.shape[1]))
+
+        au = np.tensordot(a, self.x, axes=(1, 2))
+        f = self.get_f(a)
+        phi = self.D_T - au -f
+        sin_phi = np.sin(phi)
+
+        #val = np.zeros(num.shape[0]*num.shape[1])
+        val = np.zeros_like(self.C_T)
+        #print("AAAA", self.C_T.shape, den.shape, cos_f.shape, sin_phi[:,:,indices_not_null].shape, tan_f.shape, cos_phi[:,:,indices_not_null].shape)
+        val = self.C_T*sin_phi
+        #val = np.reshape(val, (num.shape[0], num.shape[1]))
         #print(val.shape)
         val1 = np.sum(np.tensordot(val, self.x[:,:,0], axes=([2,3], [0,1])), axis=0)
         val2 = np.sum(np.tensordot(val, self.x[:,:,1], axes=([2,3], [0,1])), axis=0)
 
-        val3 = np.sum(val, axis=(0,1))
-        retval = np.concatenate((val1, val2, np.reshape(val3, -1)))
+        retval = np.concatenate((val1, val2))
         
-        print(retval)
+        #print(retval)
         return retval
-    '''
-
-    def fun3(self, a_in, a_old_in=None):
+    
+    def fun(self, a_in, a_old_in=None):
         a = a_in.reshape((self.L, 2))
         if a_old_in is None:
             a_old = a
@@ -135,10 +156,11 @@ class tip_tilt:
             a_opt = a0
         if min_val is None:
             min_val = np.ones_like(a0)*np.finfo('d').max
-        val = np.abs(self.fun3(a_opt, a_opt))
+        #val = np.abs(self.fun(a_opt, a_opt))
+        val = np.abs(self.lik_grad(a_opt, []))
         print("VALLLLLLLLLLL", val)
         for a in np.linspace(a0, a1, precision):
-            val = np.abs(self.fun3(a, a_opt))
+            val = np.abs(self.fun(a, a_opt))
             #print("val, min_val", val, min_val)
 
             indices = np.where(val < min_val)[0]
@@ -211,6 +233,34 @@ class tip_tilt:
         #print("test_val", test_val)
         
         return (a, f)
+    
+    def optimize(self):
+        def lik_fn(params):
+            return self.lik(params, [])
+
+        def grad_fn(params):
+            return self.lik_grad(params, [])
+        
+        min_loglik = None
+        min_res = None
+        initial_a = np.random.normal(size=2*self.L)#np.zeros(2*self.L)
+        if self.initial_a is not None:
+            initial_a = self.initial_a
+        for trial_no in np.arange(0, 1):
+            res1 = optimize.fmin_cg(lik_fn, initial_a, fprime=None, args=(), full_output=True)
+            res2 = optimize.fmin_cg(lik_fn, initial_a, fprime=grad_fn, args=(), full_output=True)
+            res = optimize.fmin_l_bfgs_b(lik_fn, initial_a, fprime=None, args=(), approx_grad=True, bounds=[(-20, 20)]*2*self.L)
+            print("res1, res2", res1, res2)
+            #lower_bounds = np.zeros(jmax*2)
+            #upper_bounds = np.ones(jmax*2)*1e10
+            #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
+            loglik = res[1]
+            #assert(loglik == lik_fn(res['x']))
+            if min_loglik is None or loglik < min_loglik:
+                min_loglik = loglik
+                min_res = res
+        a_est = min_res[0].reshape((self.L, 2))
+        print("a_est", a_est)
         
 def main():
     '''
@@ -231,7 +281,8 @@ def main():
     xs = np.linspace(-1., 1., D.shape[2])
     coords = np.dstack(np.meshgrid(xs, xs)[::-1])
     tt = tip_tilt(D, S, F, coords)
-    tt.calc()
+    #tt.calc()
+    tt.optimize()
 
 if __name__== "__main__":
     main()

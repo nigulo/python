@@ -311,9 +311,11 @@ max_coord = np.max(coords, axis=(0, 1))
 print("max_coord", max_coord)
 coords = np.roll(np.roll(coords, -int(coords.shape[0]/2), axis=0), -int(coords.shape[1]/2), axis=1)
 
-tt = tip_tilt.tip_tilt(Ds[:2], Ps[:2], Fs[:2], 2.*coords, np.zeros_like(true_alphas)[:2])#, true_alphas)
+#tt = tip_tilt.tip_tilt(Ds[:2], Ps[:2], Fs[:2], 2.*coords, np.zeros_like(true_alphas)[:2])#, true_alphas)
 #tt = tip_tilt.tip_tilt(np.array([Ds[0]]), np.array([Ps[0]]), np.array([Fs[0]]), 2.*coords, np.array([true_alphas[0]]))#, true_alphas)
-a, f = tt.calc()
+tt = tip_tilt.tip_tilt(Ds, Ps, Fs, 2.*coords, None)#true_alphas+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
+#a, f = tt.calc()
+a, f = tt.optimize()
 a = true_alphas
 f = tt.get_f(a)
 #tt = tip_tilt.tip_tilt(np.array([np.stack((D, D_d))]), np.array([np.stack((P, P_d))]), np.array([[F]]), psf_b.coords)
