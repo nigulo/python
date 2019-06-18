@@ -118,11 +118,11 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
-num_frames = 5
+num_frames = 10
 
 image = plt.imread('granulation.png')
 print("Image shape", image.shape)
-image = image[0:20,0:20, 0]
+image = image[0:100,0:100, 0]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -190,7 +190,8 @@ aperture_func = lambda xs: utils.aperture_circ(xs, coef=15., radius =1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
 
-my_plot = plot.plot(nrows=num_frames + 1, ncols=7)
+max_frames = min(10, num_frames)
+my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
 
 image_est_mean = np.zeros((nx, nx))
 image_est_tt_mean = np.zeros((nx, nx))
@@ -198,7 +199,6 @@ D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
--12.128653119414565
 wavefront = kolmogorov.kolmogorov(fried = np.array([.1]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
@@ -248,6 +248,8 @@ for trial in np.arange(0, num_frames):
     image_est, F, P, P_d = psf_b.deconvolve(D, D_d, betas_est, gamma, ret_all = True)
     Ds[trial, 0] = D
     Ds[trial, 1] = D_d
+    Fs[trial, 0] = np.absolute(D)
+    #np.testing.assert_array_almost_equal(np.absolute(Ds[0, 0]), np.absolute(D))
     #Ps[trial, 0] = P
     #Ps[trial, 1] = P_d
     #Fs[trial, 0] = F
@@ -286,12 +288,13 @@ for trial in np.arange(0, num_frames):
     #    D0 = D_norm
 
 
-    my_plot.colormap(image, [trial, 0])
-    my_plot.colormap(D, [trial, 1])
-    my_plot.colormap(D_d, [trial, 2])
-    my_plot.colormap(image_est, [trial, 3])
-
-    my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 5])
+    if trial < max_frames:
+        my_plot.colormap(image, [trial, 0])
+        my_plot.colormap(D, [trial, 1])
+        my_plot.colormap(D_d, [trial, 2])
+        my_plot.colormap(image_est, [trial, 3])
+    
+        my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 5])
     
     #image_est = fft.ifft2(fimage_est).real
     #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
@@ -305,6 +308,7 @@ for trial in np.arange(0, num_frames):
 
 
 print("Alphas", true_alphas)
+print("Alphas_mean", np.mean(true_alphas, axis=0))
 
 coords = psf_.coords1
 max_coord = np.max(coords, axis=(0, 1))
@@ -313,11 +317,17 @@ coords = np.roll(np.roll(coords, -int(coords.shape[0]/2), axis=0), -int(coords.s
 
 #tt = tip_tilt.tip_tilt(Ds[:2], Ps[:2], Fs[:2], 2.*coords, np.zeros_like(true_alphas)[:2])#, true_alphas)
 #tt = tip_tilt.tip_tilt(np.array([Ds[0]]), np.array([Ps[0]]), np.array([Fs[0]]), 2.*coords, np.array([true_alphas[0]]))#, true_alphas)
-tt = tip_tilt.tip_tilt(Ds, Ps, Fs, 2.*coords, None)#true_alphas+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
+tt = tip_tilt.tip_tilt(Ds, Ps, Fs, coords, None)#+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
 #a, f = tt.calc()
-a, f = tt.optimize()
-a = true_alphas
-f = tt.get_f(a)
+a, a0 = tt.optimize()
+print(a0.shape)
+#tt = tip_tilt.tip_tilt(Ds, Ps, Fs, 2.*coords, true_alphas)#+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
+##a, f = tt.calc()
+#_, _ = tt.optimize()
+
+
+#a = true_alphas
+#f = tt.get_f(a)
 #tt = tip_tilt.tip_tilt(np.array([np.stack((D, D_d))]), np.array([np.stack((P, P_d))]), np.array([[F]]), psf_b.coords)
 #a, f = tt.calc()
 #F *= np.exp(-1.j*f)
@@ -329,7 +339,7 @@ for trial in np.arange(0, num_frames):
     #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
 
     #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[trial], axes=(2, 0)))
-    tt_phase = np.exp(1.j*np.tensordot(2*coords, -a[trial], axes=(2, 0)))
+    tt_phase = np.exp(1.j*(np.tensordot(coords, -a[trial], axes=(2, 0))))
     #tt_phase = np.exp(1.j*np.tensordot(np.ones_like(psf_.coords1), np.array([100., 0.]), axes=(2, 0)))
     
     #tt_phase1 = np.zeros((psf_.coords1.shape[0], psf_.coords1.shape[1]), dtype='complex')
@@ -354,25 +364,25 @@ for trial in np.arange(0, num_frames):
 
     #image_est_tt, F, P, P_d = psf_basis.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, betass[trial], gamma, ret_all = True)
     #image_est_tt = psf.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, gamma, fft_shift = False)
-    my_plot.colormap(image_est_tt, [trial, 4])
 
     image_est_tt_norm = misc.normalize(image_est_tt)
     image_est_tt_mean += image_est_tt_norm
-
-    my_plot.colormap(np.abs(image_est_tt_norm-image_norm), [trial, 6])
+    if trial < max_frames:
+        my_plot.colormap(image_est_tt, [trial, 4])
+        my_plot.colormap(np.abs(image_est_tt_norm-image_norm), [trial, 6])
 
 image_est_mean /= num_frames
 image_est_tt_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
-my_plot.colormap(image_norm, [num_frames, 0])
-my_plot.colormap(D_mean, [num_frames, 1])
-my_plot.colormap(D_d_mean, [num_frames, 2])
-my_plot.colormap(image_est_mean, [num_frames, 3])
-my_plot.colormap(image_est_tt_mean, [num_frames, 4])
-my_plot.colormap(np.abs(image_est_mean-image_norm), [num_frames, 5])
-my_plot.colormap(np.abs(image_est_tt_mean-image_norm), [num_frames, 6])
+my_plot.colormap(image_norm, [max_frames, 0])
+my_plot.colormap(D_mean, [max_frames, 1])
+my_plot.colormap(D_d_mean, [max_frames, 2])
+my_plot.colormap(image_est_mean, [max_frames, 3])
+my_plot.colormap(image_est_tt_mean, [max_frames, 4])
+my_plot.colormap(np.abs(image_est_mean-image_norm), [max_frames, 5])
+my_plot.colormap(np.abs(image_est_tt_mean-image_norm), [max_frames, 6])
 
 
 

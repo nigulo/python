@@ -8,7 +8,7 @@ class tip_tilt:
         l is number od frames, k, number of diversities and
         x1 and x2 are width and height of the sensor in pixels
     '''
-    def __init__(self, D, S, F, x, initial_a = None):
+    def __init__(self, D, S, F, x, initial_a = None, prior_prec=.01):
         #self.D = D
         #self.S = S
         self.C = np.absolute(S)*np.absolute(D)*np.absolute(F)
@@ -24,21 +24,26 @@ class tip_tilt:
         self.CD2 = np.sum(self.C*self.D, axis = 1)
         self.x = x
         self.L = D.shape[0]
+        self.K = D.shape[1]
         self.initial_a = initial_a
         
         if self.initial_a is not None:
             self.initial_a = self.initial_a.reshape(self.L*2)
         #self.initial_a = np.zeros(self.L, 2)
     
+        self.prior_prec = prior_prec
+    
 
     def lik(self, theta, data):
         a = theta[0:2*self.L].reshape((self.L, 2))
+        a0 = theta[2*self.L:2*self.L+2]
         #f = theta[self.L:self.L+self.x.shape[0]*self.x.shape[1]].reshape((self.x.shape[0], self.x.shape[1]))
-        au = np.tensordot(a, self.x, axes=(1, 2))
-        f = self.get_f(a)
-        phi = self.D_T - au - f
+        au = np.tensordot(a, self.x, axes=(1, 2)) + np.tensordot(a0, self.x, axes=(0, 2))
+        #f = self.get_f(a)
+        phi = self.D_T - au# - f
         val = np.sum(self.C_T*np.cos(phi))
-        print(val)
+        val += np.sum(a*a)*self.prior_prec/2
+        #print(val)
         return val
     
     '''
@@ -198,8 +203,18 @@ class tip_tilt:
         sin_phi = np.sin(phi)
         cos_phi = np.cos(phi)
 
-        tan_f = (np.sum(self.C_T*sin_phi, axis=(0, 1)) + eps)/((np.sum(self.C_T*cos_phi, axis=(0, 1))) + eps)
-        return np.arctan(tan_f)        
+        num = np.sum(self.C_T*sin_phi, axis=(0, 1))
+        den = (np.sum(self.C_T*cos_phi, axis=(0, 1)))
+        indices_not_null = den != 0.
+
+        f = np.ones((self.x.shape[0], self.x.shape[1]))*np.pi/2
+        f[indices_not_null] = np.arctan(num[indices_not_null]/den[indices_not_null])
+        return f
+
+        #tan_f = (np.sum(self.C_T*sin_phi, axis=(0, 1)) + eps)/((np.sum(self.C_T*cos_phi, axis=(0, 1))) + eps)
+        #return np.arctan(tan_f)        
+        #return np.zeros((self.x.shape[0], self.x.shape[0]))
+        #return np.sum(self.C_T, axis=(0,1))/(self.L*self.K)
                 
     def calc(self):
         #for l in np.arange(0, self.D.shape[0]):
@@ -243,14 +258,15 @@ class tip_tilt:
         
         min_loglik = None
         min_res = None
-        initial_a = np.random.normal(size=2*self.L)#np.zeros(2*self.L)
-        if self.initial_a is not None:
-            initial_a = self.initial_a
         for trial_no in np.arange(0, 1):
-            res1 = optimize.fmin_cg(lik_fn, initial_a, fprime=None, args=(), full_output=True)
-            res2 = optimize.fmin_cg(lik_fn, initial_a, fprime=grad_fn, args=(), full_output=True)
-            res = optimize.fmin_l_bfgs_b(lik_fn, initial_a, fprime=None, args=(), approx_grad=True, bounds=[(-20, 20)]*2*self.L)
-            print("res1, res2", res1, res2)
+            initial_a = np.random.normal(size=2*(self.L+1), scale=1./np.sqrt(self.prior_prec + 1e-10))#np.zeros(2*self.L)
+            if self.initial_a is not None:
+                initial_a = self.initial_a
+            res = optimize.fmin_cg(lik_fn, initial_a, fprime=None, args=(), full_output=True, gtol=1e-05, norm=np.Inf, epsilon=1.5e-08)
+            #res2 = optimize.fmin_cg(lik_fn, initial_a, fprime=None, args=(), full_output=True)
+            #res2 = optimize.fmin_cg(lik_fn, initial_a, fprime=grad_fn, args=(), full_output=True)
+            #res = optimize.fmin_l_bfgs_b(lik_fn, initial_a, fprime=None, args=(), approx_grad=True, bounds=[(-20, 20)]*2*self.L)
+            #print("res1, res2", res1, res2)
             #lower_bounds = np.zeros(jmax*2)
             #upper_bounds = np.ones(jmax*2)*1e10
             #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
@@ -259,8 +275,10 @@ class tip_tilt:
             if min_loglik is None or loglik < min_loglik:
                 min_loglik = loglik
                 min_res = res
-        a_est = min_res[0].reshape((self.L, 2))
-        print("a_est", a_est)
+        a_est = min_res[0].reshape((self.L+1, 2))
+        print("a_est", a_est, min_loglik)
+        print("a_est_mean", np.mean(a_est, axis=0))
+        return a_est[:self.L,:], a_est[self.L,:]#self.get_f(a_est)
         
 def main():
     '''
