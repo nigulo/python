@@ -120,9 +120,10 @@ def save(filename, state):
 
 num_frames = 10
 
-image = plt.imread('granulation.png')
+image = plt.imread('granulation.png')[:, :, 0]
+#image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
-image = image[0:100,0:100, 0]
+image = image[0:20,0:20]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -313,57 +314,15 @@ print("Alphas_mean", np.mean(true_alphas, axis=0))
 coords = psf_.coords1
 max_coord = np.max(coords, axis=(0, 1))
 print("max_coord", max_coord)
-coords = np.roll(np.roll(coords, -int(coords.shape[0]/2), axis=0), -int(coords.shape[1]/2), axis=1)
 
-#tt = tip_tilt.tip_tilt(Ds[:2], Ps[:2], Fs[:2], 2.*coords, np.zeros_like(true_alphas)[:2])#, true_alphas)
-#tt = tip_tilt.tip_tilt(np.array([Ds[0]]), np.array([Ps[0]]), np.array([Fs[0]]), 2.*coords, np.array([true_alphas[0]]))#, true_alphas)
 tt = tip_tilt.tip_tilt(Ds, Ps, Fs, coords, None)#+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
-#a, f = tt.calc()
-a, a0 = tt.optimize()
-print(a0.shape)
-#tt = tip_tilt.tip_tilt(Ds, Ps, Fs, 2.*coords, true_alphas)#+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
-##a, f = tt.calc()
-#_, _ = tt.optimize()
+#a, a0 = tt.optimize()
+#print(a0.shape)
 
-
-#a = true_alphas
-#f = tt.get_f(a)
-#tt = tip_tilt.tip_tilt(np.array([np.stack((D, D_d))]), np.array([np.stack((P, P_d))]), np.array([[F]]), psf_b.coords)
-#a, f = tt.calc()
-#F *= np.exp(-1.j*f)
-
+image_est_tts, _, _ = tt.calc()
 
 for trial in np.arange(0, num_frames):
-    #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
-    #a, f = tt.calc()
-    #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
-
-    #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[trial], axes=(2, 0)))
-    tt_phase = np.exp(1.j*(np.tensordot(coords, -a[trial], axes=(2, 0))))
-    #tt_phase = np.exp(1.j*np.tensordot(np.ones_like(psf_.coords1), np.array([100., 0.]), axes=(2, 0)))
-    
-    #tt_phase1 = np.zeros((psf_.coords1.shape[0], psf_.coords1.shape[1]), dtype='complex')
-    #tt_phase1=np.exp(1.j*tt_phase1)
-    #np.testing.assert_array_equal(tt_phase, tt_phase1)
-    P = Ps[trial, 0]
-    P_d = Ps[trial, 1]
-    P *= tt_phase
-    P_d *= tt_phase
-    
-    #np.testing.assert_array_equal(P, true_Ps[trial, 0])
-    image_est_tt = fft.ifft2(Ds[trial, 0]*tt_phase).real
-    #image_est_tt = np.roll(np.roll(image_est_tt, int(a[trial, 0]*max_coord[0]), axis=0), int(a[trial, 1]*max_coord[1]), axis=1)
-    
-    
-        
-    #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
-    #a, f = tt.calc()
-    #tt_phase = np.exp(-1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
-    #tt_phase = np.exp(-1.j*np.tensordot(psf_b.coords, a[trial], axes=(2, 0)))
-
-
-    #image_est_tt, F, P, P_d = psf_basis.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, betass[trial], gamma, ret_all = True)
-    #image_est_tt = psf.deconvolve_(Ds[trial, 0], Ds[trial, 1], P, P_d, gamma, fft_shift = False)
+    image_est_tt = image_est_tts[trial]
 
     image_est_tt_norm = misc.normalize(image_est_tt)
     image_est_tt_mean += image_est_tt_norm
