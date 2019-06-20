@@ -90,6 +90,7 @@ image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.407843
 
 class test_tip_tilt(unittest.TestCase):
     
+    '''
     def test_lik_and_grad(self):
         prior_prec = 1.
         k = 2
@@ -157,7 +158,7 @@ class test_tip_tilt(unittest.TestCase):
         print(grads_expected.shape)
 
         np.testing.assert_almost_equal(grads, grads_expected, 1)
-
+    '''
     def test_calc(self):
         l = 10
         
@@ -167,19 +168,22 @@ class test_tip_tilt(unittest.TestCase):
         d_shifted = np.zeros((l, nx, nx))
         
         D = np.zeros((l, 1, nx, nx), dtype='complex')
-        F = np.zeros((l, 1, nx, nx))
+        F = np.zeros((l, 1, nx, nx), dtype='complex')
         S = np.ones((l, 1, nx, nx), dtype='complex')
         for i in np.arange(0, l):
-            x_shift = int(np.random.uniform(-nx/2, nx/2))
-            y_shift = int(np.random.uniform(-nx/2, nx/2))
+            x_shift = int(np.random.uniform(-nx/5, nx/5))
+            y_shift = int(np.random.uniform(-nx/5, nx/5))
+            #x_shift = int(np.random.normal()*10)
+            #y_shift = int(np.random.normal()*10)
             d_shifted[i] = np.roll(np.roll(d0, x_shift, axis=0), y_shift, axis=1)
             D[i, 0] = fft.fft2(d_shifted[i])
             F[i, 0] = np.absolute(D[i, 0])
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j
         
-        xs = np.linspace(0., 2, D.shape[2])
+        xs = np.linspace(-1/nx/2, 1/nx/2, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
+        print("Coords before:", coords[0, 0], coords[-1, -1])
         tt = tip_tilt.tip_tilt(D, S, F, coords, prior_prec=.001, num_rounds=1)
         image, _, _ = tt.calc()
 

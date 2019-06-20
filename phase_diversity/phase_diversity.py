@@ -123,7 +123,7 @@ num_frames = 10
 image = plt.imread('granulation.png')[:, :, 0]
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
-image = image[0:20,0:20]
+image = image[0:10,0:10]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -139,7 +139,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 0.#3.
+    defocus = 0#3.
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -240,7 +240,7 @@ for trial in np.arange(0, num_frames):
 
     D = fft.ifftshift(D)
     D_d = fft.ifftshift(D_d)
-    
+
     #betas_est = np.zeros(jmax, dtype='complex')
     #D1, D1_d = psf_b.convolve(image, betas_est)
     
@@ -312,8 +312,10 @@ print("Alphas", true_alphas)
 print("Alphas_mean", np.mean(true_alphas, axis=0))
 
 coords = psf_.coords1
+min_coord = np.min(coords, axis=(0, 1))
 max_coord = np.max(coords, axis=(0, 1))
-print("max_coord", max_coord)
+print("min_coord, max_coord", min_coord, max_coord)
+print("Coords before:", coords[0, 0], coords[-1, -1])
 
 tt = tip_tilt.tip_tilt(Ds, Ps, Fs, coords, None)#+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
 #a, a0 = tt.optimize()

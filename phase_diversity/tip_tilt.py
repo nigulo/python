@@ -23,6 +23,7 @@ class tip_tilt:
         self.C2 = np.sum(self.C, axis = 1)
         self.CD1 = np.sum(self.C*self.D, axis = (0, 1))
         self.CD2 = np.sum(self.C*self.D, axis = 1)
+        self.x_in = x
         self.x = np.roll(np.roll(x, -int(x.shape[0]/2), axis=0), -int(x.shape[1]/2), axis=1)
         self.L = D.shape[0]
         self.K = D.shape[1]
