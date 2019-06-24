@@ -9,7 +9,7 @@ class tip_tilt:
         l is number od frames, k, number of diversities and
         x1 and x2 are width and height of the sensor in pixels
     '''
-    def __init__(self, D, S, F, x, initial_a = None, prior_prec=.01, num_rounds=1):
+    def __init__(self, D, S, F, x, initial_a = None, prior_prec=0., num_rounds=1):
         self.D_in = D
         self.S = S
         self.C = np.absolute(S)*np.absolute(D)*np.absolute(F)
@@ -24,7 +24,8 @@ class tip_tilt:
         self.CD1 = np.sum(self.C*self.D, axis = (0, 1))
         self.CD2 = np.sum(self.C*self.D, axis = 1)
         self.x_in = x
-        self.x = np.roll(np.roll(x, -int(x.shape[0]/2), axis=0), -int(x.shape[1]/2), axis=1)
+        self.x = fft.ifftshift(x)
+        #self.x = np.roll(np.roll(x, -int(x.shape[0]/2), axis=0), -int(x.shape[1]/2), axis=1)
         self.L = D.shape[0]
         self.K = D.shape[1]
         self.initial_a = initial_a

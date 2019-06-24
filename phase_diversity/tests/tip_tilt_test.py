@@ -181,10 +181,15 @@ class test_tip_tilt(unittest.TestCase):
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j
         
-        xs = np.linspace(-1/nx/2, 1/nx/2, nx)
+        x_max = 1.
+        x_min = -1.
+        delta = 0.
+        if (nx % 2) == 0:
+            delta = (x_max - x_min)/nx
+        xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
         print("Coords before:", coords[0, 0], coords[-1, -1])
-        tt = tip_tilt.tip_tilt(D, S, F, coords, prior_prec=.001, num_rounds=1)
+        tt = tip_tilt.tip_tilt(D, S, F, coords, prior_prec=.25, num_rounds=1)
         image, _, _ = tt.calc()
 
         my_plot = plot.plot(nrows=l, ncols=3)
