@@ -207,11 +207,16 @@ class test_psf_basis(unittest.TestCase):
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
-        betas = np.zeros(jmax, dtype='complex')
-        D, D_d = psf.convolve(image, betas)
+        L = 5
+        betas = np.zeros((L, jmax), dtype='complex')
+        
+        Ds = np.tile(np.array([image, image]), (L, 1)).reshape((L, 2, nx, nx))
+        Ds = psf.convolve(Ds, betas)
         #Df, Df_d = psf.multiply(fimage, betas)
 
         # No defocus, so D should be equal to D_d
+        D = Ds[:, 0, :, :]
+        D_d = Ds[:, 1, :, :]
         np.testing.assert_almost_equal(D, D_d, 8)
         
         #my_plot = plot.plot_map(nrows=1, ncols=2)
@@ -231,16 +236,17 @@ class test_psf_basis(unittest.TestCase):
         #######################################################################
         # Now test actual convolution
 
-        betas = np.random.normal(size=jmax) + 1.j*np.random.normal(size=jmax)
+        betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
 
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
         
         image_F = fft.fft2(image)
-        D, D_d = psf.multiply(image_F, betas)
-        reconst = psf.deconvolve(D, D_d, betas=betas, gamma=1., do_fft=True)
-        np.testing.assert_almost_equal(reconst, image, 15)
-    
+        Ds = np.tile(np.array([image_F, image_F]), (L, 1)).reshape((L, 2, nx, nx))
+        Ds = psf.multiply(Ds, betas)
+        reconst = psf.deconvolve(Ds, betas=betas, gamma=1., do_fft=True)
+        for l in np.arange(0, L):
+            np.testing.assert_almost_equal(reconst[l], image, 15)
     
     def test_likelihood(self):
         

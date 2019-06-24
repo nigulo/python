@@ -160,7 +160,9 @@ if state == None:
     arcsec_per_px, defocus = get_params(nx_orig)#wavelength/diameter*1e-8*180/np.pi*3600
     #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
 
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2)
+    coords = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -177,7 +179,9 @@ else:
     
     assert(nx == np.shape(image)[0])
     
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2)
+    coords = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt=tt)
     psf_b.set_state(state[7])
     
 
@@ -192,7 +196,7 @@ aperture_func = lambda xs: utils.aperture_circ(xs, coef=15., radius =1.)
 defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
 
 max_frames = min(10, num_frames)
-my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
+my_plot = plot.plot(nrows=max_frames + 1, ncols=5)
 
 image_est_mean = np.zeros((nx, nx))
 image_est_tt_mean = np.zeros((nx, nx))
@@ -220,7 +224,9 @@ psf_null = psf.psf(ctf_null, nx_orig, arcsec_per_px = arcsec_per_px, diameter = 
 psf_null.calc(defocus=False)
 psf_null.calc(defocus=True)
 
-D0 = None
+###############################################################################
+# Create abberrated images
+###############################################################################
 for trial in np.arange(0, num_frames):
     
     pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
@@ -241,12 +247,6 @@ for trial in np.arange(0, num_frames):
     D = fft.ifftshift(D)
     D_d = fft.ifftshift(D_d)
 
-    #betas_est = np.zeros(jmax, dtype='complex')
-    #D1, D1_d = psf_b.convolve(image, betas_est)
-    
-    betas_est = sampler.sample(D, D_d, "samples" + str(trial) + ".png")
-    print("betas_est", len(betas_est))
-    image_est, F, P, P_d = psf_b.deconvolve(D, D_d, betas_est, gamma, ret_all = True)
     Ds[trial, 0] = D
     Ds[trial, 1] = D_d
     Fs[trial, 0] = np.absolute(D)
@@ -254,12 +254,6 @@ for trial in np.arange(0, num_frames):
     #Ps[trial, 0] = P
     #Ps[trial, 1] = P_d
     #Fs[trial, 0] = F
-
-    #image_est = psf_basis.maybe_invert(image_est, image)
-
-    betass.append(betas_est)
-    #image_est = psf_.deconvolve(D, D_d, gamma, do_fft = True)
-
 
     D = fft.ifft2(D).real
     D_d = fft.ifft2(D_d).real
@@ -269,71 +263,34 @@ for trial in np.arange(0, num_frames):
     
     D_norm = misc.normalize(D)
     D_d_norm = misc.normalize(D_d)
-    image_est_norm = misc.normalize(image_est)
-
-
-    #if D0 is not None:
-    #    corr = signal.correlate2d(D0, D_norm, mode='full')
-    #    plot_corr = plot.plot(nrows=1, ncols=1)
-    #    plot_corr.colormap(corr)
-    #    plot_corr.save("corr.png")
-    #    plot_corr.close()
-    #    
-    #    shift = np.unravel_index(np.argmax(corr, axis=None), corr.shape) - np.array([int(corr.shape[0]/2), int(corr.shape[1]/2)])
-    #    print("shift:", shift)
-    #    D_norm = np.roll(np.roll(D_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
-    #    D_d_norm = np.roll(np.roll(D_d_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
-    #    image_est_norm = np.roll(np.roll(image_est_norm, int(shift[0]), axis=0), int(shift[1]), axis=1)
-    #
-    #else:
-    #    D0 = D_norm
-
 
     if trial < max_frames:
         my_plot.colormap(image, [trial, 0])
         my_plot.colormap(D, [trial, 1])
         my_plot.colormap(D_d, [trial, 2])
-        my_plot.colormap(image_est, [trial, 3])
     
-        my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 5])
-    
-    #image_est = fft.ifft2(fimage_est).real
-    #image_est = np.roll(np.roll(image_est, int(nx/2), axis=0), int(ny/2), axis=1)
-    image_est_mean += image_est_norm
-
     D_mean += D_norm
     D_d_mean += D_d_norm
 
     my_plot.save("estimates.png")
 
 
+###############################################################################
+# Estimate PSF
+###############################################################################
 
-print("Alphas", true_alphas)
-print("Alphas_mean", np.mean(true_alphas, axis=0))
-
-coords = psf_.coords1
-min_coord = np.min(coords, axis=(0, 1))
-max_coord = np.max(coords, axis=(0, 1))
-print("min_coord, max_coord", min_coord, max_coord)
-print("Coords before:", coords[0, 0], coords[-1, -1])
-
-tt = tip_tilt.tip_tilt(Ds, Ps, Fs, coords, None)#+np.random.normal(size=(true_alphas.shape[0], true_alphas.shape[1]))*.001)#np.zeros_like(true_alphas))#, true_alphas)
-#a, a0 = tt.optimize()
-#print(a0.shape)
-
-image_est_tts, _, _ = tt.calc()
+betas_est, a_est = sampler.sample(Ds, "samples" + str(trial) + ".png")
+print("betas_est", len(betas_est))
+image_est, F, P, P_d = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
 
 for trial in np.arange(0, num_frames):
-    image_est_tt = image_est_tts[trial]
-
-    image_est_tt_norm = misc.normalize(image_est_tt)
-    image_est_tt_mean += image_est_tt_norm
+    image_est_norm = misc.normalize(image_est[trial])
+    image_est_mean += image_est_norm
     if trial < max_frames:
-        my_plot.colormap(image_est_tt, [trial, 4])
-        my_plot.colormap(np.abs(image_est_tt_norm-image_norm), [trial, 6])
+        my_plot.colormap(image_est[trial], [trial, 3])
+        my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 4])
 
 image_est_mean /= num_frames
-image_est_tt_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
@@ -341,9 +298,7 @@ my_plot.colormap(image_norm, [max_frames, 0])
 my_plot.colormap(D_mean, [max_frames, 1])
 my_plot.colormap(D_d_mean, [max_frames, 2])
 my_plot.colormap(image_est_mean, [max_frames, 3])
-my_plot.colormap(image_est_tt_mean, [max_frames, 4])
-my_plot.colormap(np.abs(image_est_mean-image_norm), [max_frames, 5])
-my_plot.colormap(np.abs(image_est_tt_mean-image_norm), [max_frames, 6])
+my_plot.colormap(np.abs(image_est_mean-image_norm), [max_frames, 4])
 
 
 

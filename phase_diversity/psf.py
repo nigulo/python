@@ -105,23 +105,6 @@ class coh_trans_func():
             phase += self.defocus
         return self.pupil*np.exp(1.j * phase)
 
-
-def get_coords(nx, arcsec_per_px, diameter, wavelength):      
-    rad2deg=180.0/np.pi
-    scale_angle2CCD=arcsec_per_px/(rad2deg*3600.0)
-    diff_limit = wavelength*1.e-8/diameter
-    q_number=diff_limit/(scale_angle2CCD)
-    rc=1./q_number # telescope_d in pupil space
-    print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
-     
-    #x_limit = nx*rc
-    x_limit = 1./nx/rc
-    
-    #coh_vals = np.zeros((nx, ny))
-    xs = np.linspace(-x_limit, x_limit, nx)
-    print("PSF x_limit", xs[0], xs[-1])
-    return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
-
 def deconvolve_(D, D_d, S, S_d, gamma, do_fft = True, fft_shift = True):
     regularizer_eps = 1e-10
     assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
@@ -153,7 +136,7 @@ class psf():
     '''
     def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True):
         self.nx= nx
-        coords, rc, x_limit = get_coords(nx, arcsec_per_px, diameter, wavelength)
+        coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
         x_min = np.min(self.coords, axis=(0,1))
         x_max = np.max(self.coords, axis=(0,1))

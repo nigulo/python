@@ -90,7 +90,6 @@ image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.407843
 
 class test_tip_tilt(unittest.TestCase):
     
-    '''
     def test_lik_and_grad(self):
         prior_prec = 1.
         k = 2
@@ -113,14 +112,15 @@ class test_tip_tilt(unittest.TestCase):
         
         xs = np.linspace(-1., 1., D.shape[2])
         coords = np.dstack(np.meshgrid(xs, xs)[::-1])
-        tt = tip_tilt.tip_tilt(D, S, F, coords, prior_prec=prior_prec)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=prior_prec)
+        tt.set_data(D, S, F)
         
         theta = np.random.normal(size=2*(l+1), scale=1./np.sqrt(prior_prec + 1e-10))
 
         #######################################################################
         # Test likelihood
         #######################################################################
-        lik = tt.lik(theta, None)
+        lik = tt.lik(theta)
 
         a = theta[0:2*l].reshape((l, 2))
         a0 = theta[2*l:2*l+2]
@@ -139,26 +139,26 @@ class test_tip_tilt(unittest.TestCase):
         # Test likelihood gradient
         #######################################################################
 
-        grads = tt.lik_grad(theta, None)
+        grads = tt.lik_grad(theta)
         print(grads.shape)
 
         #######################################################################
         # Check against values calculated using finite differences
         delta_theta = np.ones_like(theta)*1.0e-10#+1e-12
 
-        lik = tt.lik(theta, None)
+        lik = tt.lik(theta)
         liks = np.repeat(lik, len(theta))
         liks1 = np.zeros_like(theta)
         for i in np.arange(0, len(theta)):
             delta = np.zeros_like(theta)
             delta[i] = delta_theta[i]
-            liks1[i] = tt.lik(theta+delta, None)
+            liks1[i] = tt.lik(theta+delta)
 
         grads_expected = (liks1 - liks) / delta_theta
         print(grads_expected.shape)
 
         np.testing.assert_almost_equal(grads, grads_expected, 1)
-    '''
+
     def test_calc(self):
         l = 10
         
@@ -189,7 +189,8 @@ class test_tip_tilt(unittest.TestCase):
         xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
         print("Coords before:", coords[0, 0], coords[-1, -1])
-        tt = tip_tilt.tip_tilt(D, S, F, coords, prior_prec=.25, num_rounds=1)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=.25, num_rounds=1)
+        tt.set_data(D, S, F)
         image, _, _ = tt.calc()
 
         my_plot = plot.plot(nrows=l, ncols=3)

@@ -73,3 +73,22 @@ def downsample(image):
         return real + imag*1.j
     else:
         return scipy.ndimage.zoom(image, zoom_perc, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
+
+
+def get_coords(nx, arcsec_per_px, diameter, wavelength):      
+    rad2deg=180.0/np.pi
+    scale_angle2CCD=arcsec_per_px/(rad2deg*3600.0)
+    diff_limit = wavelength*1.e-8/diameter
+    q_number=diff_limit/(scale_angle2CCD)
+    rc=1./q_number # telescope_d in pupil space
+    print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
+     
+    #x_limit = nx*rc
+    x_limit = 1./nx/rc
+    
+    #coh_vals = np.zeros((nx, ny))
+    xs = np.linspace(-x_limit, x_limit, nx)
+    print("PSF x_limit", xs[0], xs[-1])
+    return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
+
+

@@ -9,11 +9,20 @@ class tip_tilt:
         l is number od frames, k, number of diversities and
         x1 and x2 are width and height of the sensor in pixels
     '''
-    def __init__(self, D, S, F, x, initial_a = None, prior_prec=0., num_rounds=1):
+    def __init__(self, x, initial_a = None, prior_prec=0., num_rounds=1):
+        self.x_in = x
+        self.x = fft.ifftshift(x)
+        #self.x = np.roll(np.roll(x, -int(x.shape[0]/2), axis=0), -int(x.shape[1]/2), axis=1)
+        self.initial_a = initial_a
+        self.prior_prec = prior_prec
+        self.num_rounds = num_rounds
+
+    def set_data(self, D, S):#, F):
+        print("D and S shapes", D.shape, S.shape)
         self.D_in = D
         self.S = S
-        self.C = np.absolute(S)*np.absolute(D)*np.absolute(F)
-        self.D = np.angle(D)-np.angle(S)-np.angle(F)
+        self.C = np.absolute(S)*np.absolute(D)#*np.absolute(F)
+        self.D = np.angle(D)-np.angle(S)#-np.angle(F)
         self.C_T = np.transpose(self.C, axes=(1, 0, 2, 3)) # swap k and l
         self.D_T = np.transpose(self.D, axes=(1, 0, 2, 3)) # swap k and l
         self.C1 = np.sum(self.C, axis = (0, 1))
@@ -23,21 +32,10 @@ class tip_tilt:
         self.C2 = np.sum(self.C, axis = 1)
         self.CD1 = np.sum(self.C*self.D, axis = (0, 1))
         self.CD2 = np.sum(self.C*self.D, axis = 1)
-        self.x_in = x
-        self.x = fft.ifftshift(x)
-        #self.x = np.roll(np.roll(x, -int(x.shape[0]/2), axis=0), -int(x.shape[1]/2), axis=1)
         self.L = D.shape[0]
         self.K = D.shape[1]
-        self.initial_a = initial_a
         
-        if self.initial_a is not None:
-            self.initial_a = self.initial_a.reshape(self.L*2)
-        #self.initial_a = np.zeros(self.L, 2)
-    
-        self.prior_prec = prior_prec
-        self.num_rounds = num_rounds
-
-    def lik(self, theta, data):
+    def lik(self, theta):
         a = theta[0:2*self.L].reshape((self.L, 2))
         a0 = theta[2*self.L:2*self.L+2]
         #f = theta[self.L:self.L+self.x.shape[0]*self.x.shape[1]].reshape((self.x.shape[0], self.x.shape[1]))
@@ -68,7 +66,7 @@ class tip_tilt:
         return retval
     '''
 
-    def lik_grad(self, theta, data):
+    def lik_grad(self, theta):
         a = theta[0:2*self.L].reshape((self.L, 2))
         a0 = theta[2*self.L:2*self.L+2]
 
@@ -261,17 +259,18 @@ class tip_tilt:
     
     def optimize(self):
         def lik_fn(params):
-            return self.lik(params, [])
+            return self.lik(params)
 
         def grad_fn(params):
-            return self.lik_grad(params, [])
+            return self.lik_grad(params)
         
         min_loglik = None
         min_res = None
+        if self.initial_a is not None:
+            initial_a = self.initial_a.reshape(self.L*2)
         for trial_no in np.arange(0, self.num_rounds):
-            initial_a = np.random.normal(size=2*(self.L+1), scale=1./np.sqrt(self.prior_prec + 1e-10))#np.zeros(2*self.L)
-            if self.initial_a is not None:
-                initial_a = self.initial_a
+            if self.initial_a is None:
+                initial_a = np.random.normal(size=2*(self.L+1), scale=1./np.sqrt(self.prior_prec + 1e-10))#np.zeros(2*self.L)
             from timeit import default_timer as timer
             #start = timer()
             #res1 = optimize.fmin_cg(lik_fn, initial_a, fprime=None, args=(), full_output=True, gtol=1e-05, norm=np.Inf, epsilon=1.5e-08)
@@ -299,30 +298,32 @@ class tip_tilt:
         print("a_est_mean", np.mean(a_est, axis=0))
         return a_est[:self.L,:], a_est[self.L,:]#self.get_f(a_est)
     
-    def calc(self):
-        a, a0 = self.optimize()
-        
+    def deconvolve(self, D, S, a_est):
         image_F = np.zeros((self.L, self.x.shape[0], self.x.shape[1]), dtype = 'complex')
         image = np.zeros((self.L, self.x.shape[0], self.x.shape[1]))
-        S = np.zeros((self.L, self.K, self.x.shape[0], self.x.shape[1]), dtype = 'complex')
+        S_out = np.zeros((self.L, self.K, self.x.shape[0], self.x.shape[1]), dtype = 'complex')
         for trial in np.arange(0, self.L):
             #tt = tip_tilt.tip_tilt(np.array([Ds[trial]]), np.array([Ps[trial]]), np.array([Fs[trial]]), psf_.coords1)
             #a, f = tt.calc()
             #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[0], axes=(2, 0)))
         
             #tt_phase = np.exp(1.j*np.tensordot(psf_.coords1, a[trial], axes=(2, 0)))
-            tt_phase = np.exp(1.j*(np.tensordot(self.x, -a[trial], axes=(2, 0))))
+            tt_phase = np.exp(1.j*(np.tensordot(self.x, -a_est[trial], axes=(2, 0))))
             #tt_phase = np.exp(1.j*np.tensordot(np.ones_like(psf_.coords1), np.array([100., 0.]), axes=(2, 0)))
             
             #tt_phase1 = np.zeros((psf_.coords1.shape[0], psf_.coords1.shape[1]), dtype='complex')
             #tt_phase1=np.exp(1.j*tt_phase1)
             #np.testing.assert_array_equal(tt_phase, tt_phase1)
-            S[trial] = self.S[trial]
-            S[trial] *= tt_phase
+            S_out[trial] = S[trial]
+            S_out[trial] *= tt_phase
             
-            image_F[trial] = self.D_in[trial, 0]*tt_phase
+            image_F[trial] = D[trial, 0]*tt_phase
             image[trial] = fft.ifft2(image_F[trial]).real
-        return image, image_F, S
+        return image, image_F, S_out
+    
+    def calc(self):
+        a, a0 = self.optimize()
+        return self.deconvolve(self.D_in, self.S, a)
     
 def main():
     '''
