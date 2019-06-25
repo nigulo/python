@@ -20,7 +20,7 @@ class tip_tilt:
     def set_data(self, D, S):#, F):
         self.D_in = D
         self.S = S
-        self.C = np.absolute(S)*np.absolute(D)#*np.absolute(F)
+        self.C = np.absolute(S)*np.absolute(D)**2#np.absolute(F)
         self.D = np.angle(D)-np.angle(S)#-np.angle(F)
         self.C_T = np.transpose(self.C, axes=(1, 0, 2, 3)) # swap k and l
         self.D_T = np.transpose(self.D, axes=(1, 0, 2, 3)) # swap k and l
@@ -319,11 +319,10 @@ class tip_tilt:
             #tt_phase1 = np.zeros((psf_.coords1.shape[0], psf_.coords1.shape[1]), dtype='complex')
             #tt_phase1=np.exp(1.j*tt_phase1)
             #np.testing.assert_array_equal(tt_phase, tt_phase1)
-            print("S_out, S", S_out.shape, S.shape)
             S_out[trial] = S[trial]
             S_out[trial] *= tt_phase
             
-            image_F[trial] = D[trial, 0]*tt_phase
+            image_F[trial] = D[trial]*tt_phase
             image[trial] = fft.ifft2(image_F[trial]).real
         return image, image_F, S_out
     

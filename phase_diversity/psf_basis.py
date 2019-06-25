@@ -128,12 +128,11 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
     if not do_fft and not ret_all:
         return F_image
 
-    #image = fft.ifft2(fft.ifftshift(F_image)).real
-    image = fft.ifft2(F_image).real
-    #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
     
     if tip_tilt is not None and a_est is not None:
         image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
+    else:
+        image = fft.ifft2(F_image).real
         
     if ret_all:
         return image, F_image, Ps
@@ -273,6 +272,8 @@ class psf_basis:
         
             # Generate all the basis functions
             for j in np.arange(0, jmax + 1):
+                if self.tip_tilt is not None and (j == 1 or j==2):
+                    continue
                 if j == 0:
                     n, m = 0, 0
                 else:
@@ -281,6 +282,8 @@ class psf_basis:
                 V_n_m =  Vnmf(radius, f, n, m)
                 
                 for k in np.arange(0, j + 1):
+                    if self.tip_tilt is not None and (k == 1 or k==2):
+                        continue
                     if k == 0:
                         n_p, m_p = 0, 0
                     else:

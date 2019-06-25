@@ -100,12 +100,12 @@ class test_tip_tilt(unittest.TestCase):
         d0 = np.random.normal(size=(k, nx, nx))
         
         D = np.zeros((l, k, nx, nx), dtype='complex')
-        F = np.zeros((l, 1, nx, nx))
+        #F = np.zeros((l, 1, nx, nx))
         for i in np.arange(0, l):
             x_shift = int(np.random.uniform(-nx/2, nx/2))
             y_shift = int(np.random.uniform(-nx/2, nx/2))
             D[i] = fft.fft2(np.roll(np.roll(d0, x_shift, axis=0), y_shift, axis=1))
-            F[i, 0] = np.absolute(D[i])[0]
+            #F[i, 0] = np.absolute(D[i])[0]
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j
         S = np.ones((l, k, nx, nx), dtype='complex')
@@ -113,7 +113,7 @@ class test_tip_tilt(unittest.TestCase):
         xs = np.linspace(-1., 1., D.shape[2])
         coords = np.dstack(np.meshgrid(xs, xs)[::-1])
         tt = tip_tilt.tip_tilt(coords, prior_prec=prior_prec)
-        tt.set_data(D, S, F)
+        tt.set_data(D, S)#, F)
         
         theta = np.random.normal(size=2*(l+1), scale=1./np.sqrt(prior_prec + 1e-10))
 
@@ -126,8 +126,8 @@ class test_tip_tilt(unittest.TestCase):
         a0 = theta[2*l:2*l+2]
         au = np.tensordot(a, coords, axes=(1, 2)) + np.tensordot(a0, coords, axes=(0, 2))
 
-        C_T = np.transpose(np.absolute(S)*np.absolute(D)*np.absolute(F), axes=(1, 0, 2, 3)) # swap k and l
-        D_T = np.transpose(np.angle(D)-np.angle(S)-np.angle(F), axes=(1, 0, 2, 3)) # swap k and l
+        C_T = np.transpose(np.absolute(S)*np.absolute(D)*np.absolute(D), axes=(1, 0, 2, 3)) # swap k and l
+        D_T = np.transpose(np.angle(D)-np.angle(S), axes=(1, 0, 2, 3)) # swap k and l
 
         phi = D_T - au
         lik_expected = np.sum(C_T*np.cos(phi))
@@ -168,7 +168,7 @@ class test_tip_tilt(unittest.TestCase):
         d_shifted = np.zeros((l, nx, nx))
         
         D = np.zeros((l, 1, nx, nx), dtype='complex')
-        F = np.zeros((l, 1, nx, nx), dtype='complex')
+        #F = np.zeros((l, 1, nx, nx), dtype='complex')
         S = np.ones((l, 1, nx, nx), dtype='complex')
         for i in np.arange(0, l):
             x_shift = int(np.random.uniform(-nx/5, nx/5))
@@ -177,7 +177,7 @@ class test_tip_tilt(unittest.TestCase):
             #y_shift = int(np.random.normal()*10)
             d_shifted[i] = np.roll(np.roll(d0, x_shift, axis=0), y_shift, axis=1)
             D[i, 0] = fft.fft2(d_shifted[i])
-            F[i, 0] = np.absolute(D[i, 0])
+            #F[i, 0] = np.absolute(D[i, 0])
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j
         
@@ -188,9 +188,8 @@ class test_tip_tilt(unittest.TestCase):
             delta = (x_max - x_min)/nx
         xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
-        print("Coords before:", coords[0, 0], coords[-1, -1])
-        tt = tip_tilt.tip_tilt(coords, prior_prec=.25, num_rounds=1)
-        tt.set_data(D, S, F)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=1., num_rounds=1)
+        tt.set_data(D, S)#, F)
         image, _, _ = tt.calc()
 
         my_plot = plot.plot(nrows=l, ncols=3)

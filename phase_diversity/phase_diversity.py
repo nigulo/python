@@ -123,7 +123,7 @@ num_frames = 10
 image = plt.imread('granulation.png')[:, :, 0]
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
-image = image[0:10,0:10]
+image = image[0:50,0:50]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -139,7 +139,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 0#3.
+    defocus = 0.#3.
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -204,7 +204,7 @@ D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
 image_norm = misc.normalize(image)
-wavefront = kolmogorov.kolmogorov(fried = np.array([.1]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.2]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
@@ -215,7 +215,7 @@ betass = []
 Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
 Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 Fs = np.ones((num_frames, 1, nx, nx), dtype='complex')
-true_alphas = np.zeros((num_frames, 2))
+#true_alphas = np.zeros((num_frames, 2))
 true_Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 
 pa_null = psf.phase_aberration([])
@@ -229,12 +229,11 @@ psf_null.calc(defocus=True)
 ###############################################################################
 for trial in np.arange(0, num_frames):
     
-    pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
-    true_alphas[trial] = pa.alphas
-    #pa = psf.phase_aberration(np.random.normal(size=5)*.001)
+    #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
+    #pa = psf.phase_aberration(np.random.normal(size=5))
     #pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
@@ -243,6 +242,7 @@ for trial in np.arange(0, num_frames):
     #D, D_d = psf_b.multiply(fimage, betas)
     true_Ps[trial, 0] = psf_.otf_vals[False]
     true_Ps[trial, 1] = psf_.otf_vals[True]
+    #true_alphas[trial] = pa.alphas
 
     D = fft.ifftshift(D)
     D_d = fft.ifftshift(D_d)
@@ -272,14 +272,19 @@ for trial in np.arange(0, num_frames):
     D_mean += D_norm
     D_d_mean += D_d_norm
 
-    my_plot.save("estimates.png")
+my_plot.save("estimates.png")
 
 
 ###############################################################################
 # Estimate PSF
 ###############################################################################
 
-betas_est, a_est = sampler.sample(Ds, "samples" + str(trial) + ".png")
+res = sampler.sample(Ds, "samples" + str(trial) + ".png")
+if tt is not None:
+    betas_est, a_est = res
+else:
+    betas_est = res
+    a_est = None
 print("betas_est", len(betas_est))
 image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
 
