@@ -407,16 +407,23 @@ class psf_basis:
         return self.multiply(np.ones((betas.shape[0], 2, self.nx, self.nx), dtype='complex'), betas)
 
 
+    def encode(self, betas, Ds, gamma, a = []):
+        if self.tip_tilt is not None:
+            assert(a is not None)
+        theta = np.concatenate((np.stack((betas.real, betas.imag), axis=1).flatten(), a))
+        data = [Ds, gamma]
+        return theta, data
+
     def decode(self, theta, data):
         Ds = data[0]
         gamma = data[1]
         L = Ds.shape[0]
-        
         betas = np.zeros((L, self.jmax), dtype = 'complex')
         for l in np.arange(0, L):
             begin_index = l*2*self.jmax
-            betas_real = betas[begin_index:begin_index+self.jmax]
-            betas_imag = betas[begin_index+self.jmax:begin_index+2*self.jmax]
+            betas_real = theta[begin_index:begin_index+self.jmax]
+            betas_imag = theta[begin_index+self.jmax:begin_index+2*self.jmax]
+            print("betas_imag", Ds.shape, L, betas_imag, begin_index, self.jmax, theta)
             betas[l] = betas_real + betas_imag*1.j
         return betas, Ds, gamma, theta[L*2*self.jmax:]
 
@@ -434,7 +441,9 @@ class psf_basis:
         #P = np.zeros_like(D, dtype = 'complex')
         #P_d = np.zeros_like(D_d, dtype = 'complex')
 
-        for l in np.arange(0, Ds.shape[0]):
+        L = Ds.shape[0]
+
+        for l in np.arange(0, L):
             for j in np.arange(0, self.jmax + 1):
                 for k in np.arange(0, j + 1):
                     FX, FY = self.get_FXFY(j, k, defocus=False)
@@ -469,9 +478,9 @@ class psf_basis:
         den[eps_indices][sign_indices] *= -1.
 
         #den += regularizer_eps
-        L = num/den
+        lik = num/den
 
-        retval = np.sum(L.real)
+        retval = np.sum(lik.real)
         #print("likelihood", theta, retval)
         
         #######################################################################

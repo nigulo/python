@@ -259,15 +259,22 @@ class test_psf_basis(unittest.TestCase):
 
         gamma = 1.
         
+        L = 1
+        
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
-        betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
+        betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
+        Ds = np.array([np.stack((D, D_d))])
+        theta, data = psf.encode(betas, Ds, gamma)
 
-        lik = psf.likelihood(np.concatenate((betas.real, betas.imag)), [D, D_d, gamma])
+        lik = psf.likelihood(theta, data)
         
-        P, P_d = psf.get_FP(betas)
+        Ps = psf.get_FP(betas)
+        P = Ps[:, 0, :, :]
+        P_d = Ps[:, 1, :, :]
+
         num = D_d*P-D*P_d
         num *= num.conjugate()
         #lik_expected = np.sum(num/np.sqrt(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
@@ -323,21 +330,23 @@ class test_psf_basis(unittest.TestCase):
         defocus = 1.0
         
         gamma = 1.
+        L = 10
 
         #fimage = fft.fftshift(fft.fft2(image))
         fimage = fft.fft2(image)
+        Ds = np.tile(np.array([fimage, fimage]), (L, 1)).reshape((L, 2, nx, nx))
         
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
-        betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
+        betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
 
-        D, D_d = psf.multiply(fimage, betas)
-        image_back = psf.deconvolve(D, D_d, betas, gamma, do_fft = True)
+        Ds = psf.multiply(Ds, betas)
+        image_back = psf.deconvolve(Ds, betas, gamma, do_fft = True)
         #fimage_back = psf.get_restoration(D, D_d, betas, gamma, do_fft = False)
 
-        np.testing.assert_almost_equal(image_back, image, 10)
+        np.testing.assert_almost_equal(image_back, np.tile(image, (L, 1)).reshape((L, nx, nx)), 10)
         #np.testing.assert_almost_equal(fimage_back, fimage, 8)
 
         
