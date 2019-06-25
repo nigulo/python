@@ -301,7 +301,8 @@ class tip_tilt:
         a_est = min_res[0].reshape((self.L+1, 2))
         print("a_est", a_est, min_loglik)
         print("a_est_mean", np.mean(a_est, axis=0))
-        return a_est[:self.L,:], a_est[self.L,:]#self.get_f(a_est)
+        return a_est
+        #return a_est[:self.L,:], a_est[self.L,:]#self.get_f(a_est)
     
     def deconvolve(self, D, S, a_est):
         image_F = np.zeros((self.L, self.x.shape[0], self.x.shape[1]), dtype = 'complex')
@@ -327,7 +328,7 @@ class tip_tilt:
         return image, image_F, S_out
     
     def calc(self):
-        a, a0 = self.optimize()
+        a = self.optimize()
         return self.deconvolve(self.D_in, self.S, a)
     
 def main():

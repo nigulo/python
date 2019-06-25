@@ -188,7 +188,7 @@ class test_tip_tilt(unittest.TestCase):
             delta = (x_max - x_min)/nx
         xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
-        tt = tip_tilt.tip_tilt(coords, prior_prec=1., num_rounds=1)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=.25, num_rounds=1)
         tt.set_data(D, S)#, F)
         image, _, _ = tt.calc()
 

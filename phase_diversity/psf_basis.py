@@ -128,7 +128,6 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
     if not do_fft and not ret_all:
         return F_image
 
-    
     if tip_tilt is not None and a_est is not None:
         image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
     else:
@@ -488,17 +487,19 @@ class psf_basis:
         #den += regularizer_eps
         lik = num/den
 
-        retval = np.sum(lik.real)
+        lik = np.sum(lik.real)
         #print("likelihood", theta, retval)
         
         #######################################################################
         # Tip-tilt estimation
         #######################################################################
         if self.tip_tilt is not None:
+            #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
-            retval += self.tip_tilt.lik(other)
+            lik += self.tip_tilt.lik(other)
+            print("lik", lik)
 
-        return retval
+        return lik
         
     def likelihood_grad(self, theta, data):
         betas, Ds, gamma, other = self.decode(theta, data)
@@ -573,8 +574,10 @@ class psf_basis:
         # Tip-tilt estimation
         #######################################################################
         if self.tip_tilt is not None:
+            #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
+            print("grads", grads)
         
         return grads
 

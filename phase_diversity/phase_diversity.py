@@ -149,7 +149,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 10
+    jmax = 3
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
@@ -161,6 +161,14 @@ if state == None:
     #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
 
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    #x_max = 1.
+    #x_min = -1.
+    #delta = 0.
+    #if (nx % 2) == 0:
+    #    delta = (x_max - x_min)/nx
+    #xs = np.linspace(x_min, x_max-delta, nx)
+    #coords = np.dstack(np.meshgrid(xs, xs))
+    
     tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
     psf_b.create_basis()
@@ -229,11 +237,11 @@ psf_null.calc(defocus=True)
 ###############################################################################
 for trial in np.arange(0, num_frames):
     
-    #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
+    pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
     #pa = psf.phase_aberration(np.random.normal(size=5))
     #pa = psf.phase_aberration([])
-    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
@@ -285,7 +293,7 @@ if tt is not None:
 else:
     betas_est = res
     a_est = None
-print("betas_est", len(betas_est))
+print("betas_est, a_est", betas_est, a_est)
 image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
 
 for trial in np.arange(0, num_frames):
