@@ -423,7 +423,6 @@ class psf_basis:
             begin_index = l*2*self.jmax
             betas_real = theta[begin_index:begin_index+self.jmax]
             betas_imag = theta[begin_index+self.jmax:begin_index+2*self.jmax]
-            print("betas_imag", Ds.shape, L, betas_imag, begin_index, self.jmax, theta)
             betas[l] = betas_real + betas_imag*1.j
         return betas, Ds, gamma, theta[L*2*self.jmax:]
 
@@ -502,7 +501,7 @@ class psf_basis:
         
         grads = np.zeros(L*2*self.jmax)#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
-        Ps = self.get_FP(betas, defocus = True)
+        Ps = self.get_FP(betas)
         P = Ps[:, 0, :, :]
         P_d = Ps[:, 1, :, :]
         
@@ -518,11 +517,10 @@ class psf_basis:
 
         for l in np.arange(0, L):
             for j1 in np.arange(1, self.jmax+1):
-    
-                dP_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
-                dP_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
-                dP_d_dbeta_real = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
-                dP_d_dbeta_imag = np.zeros((np.shape(D)[0], np.shape(D)[1]), dtype = 'complex')
+                dP_dbeta_real = np.zeros((self.nx, self.nx), dtype = 'complex')
+                dP_dbeta_imag = np.zeros((self.nx, self.nx), dtype = 'complex')
+                dP_d_dbeta_real = np.zeros((self.nx, self.nx), dtype = 'complex')
+                dP_d_dbeta_imag = np.zeros((self.nx, self.nx), dtype = 'complex')
                 for k1 in np.arange(0, self.jmax+1):
                     eps = 1.0
                     if j1 == k1:

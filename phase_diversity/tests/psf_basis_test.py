@@ -291,35 +291,42 @@ class test_psf_basis(unittest.TestCase):
         defocus = 1.0
         
         gamma = 1.
+        L = 1
         
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
-        betas = np.random.normal(size=jmax) + np.random.normal(size=jmax)*1.j
+        betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
+        Ds = np.array([np.stack((D, D_d))])
+        theta, data = psf.encode(betas, Ds, gamma)
 
-        delta_betas = betas*1.0e-7
+        delta_betas = 1.0e-7 + betas*1.0e-7
 
-        lik = psf.likelihood(np.concatenate((betas.real, betas.imag)), [D, D_d, gamma])
-        liks = np.repeat(lik, len(betas))
+        lik = psf.likelihood(theta, data)
+        liks = np.tile(lik, (betas.shape[0], betas.shape[1]))
         liks1_real = np.zeros_like(betas.real)
         liks1_imag = np.zeros_like(betas.imag)
-        for i in np.arange(0, len(betas)):
-            delta = np.zeros_like(betas)
-            delta[i] = delta_betas[i].real
-            betas1 = betas+delta
-            liks1_real[i] = psf.likelihood(np.concatenate((betas1.real, betas1.imag)), [D, D_d, gamma])
-
-            delta[i] = 1.j*delta_betas[i].imag
-            betas1 = betas+delta
-            liks1_imag[i] = psf.likelihood(np.concatenate((betas1.real, betas1.imag)), [D, D_d, gamma])
-        
-        grads_expected = np.concatenate(((liks1_real - liks) / delta_betas.real, (liks1_imag - liks) / delta_betas.imag))
+        for l in np.arange(0, L):
+            for i in np.arange(0, betas.shape[1]):
+                delta = np.zeros_like(betas)
+                delta[l, i] = delta_betas[l, i].real
+                betas1 = betas+delta
+                theta1, _ = psf.encode(betas1, Ds, gamma)
+                
+                liks1_real[l, i] = psf.likelihood(theta1, data)
     
-        grads = psf.likelihood_grad(np.concatenate((betas.real, betas.imag)), [D, D_d, gamma])
+                delta[l, i] = 1.j*delta_betas[l, i].imag
+                betas1 = betas+delta
+                theta1, _ = psf.encode(betas1, Ds, gamma)
+    
+                liks1_imag[l, i] = psf.likelihood(theta1, data)
+        
+        grads_expected = np.stack(((liks1_real - liks) / delta_betas.real, (liks1_imag - liks) / delta_betas.imag), axis=1).flatten()
+    
+        grads = psf.likelihood_grad(theta, data)
 
-        for i in np.arange(0, len(grads)):
-            np.testing.assert_approx_equal(grads[i], grads_expected[i], 4)
+        np.testing.assert_array_almost_equal(grads, grads_expected, 2)
             
     def test_deconvolve(self):
         jmax = 5
