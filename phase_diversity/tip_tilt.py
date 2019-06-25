@@ -18,7 +18,6 @@ class tip_tilt:
         self.num_rounds = num_rounds
 
     def set_data(self, D, S):#, F):
-        print("D and S shapes", D.shape, S.shape)
         self.D_in = D
         self.S = S
         self.C = np.absolute(S)*np.absolute(D)#*np.absolute(F)
@@ -35,9 +34,16 @@ class tip_tilt:
         self.L = D.shape[0]
         self.K = D.shape[1]
         
-    def lik(self, theta):
+    def encode(self, a):
+        return a.reshape(a.shape[0]*a.shape[1])
+
+    def decode(self, theta):
         a = theta[0:2*self.L].reshape((self.L, 2))
         a0 = theta[2*self.L:2*self.L+2]
+        return a, a0
+        
+    def lik(self, theta):
+        a, a0 = self.decode(theta)
         #f = theta[self.L:self.L+self.x.shape[0]*self.x.shape[1]].reshape((self.x.shape[0], self.x.shape[1]))
         au = np.tensordot(a, self.x, axes=(1, 2)) + np.tensordot(a0, self.x, axes=(0, 2))
         #f = self.get_f(a)
@@ -67,8 +73,7 @@ class tip_tilt:
     '''
 
     def lik_grad(self, theta):
-        a = theta[0:2*self.L].reshape((self.L, 2))
-        a0 = theta[2*self.L:2*self.L+2]
+        a, a0 = self.decode(theta)
 
         au = np.tensordot(a, self.x, axes=(1, 2)) + np.tensordot(a0, self.x, axes=(0, 2))
         phi = self.D_T - au
@@ -267,10 +272,10 @@ class tip_tilt:
         min_loglik = None
         min_res = None
         if self.initial_a is not None:
-            initial_a = self.initial_a.reshape(self.L*2)
+            initial_a = self.encode(self.initial_a)
         for trial_no in np.arange(0, self.num_rounds):
             if self.initial_a is None:
-                initial_a = np.random.normal(size=2*(self.L+1), scale=1./np.sqrt(self.prior_prec + 1e-10))#np.zeros(2*self.L)
+                initial_a = self.encode(np.random.normal(size=((self.L+1), 2), scale=1./np.sqrt(self.prior_prec + 1e-10)))
             from timeit import default_timer as timer
             #start = timer()
             #res1 = optimize.fmin_cg(lik_fn, initial_a, fprime=None, args=(), full_output=True, gtol=1e-05, norm=np.Inf, epsilon=1.5e-08)
@@ -314,6 +319,7 @@ class tip_tilt:
             #tt_phase1 = np.zeros((psf_.coords1.shape[0], psf_.coords1.shape[1]), dtype='complex')
             #tt_phase1=np.exp(1.j*tt_phase1)
             #np.testing.assert_array_equal(tt_phase, tt_phase1)
+            print("S_out, S", S_out.shape, S.shape)
             S_out[trial] = S[trial]
             S_out[trial] *= tt_phase
             

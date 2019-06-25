@@ -78,10 +78,12 @@ class psf_basis_sampler():
     
         else:
             def lik_fn(params):
-                return self.psf_b.likelihood(params, [Ds, self.gamma])
+                data = self.psf_b.encode_data(Ds, self.gamma)
+                return self.psf_b.likelihood(params, data)
     
             def grad_fn(params):
-                return self.psf_b.likelihood_grad(params, [Ds, self.gamma])
+                data = self.psf_b.encode_data(Ds, self.gamma)
+                return self.psf_b.likelihood_grad(params, data)
             
             
             # Optional methods:
@@ -105,9 +107,11 @@ class psf_basis_sampler():
             for trial_no in np.arange(0, self.num_samples):
                 initial_a = np.array([])
                 if tt is not None:
-                    initial_a = np.random.normal(size=2*(L+1), scale=1./np.sqrt(tt.prior_prec + 1e-10))#np.zeros(2*self.L)
+                    initial_a = np.random.normal(size=((L+1), 2), scale=1./np.sqrt(tt.prior_prec + 1e-10))#np.zeros(2*self.L)
                 #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-                res = scipy.optimize.fmin_cg(lik_fn, np.concatenate((np.random.normal(size=jmax*2), initial_a)), fprime=grad_fn, args=(), full_output=True)
+                initial_betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
+                params = self.psf_b.encode_params(initial_betas, initial_a)
+                res = scipy.optimize.fmin_cg(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #lower_bounds = np.zeros(jmax*2)
                 #upper_bounds = np.ones(jmax*2)*1e10
                 #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
@@ -118,7 +122,7 @@ class psf_basis_sampler():
                     min_res = res
             for l in np.arange(0, L):
                 for i in np.arange(0, jmax):
-                    betas_est[L, i] = min_res[0][l*2*jmax + i] + 1.j*min_res[0][l*2*jmax + jmax + i]
+                    betas_est[l, i] = min_res[0][l*2*jmax + i] + 1.j*min_res[0][l*2*jmax + jmax + i]
             if tt is not None:
                 a_est = min_res[0][2*jmax:2*jmax+(2*(L+1))].reshape((L+1, 2))
             

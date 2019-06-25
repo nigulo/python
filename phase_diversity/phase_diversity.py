@@ -160,7 +160,7 @@ if state == None:
     arcsec_per_px, defocus = get_params(nx_orig)#wavelength/diameter*1e-8*180/np.pi*3600
     #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
 
-    coords = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
     psf_b.create_basis()
@@ -179,7 +179,7 @@ else:
     
     assert(nx == np.shape(image)[0])
     
-    coords = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt=tt)
     psf_b.set_state(state[7])
@@ -281,7 +281,7 @@ for trial in np.arange(0, num_frames):
 
 betas_est, a_est = sampler.sample(Ds, "samples" + str(trial) + ".png")
 print("betas_est", len(betas_est))
-image_est, F, P, P_d = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
+image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
 
 for trial in np.arange(0, num_frames):
     image_est_norm = misc.normalize(image_est[trial])

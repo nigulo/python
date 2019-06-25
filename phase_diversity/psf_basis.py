@@ -133,7 +133,7 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
     #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
     
     if tip_tilt is not None and a_est is not None:
-        image, image_F, Ps = tip_tilt.deconvolve(F_image, np.stack((P, P_d), axis=2), a_est)
+        image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
         
     if ret_all:
         return image, F_image, Ps
@@ -407,18 +407,24 @@ class psf_basis:
         return self.multiply(np.ones((betas.shape[0], 2, self.nx, self.nx), dtype='complex'), betas)
 
 
-    def encode(self, betas, Ds, gamma, a = []):
+    def encode_params(self, betas, a = None):
+        theta = np.stack((betas.real, betas.imag), axis=1).flatten()
         if self.tip_tilt is not None:
-            assert(a is not None)
-        theta = np.concatenate((np.stack((betas.real, betas.imag), axis=1).flatten(), a))
-        data = [Ds, gamma]
-        return theta, data
+            theta = np.concatenate((theta, self.tip_tilt.encode(a)))
+        return theta
+
+    def encode_data(self, Ds, gamma):
+        return [Ds, gamma]
+    
+    def encode(self, betas, Ds, gamma, a = []):
+        return self.encode_params(betas, a), self.encode_data(Ds, gamma)
 
     def decode(self, theta, data):
         Ds = data[0]
         gamma = data[1]
         L = Ds.shape[0]
         betas = np.zeros((L, self.jmax), dtype = 'complex')
+        #print("theta.shape", theta.shape, L, self.jmax, theta)
         for l in np.arange(0, L):
             begin_index = l*2*self.jmax
             betas_real = theta[begin_index:begin_index+self.jmax]
@@ -565,7 +571,7 @@ class psf_basis:
         #######################################################################
         if self.tip_tilt is not None:
             self.tip_tilt.set_data(Ds, Ps)#, F)
-            grads = np.concatenate(grads, self.tip_tilt.lik_grad(other))
+            grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
         
         return grads
 
