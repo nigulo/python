@@ -129,6 +129,8 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
         return F_image
 
     if tip_tilt is not None and a_est is not None:
+        #Ps = np.ones_like(Ps)
+        #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
         image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
     else:
         image = fft.ifft2(F_image).real
@@ -497,7 +499,7 @@ class psf_basis:
             #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             lik += self.tip_tilt.lik(other)
-            print("lik", lik)
+            #print("lik", lik)
 
         return lik
         
@@ -577,7 +579,7 @@ class psf_basis:
             #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
-            print("grads", grads)
+            #print("grads", grads)
         
         return grads
 

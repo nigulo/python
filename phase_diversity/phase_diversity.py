@@ -120,10 +120,10 @@ def save(filename, state):
 
 num_frames = 10
 
-image = plt.imread('granulation.png')[:, :, 0]
-#image = plt.imread('granulation2.png')
+#image = plt.imread('granulation.png')[:, :, 0]
+image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
-image = image[0:50,0:50]
+image = image[0:20,0:20]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)

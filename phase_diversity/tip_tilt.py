@@ -329,7 +329,7 @@ class tip_tilt:
     
     def calc(self):
         a = self.optimize()
-        return self.deconvolve(self.D_in, self.S, a)
+        return self.deconvolve(self.D_in[:,0,:,:], self.S, a)
     
 def main():
     '''
