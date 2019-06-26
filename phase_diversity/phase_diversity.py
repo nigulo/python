@@ -149,7 +149,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 3
+    jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
@@ -295,6 +295,12 @@ else:
     a_est = None
 print("betas_est, a_est", betas_est, a_est)
 image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
+
+#S = np.ones((num_frames, 2, nx, nx), dtype='complex')
+#tt.set_data(Ds, S)#, F)
+#image_est, _, _ = tt.calc()
+
+
 
 for trial in np.arange(0, num_frames):
     image_est_norm = misc.normalize(image_est[trial])

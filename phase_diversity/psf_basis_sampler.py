@@ -124,7 +124,7 @@ class psf_basis_sampler():
                 for i in np.arange(0, jmax):
                     betas_est[l, i] = min_res[0][l*2*jmax + i] + 1.j*min_res[0][l*2*jmax + jmax + i]
             if tt is not None:
-                a_est = min_res[0][2*jmax:2*jmax+(2*(L+1))].reshape((L+1, 2))
+                a_est = min_res[0][L*2*jmax:L*2*jmax+(2*(L+1))].reshape((L+1, 2))
             
         print(betas_est)
         #betas_est = np.random.normal(size=psf.jmax) + np.random.normal(size=psf.jmax)*1.j
