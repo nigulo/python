@@ -33,7 +33,7 @@ class plot:
     def set_title(self, title):
         self.title = title
 
-    def colormap(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = True, colorbar_prec=None):
+    def colormap(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = False, colorbar_prec=None):
         if len(ax_index) == 2:
             ax = self.axes[ax_index[0]][ax_index[1]]
         elif len(ax_index) == 1:
@@ -92,6 +92,22 @@ class plot:
             ax.quiverkey(q, X=0.3, Y=1.1, U=10,
                  label=key, labelpos='E')
 
+
+    def set_axis(self, ax_index = None, limits = [[], []], labels = None):
+        if ax_index is None:
+            ax = None
+        elif len(ax_index) == 2:
+            ax = self.axes[ax_index[0]][ax_index[1]]
+        elif len(ax_index) == 1:
+            ax = self.axes[ax_index[0]]
+        else:
+            ax = self.axes
+        for ax1 in self.axes.flatten():
+            if ax is None or ax == ax1:
+                if len(limits[0]) == 0:
+                    ax1.get_xaxis().set_visible(False)
+                if len(limits[1]) == 0:
+                    ax1.get_yaxis().set_visible(False)
 
     def save(self, file_name):
         self.fig.savefig(file_name)
