@@ -138,9 +138,9 @@ def get_params(nx):
     coef1 = 4.**(-np.log2(float(nx)/11))
     coef2 = 2.**(-np.log2(float(nx)/11))
     print("coef1, coef2", coef1, coef2)
-    arcsec_per_px = coef1*0.2
+    arcsec_per_px = coef1*0.1
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 3#7.5
+    defocus = 3.#7.5
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
