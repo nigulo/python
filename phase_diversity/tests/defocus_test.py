@@ -161,9 +161,11 @@ class test_defocus(unittest.TestCase):
                     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1)#/(arcsec_per_px**2)/1000)
                     psf_b.create_basis()
                     betas = np.zeros(jmax, dtype='complex')
-                    D2, D2_d = psf_b.convolve(image2, betas)
-                    D2 = np.roll(np.roll(D2, 1, axis=0), 1, axis=1)
-                    D2_d = np.roll(np.roll(D2_d, 1, axis=0), 1, axis=1)
+                    Ds = psf_b.convolve(image2, betas)
+                    D1 = Ds[0, 0]
+                    D1_d = Ds[0, 1]
+                    D2 = np.roll(np.roll(D1, 1, axis=0), 1, axis=1)
+                    D2_d = np.roll(np.roll(D2, 1, axis=0), 1, axis=1)
         
                 
                     #D1 /= np.std(D1)

@@ -370,6 +370,15 @@ class psf_basis:
     betas.shape = [l, jmax]
     '''
     def convolve(self, dat, betas):
+        if len(dat.shape) < 3:
+            dat = np.array([[dat, dat]])
+        elif len(dat.shape) < 4:
+            dat = np.tile(dat, (2,1)).reshape((dat.shape[0],2,dat.shape[-2],dat.shape[-1]))
+        if len(betas.shape) < 2:
+            betas = np.array([betas])
+            
+        print("dat", dat.shape)
+
         #dat_F = fft.fftshift(fft.fft2(dat))
         dat_F = fft.fft2(fft.fftshift(dat))
         #dat_F = fft.fft2(dat)
