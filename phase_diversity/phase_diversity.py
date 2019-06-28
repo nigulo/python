@@ -302,8 +302,7 @@ else:
     betas_est = res
     a_est = None
 print("betas_est, a_est", betas_est, a_est)
-image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est)
-
+image_est, F, Ps = psf_b.deconvolve(Ds*np.sqrt(nx), betas_est, gamma, ret_all = True, a_est=a_est)
 #S = np.ones((num_frames, 2, nx, nx), dtype='complex')
 #tt.set_data(Ds, S)#, F)
 #image_est, _, _ = tt.calc()
