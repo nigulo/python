@@ -386,7 +386,7 @@ class psf_basis:
         m = fft.ifftshift(fft.ifft2(m_F))
         threshold = np.ones_like(m.imag)*1e-12
         np.testing.assert_array_less(abs(m.imag), threshold)
-        return m.real
+        return m.real/(2*self.nx + 1)
 
     def deconvolve(self, Ds, betas, gamma, do_fft = True, ret_all=False, a_est=None):
         Ps = self.get_FP(betas)
