@@ -285,7 +285,7 @@ class test_psf(unittest.TestCase):
 
         #x1 = np.linspace(-1., 1., size)/np.sqrt(2)
         #x2 = np.linspace(-1., 1., size)/np.sqrt(2)
-        coords, _, _ = psf.get_coords(size, arcsec_per_px, diameter, wavelength)
+        coords, _, _ = utils.get_coords(size, arcsec_per_px, diameter, wavelength)
         #coords = np.dstack(np.meshgrid(x1, x2))
         pupil = aperture_func(coords)
         

@@ -8,6 +8,10 @@ def normalize(ds, axis = None):
     ds_norm = (ds - min_ds)/(max_ds - min_ds)
     return ds_norm
 
+def center(ds, axis = None):
+    mean_ds = np.mean(ds, axis=axis)
+    return ds - mean_ds
+
 
 def sample_image(image, factor):
     if image.dtype == 'complex':

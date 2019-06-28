@@ -124,7 +124,7 @@ max_frames = min(10, num_frames)
 image = plt.imread('granulation.png')[:, :, 0]
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
-image = image[0:50,0:50]
+image = image[0:20,0:20]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -138,9 +138,9 @@ def get_params(nx):
     coef1 = 4.**(-np.log2(float(nx)/11))
     coef2 = 2.**(-np.log2(float(nx)/11))
     print("coef1, coef2", coef1, coef2)
-    arcsec_per_px = coef1*0.1
+    arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 3.#7.5
+    defocus = 0.#3.#7.5
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -170,7 +170,7 @@ if state == None:
     #xs = np.linspace(x_min, x_max-delta, nx)
     #coords = np.dstack(np.meshgrid(xs, xs))
     
-    tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
     psf_b.create_basis()
 
@@ -190,7 +190,7 @@ else:
     assert(nx == np.shape(image)[0])
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
-    tt = tip_tilt.tip_tilt(coords, prior_prec=np.max(coords[0])**2, num_rounds=1)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt=tt)
     psf_b.set_state(state[7])
     
@@ -209,11 +209,10 @@ my_plot = plot.plot(nrows=max_frames + 1, ncols=5)
 my_plot.set_axis()
 
 image_est_mean = np.zeros((nx, nx))
-image_est_tt_mean = np.zeros((nx, nx))
 D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
-image_norm = misc.normalize(image)
+#image_norm = misc.normalize(image)
 wavefront = kolmogorov.kolmogorov(fried = np.array([.15]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
@@ -234,16 +233,19 @@ psf_null = psf.psf(ctf_null, nx_orig, arcsec_per_px = arcsec_per_px, diameter = 
 psf_null.calc(defocus=False)
 psf_null.calc(defocus=True)
 
+image_center = image#misc.center(image)
+vmin = np.min(image_center)
+vmax = np.max(image_center)
 ###############################################################################
 # Create abberrated images
 ###############################################################################
 for trial in np.arange(0, num_frames):
     
-    #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
+    pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
     #pa = psf.phase_aberration(np.random.normal(size=5))
     #pa = psf.phase_aberration([])
-    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
@@ -271,16 +273,20 @@ for trial in np.arange(0, num_frames):
     #image_min = np.min(image)
     #image_max = np.max(image)
     
-    D_norm = misc.normalize(D)
-    D_d_norm = misc.normalize(D_d)
-
-    if trial < max_frames:
-        my_plot.colormap(image, [trial, 0])
-        my_plot.colormap(D, [trial, 1])
-        my_plot.colormap(D_d, [trial, 2])
+    #D = misc.normalize(D)
+    #D_d = misc.normalize(D_d)
     
-    D_mean += D_norm
-    D_d_mean += D_d_norm
+    #D = misc.center(D)
+    #D_d = misc.center(D_d)
+
+    print("np.min(image), np.max(image), np.min(D), np.max(D)", np.min(image_center), np.max(image_center), np.min(D), np.max(D))
+    if trial < max_frames:
+        my_plot.colormap(image_center, [trial, 0], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D, [trial, 1], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D_d, [trial, 2], vmin=vmin, vmax=vmax)
+    
+    D_mean += D
+    D_d_mean += D_d
 
 my_plot.save("estimates.png")
 
@@ -303,21 +309,21 @@ image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=
 #image_est, _, _ = tt.calc()
 
 for trial in np.arange(0, num_frames):
-    image_est_norm = misc.normalize(image_est[trial])
-    image_est_mean += image_est_norm
+    #image_est_norm = misc.normalize(image_est[trial])
+    image_est_mean += image_est[trial]
     if trial < max_frames:
-        my_plot.colormap(image_est[trial], [trial, 3])
-        my_plot.colormap(np.abs(image_est_norm-image_norm), [trial, 4])
+        my_plot.colormap(image_est[trial], [trial, 3], vmin=vmin, vmax=vmax)
+        my_plot.colormap(np.abs(image_est[trial]-image_center), [trial, 4], vmin=vmin, vmax=vmax)
 
 image_est_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
-my_plot.colormap(image_norm, [max_frames, 0])
-my_plot.colormap(D_mean, [max_frames, 1])
-my_plot.colormap(D_d_mean, [max_frames, 2])
-my_plot.colormap(image_est_mean, [max_frames, 3])
-my_plot.colormap(np.abs(image_est_mean-image_norm), [max_frames, 4])
+my_plot.colormap(image_center, [max_frames, 0], vmin=vmin, vmax=vmax)
+my_plot.colormap(D_mean, [max_frames, 1], vmin=vmin, vmax=vmax)
+my_plot.colormap(D_d_mean, [max_frames, 2], vmin=vmin, vmax=vmax)
+my_plot.colormap(image_est_mean, [max_frames, 3], vmin=vmin, vmax=vmax)
+my_plot.colormap(np.abs(image_est_mean-image_center), [max_frames, 4], vmin=vmin, vmax=vmax)
 
 
 
