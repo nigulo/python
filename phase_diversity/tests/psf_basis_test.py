@@ -202,17 +202,16 @@ class test_psf_basis(unittest.TestCase):
         diameter = 20.0
         wavelength = 5250.0
         nx = 10
-        defocus = 0.
-
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
-        psf.create_basis(do_fft=True, do_defocus=True)
 
         L = 5
-        betas = np.zeros((L, jmax), dtype='complex')
-        
         
         #######################################################################
         # First use flat field to test the normalization
+
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 3.)
+        psf.create_basis(do_fft=True, do_defocus=True)
+
+        betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
         
         flat_field = np.ones_like(image)
         flat_field = np.tile(np.array([flat_field, flat_field]), (L, 1)).reshape((L, 2, nx, nx))
@@ -220,11 +219,18 @@ class test_psf_basis(unittest.TestCase):
         # No defocus, so D should be equal to D_d
         D = Ds[:, 0, :, :]
         D_d = Ds[:, 1, :, :]
-        np.testing.assert_almost_equal(D, D_d, 8)
+        #np.testing.assert_almost_equal(D, D_d, 8)
         np.testing.assert_almost_equal(Ds, flat_field, 3)
         
         #######################################################################
         # Now use the actual image
+
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
+        psf.create_basis(do_fft=True, do_defocus=True)
+
+        betas = np.zeros((L, jmax), dtype='complex')
+
+
         Ds = np.tile(np.array([image, image]), (L, 1)).reshape((L, 2, nx, nx))
         Ds = psf.convolve(Ds, betas)
         #Df, Df_d = psf.multiply(fimage, betas)
@@ -253,7 +259,7 @@ class test_psf_basis(unittest.TestCase):
 
         betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
 
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
         psf.create_basis(do_fft=True, do_defocus=True)
         
         image_F = fft.fft2(image)
@@ -351,7 +357,7 @@ class test_psf_basis(unittest.TestCase):
         nx = 10
         defocus = 1.0
         
-        gamma = 1.
+        gamma = 3.
         L = 10
 
         #fimage = fft.fftshift(fft.fft2(image))

@@ -352,9 +352,10 @@ class test_psf(unittest.TestCase):
         coh_vals = ctf(defocus=True)        
         corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/size/size
         np.testing.assert_almost_equal(otf_vals, corr)
-        
 
-    def test_deconvolve(self):
+
+
+    def test_convolve(self):
         arcsec_per_px = 0.055
         diameter = 20.0
         wavelength = 5250.0
@@ -363,7 +364,24 @@ class test_psf(unittest.TestCase):
         image1 = utils.upsample(image10x10)
 
         #######################################################################
-        # First test that the convolution has no effect in case
+        # First use flat field to test the normalization
+
+        n_coefs = 20
+        coefs = np.random.normal(size=n_coefs)*10.
+        pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
+
+        ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
+        psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
+        
+        flat_field = np.ones_like(image1)
+        D, D_d = psf_.convolve(flat_field)
+        np.testing.assert_almost_equal(D, D_d, 8)
+        np.testing.assert_almost_equal(D, flat_field, 8)
+
+
+        #######################################################################
+        # Test that the convolution has no effect in case
         # we have a full aperture and zero wavefront aberration
         pa = psf.phase_aberration([])
 
@@ -385,9 +403,14 @@ class test_psf(unittest.TestCase):
         threshold = np.ones_like(D)*0.01
         np.testing.assert_array_less((D - image1)**2, threshold)
         
-        #######################################################################
-        # Now test actual convolution
-        
+    def test_deconvolve(self):
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+
+        nx = np.shape(image10x10)[0]
+        image1 = utils.upsample(image10x10)
+
         n_coefs = 20
         coefs = np.random.normal(size=n_coefs)*10.
         pa = psf.phase_aberration(coefs)#zip(np.arange(1, n_coefs + 1), coefs))
@@ -401,7 +424,6 @@ class test_psf(unittest.TestCase):
         D, D_d = psf_.multiply(image1_F)
         reconst = psf_.deconvolve(D, D_d, alphas=coefs, gamma=1., do_fft=True)
         np.testing.assert_almost_equal(reconst, image1, 15)
-
 
        
     def test_likelihood(self):

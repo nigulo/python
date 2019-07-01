@@ -140,7 +140,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 0.#3.#7.5
+    defocus = 5.#7.5
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -150,7 +150,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 10
+    jmax = 3
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0
@@ -170,7 +170,7 @@ if state == None:
     #xs = np.linspace(x_min, x_max-delta, nx)
     #coords = np.dstack(np.meshgrid(xs, xs))
     
-    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
+    tt = None#tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
     psf_b.create_basis()
 
