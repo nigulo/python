@@ -338,6 +338,7 @@ class psf_basis:
     betas.shape = [l, jmax]
     '''
     def multiply(self, dat_F, betas):
+        betassum = 0
         ret_val = np.zeros_like(dat_F)
         for l in np.arange(0, dat_F.shape[0]):
             for j in np.arange(0, self.jmax+1):
@@ -359,10 +360,15 @@ class psf_basis:
                         coef *= 0.5
                     coef_x = coef.real
                     coef_y = coef.imag
+                    betassum += coef
     
                     ret_val[l, 0] += FX*coef_x + FY*coef_y # focus
                     ret_val[l, 1] += FX_d*coef_x + FY_d*coef_y # defocus
+
+        #norm = np.sum(ret_val, axis=(2, 3)).repeat(self.nx*self.nx).reshape((dat_F.shape[0], dat_F.shape[1], dat_F.shape[2], dat_F.shape[3]))
+        #print("norm shape", norm.shape)
         ret_val *= dat_F
+        #ret_val /= norm
         return ret_val
     
     '''
@@ -386,7 +392,7 @@ class psf_basis:
         m = fft.ifftshift(fft.ifft2(m_F))
         threshold = np.ones_like(m.imag)*1e-12
         np.testing.assert_array_less(abs(m.imag), threshold)
-        return m.real/(2*self.nx + 1)
+        return m.real#/(2*self.nx + 1)
 
     def deconvolve(self, Ds, betas, gamma, do_fft = True, ret_all=False, a_est=None):
         Ps = self.get_FP(betas)

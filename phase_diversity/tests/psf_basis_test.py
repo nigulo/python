@@ -7,6 +7,7 @@ import unittest
 sys.path.append('../../utils')
 import plot
 import misc
+import zernike
 import utils
 import scipy.special as special
 
@@ -212,6 +213,11 @@ class test_psf_basis(unittest.TestCase):
         psf.create_basis(do_fft=True, do_defocus=True)
 
         betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
+        #betas = np.ones((L, jmax), dtype='complex')*1.j
+        ns = np.zeros(jmax)
+        for j in np.arange(0, jmax):
+            n, m = zernike.get_nm(j + 2)
+            ns[j] = n + 1
         
         flat_field = np.ones_like(image)
         flat_field = np.tile(np.array([flat_field, flat_field]), (L, 1)).reshape((L, 2, nx, nx))
@@ -220,6 +226,7 @@ class test_psf_basis(unittest.TestCase):
         D = Ds[:, 0, :, :]
         D_d = Ds[:, 1, :, :]
         #np.testing.assert_almost_equal(D, D_d, 8)
+        print("sum_betas:", np.sum(betas*betas.conjugate()/(ns*np.pi)), Ds[0, 0, 0, 0])
         np.testing.assert_almost_equal(Ds, flat_field, 3)
         
         #######################################################################
