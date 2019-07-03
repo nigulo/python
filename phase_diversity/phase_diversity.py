@@ -150,7 +150,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 3
+    jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 20.0

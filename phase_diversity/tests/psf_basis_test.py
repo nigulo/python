@@ -196,7 +196,7 @@ class test_psf_basis(unittest.TestCase):
                     #        np.testing.assert_almost_equal(result[i, j], expected[i, j])
                     np.testing.assert_array_almost_equal(result, expected)
 
-    def test_convolve(self):
+    def test_convolve1(self):
         #First test if the same image is returned if betas are zero
         jmax = 10
         arcsec_per_px = 0.055
@@ -207,7 +207,7 @@ class test_psf_basis(unittest.TestCase):
         L = 5
         
         #######################################################################
-        # First use flat field to test the normalization
+        # Use flat field to test the normalization
 
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 3.)
         psf.create_basis(do_fft=True, do_defocus=True)
@@ -225,12 +225,23 @@ class test_psf_basis(unittest.TestCase):
         # No defocus, so D should be equal to D_d
         D = Ds[:, 0, :, :]
         D_d = Ds[:, 1, :, :]
-        #np.testing.assert_almost_equal(D, D_d, 8)
+        np.testing.assert_almost_equal(D, D_d, 8)
         print("sum_betas:", np.sum(betas*betas.conjugate()/(ns*np.pi)), Ds[0, 0, 0, 0])
         np.testing.assert_almost_equal(Ds, flat_field, 3)
         
+
+    def test_convolve2(self):
+        #First test if the same image is returned if betas are zero
+        jmax = 10
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        nx = 10
+
+        L = 5
+        
         #######################################################################
-        # Now use the actual image
+        # Use the actual image
 
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
         psf.create_basis(do_fft=True, do_defocus=True)
@@ -261,6 +272,17 @@ class test_psf_basis(unittest.TestCase):
         #threshold = np.ones_like(D)*0.18
         #np.testing.assert_array_less((misc.normalize(D) - misc.normalize(image))**2, threshold)
         
+
+    def test_convolve3(self):
+        #First test if the same image is returned if betas are zero
+        jmax = 10
+        arcsec_per_px = 0.055
+        diameter = 20.0
+        wavelength = 5250.0
+        nx = 10
+
+        L = 5
+        
         #######################################################################
         # Now test actual convolution
 
@@ -269,7 +291,7 @@ class test_psf_basis(unittest.TestCase):
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
         psf.create_basis(do_fft=True, do_defocus=True)
         
-        image_F = fft.fft2(fft.fftshift(image))
+        image_F = fft.fft2(image)
         Ds = np.tile(np.array([image_F, image_F]), (L, 1)).reshape((L, 2, nx, nx))
         Ds, _ = psf.multiply(Ds, betas)
         reconst = psf.deconvolve(Ds, betas=betas, gamma=1., do_fft=True, normalize = False)
@@ -384,7 +406,8 @@ class test_psf_basis(unittest.TestCase):
         #norm = fft.ifftshift(fft.ifft2(norm)).real
         #norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
         #Ds /= norm
-        Ds = fft.fft2(fft.fftshift(Ds))
+        #Ds = fft.fft2(fft.fftshift(Ds))
+        Ds = fft.fft2(Ds)
         
         
         image_back = psf.deconvolve(Ds, betas, gamma, do_fft = True, normalize = True)

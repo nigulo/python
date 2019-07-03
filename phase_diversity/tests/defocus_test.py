@@ -162,10 +162,10 @@ class test_defocus(unittest.TestCase):
                     psf_b.create_basis()
                     betas = np.zeros(jmax, dtype='complex')
                     Ds = psf_b.convolve(image2, betas)
-                    D1 = Ds[0, 0]
-                    D1_d = Ds[0, 1]
-                    D2 = np.roll(np.roll(D1, 1, axis=0), 1, axis=1)
-                    D2_d = np.roll(np.roll(D2, 1, axis=0), 1, axis=1)
+                    D2 = Ds[0, 0]
+                    D2_d = Ds[0, 1]
+                    D2 = np.roll(np.roll(D2, 1, axis=0), 1, axis=1)
+                    D2_d = np.roll(np.roll(D2_d, 1, axis=0), 1, axis=1)
         
                 
                     #D1 /= np.std(D1)
