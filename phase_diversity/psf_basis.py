@@ -110,7 +110,7 @@ def Vnmf(radius, f, n, m):
                 
     return Vnm
 
-def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None, normalize = True):
+def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None, normalize = False):
     D = Ds[:,0,:,:]
     D_d = Ds[:,1,:,:]
 
@@ -134,13 +134,13 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
         #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
         image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
     else:
-        image = fft.ifft2(F_image).real
+        image = fft.ifftshift(fft.ifft2(F_image)).real
         
     if normalize:
         norm_F = (P_conj + gamma * P_d_conj)#/den
         norm = fft.ifft2(norm_F).real
         norm = np.sum(norm, axis=(1, 2)).repeat(image.shape[1]*image.shape[2]).reshape((image.shape[0], image.shape[1], image.shape[2]))
-        image /=norm
+        image *= norm
         
     if ret_all:
         return image, F_image, Ps
@@ -390,10 +390,10 @@ class psf_basis:
             
         print("dat", dat.shape)
 
-        #dat_F = fft.fftshift(fft.fft2(dat))
         dat_F = fft.fft2(fft.fftshift(dat))
         #dat_F = fft.fft2(dat)
         m_F, norm_F = self.multiply(dat_F, betas) # m_F.shape is [l, 2, nx, nx]
+        #m = fft.ifft2(m_F)
         m = fft.ifftshift(fft.ifft2(m_F))
         threshold = np.ones_like(m.imag)*1e-12
         np.testing.assert_array_less(abs(m.imag), threshold)
@@ -403,6 +403,22 @@ class psf_basis:
             norm = np.sum(norm, axis=(2, 3)).repeat(self.nx*self.nx).reshape((dat_F.shape[0], dat_F.shape[1], dat_F.shape[2], dat_F.shape[3]))
             ret_val /= norm
         return ret_val
+
+    def convolve1(self, dat, betas, normalize=True):
+        if len(dat.shape) < 3:
+            dat = np.array([[dat, dat]])
+        elif len(dat.shape) < 4:
+            dat = np.tile(dat, (2,1)).reshape((dat.shape[0],2,dat.shape[-2],dat.shape[-1]))
+        if len(betas.shape) < 2:
+            betas = np.array([betas])
+            
+        print("dat", dat.shape)
+
+        #dat_F = fft.fftshift(fft.fft2(dat))
+        dat_F = fft.fft2(dat)
+        #dat_F = fft.fft2(dat)
+        m_F, norm_F = self.multiply(dat_F, betas) # m_F.shape is [l, 2, nx, nx]
+        return m_F
 
     def deconvolve(self, Ds, betas, gamma, do_fft = True, ret_all=False, a_est=None, normalize = True):
         Ps = self.get_FP(betas)
