@@ -110,15 +110,7 @@ def Vnmf(radius, f, n, m):
                 
     return Vnm
 
-def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None, normalize = False):
-    
-    if normalize:
-        Ds = fft.ifftshift(fft.ifft2(Ds)).real
-        norm = fft.ifftshift(fft.ifft2(Ps)).real
-        norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
-        Ds *= norm
-        Ds = fft.fft2(fft.fftshift(Ds))
-    
+def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None):
     
     D = Ds[:,0,:,:]
     D_d = Ds[:,1,:,:]
@@ -143,14 +135,10 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
         #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
         image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
     else:
-        image = fft.ifftshift(fft.ifft2(F_image)).real
+        #image = fft.ifftshift(fft.ifft2(F_image)).real
+        image = fft.ifft2(F_image).real
         
-#    if normalize:
-#        norm_F = (P_conj + gamma * P_d_conj)/den
-#        norm = fft.ifft2(norm_F).real
-#        norm = np.sum(norm, axis=(1, 2)).repeat(image.shape[1]*image.shape[2]).reshape((image.shape[0], image.shape[1], image.shape[2]))
-#        image*/= norm
-        
+       
     if ret_all:
         return image, F_image, Ps
     else:
@@ -413,25 +401,11 @@ class psf_basis:
             ret_val /= norm
         return ret_val
 
-    def convolve1(self, dat, betas, normalize=True):
-        if len(dat.shape) < 3:
-            dat = np.array([[dat, dat]])
-        elif len(dat.shape) < 4:
-            dat = np.tile(dat, (2,1)).reshape((dat.shape[0],2,dat.shape[-2],dat.shape[-1]))
-        if len(betas.shape) < 2:
-            betas = np.array([betas])
-            
-        print("dat", dat.shape)
-
-        #dat_F = fft.fftshift(fft.fft2(dat))
-        dat_F = fft.fft2(dat)
-        #dat_F = fft.fft2(dat)
-        m_F, norm_F = self.multiply(dat_F, betas) # m_F.shape is [l, 2, nx, nx]
-        return m_F
-
-    def deconvolve(self, Ds, betas, gamma, do_fft = True, ret_all=False, a_est=None, normalize = True):
+    def deconvolve(self, Ds, betas, gamma, do_fft = True, ret_all=False, a_est=None, normalize = False):
         Ps = self.get_FP(betas)
-        return deconvolve_(Ds, Ps, gamma, do_fft = do_fft, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est, normalize = normalize)
+        if normalize:
+            Ds = self.normalize(Ds, betas)
+        return deconvolve_(Ds, Ps, gamma, do_fft = do_fft, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #print(D)
@@ -443,6 +417,13 @@ class psf_basis:
         #np.savetxt("P.txt", P, fmt='%f')
         #np.savetxt("P_d.txt", P_d, fmt='%f')
 
+    def normalize(self, Ds, betas):
+        Ps = self.get_FP(betas)
+        Ds = fft.ifftshift(fft.ifft2(Ds)).real
+        norm = fft.ifftshift(fft.ifft2(Ps)).real
+        norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
+        Ds *= norm
+        return fft.fft2(fft.fftshift(Ds))
 
 
     def get_XY(self, j, k, defocus):

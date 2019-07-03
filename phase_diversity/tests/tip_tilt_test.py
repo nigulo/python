@@ -176,7 +176,7 @@ class test_tip_tilt(unittest.TestCase):
             #x_shift = int(np.random.normal()*10)
             #y_shift = int(np.random.normal()*10)
             d_shifted[i] = np.roll(np.roll(d0, x_shift, axis=0), y_shift, axis=1)
-            D[i, 0] = fft.fft2(d_shifted[i])
+            D[i, 0] = fft.fft2(fft.fftshift(d_shifted[i]))
             #F[i, 0] = np.absolute(D[i, 0])
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j

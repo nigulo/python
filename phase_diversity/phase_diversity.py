@@ -140,7 +140,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 5.#7.5
+    defocus = 10.#7.5
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -241,9 +241,9 @@ vmax = np.max(image_center)
 ###############################################################################
 for trial in np.arange(0, num_frames):
     
-    pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
+    #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
     #pa = psf.phase_aberration(np.random.normal(size=5))
-    #pa = psf.phase_aberration([])
+    pa = psf.phase_aberration([])
     ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
     #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
