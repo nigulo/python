@@ -111,6 +111,15 @@ def Vnmf(radius, f, n, m):
     return Vnm
 
 def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None, normalize = False):
+    
+    if normalize:
+        Ds = fft.ifftshift(fft.ifft2(Ds)).real
+        norm = fft.ifftshift(fft.ifft2(Ps)).real
+        norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
+        Ds *= norm
+        Ds = fft.fft2(fft.fftshift(Ds))
+    
+    
     D = Ds[:,0,:,:]
     D_d = Ds[:,1,:,:]
 
@@ -136,11 +145,11 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
     else:
         image = fft.ifftshift(fft.ifft2(F_image)).real
         
-    if normalize:
-        norm_F = (P_conj + gamma * P_d_conj)#/den
-        norm = fft.ifft2(norm_F).real
-        norm = np.sum(norm, axis=(1, 2)).repeat(image.shape[1]*image.shape[2]).reshape((image.shape[0], image.shape[1], image.shape[2]))
-        image *= norm
+#    if normalize:
+#        norm_F = (P_conj + gamma * P_d_conj)/den
+#        norm = fft.ifft2(norm_F).real
+#        norm = np.sum(norm, axis=(1, 2)).repeat(image.shape[1]*image.shape[2]).reshape((image.shape[0], image.shape[1], image.shape[2]))
+#        image*/= norm
         
     if ret_all:
         return image, F_image, Ps
