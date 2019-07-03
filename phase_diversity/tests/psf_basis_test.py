@@ -225,7 +225,7 @@ class test_psf_basis(unittest.TestCase):
         # No defocus, so D should be equal to D_d
         D = Ds[:, 0, :, :]
         D_d = Ds[:, 1, :, :]
-        #np.testing.assert_almost_equal(D, D_d, 8)
+        np.testing.assert_almost_equal(D, D_d, 8)
         print("sum_betas:", np.sum(betas*betas.conjugate()/(ns*np.pi)), Ds[0, 0, 0, 0])
         np.testing.assert_almost_equal(Ds, flat_field, 3)
         
@@ -271,8 +271,8 @@ class test_psf_basis(unittest.TestCase):
         
         image_F = fft.fft2(image)
         Ds = np.tile(np.array([image_F, image_F]), (L, 1)).reshape((L, 2, nx, nx))
-        Ds = psf.multiply(Ds, betas)
-        reconst = psf.deconvolve(Ds, betas=betas, gamma=1., do_fft=True)
+        Ds, _ = psf.multiply(Ds, betas)
+        reconst = psf.deconvolve(Ds, betas=betas, gamma=1., do_fft=True, normalize = False)
         for l in np.arange(0, L):
             np.testing.assert_almost_equal(reconst[l], image, 15)
     
@@ -377,8 +377,8 @@ class test_psf_basis(unittest.TestCase):
 
         betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
 
-        Ds = psf.multiply(Ds, betas)
-        image_back = psf.deconvolve(Ds, betas, gamma, do_fft = True)
+        Ds, _ = psf.multiply(Ds, betas)
+        image_back = psf.deconvolve(Ds, betas, gamma, do_fft = True, normalize = True)
         #fimage_back = psf.get_restoration(D, D_d, betas, gamma, do_fft = False)
 
         np.testing.assert_almost_equal(image_back, np.tile(image, (L, 1)).reshape((L, nx, nx)), 10)
