@@ -291,7 +291,7 @@ class test_psf_basis(unittest.TestCase):
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
         psf.create_basis(do_fft=True, do_defocus=True)
         
-        image_F = fft.fft2(image)
+        image_F = fft.fft2(fft.fftshift(image))
         Ds = np.tile(np.array([image_F, image_F]), (L, 1)).reshape((L, 2, nx, nx))
         Ds, _ = psf.multiply(Ds, betas)
         reconst = psf.deconvolve(Ds, betas=betas, gamma=1., do_fft=True, normalize = False)
@@ -406,11 +406,20 @@ class test_psf_basis(unittest.TestCase):
         #norm = fft.ifftshift(fft.ifft2(norm)).real
         #norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
         #Ds /= norm
-        #Ds = fft.fft2(fft.fftshift(Ds))
-        Ds = fft.fft2(Ds)
-        
+
+        my_plot = plot.plot(nrows=2, ncols=2)
+        my_plot.colormap(image, [0,0])
+        my_plot.colormap(Ds[0, 0], [1,0])
+        my_plot.colormap(Ds[0, 1], [1,1])
+            
+
+        Ds = fft.fft2(fft.fftshift(Ds))
+        #Ds = fft.fft2(Ds)
         
         image_back = psf.deconvolve(Ds, betas, gamma, do_fft = True, normalize = True)
+        my_plot.colormap(image_back[0], [0,1])
+        my_plot.save("test_deconvolve.png")
+        my_plot.close()
 
         #fimage_back = psf.get_restoration(D, D_d, betas, gamma, do_fft = False)
 
