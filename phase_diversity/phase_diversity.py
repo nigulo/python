@@ -269,6 +269,8 @@ for trial in np.arange(0, num_frames):
 
     D = fft.ifft2(D).real
     D_d = fft.ifft2(D_d).real
+    #D = fft.ifftshift(D)
+    #D_d = fft.ifftshift(D_d)
 
     #image_min = np.min(image)
     #image_max = np.max(image)

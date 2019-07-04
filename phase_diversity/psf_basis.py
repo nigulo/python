@@ -273,7 +273,7 @@ class psf_basis:
         defocus_array = [False]
         if do_defocus:
             defocus_array.append(True)
-            
+        
         for is_defocus in defocus_array:
             f = 0.0
             
@@ -377,6 +377,7 @@ class psf_basis:
                     coef_x = coef.real
                     coef_y = coef.imag
     
+                    # TODO: Some problem here, why indices need to be swapped?
                     ret_val[l, 0] += FX*coef_x + FY*coef_y # focus
                     ret_val[l, 1] += FX_d*coef_x + FY_d*coef_y # defocus
 

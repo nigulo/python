@@ -181,6 +181,7 @@ class psf():
             # In principle there shouldn't be negative values, but ...
             vals[vals < 0] = 0. # Set negative values to zero
             corr = fft.fftshift(fft.fft2(fft.ifftshift(vals)))
+            
 
         
         if normalize:
