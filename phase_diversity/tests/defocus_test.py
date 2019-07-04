@@ -164,6 +164,19 @@ class test_defocus(unittest.TestCase):
                     Ds = psf_b.convolve(image2, betas)
                     D2 = Ds[0, 0]
                     D2_d = Ds[0, 1]
+
+                    if image is image_a:
+                        print("Params")
+                        print("jmax", jmax)
+                        print("nx", nx)
+                        print("arcsec_per_px", calibrate(arcsec_per_px, nx_orig))
+                        print("diameter", diameter)
+                        print("wavelength", wavelength)
+                        print("Ds", Ds)
+                        print("betas", betas)
+                        #print("D_d", D2_d)
+
+
                     D2 = np.roll(np.roll(D2, 1, axis=0), 1, axis=1)
                     D2_d = np.roll(np.roll(D2_d, 1, axis=0), 1, axis=1)
         
@@ -186,15 +199,6 @@ class test_defocus(unittest.TestCase):
                     my_plot.save("defous_test" + str(counter) + ".png")
                     my_plot.close()
                 
-                    if image is image_a:
-                        print("Params")
-                        print("jmax", jmax)
-                        print("nx", nx)
-                        print("arcsec_per_px", calibrate(arcsec_per_px, nx_orig))
-                        print("diameter", diameter)
-                        print("wavelength", wavelength)
-                        print("DDDDDDDD", D2)
-                        print("DDDDDDDD_d", D2_d)
                 
                     #np.testing.assert_almost_equal(D1, D2, 1)
                     #np.testing.assert_almost_equal(D1_d, D2_d, 1)

@@ -111,11 +111,11 @@ def Vnmf(radius, f, n, m):
     return Vnm
 
 def normalize_(Ds, Ps):
-    Ds = fft.ifftshift(fft.ifft2(Ds)).real
-    norm = fft.ifftshift(fft.ifft2(Ps)).real
+    Ds = fft.ifftshift(fft.ifft2(Ds), axes=(-2, -1)).real
+    norm = fft.ifftshift(fft.ifft2(Ps), axes=(-2, -1)).real
     norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
     Ds *= norm
-    return fft.fft2(fft.fftshift(Ds))
+    return fft.fft2(fft.fftshift(Ds, axes=(-2, -1)))
 
     #Ds = fft.ifft2(Ds).real
     #norm = fft.ifftshift(fft.ifft2(Ps)).real
@@ -124,12 +124,12 @@ def normalize_(Ds, Ps):
     #1return fft.fft2(Ds)
 
 def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None):
-    
-    D = Ds[:,0,:,:]
-    D_d = Ds[:,1,:,:]
+    D = Ds[:,0]
+    D_d = Ds[:,1]
 
-    P = Ps[:,0,:,:]
-    P_d = Ps[:,1,:,:]
+    P = Ps[:,0]
+    P_d = Ps[:,1]
+    print("gamma", gamma)
 
     P_conj = P.conjugate()
     P_d_conj = P_d.conjugate()
@@ -148,7 +148,7 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
         #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
         image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
     else:
-        image = fft.ifftshift(fft.ifft2(F_image)).real
+        image = fft.ifftshift(fft.ifft2(F_image), axes=(-2, -1)).real
         #image = fft.ifft2(F_image).real
         
        
@@ -401,17 +401,18 @@ class psf_basis:
             
         print("dat", dat.shape)
 
-        dat_F = fft.fft2(fft.fftshift(dat))
+        dat_F = fft.fft2(fft.fftshift(dat, axes=(-2, -1)))
         #dat_F = fft.fft2(dat)
         m_F, norm_F = self.multiply(dat_F, betas) # m_F.shape is [l, 2, nx, nx]
         #m = fft.ifft2(m_F)
-        m = fft.ifftshift(fft.ifft2(m_F))
+        m = fft.ifftshift(fft.ifft2(m_F), axes=(-2, -1))
+
         threshold = np.ones_like(m.imag)*1e-12
         np.testing.assert_array_less(abs(m.imag), threshold)
         ret_val = m.real
         if normalize:
-            norm = fft.ifftshift(fft.ifft2(norm_F)).real
-            norm = np.sum(norm, axis=(2, 3)).repeat(self.nx*self.nx).reshape((dat_F.shape[0], dat_F.shape[1], dat_F.shape[2], dat_F.shape[3]))
+            norm = fft.ifftshift(fft.ifft2(norm_F), axes=(-2, -1)).real
+            norm = np.sum(norm, axis=(-2, -1)).repeat(self.nx*self.nx).reshape((dat_F.shape[0], dat_F.shape[1], dat_F.shape[2], dat_F.shape[3]))
             ret_val /= norm
         return ret_val
 
