@@ -324,8 +324,8 @@ class tip_tilt:
             S_out[trial] *= tt_phase
             
             image_F[trial] = D[trial]*tt_phase
-            #image[trial] = fft.ifftshift(fft.ifft2(image_F[trial])).real
-            image[trial] = fft.ifft2(image_F[trial]).real
+            image[trial] = fft.ifftshift(fft.ifft2(image_F[trial])).real
+            #image[trial] = fft.ifft2(image_F[trial]).real
         return image, image_F, S_out
     
     def calc(self):

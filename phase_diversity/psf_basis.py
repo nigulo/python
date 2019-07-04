@@ -510,6 +510,7 @@ class psf_basis:
                     coef_x = coef.real
                     coef_y = coef.imag
     
+                    # TODO: Some problem here, why indices need to be swapped?
                     Ps[l, 0, :, :] += FX*coef_x + FY*coef_y # focus
                     Ps[l, 1, :, :] += FX_d*coef_x + FY_d*coef_y # defocus
         

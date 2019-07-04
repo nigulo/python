@@ -140,7 +140,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 10.#7.5
+    defocus = 3.#10.#7.5
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -170,7 +170,7 @@ if state == None:
     #xs = np.linspace(x_min, x_max-delta, nx)
     #coords = np.dstack(np.meshgrid(xs, xs))
     
-    tt = None#tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
     psf_b.create_basis()
 
@@ -213,7 +213,7 @@ D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
 #image_norm = misc.normalize(image)
-wavefront = kolmogorov.kolmogorov(fried = np.array([.15]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
@@ -243,9 +243,9 @@ for trial in np.arange(0, num_frames):
     
     #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
     #pa = psf.phase_aberration(np.random.normal(size=5))
-    pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+    #pa = psf.phase_aberration([])
+    #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
     D, D_d = psf_.multiply(fimage)
@@ -305,10 +305,14 @@ else:
     a_est = None
 print("betas_est, a_est", betas_est, a_est)
 image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
-#S = np.ones((num_frames, 2, nx, nx), dtype='complex')
-#tt.set_data(Ds, S)#, F)
-#image_est, _, _ = tt.calc()
 
+#Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
+#tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
+#tt.set_data(Ds, Ps)#, F)
+#image_est, _, _ = tt.calc()
+#image_est, _, _ = tt.deconvolve(Ds[:,0,:,:], Ps, a_est)
+
+image_est = fft.ifftshift(image_est)
 for trial in np.arange(0, num_frames):
     #image_est_norm = misc.normalize(image_est[trial])
     image_est_mean += image_est[trial]
@@ -325,8 +329,6 @@ my_plot.colormap(D_mean, [max_frames, 1], vmin=vmin, vmax=vmax)
 my_plot.colormap(D_d_mean, [max_frames, 2], vmin=vmin, vmax=vmax)
 my_plot.colormap(image_est_mean, [max_frames, 3], vmin=vmin, vmax=vmax)
 my_plot.colormap(np.abs(image_est_mean-image_center), [max_frames, 4], vmin=vmin, vmax=vmax)
-
-
 
 my_plot.save("estimates.png")
 my_plot.close()

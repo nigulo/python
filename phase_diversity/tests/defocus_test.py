@@ -186,6 +186,16 @@ class test_defocus(unittest.TestCase):
                     my_plot.save("defous_test" + str(counter) + ".png")
                     my_plot.close()
                 
+                    if image is image_a:
+                        print("Params")
+                        print("jmax", jmax)
+                        print("nx", nx)
+                        print("arcsec_per_px", calibrate(arcsec_per_px, nx_orig))
+                        print("diameter", diameter)
+                        print("wavelength", wavelength)
+                        print("DDDDDDDD", D2)
+                        print("DDDDDDDD_d", D2_d)
+                
                     #np.testing.assert_almost_equal(D1, D2, 1)
                     #np.testing.assert_almost_equal(D1_d, D2_d, 1)
                     
