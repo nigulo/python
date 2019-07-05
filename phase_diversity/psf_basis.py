@@ -126,10 +126,10 @@ def normalize_(Ds, Ps):
 def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None):
     D = Ds[:,0]
     D_d = Ds[:,1]
+    
 
     P = Ps[:,0]
     P_d = Ps[:,1]
-    print("gamma", gamma)
 
     P_conj = P.conjugate()
     P_d_conj = P_d.conjugate()
@@ -137,6 +137,37 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
     F_image = D * P_conj + gamma * D_d * P_d_conj
     den = P*P_conj + gamma * P_d * P_d_conj
     F_image /= den
+
+
+    ###########################################################################
+    # TESTTESTTEST
+    D1 = D[0]
+    D1_d = D_d[0]
+    P1 = P[0]
+    P1_d = P_d[0]
+
+    P1_conj = P1.conjugate()
+    P1_d_conj = P1_d.conjugate()
+
+    F1_image = D1 * P1_conj + gamma * D1_d * P1_d_conj
+    den1 = P1*P1_conj + gamma * P1_d * P1_d_conj
+    F1_image /= den1
+    
+    D1 = fft.ifft2(D1).real
+    D1_d = fft.ifft2(D1_d).real
+    print("D1, D1_d", D1.shape, D1_d.shape)
+    import sys
+    sys.path.append('../utils')
+    import plot
+    my_plot = plot.plot(nrows=1, ncols=5)
+    my_plot.colormap(D1, [0])
+    my_plot.colormap(D1_d, [1])
+    my_plot.colormap(fft.ifft2(F1_image).real, [2])
+    my_plot.colormap(np.log(fft.ifftshift(fft.ifft2(P1)).real), [3])
+    my_plot.colormap(np.log(fft.ifftshift(fft.ifft2(P1_d)).real), [4])
+    my_plot.save("psf_basis_deconvolve_.png")
+    
+    ###########################################################################
     
     #np.savetxt("F.txt", F_image, fmt='%f')
     

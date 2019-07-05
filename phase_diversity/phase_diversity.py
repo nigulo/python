@@ -120,6 +120,7 @@ def save(filename, state):
 
 num_frames = 10
 max_frames = min(10, num_frames)
+aberration_mode = "psf_basis"
 
 image = plt.imread('granulation.png')[:, :, 0]
 #image = plt.imread('granulation2.png')
@@ -140,7 +141,7 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 10.#10.#7.5
+    defocus = 5.#10.#10.#7.5
     return (arcsec_per_px, defocus)
 
 def calibrate(arcsec_per_px, nx):
@@ -171,7 +172,7 @@ if state == None:
     #coords = np.dstack(np.meshgrid(xs, xs))
     
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt = tt)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1, tip_tilt = tt)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -191,7 +192,7 @@ else:
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.2, tip_tilt=tt)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1, tip_tilt=tt)
     psf_b.set_state(state[7])
     
 
@@ -225,7 +226,7 @@ Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
 Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 Fs = np.ones((num_frames, 1, nx, nx), dtype='complex')
 #true_alphas = np.zeros((num_frames, 2))
-true_Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
+#true_Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 
 pa_null = psf.phase_aberration([])
 ctf_null = psf.coh_trans_func(aperture_func, pa_null, defocus_func)
@@ -239,26 +240,33 @@ vmax = np.max(image_center)
 ###############################################################################
 # Create abberrated images
 ###############################################################################
+if aberration_mode == "psf_basis":
+    jmax_temp = 10
+    psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1, tip_tilt = None)
+    psf_b_temp.create_basis()
+
+
 for trial in np.arange(0, num_frames):
     
-    #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
-    #pa = psf.phase_aberration(np.random.normal(size=5))
-    pa = psf.phase_aberration([])
-    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
-    psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+    if aberration_mode == "psf":
+        #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
+        #pa = psf.phase_aberration(np.random.normal(size=5))
+        pa = psf.phase_aberration([])
+        ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+        #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+        psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        D, D_d = psf_.multiply(fimage)
+
+        D = fft.ifftshift(D)
+        D_d = fft.ifftshift(D_d)
+    else:
+
+        betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
+        Ds1 = psf_b_temp.convolve(image, betas)
+        D = Ds1[0, 0]
+        D_d = Ds1[0, 1]
     
-    D, D_d = psf_.multiply(fimage)
-    #betas = np.random.normal(size=5) + 1.j*np.random.normal(size=5)
-    #betas = np.zeros(jmax, dtype='complex')
-    #D, D_d = psf_b.multiply(fimage, betas)
-    true_Ps[trial, 0] = psf_.otf_vals[False]
-    true_Ps[trial, 1] = psf_.otf_vals[True]
-    #true_alphas[trial] = pa.alphas
-
-    D = fft.ifftshift(D)
-    D_d = fft.ifftshift(D_d)
-
+    
     Ds[trial, 0] = D
     Ds[trial, 1] = D_d
     Fs[trial, 0] = np.absolute(D)
@@ -267,26 +275,17 @@ for trial in np.arange(0, num_frames):
     #Ps[trial, 1] = P_d
     #Fs[trial, 0] = F
 
-    D = fft.ifft2(D).real
-    D_d = fft.ifft2(D_d).real
-    #D = fft.ifftshift(D)
-    #D_d = fft.ifftshift(D_d)
-
-    #image_min = np.min(image)
-    #image_max = np.max(image)
+    if aberration_mode == "psf":
+        D = fft.ifft2(D).real
+        D_d = fft.ifft2(D_d).real
     
-    #D = misc.normalize(D)
-    #D_d = misc.normalize(D_d)
-    
-    #D = misc.center(D)
-    #D_d = misc.center(D_d)
 
     print("np.min(image), np.max(image), np.min(D), np.max(D)", np.min(image_center), np.max(image_center), np.min(D), np.max(D))
     if trial < max_frames:
         my_plot.colormap(image_center, [trial, 0], vmin=vmin, vmax=vmax)
         my_plot.colormap(D, [trial, 1], vmin=vmin, vmax=vmax)
         my_plot.colormap(D_d, [trial, 2], vmin=vmin, vmax=vmax)
-    
+
     D_mean += D
     D_d_mean += D_d
 my_plot.save("estimates.png")
@@ -295,17 +294,20 @@ my_plot.save("estimates.png")
 ###############################################################################
 # Estimate PSF
 ###############################################################################
+if aberration_mode != "psf":
+    #Ds = fft.fft2(fft.fftshift(Ds, axes=(-2, -1)))
+    Ds = fft.fft2(Ds)
 
-#res = sampler.sample(Ds, "samples" + str(trial) + ".png")
-#if tt is not None:
-#    betas_est, a_est = res
-#else:
-#    betas_est = res
-#    a_est = None
+res = sampler.sample(Ds, "samples" + str(trial) + ".png")
+if tt is not None:
+    betas_est, a_est = res
+else:
+    betas_est = res
+    a_est = None
 #print("betas_est, a_est", betas_est, a_est)
-#image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
-tt.set_data(Ds, Ps)#, F):
-image_est, F, Ps = psf_b.deconvolve(Ds, np.zeros((num_frames, jmax), dtype='complex'), gamma, ret_all = True, a_est=np.zeros((num_frames+1, 2)), normalize=True)
+image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+#tt.set_data(Ds, Ps)#, F):
+#image_est, F, Ps = psf_b.deconvolve(Ds, np.ones((num_frames, jmax), dtype='complex'), gamma, ret_all = True, a_est=np.zeros((num_frames+1, 2)), normalize=True)
 
 #Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 #tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)

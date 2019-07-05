@@ -732,9 +732,9 @@ class test_psf_basis(unittest.TestCase):
         diameter = 20.0
         wavelength = 5250.0
         nx = 10
-        defocus = 5.0
+        defocus = 30.0
         
-        gamma = 3.
+        gamma = 1.
         L = 10
 
         #fimage = fft.fft2(fft.fftshift(image))#fft.fft2(image)
@@ -745,7 +745,7 @@ class test_psf_basis(unittest.TestCase):
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
-        betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
+        betas = np.ones((L, jmax), dtype='complex')# p.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
 
         #Ds, norm = psf.multiply(Ds, betas)
         Ds = psf.convolve(Ds, betas, normalize=True)
