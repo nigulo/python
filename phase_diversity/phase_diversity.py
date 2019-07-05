@@ -120,7 +120,7 @@ def save(filename, state):
 
 num_frames = 10
 max_frames = min(10, num_frames)
-aberration_mode = "psf_basis"
+aberration_mode = "psf"
 
 image = plt.imread('granulation.png')[:, :, 0]
 #image = plt.imread('granulation2.png')
@@ -141,12 +141,13 @@ def get_params(nx):
     print("coef1, coef2", coef1, coef2)
     arcsec_per_px = coef1*0.2
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 5.#10.#10.#7.5
+    defocus = 10.#10.#10.#7.5
     return (arcsec_per_px, defocus)
+
 
 def calibrate(arcsec_per_px, nx):
     coef = np.log2(float(nx)/11)
-    return 3.0*arcsec_per_px*2.**coef
+    return 2.6*arcsec_per_px*2.**coef
 
 
 if state == None:
@@ -172,7 +173,7 @@ if state == None:
     #coords = np.dstack(np.meshgrid(xs, xs))
     
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1, tip_tilt = tt)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus, tip_tilt = tt)
     psf_b.create_basis()
 
     save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx, psf_b.get_state()])
@@ -192,7 +193,7 @@ else:
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1, tip_tilt=tt)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus, tip_tilt=tt)
     psf_b.set_state(state[7])
     
 
@@ -242,7 +243,7 @@ vmax = np.max(image_center)
 ###############################################################################
 if aberration_mode == "psf_basis":
     jmax_temp = 10
-    psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1, tip_tilt = None)
+    psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus, tip_tilt = None)
     psf_b_temp.create_basis()
 
 
@@ -251,9 +252,9 @@ for trial in np.arange(0, num_frames):
     if aberration_mode == "psf":
         #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
         #pa = psf.phase_aberration(np.random.normal(size=5))
-        pa = psf.phase_aberration([])
-        ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-        #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+        #pa = psf.phase_aberration([])
+        #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+        ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
         psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         D, D_d = psf_.multiply(fimage)
 
@@ -262,6 +263,7 @@ for trial in np.arange(0, num_frames):
     else:
 
         betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
+        betas *= 1e-10
         Ds1 = psf_b_temp.convolve(image, betas)
         D = Ds1[0, 0]
         D_d = Ds1[0, 1]
