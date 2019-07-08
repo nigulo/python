@@ -120,9 +120,12 @@ def save(filename, state):
 
 num_frames = 10
 max_frames = min(10, num_frames)
-aberration_mode = "psf"
+aberration_mode = "psf_basis"
 
-image = plt.imread('granulation.png')[:, :, 0]
+image = plt.imread('granulation31x33arsec.png')
+image = misc.sample_image(image,.27)
+
+#image = plt.imread('granulation.png')[:, :, 0]
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
 image = image[0:20,0:20]
@@ -263,7 +266,7 @@ for trial in np.arange(0, num_frames):
     else:
 
         betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
-        betas *= 1e-10
+        betas*=1e-10
         Ds1 = psf_b_temp.convolve(image, betas)
         D = Ds1[0, 0]
         D_d = Ds1[0, 1]

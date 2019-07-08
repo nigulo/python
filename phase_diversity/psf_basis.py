@@ -4,23 +4,6 @@ import numpy.fft as fft
 import zernike
 import utils
 
-'''
- Return a binomial coefficient
-'''
-def binomial_coef(n, k):
-
-    if k > n:
-        return 0.0
-    kk = k
-        
-    if k > n/2:
-        kk = n-k
-            
-    binomial_coef = 1.0
-    for i in np.arange(1, kk + 1):
-        binomial_coef *= (n-kk+i) / i
-
-    return binomial_coef
 
 '''
  Return if a number is odd
@@ -60,10 +43,10 @@ def Vnmf(radius, f, n, m):
 
         v = 2.0*np.pi*(radius+epsilon)
         if f > 0.:
-            inds = np.where(np.log(f/v)*l < 690) #Overflow of exponentiation
+            #inds = np.where(np.log(f/v)*l < 690) #Overflow of exponentiation
+            inds = np.where(np.log(f/v)*l < 300) #Overflow of exponentiation
             v = v[inds]
 
-        #inv_l_v_pow_l = 1./(l*v**l)
         sum_ = np.zeros_like(v)
         for j in np.arange(0, p + 1):
             if p-j < l:
@@ -72,15 +55,6 @@ def Vnmf(radius, f, n, m):
                 t3 = special.binom(l-1,p-j)
                 t4 = special.binom(q+l+j,l)
                 
-                #t1a = binomial_coef(abs(m)+j+l-1,l-1)
-                #t2a = binomial_coef(j+l-1,l-1)
-                #t3a = binomial_coef(l-1,p-j)
-                #t4a = binomial_coef(q+l+j,l)
-
-                #np.testing.assert_almost_equal(t1a, t1)
-                #np.testing.assert_almost_equal(t2a, t2)
-                #np.testing.assert_almost_equal(t3a, t3)
-                #np.testing.assert_almost_equal(t4a, t4)
                 ulj = (-1.0)**p * (abs_m+l+2*j) * t1 * t2 * t3 / t4
                 
                 #sum_ += ulj * special.jv(abs_m+l+2.*j, v) * inv_l_v_pow_l
@@ -438,8 +412,9 @@ class psf_basis:
         #m = fft.ifft2(m_F)
         m = fft.ifftshift(fft.ifft2(m_F), axes=(-2, -1))
 
-        threshold = np.ones_like(m.imag)*1e-12
-        np.testing.assert_array_less(abs(m.imag), threshold)
+        #threshold = np.ones_like(m.imag)*1e-10
+        #print(np.max(abs(m.imag)))
+        #np.testing.assert_array_less(abs(m.imag), threshold)
         ret_val = m.real
         if normalize:
             norm = fft.ifftshift(fft.ifft2(norm_F), axes=(-2, -1)).real
