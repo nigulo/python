@@ -9,6 +9,7 @@ import plot
 import utils
 import misc
 import scipy.optimize
+import matplotlib.pyplot as plt
 
 image_a = np.array([[0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0. ],
                     [0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0. ],
@@ -95,9 +96,8 @@ image_c = np.array([[0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 
 
 
 def calibrate(arcsec_per_px, nx):
-    #coef = np.log2(float(nx)/11)
-    #return 2.6*arcsec_per_px*2.**coef
-    return arcsec_per_px
+    coef = np.log2(float(nx)/11)
+    return 2.6*arcsec_per_px*2.**coef
 
 '''
 class test_defocus(unittest.TestCase):
@@ -213,24 +213,33 @@ class test_find_defocus(unittest.TestCase):
 
     def test(self):
 
-        jmax = 2
+        jmax = 0
         #arcsec_per_px = 0.1
-        diameter = 20.0
+        diameter = 50.0
         wavelength = 5250.0
         #arcsec_per_px = 0.057
         #arcsec_per_px = wavelength/diameter*1e-8*180/np.pi*3600
 
         # Set arcsec_per_px to diffraction limit
-        arcsec_per_px = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+        arcsec_per_px = .1*.5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
         #arcsec_per_px *=2
         
         print("arcsec_per_px=", arcsec_per_px)
-        image = image_a
+        image = plt.imread('../granulation31x33arsec.png')
+        #image = misc.sample_image(image,.27)
+        image = misc.sample_image(image,.675)
+        
+        #image = plt.imread('granulation.png')[:, :, 0]
+        #image = plt.imread('granulation2.png')
+        print("Image shape", image.shape)
+        image = image[0:50,0:50]
+        #image = image_b
         
         image1 = image
         nx_orig = np.shape(image1)[0]
 
-        defocus=nx_orig*nx_orig/2
+        #defocus=nx_orig*nx_orig/2
+        defocus=10
 
         image2 = utils.upsample(image1)
         nx = np.shape(image2)[0]
@@ -255,14 +264,21 @@ class test_find_defocus(unittest.TestCase):
 
         cache = {}
 
-        '''
+        print("defocus", defocus)
+        print("arcsec_per_px", arcsec_per_px)
+        opt_defocus=defocus*4
+        opt_arcsec_per_px=arcsec_per_px*10#calibrate(arcsec_per_px, nx_orig)
+        coef = .01
+
         def loss_fn(params):
             defocus = params[0]
-            if defocus < 0:
+            arcsec_per_px = params[1]
+            if defocus < 0 or arcsec_per_px <= 0:
                 return 1e100
-            cache_key = int(defocus)
+            cache_key = (int(defocus/coef), int(arcsec_per_px/coef))
             if cache_key in cache.keys():
                 return cache[cache_key]
+            #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus)
             psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
             psf_b.create_basis()
             betas = np.zeros(jmax, dtype='complex')
@@ -275,28 +291,39 @@ class test_find_defocus(unittest.TestCase):
 
             D2 = misc.normalize(D2)
             D2_d = misc.normalize(D2_d)
-            loss = np.sum((D1_d - D2_d)**2)
+            #loss = np.sum((D1_d - D2_d)**2) + np.sum((D1 - D2)**2)
+            loss = np.sum(np.abs(D1_d - D2_d)) + np.sum(np.abs(D1 - D2))
             cache[cache_key] = loss
+
+            my_plot = plot.plot(nrows=2, ncols=2)
+            my_plot.colormap(D1, [0, 0])
+            my_plot.colormap(D2, [0, 1])
+            my_plot.colormap(D1_d, [1, 0])
+            my_plot.colormap(D2_d, [1, 1])
+            my_plot.save("find_defocus.png")
+            my_plot.close()
+
             return loss
-            
+
     
         min_loss = None
         min_res = None
 
         for trial_no in np.arange(0, 1):
-            res = scipy.optimize.fmin_cg(loss_fn, [defocus/1.5], fprime=None, args=(), full_output=True, epsilon=.1*defocus, gtol=.01*defocus)
+            res = scipy.optimize.fmin_cg(loss_fn, [opt_defocus, opt_arcsec_per_px], fprime=None, args=(), full_output=True, epsilon=[coef*opt_defocus, coef*opt_arcsec_per_px], gtol=1e-5)
             loss = res[1]
             #assert(loglik == lik_fn(res['x']))
             if min_loss is None or loss < min_loss:
                 min_loss = loss
                 min_res = res
         opt_defocus = min_res[0][0]
-        '''
-        opt_defocus=defocus*2
-    
+        opt_arcsec_per_px = min_res[0][1]
+
         print("opt_defocus", opt_defocus)
+        print("opt_arcsec_per_px", opt_arcsec_per_px)
     
-        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = opt_defocus)
+        #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = opt_defocus)
+        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = opt_arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = opt_defocus)
         psf_b.create_basis()
         betas = np.zeros(jmax, dtype='complex')
         Ds = psf_b.convolve(image2, betas)

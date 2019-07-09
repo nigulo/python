@@ -44,7 +44,7 @@ def Vnmf(radius, f, n, m):
         v = 2.0*np.pi*(radius+epsilon)
         if f > 0.:
             #inds = np.where(np.log(f/v)*l < 690) #Overflow of exponentiation
-            inds = np.where(np.log(f/v)*l < 300) #Overflow of exponentiation
+            inds = np.where(np.log(f/v)*l < 100) #Overflow of exponentiation
             v = v[inds]
 
         sum_ = np.zeros_like(v)

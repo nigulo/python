@@ -109,7 +109,7 @@ class test_comparison(unittest.TestCase):
         #arcsec_per_px = 0.057
         #arcsec_per_px = wavelength/diameter*1e-8*180/np.pi*3600
 
-        arcsec_per_px_base = 0.01#wavelength/diameter*1e-8*180/np.pi*3600
+        arcsec_per_px_base = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
         
         counter = 0
         for image in [image_a]:#, image_b, image_c]:
@@ -119,11 +119,11 @@ class test_comparison(unittest.TestCase):
             image2 = utils.upsample(image1)
             nx = np.shape(image2)[0]
             
-            app_coef = 4.**(-np.log2(float(nx_orig)/11))
+            #app_coef = 4.**(-np.log2(float(nx_orig)/11))
        
             #for arcsec_per_px in[0.22*wavelength/diameter*1e-8*180/np.pi*3600]:#, 2.*wavelength/diameter*1e-8*180/np.pi*3600]:
-            for arcsec_per_px in[arcsec_per_px_base, 2*arcsec_per_px_base, 4*arcsec_per_px_base]:
-                arcsec_per_px *= app_coef
+            for arcsec_per_px in[0.5*arcsec_per_px_base, arcsec_per_px_base, 2.*arcsec_per_px_base]:
+                #arcsec_per_px *= app_coef
                 print("arcsec_per_px=", arcsec_per_px)
             
                 aperture_func = lambda xs: utils.aperture_circ(xs, coef=100., radius =1.)
@@ -146,6 +146,7 @@ class test_comparison(unittest.TestCase):
                 # Defocus in PSF basis
     
                 #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px1, diameter = diameter, wavelength = wavelength, defocus = defocus*(nx*arcsec_per_px)**2*1.77)
+                print("arcsec_per_px before, after", arcsec_per_px, calibrate(arcsec_per_px, nx_orig))
                 psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus*2.1)#/(arcsec_per_px**2)/1000)
                 psf_b.create_basis()
                 betas = np.random.normal(size=jmax) + 1.j*np.random.normal(size=jmax)
