@@ -89,8 +89,9 @@ for index in np.arange(0, num_tests):
     ax.set_aspect(aspect=plot_aspect)
     ax.set_adjustable('box-forced')
 
-
-    ctf = psf.coh_trans_func(aperture_func, pa, lambda u: 0.0)#np.sum(u**2))
+    defocus=2.*np.pi
+    defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+    ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)#np.sum(u**2))
     #ctf = psf.coh_trans_func(lambda u: 1.0, pa, lambda u: 0.0)#np.sum(u**2))
 
     psf_vals = psf.psf(ctf, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength).calc()

@@ -122,14 +122,19 @@ num_frames = 10
 max_frames = min(10, num_frames)
 aberration_mode = "psf"
 
-image = plt.imread('granulation31x33arsec.png')
-#image = misc.sample_image(image,.27)
-image = misc.sample_image(image,.675)
+#image = plt.imread('granulation31x33arsec.png')
+##image = misc.sample_image(image,.27)
+#image = misc.sample_image(image,.675)
 
-#image = plt.imread('granulation.png')[:, :, 0]
+image = plt.imread('granulation.png')[:, :, 0]
+image = misc.sample_image(image, .25)
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
-image = image[0:50,0:50]
+nx_orig = 50
+start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+start_index = np.random.randint(0, start_index_max)
+
+image = image[start_index:start_index + nx_orig,start_index:start_index + nx_orig]
 
 nx_orig = np.shape(image)[0]
 image = utils.upsample(image)
@@ -144,9 +149,10 @@ def get_params(nx):
     #coef2 = 2.**(-np.log2(float(nx)/11))
     #print("coef1, coef2", coef1, coef2)
     #arcsec_per_px = coef1*0.2
-    arcsec_per_px = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = (10., 56.)#10.#10.#10.#7.5
+    defocus = (0., 0.)#10.#10.#10.#7.5
+    #defocus = (6.28, 46.)#10.#10.#10.#7.5
     return (arcsec_per_px, defocus)
 
 
@@ -214,7 +220,7 @@ fimage = fft.fftshift(fimage)
 aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
 #defocus_func = lambda xs: 2.*np.pi*np.sum(xs*xs, axis=2)#10.*(2*np.sum(xs*xs, axis=2) - 1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-defocus_func = lambda xs: defocus_psf*2*np.sum(xs*xs, axis=2)
+defocus_func = lambda xs: defocus_psf*np.sum(xs*xs, axis=2)
 
 my_plot = plot.plot(nrows=max_frames + 1, ncols=5)
 my_plot.set_axis()
@@ -262,19 +268,19 @@ for trial in np.arange(0, num_frames):
     
     if aberration_mode == "psf":
         #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
-        pa = psf.phase_aberration(np.random.normal(size=jmax)*5)
+        pa = psf.phase_aberration(np.random.normal(size=jmax))
         #pa = psf.phase_aberration([])
         ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
         #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
-        psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px*.1, diameter = diameter, wavelength = wavelength)
+        psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px/10, diameter = diameter, wavelength = wavelength)
         D, D_d = psf_.multiply(fimage)
 
         D = fft.ifftshift(D)
         D_d = fft.ifftshift(D_d)
     else:
 
-        betas = np.zeros(jmax, dtype = 'complex')
-        #betas = np.random.normal(size=jmax_temp)*20# + 1.j*np.random.normal(size=jmax_temp)
+        #betas = np.zeros(jmax, dtype = 'complex')
+        betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
         #betas*=1e-10
         #betas[::2] = 1.j*betas[::2]
         

@@ -220,14 +220,14 @@ class test_find_defocus(unittest.TestCase):
         #arcsec_per_px = 0.057
         #arcsec_per_px = wavelength/diameter*1e-8*180/np.pi*3600
 
-        # Set arcsec_per_px to diffraction limit
-        arcsec_per_px = .1*.5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
         #arcsec_per_px *=2
         
-        print("arcsec_per_px=", arcsec_per_px)
-        image = plt.imread('../granulation31x33arsec.png')
-        #image = misc.sample_image(image,.27)
-        image = misc.sample_image(image,.675)
+        #image = plt.imread('../granulation31x33arsec.png')
+        ##image = misc.sample_image(image,.27)
+        #image = misc.sample_image(image,.675)
+        
+        image = plt.imread('../granulation.png')[:, :, 0]
+        image = misc.sample_image(image, .25)
         
         #image = plt.imread('granulation.png')[:, :, 0]
         #image = plt.imread('granulation2.png')
@@ -238,8 +238,13 @@ class test_find_defocus(unittest.TestCase):
         image1 = image
         nx_orig = np.shape(image1)[0]
 
+        # Set arcsec_per_px to diffraction limit
+        arcsec_per_px_psf_b = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+        arcsec_per_px = arcsec_per_px_psf_b/10#/nx_orig
+        print("arcsec_per_px=", arcsec_per_px)
+
         #defocus=nx_orig*nx_orig/2
-        defocus=10
+        defocus=2.*np.pi
 
         image2 = utils.upsample(image1)
         nx = np.shape(image2)[0]
@@ -252,7 +257,7 @@ class test_find_defocus(unittest.TestCase):
         
         
         pa1 = psf.phase_aberration([])
-        defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
+        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
         ctf1 = psf.coh_trans_func(aperture_func, pa1, defocus_func)
         psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         D1, D1_d = psf1.convolve(image2)
@@ -260,14 +265,22 @@ class test_find_defocus(unittest.TestCase):
         D1 = misc.normalize(D1)
         D1_d = misc.normalize(D1_d)
 
+        my_plot = plot.plot(nrows=3, ncols=2)
+        my_plot.colormap(image2, [0, 0])
+        my_plot.colormap(image2, [0, 1])
+        my_plot.colormap(D1, [1, 0])
+        my_plot.colormap(D1_d, [2, 0])
+        my_plot.save("find_defocus.png")
+        my_plot.close()
+
         min_loss = None
 
         cache = {}
 
         print("defocus", defocus)
         print("arcsec_per_px", arcsec_per_px)
-        opt_defocus=defocus*4
-        opt_arcsec_per_px=arcsec_per_px*10#calibrate(arcsec_per_px, nx_orig)
+        opt_defocus=defocus*10
+        opt_arcsec_per_px=arcsec_per_px_psf_b#calibrate(arcsec_per_px, nx_orig)
         coef = .01
 
         def loss_fn(params):
@@ -295,11 +308,13 @@ class test_find_defocus(unittest.TestCase):
             loss = np.sum(np.abs(D1_d - D2_d)) + np.sum(np.abs(D1 - D2))
             cache[cache_key] = loss
 
-            my_plot = plot.plot(nrows=2, ncols=2)
-            my_plot.colormap(D1, [0, 0])
-            my_plot.colormap(D2, [0, 1])
-            my_plot.colormap(D1_d, [1, 0])
-            my_plot.colormap(D2_d, [1, 1])
+            my_plot = plot.plot(nrows=3, ncols=2)
+            my_plot.colormap(image2, [0, 0])
+            my_plot.colormap(image2, [0, 1])
+            my_plot.colormap(D1, [1, 0])
+            my_plot.colormap(D2, [1, 1])
+            my_plot.colormap(D1_d, [2, 0])
+            my_plot.colormap(D2_d, [2, 1])
             my_plot.save("find_defocus.png")
             my_plot.close()
 
@@ -336,11 +351,13 @@ class test_find_defocus(unittest.TestCase):
         D2 = misc.normalize(D2)
         D2_d = misc.normalize(D2_d)
     
-        my_plot = plot.plot(nrows=2, ncols=2)
-        my_plot.colormap(D1, [0, 0])
-        my_plot.colormap(D2, [0, 1])
-        my_plot.colormap(D1_d, [1, 0])
-        my_plot.colormap(D2_d, [1, 1])
+        my_plot = plot.plot(nrows=3, ncols=2)
+        my_plot.colormap(image2, [0, 0])
+        my_plot.colormap(image2, [0, 1])
+        my_plot.colormap(D1, [1, 0])
+        my_plot.colormap(D2, [1, 1])
+        my_plot.colormap(D1_d, [2, 0])
+        my_plot.colormap(D2_d, [2, 1])
         my_plot.save("find_defocus.png")
         my_plot.close()
         
