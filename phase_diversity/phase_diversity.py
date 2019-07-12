@@ -118,7 +118,7 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
-num_frames = 10
+num_frames = 5
 max_frames = min(10, num_frames)
 aberration_mode = "psf"
 
@@ -131,8 +131,8 @@ image = misc.sample_image(image, .25)
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
 nx_orig = 50
-start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
-start_index = np.random.randint(0, start_index_max)
+#start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+start_index = 0#np.random.randint(0, start_index_max)
 
 image = image[start_index:start_index + nx_orig,start_index:start_index + nx_orig]
 
@@ -268,8 +268,8 @@ for trial in np.arange(0, num_frames):
     
     if aberration_mode == "psf":
         #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*10, -20), 20), start_index=1)
-        pa = psf.phase_aberration(np.random.normal(size=jmax))
-        #pa = psf.phase_aberration([])
+        #pa = psf.phase_aberration(np.random.normal(size=jmax))
+        pa = psf.phase_aberration([])
         ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
         #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
         psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px/10, diameter = diameter, wavelength = wavelength)
@@ -279,8 +279,8 @@ for trial in np.arange(0, num_frames):
         D_d = fft.ifftshift(D_d)
     else:
 
-        #betas = np.zeros(jmax, dtype = 'complex')
-        betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
+        betas = np.zeros(jmax, dtype = 'complex')
+        #betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
         #betas*=1e-10
         #betas[::2] = 1.j*betas[::2]
         
