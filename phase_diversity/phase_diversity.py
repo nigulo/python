@@ -151,7 +151,7 @@ def get_params(nx):
     #arcsec_per_px = coef1*0.2
     arcsec_per_px = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = (0., 0.)#10.#10.#10.#7.5
+    defocus = (2.*np.pi, 10*2.*np.pi)#10.#10.#10.#7.5
     #defocus = (6.28, 46.)#10.#10.#10.#7.5
     return (arcsec_per_px, defocus)
 
@@ -258,8 +258,8 @@ if aberration_mode == "psf_basis":
     jmax_temp = 10
     #psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = None)
     psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = None)
-    #psf_b_temp.set_state(state[7])
-    psf_b_temp.create_basis()
+    psf_b_temp.set_state(state[7])
+    #psf_b_temp.create_basis()
 
 
 for trial in np.arange(0, num_frames):
@@ -270,7 +270,7 @@ for trial in np.arange(0, num_frames):
         pa = psf.phase_aberration([])
         ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
         #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
-        psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px/10, diameter = diameter, wavelength = wavelength)
+        psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px/20, diameter = diameter, wavelength = wavelength)
         DF, DF_d = psf_.multiply(fimage)
 
         DF = fft.ifftshift(DF)

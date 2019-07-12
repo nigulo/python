@@ -44,7 +44,7 @@ def Vnmf(radius, f, n, m):
         v = 2.0*np.pi*(radius+epsilon)
         if f > 0.:
             #inds = np.where(np.log(f/v)*l < 690) #Overflow of exponentiation
-            inds = np.where(np.log(f/v)*l < 100) #Overflow of exponentiation
+            inds = np.where(np.log(f/v)*l < 300) #Overflow of exponentiation
             v = v[inds]
 
         sum_ = np.zeros_like(v)
@@ -322,15 +322,31 @@ class psf_basis:
                         ca = 0.0
                     if abs(sa) < 1.0e-14:
                         sa = 0.0
-        
-                    c_sum = ca*np.cos((m-m_p)*phi) - sa*np.sin((m-m_p)*phi)
-                    s_sum = sa*np.cos((m-m_p)*phi) + ca*np.sin((m-m_p)*phi)
+                    
+                    ###########################################################
+                    # For unknown reasons (otherwise the plots do not match)
+                    cb = np.cos((m-m_p)*(phi - np.pi/2))
+                    sb = np.sin((m-m_p)*(phi - np.pi/2))
+                    #cb = np.cos((m-m_p)*phi)
+                    #sb = np.sin((m-m_p)*phi)
+                    ###########################################################
+                    c_sum = ca*cb - sa*sb
+                    s_sum = sa*cb + ca*sb
         
                     xi = V_n_m.imag * V_np_mp.imag + V_n_m.real * V_np_mp.real
                     psi = V_n_m.real * V_np_mp.imag - V_n_m.imag * V_np_mp.real
-                
-                    X = 8.0 * (-1.0)**m_p * (c_sum * xi + s_sum * psi)
-                    Y = 8.0 * (-1.0)**m_p * (c_sum * psi - s_sum * xi)
+                    
+                    if f == 0.:
+                        np.testing.assert_array_almost_equal(xi, V_n_m*V_np_mp)
+                        np.testing.assert_array_almost_equal(psi, np.zeros_like(psi))
+
+                    if (m_p % 2) == 0:
+                        coef = 8.
+                    else:
+                        coef = -8.
+                    X = coef * (c_sum * xi + s_sum * psi)
+                    Y = coef * (c_sum * psi - s_sum * xi)
+                    
                     
                     if is_defocus:
                         self.Xs_d[j, k] = X

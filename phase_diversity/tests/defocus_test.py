@@ -239,8 +239,8 @@ class test_find_defocus(unittest.TestCase):
         nx_orig = np.shape(image1)[0]
 
         # Set arcsec_per_px to diffraction limit
-        arcsec_per_px_psf_b = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
-        arcsec_per_px = arcsec_per_px_psf_b/10#/nx_orig
+        arcsec_per_px_psf_b = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+        arcsec_per_px = arcsec_per_px_psf_b/20#/nx_orig
         print("arcsec_per_px=", arcsec_per_px)
 
         #defocus=nx_orig*nx_orig/2
@@ -279,7 +279,7 @@ class test_find_defocus(unittest.TestCase):
 
         print("defocus", defocus)
         print("arcsec_per_px", arcsec_per_px)
-        opt_defocus=defocus*10
+        opt_defocus=125#defocus*15
         opt_arcsec_per_px=arcsec_per_px_psf_b#calibrate(arcsec_per_px, nx_orig)
         coef = .01
 

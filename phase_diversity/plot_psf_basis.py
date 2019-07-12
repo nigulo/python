@@ -17,11 +17,11 @@ def main():
     
     zoom_factor = 1.0
     jmax = 6
-    arcsec_per_px = 0.025
-    diameter = 20.0
+    arcsec_per_px = 0.0155
+    diameter = 100.0
     wavelength = 5250.0
-    nx = 42
-    defocus = 5.0
+    nx = 100
+    defocus = 2.*np.pi
     
     psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
     psf.create_basis(do_fft=False, do_defocus=True)
@@ -56,7 +56,7 @@ def main():
                 n_p, m_p = zernike.get_nm(k)
                 print(n, m, n_p, m_p)
     
-                X, Y = psf.get_XY(j-1, k-1, defocus=defocus)
+                X, Y = psf.get_XY(j, k, defocus=defocus)
                 
                 # Do the plotting #################################################
     
@@ -86,10 +86,10 @@ def main():
                 
                 #X = utils.trunc(X, 1e-2)
 
-                ax_x.imshow(X[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
+                ax_x.imshow(X[::-1][left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
                 ax_x.set_aspect(aspect=plot_aspect)
     
-                ax_y.imshow(Y[left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
+                ax_y.imshow(Y[::-1][left:right,left:right].real,extent=extent,cmap=my_cmap,origin='lower')
                 ax_y.set_aspect(aspect=plot_aspect)
                 
                 

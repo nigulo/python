@@ -201,12 +201,12 @@ class test_comparison(unittest.TestCase):
                 counter += 1
     '''
     
-    def test_inversion(self):
+    def test_inversion1(self):
         
         # Convolve with Zernike basis and reconstruct with  PSF basis
         # This is a null test with no aberration and defocus
         
-        jmax = 10
+        jmax = 1
         #arcsec_per_px = 0.057
         #arcsec_per_px = 0.011
         diameter = 50.0
@@ -240,7 +240,7 @@ class test_comparison(unittest.TestCase):
     
         ###################################################################
         pa1 = psf.phase_aberration([])
-        defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
+        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
         ctf1 = psf.coh_trans_func(aperture_func, pa1, defocus_func)
         psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px/10, diameter = diameter, wavelength = wavelength)
         
@@ -288,7 +288,98 @@ class test_comparison(unittest.TestCase):
         my_plot.colormap(D, [1], vmin=vmin, vmax=vmax)
         my_plot.colormap(image_est[0], [2], vmin=vmin, vmax=vmax)
             
-        my_plot.save("test_inversion.png")
+        my_plot.save("test_inversion1.png")
+        my_plot.close()
+
+    def test_inversion2(self):
+        
+        # Convolve with Zernike basis and reconstruct with  PSF basis
+        # This is a null test with no aberration but defocus
+        
+        jmax = 1
+        #arcsec_per_px = 0.057
+        #arcsec_per_px = 0.011
+        diameter = 50.0
+        wavelength = 5250.0
+        gamma = 1.0
+
+        arcsec_per_px = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+        defocus = 1.2*np.pi
+
+        image = plt.imread('../granulation.png')[:, :, 0]
+        image = misc.sample_image(image, .25)
+        #image = plt.imread('granulation2.png')
+        print("Image shape", image.shape)
+        nx_orig = 50
+        #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+        start_index = 0#np.random.randint(0, start_index_max)
+        
+        image = image[start_index:start_index + nx_orig,start_index:start_index + nx_orig]
+        
+        nx_orig = np.shape(image)[0]
+        image = utils.upsample(image)
+        assert(np.shape(image)[0] == np.shape(image)[1])
+        
+        nx = np.shape(image)[0]
+        
+
+        print("arcsec_per_px=", arcsec_per_px)
+    
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=100., radius =1.)
+        #aperture_func = lambda xs: utils.aperture_circ(xs, r=.1, coef=100.)
+    
+        ###################################################################
+        pa1 = psf.phase_aberration([])
+        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+        ctf1 = psf.coh_trans_func(aperture_func, pa1, defocus_func)
+        psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px/20, diameter = diameter, wavelength = wavelength)
+        
+        #fimage = fft.fft2(image)
+        #fimage = fft.fftshift(fimage)
+        #DF, DF_d = psf1.multiply(fimage)
+
+        #DF = fft.ifftshift(DF)
+        #DF_d = fft.ifftshift(DF_d)
+        #D = fft.ifft2(DF).real
+        ##D_d = fft.ifft2(DF_d).real
+
+        D, D_d = psf1.convolve(image)
+        DF = fft.fft2(D)
+        DF_d = fft.fft2(D_d)
+
+        coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
+        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0., tip_tilt = tt)
+        #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
+        psf_b.create_basis()
+
+        sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
+        Ds = np.zeros((1, 2, nx, nx), dtype='complex')
+        Ds[0, 0] = DF
+        Ds[0, 1] = DF_d
+
+        res = sampler.sample(Ds, "samples.png")
+        if tt is not None:
+            betas_est, a_est = res
+        else:
+            betas_est = res
+            a_est = None
+
+        image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+        
+        vmin = np.min(image)
+        vmax = np.max(image)
+
+        my_plot = plot.plot(nrows=1, ncols=4)
+        my_plot.set_axis()
+        
+        image_est = fft.ifftshift(image_est, axes=(-2, -1))
+        my_plot.colormap(image, [0], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D, [1], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D_d, [2], vmin=vmin, vmax=vmax)
+        my_plot.colormap(image_est[0], [3], vmin=vmin, vmax=vmax)
+            
+        my_plot.save("test_inversion2.png")
         my_plot.close()
 
         
