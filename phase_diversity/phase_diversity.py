@@ -118,7 +118,7 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
-num_frames = 5
+num_frames = 1
 max_frames = min(10, num_frames)
 aberration_mode = "psf"
 
@@ -149,7 +149,7 @@ def get_params(nx):
     #coef2 = 2.**(-np.log2(float(nx)/11))
     #print("coef1, coef2", coef1, coef2)
     #arcsec_per_px = coef1*0.2
-    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
     defocus = (0., 0.)#10.#10.#10.#7.5
     #defocus = (6.28, 46.)#10.#10.#10.#7.5
@@ -234,9 +234,7 @@ wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_f
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
-
 betass = []
-
 
 Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
 Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
@@ -273,10 +271,18 @@ for trial in np.arange(0, num_frames):
         ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
         #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
         psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px/10, diameter = diameter, wavelength = wavelength)
-        D, D_d = psf_.multiply(fimage)
+        DF, DF_d = psf_.multiply(fimage)
 
-        D = fft.ifftshift(D)
-        D_d = fft.ifftshift(D_d)
+        DF = fft.ifftshift(DF)
+        DF_d = fft.ifftshift(DF_d)
+
+        D = fft.ifft2(DF).real
+        D_d = fft.ifft2(DF_d).real
+        
+        #D, D_d = psf_.convolve(image)
+        #DF = fft.fft2(D)
+        #DF_d = fft.fft2(D_d)
+        
     else:
 
         betas = np.zeros(jmax, dtype = 'complex')
@@ -287,19 +293,19 @@ for trial in np.arange(0, num_frames):
         Ds1 = psf_b_temp.convolve(image, betas)
         D = Ds1[0, 0]
         D_d = Ds1[0, 1]
+
+        DF = fft.fft2(D)
+        DF_d = fft.fft2(D_d)
     
     
-    Ds[trial, 0] = D
-    Ds[trial, 1] = D_d
-    Fs[trial, 0] = np.absolute(D)
+    Ds[trial, 0] = DF
+    Ds[trial, 1] = DF_d
+    Fs[trial, 0] = np.absolute(DF)
     #np.testing.assert_array_almost_equal(np.absolute(Ds[0, 0]), np.absolute(D))
     #Ps[trial, 0] = P
     #Ps[trial, 1] = P_d
     #Fs[trial, 0] = F
 
-    if aberration_mode == "psf":
-        D = fft.ifft2(D).real
-        D_d = fft.ifft2(D_d).real
     
 
     print("np.min(image), np.max(image), np.min(D), np.max(D)", np.min(image_center), np.max(image_center), np.min(D), np.max(D))
@@ -316,9 +322,6 @@ my_plot.save("estimates.png")
 ###############################################################################
 # Estimate PSF
 ###############################################################################
-if aberration_mode != "psf":
-    #Ds = fft.fft2(fft.fftshift(Ds, axes=(-2, -1)))
-    Ds = fft.fft2(Ds)
 
 res = sampler.sample(Ds, "samples" + str(trial) + ".png")
 if tt is not None:

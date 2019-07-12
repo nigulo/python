@@ -243,8 +243,19 @@ class test_comparison(unittest.TestCase):
         defocus_func = lambda xs: defocus*2*np.sum(xs*xs, axis=2)
         ctf1 = psf.coh_trans_func(aperture_func, pa1, defocus_func)
         psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px/10, diameter = diameter, wavelength = wavelength)
-        D1, D1_d = psf1.convolve(image)
+        
+        #fimage = fft.fft2(image)
+        #fimage = fft.fftshift(fimage)
+        #DF, DF_d = psf1.multiply(fimage)
 
+        #DF = fft.ifftshift(DF)
+        #DF_d = fft.ifftshift(DF_d)
+        #D = fft.ifft2(DF).real
+        ##D_d = fft.ifft2(DF_d).real
+
+        D, D_d = psf1.convolve(image)
+        DF = fft.fft2(D)
+        DF_d = fft.fft2(D_d)
 
         coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
@@ -254,9 +265,8 @@ class test_comparison(unittest.TestCase):
 
         sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
         Ds = np.zeros((1, 2, nx, nx), dtype='complex')
-        Ds[0, 0] = D1
-        Ds[0, 1] = D1_d
-        Ds = fft.fft2(Ds)
+        Ds[0, 0] = DF
+        Ds[0, 1] = DF_d
 
         res = sampler.sample(Ds, "samples.png")
         if tt is not None:
@@ -275,7 +285,7 @@ class test_comparison(unittest.TestCase):
         
         image_est = fft.ifftshift(image_est, axes=(-2, -1))
         my_plot.colormap(image, [0], vmin=vmin, vmax=vmax)
-        my_plot.colormap(D1, [1], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D, [1], vmin=vmin, vmax=vmax)
         my_plot.colormap(image_est[0], [2], vmin=vmin, vmax=vmax)
             
         my_plot.save("test_inversion.png")
