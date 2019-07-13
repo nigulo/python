@@ -6,6 +6,9 @@ import numpy as np
 
 import psf_basis
 import zernike
+import sys
+sys.path.append('../utils')
+import plot
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -22,10 +25,27 @@ def main():
     wavelength = 5250.0
     nx = 100
     defocus = 2.*np.pi
+        
+    # Plot the Airy disk components
+
+    my_plot = plot.plot(nrows=10, ncols=2)
+    my_plot.set_axis()
+    i = 0
+    for defocus1 in np.linspace(0., 2*defocus, 10):
+        psf = psf_basis.psf_basis(jmax = 0, nx = nx, arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600, diameter = diameter, wavelength = wavelength, defocus = defocus1)
+        psf.create_basis(do_fft=False, do_defocus=True)
+        X, Y = psf.get_XY(0, 0, defocus=True)
+    
+        my_plot.colormap(X, [i, 0])
+        my_plot.colormap(Y, [i, 1])
+        i += 1
+        
+    my_plot.save("psf_airy.png")
+    my_plot.close()
     
     psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
     psf.create_basis(do_fft=False, do_defocus=True)
-    
+
     for defocus in [False, True]:
         
         # Init figures ############################################################
@@ -45,8 +65,8 @@ def main():
         extent=[0., 1., 0., 1.]
         plot_aspect=(extent[1]-extent[0])/(extent[3]-extent[2])#*2/3 
         ###########################################################################
-    
-        # Generate all the basis functions
+        
+        # Generate and plot the rest of the basis functions
         row = 0
         col = 0
         for j in np.arange(1, jmax + 1):

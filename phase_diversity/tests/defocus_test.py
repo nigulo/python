@@ -239,8 +239,8 @@ class test_find_defocus(unittest.TestCase):
         nx_orig = np.shape(image1)[0]
 
         # Set arcsec_per_px to diffraction limit
-        arcsec_per_px_psf_b = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
-        arcsec_per_px = arcsec_per_px_psf_b/20#/nx_orig
+        arcsec_per_px_psf_b = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+        arcsec_per_px = arcsec_per_px_psf_b#/nx_orig
         print("arcsec_per_px=", arcsec_per_px)
 
         #defocus=nx_orig*nx_orig/2
@@ -257,7 +257,7 @@ class test_find_defocus(unittest.TestCase):
         
         
         pa1 = psf.phase_aberration([])
-        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+        defocus_func = lambda xs: defocus*100*np.sum(xs*xs, axis=2)
         ctf1 = psf.coh_trans_func(aperture_func, pa1, defocus_func)
         psf1 = psf.psf(ctf1, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         D1, D1_d = psf1.convolve(image2)
@@ -279,9 +279,9 @@ class test_find_defocus(unittest.TestCase):
 
         print("defocus", defocus)
         print("arcsec_per_px", arcsec_per_px)
-        opt_defocus=125#defocus*15
-        opt_arcsec_per_px=arcsec_per_px_psf_b#calibrate(arcsec_per_px, nx_orig)
-        coef = .01
+        opt_defocus=defocus
+        opt_arcsec_per_px=arcsec_per_px#calibrate(arcsec_per_px, nx_orig)
+        coef = .001
 
         def loss_fn(params):
             defocus = params[0]
