@@ -6,6 +6,8 @@ import unittest
 import numpy.fft as fft
 sys.path.append('../../utils')
 import plot
+import psf
+import utils
 
 image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804, 0.45882353, 0.5137255, 0.49803922, 0.49803922,
@@ -165,11 +167,26 @@ class test_tip_tilt(unittest.TestCase):
         nx = 20
 
         d0 = image20x20#np.random.normal(size=(k, nx, nx))
-        d_shifted = np.zeros((l, nx, nx))
+
+        #######################################################################
+        # PSF for defocusing
+        pa0 = psf.phase_aberration([200.])
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=100., radius =1.)
+        ctf0 = psf.coh_trans_func(aperture_func, pa0, lambda xs: 0.)
         
-        D = np.zeros((l, 1, nx, nx), dtype='complex')
+        diameter = 20.0
+        wavelength = 5250.0
+        arcsec_per_px = .5*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600#wavelength/diameter*1e-8*180/np.pi*3600
+        psf0 = psf.psf(ctf0, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        #######################################################################
+
+
+        d_shifted = np.zeros((l, nx, nx))
+        d_d_shifted = np.zeros((l, nx, nx))
+        
+        D = np.zeros((l, 2, nx, nx), dtype='complex')
         #F = np.zeros((l, 1, nx, nx), dtype='complex')
-        S = np.ones((l, 1, nx, nx), dtype='complex')
+        S = np.ones((l, 2, nx, nx), dtype='complex')
         for i in np.arange(0, l):
             x_shift = int(np.random.uniform(-nx/5, nx/5))
             y_shift = int(np.random.uniform(-nx/5, nx/5))
@@ -178,6 +195,13 @@ class test_tip_tilt(unittest.TestCase):
             d_shifted[i] = np.roll(np.roll(d0, x_shift, axis=0), y_shift, axis=1)
             D[i, 0] = fft.fft2(fft.fftshift(d_shifted[i]))
             #F[i, 0] = np.absolute(D[i, 0])
+
+            #######################################################################
+            # Just generate an arbitrarily defocused image
+            _, d_d = psf0.convolve(utils.upsample(d_shifted[i]))
+            d_d_shifted[i] = utils.downsample(d_d)
+            D[i, 1] = fft.fft2(fft.fftshift(d_d_shifted[i]))
+            #######################################################################
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j
         
@@ -192,12 +216,13 @@ class test_tip_tilt(unittest.TestCase):
         tt.set_data(D, S)#, F)
         image, _, _ = tt.calc()
 
-        my_plot = plot.plot(nrows=l, ncols=3)
+        my_plot = plot.plot(nrows=l, ncols=4)
             
         for i in np.arange(0, l):
             my_plot.colormap(d0, [i, 0])
             my_plot.colormap(d_shifted[i], [i, 1])
-            my_plot.colormap(image[i], [i, 2])
+            my_plot.colormap(d_d_shifted[i], [i, 2])
+            my_plot.colormap(image[i], [i, 3])
             #np.testing.assert_almost_equal(image[i], D0)
         my_plot.save("tip_tilt_test.png")
         my_plot.close()

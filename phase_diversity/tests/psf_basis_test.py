@@ -610,6 +610,7 @@ class test_psf_basis(unittest.TestCase):
         for l in np.arange(0, L):
             np.testing.assert_almost_equal(reconst[l], image, 15)
 
+
     def test_convolve4(self):
         #First test if the same image is returned if betas are zero
 
@@ -642,6 +643,7 @@ class test_psf_basis(unittest.TestCase):
         my_plot.save("test_convolve4.png")
         my_plot.close()
 
+        # TODO: This test does not work after the psf basis was rotated 90 degrees
         np.testing.assert_almost_equal(Ds[0, 0], cross_convolved[0], 15)
         np.testing.assert_almost_equal(Ds[0, 1], cross_convolved[1], 15)
     

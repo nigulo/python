@@ -129,7 +129,6 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
     
     D1 = fft.ifft2(D1).real
     D1_d = fft.ifft2(D1_d).real
-    print("D1, D1_d", D1.shape, D1_d.shape)
     import sys
     sys.path.append('../utils')
     import plot
@@ -398,7 +397,6 @@ class psf_basis:
                     coef_x = coef.real
                     coef_y = coef.imag
     
-                    # TODO: Some problem here, why indices need to be swapped?
                     ret_val[l, 0] += FX*coef_x + FY*coef_y # focus
                     ret_val[l, 1] += FX_d*coef_x + FY_d*coef_y # defocus
 
@@ -533,7 +531,6 @@ class psf_basis:
                     coef_x = coef.real
                     coef_y = coef.imag
     
-                    # TODO: Some problem here, why indices need to be swapped?
                     Ps[l, 0, :, :] += FX*coef_x + FY*coef_y # focus
                     Ps[l, 1, :, :] += FX_d*coef_x + FY_d*coef_y # defocus
         

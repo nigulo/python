@@ -110,7 +110,8 @@ class psf_basis_sampler():
                     initial_a = np.zeros(((L+1), 2))
                     #initial_a = np.random.normal(size=((L+1), 2), scale=1./np.sqrt(tt.prior_prec + 1e-10))#np.zeros(2*self.L)
                 #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-                initial_betas = np.zeros((L, jmax), dtype='complex')#np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
+                #initial_betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
+                initial_betas = np.zeros((L, jmax), dtype='complex')
                 params = self.psf_b.encode_params(initial_betas, initial_a)
                 res = scipy.optimize.fmin_cg(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #lower_bounds = np.zeros(jmax*2)
@@ -127,7 +128,8 @@ class psf_basis_sampler():
             if tt is not None:
                 a_est = min_res[0][L*2*jmax:L*2*jmax+(2*(L+1))].reshape((L+1, 2))
             
-        print(betas_est)
+        print("betas_est", betas_est)
+        print("a_est", a_est)
         #betas_est = np.random.normal(size=psf.jmax) + np.random.normal(size=psf.jmax)*1.j
         if tt is not None:
             return (betas_est, a_est)
