@@ -8,6 +8,7 @@ sys.path.append('../../utils')
 import plot
 import psf
 import utils
+import matplotlib.pyplot as plt
 
 image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804, 0.45882353, 0.5137255, 0.49803922, 0.49803922,
@@ -164,9 +165,15 @@ class test_tip_tilt(unittest.TestCase):
     def test_calc(self):
         l = 10
         
-        nx = 20
+        d0 = plt.imread('../granulation.png')[:, :, 0]
+        d0 = d0[:99, :99]
+        d0 = utils.downsample(d0)
+        #d0 = d0[:39, :39]
+        #d0 = utils.downsample(d0)
 
-        d0 = image20x20#np.random.normal(size=(k, nx, nx))
+        #d0 = image20x20#np.random.normal(size=(k, nx, nx))
+        #d0 = utils.upsample(d0)
+        nx = d0.shape[0]
 
         #######################################################################
         # PSF for defocusing
@@ -212,7 +219,8 @@ class test_tip_tilt(unittest.TestCase):
             delta = (x_max - x_min)/nx
         xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
-        tt = tip_tilt.tip_tilt(coords, prior_prec=((x_max - x_min)/2.)**2, num_rounds=1)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=((x_max - x_min)/2)**2, num_rounds=50)
+        #tt = tip_tilt.tip_tilt(coords, initial_a=np.zeros((l+1, 2)), prior_prec=0., num_rounds=1)
         tt.set_data(D, S)#, F)
         image, _, _ = tt.calc()
 

@@ -185,7 +185,7 @@ if state == None:
     #xs = np.linspace(x_min, x_max-delta, nx)
     #coords = np.dstack(np.meshgrid(xs, xs))
     
-    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     psf_b.create_basis()
@@ -207,7 +207,8 @@ else:
     assert(nx == np.shape(image)[0])
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
-    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2, num_rounds=1)
+    #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0])))**2)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
     psf_b.set_state(state[7])
@@ -233,7 +234,7 @@ D_d_mean = np.zeros((nx, nx))
 #image_norm = misc.normalize(image)
 wavefront = kolmogorov.kolmogorov(fried = np.array([.5]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
 
-sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
+sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=50)
 
 betass = []
 
