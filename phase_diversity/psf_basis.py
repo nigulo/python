@@ -546,26 +546,30 @@ class psf_basis:
         L = Ds.shape[0]
         regularizer_eps = 1e-10
         
-        D = Ds[:,0,:,:]
-        D_d = Ds[:,1,:,:]
         
         grads = np.zeros(L*2*self.jmax)#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
 
         Ps = self.get_FP(betas)
-        P = Ps[:, 0, :, :]
-        P_d = Ps[:, 1, :, :]
-        
-        Q = P*P.conjugate()+gamma*P_d*P_d.conjugate()
-        
-        eps_indices = np.where(abs(Q) < regularizer_eps)
-        sign_indices = np.where(Q[eps_indices] < 0.)
-        Q[eps_indices] = regularizer_eps
-        Q[eps_indices][sign_indices] *= -1.
-        
-        #Q += regularizer_eps
-        Q = 1./Q
 
         for l in np.arange(0, L):
+            
+            D = Ds[l,0,:,:]
+            D_d = Ds[l,1,:,:]
+    
+            P = Ps[l, 0, :, :]
+            P_d = Ps[l, 1, :, :]
+            
+            Q = P*P.conjugate()+gamma*P_d*P_d.conjugate()
+            
+            eps_indices = np.where(abs(Q) < regularizer_eps)
+            sign_indices = np.where(Q[eps_indices] < 0.)
+            Q[eps_indices] = regularizer_eps
+            Q[eps_indices][sign_indices] *= -1.
+            
+            #Q += regularizer_eps
+            Q = 1./Q
+
+            
             for j1 in np.arange(1, self.jmax+1):
                 dP_dbeta_real = np.zeros((self.nx, self.nx), dtype = 'complex')
                 dP_dbeta_imag = np.zeros((self.nx, self.nx), dtype = 'complex')
