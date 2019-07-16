@@ -88,6 +88,8 @@ class tip_tilt:
         val1 = np.sum(np.tensordot(val, self.x[:,:,0], axes=([2,3], [0,1])), axis=0)
         val2 = np.sum(np.tensordot(val, self.x[:,:,1], axes=([2,3], [0,1])), axis=0)
 
+        val1 += self.prior_prec*a[:,0]
+        val2 += self.prior_prec*a[:,1]
         
         val01 = np.sum(val1)
         val02 = np.sum(val2)
@@ -129,7 +131,7 @@ class tip_tilt:
             a_old = a_old_in.reshape((self.L, 2))
         #eps = 1e-10
 
-        au_old = np.tensordot(a_old, self.x, axes=(1, 2))
+        au_old = np.tensordot(a_old, self.x, axes=(1, 2))a
         phi_old = self.D_T - au_old
         sin_phi_old = np.sin(phi_old)
         cos_phi_old = np.cos(phi_old)

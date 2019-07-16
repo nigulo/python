@@ -166,8 +166,9 @@ class psf_basis:
     '''
         diameter is in centimeters
         wavelength is in Angstroms
+        prior_prec can be a scalar or a vector of length jmax
     '''
-    def __init__(self, jmax, nx, arcsec_per_px, diameter, wavelength, defocus, tip_tilt=None):
+    def __init__(self, jmax, nx, arcsec_per_px, diameter, wavelength, defocus, tip_tilt=None, prior_prec=0.):
         
         self.jmax = jmax
         self.arcsec_per_px = arcsec_per_px
@@ -176,6 +177,7 @@ class psf_basis:
         self.nx = nx
         self.defocus = defocus
         self.tip_tilt = tip_tilt
+        self.prior_prec = prior_prec
     
     def get_state(self):
         return [self.FXs, self.FYs, self.FXs_d, self.FYs_d]
@@ -505,37 +507,38 @@ class psf_basis:
         D = Ds[:,0,:,:]
         D_d = Ds[:,1,:,:]
         
-        Ps = np.zeros_like(Ds, dtype = 'complex')
-        #P = np.zeros_like(D, dtype = 'complex')
-        #P_d = np.zeros_like(D_d, dtype = 'complex')
-
+        Ps1 = np.zeros_like(Ds, dtype = 'complex')
         L = Ds.shape[0]
 
         for l in np.arange(0, L):
             for j in np.arange(0, self.jmax + 1):
+                if j == 0:
+                    betas_j = 1.
+                else:
+                    betas_j = betas[l, j-1]
                 for k in np.arange(0, j + 1):
-                    FX, FY = self.get_FXFY(j, k, defocus=False)
-                    FX_d, FY_d = self.get_FXFY(j, k, defocus=True)
-    
-                    if j == 0:
-                        betas_j = 1.
-                    else:
-                        betas_j = betas[l, j-1]
                     if k == 0:
                         betas_k = 1.
                     else:
                         betas_k = betas[l, k-1]
+                    FX, FY = self.get_FXFY(j, k, defocus=False)
+                    FX_d, FY_d = self.get_FXFY(j, k, defocus=True)
                     coef = betas_j*betas_k.conjugate()
                     if j == k:
                         coef *= 0.5
                     coef_x = coef.real
                     coef_y = coef.imag
     
-                    Ps[l, 0, :, :] += FX*coef_x + FY*coef_y # focus
-                    Ps[l, 1, :, :] += FX_d*coef_x + FY_d*coef_y # defocus
+                    Ps1[l, 0, :, :] += FX*coef_x + FY*coef_y # focus
+                    Ps1[l, 1, :, :] += FX_d*coef_x + FY_d*coef_y # defocus
         
+        Ps = self.get_FP(betas)
+        np.testing.assert_array_almost_equal(Ps, Ps1)
+
         P = Ps[:, 0, :, :]
         P_d = Ps[:, 1, :, :]
+        
+        
         num = D_d*P - D*P_d
         num *= num.conjugate()
         den = P*P.conjugate()+gamma*P_d*P_d.conjugate()
@@ -545,12 +548,14 @@ class psf_basis:
         den[eps_indices] = regularizer_eps
         den[eps_indices][sign_indices] *= -1.
 
-        #den += regularizer_eps
         lik = num/den
 
         lik = np.sum(lik.real)
         #print("likelihood", theta, retval)
-        
+
+        # Priors
+        lik += np.sum(betas.real*betas.real*self.prior_prec/2)
+        lik += np.sum(betas.imag*betas.imag*self.prior_prec/2)
         #######################################################################
         # Tip-tilt estimation
         #######################################################################
@@ -624,12 +629,13 @@ class psf_basis:
                     Q**2*num_sq*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag).real).real
     
                 l_index = l*2*self.jmax
-                grads[l_index + j1-1] = 2.*np.sum(real_part)
-                grads[l_index + j1-1 + self.jmax] = 2.*np.sum(imag_part)
+                grads[l_index + j1-1] = 2.*np.sum(real_part) + betas[l, j1-1].real*self.prior_prec
+                grads[l_index + j1-1 + self.jmax] = 2.*np.sum(imag_part) + betas[l, j1-1].imag*self.prior_prec
 
         #eps_indices = np.where(abs(grads) < regularizer_eps)
         #grads[eps_indices] = np.random.normal()*regularizer_eps
         #print("likelihood_grad", theta, grads)
+        
         
         #######################################################################
         # Tip-tilt estimation

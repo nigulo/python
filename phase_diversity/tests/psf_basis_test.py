@@ -659,14 +659,15 @@ class test_psf_basis(unittest.TestCase):
 
         gamma = 1.
         
-        L = 1
+        L = 2
+        prior_prec = 0.
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec = prior_prec)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
         betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
-        Ds = np.array([np.stack((D, D_d))])
+        Ds = np.tile(np.stack((D, D_d)), (L, 1)).reshape((L, 2, nx, nx))
         theta, data = psf.encode(betas, Ds, gamma)
 
         lik = psf.likelihood(theta, data)
@@ -677,8 +678,9 @@ class test_psf_basis(unittest.TestCase):
 
         num = D_d*P-D*P_d
         num *= num.conjugate()
-        #lik_expected = np.sum(num/np.sqrt(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
-        lik_expected = np.sum(num/(P*P.conjugate() + gamma*P_d*P_d.conjugate())).real
+        den = P*P.conjugate() + gamma*P_d*P_d.conjugate()
+        lik_expected = np.sum(num/den).real
+        lik_expected += np.sum(betas.real*betas.real*prior_prec/2) + np.sum(betas.imag*betas.imag*prior_prec/2)
         np.testing.assert_almost_equal(lik, lik_expected, 6)
 
     def test_likelihood_grad(self):
@@ -692,37 +694,43 @@ class test_psf_basis(unittest.TestCase):
         
         gamma = 1.
         L = 1
+        prior_prec = 0.
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec=prior_prec)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
         betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
-        Ds = np.array([np.stack((D, D_d))])
+        Ds = np.tile(np.stack((D, D_d)), (L, 1)).reshape((L, 2, nx, nx))
+        print("Ds", Ds.shape)
         theta, data = psf.encode(betas, Ds, gamma)
 
-        delta_betas = 1.0e-7 + betas*1.0e-7
+        delta_betas = np.ones_like(betas, dtype='float')*1.0e-8# + betas*1.0e-7
 
         lik = psf.likelihood(theta, data)
+        #print("lik", lik)
         liks = np.tile(lik, (betas.shape[0], betas.shape[1]))
+        #print("liks", liks)
         liks1_real = np.zeros_like(betas.real)
         liks1_imag = np.zeros_like(betas.imag)
         for l in np.arange(0, L):
             for i in np.arange(0, betas.shape[1]):
                 delta = np.zeros_like(betas)
-                delta[l, i] = delta_betas[l, i].real
+                delta[l, i] = delta_betas[l, i]
                 betas1 = betas+delta
                 theta1, _ = psf.encode(betas1, Ds, gamma)
                 
                 liks1_real[l, i] = psf.likelihood(theta1, data)
     
-                delta[l, i] = 1.j*delta_betas[l, i].imag
+                delta[l, i] = 1.j*delta_betas[l, i]
                 betas1 = betas+delta
                 theta1, _ = psf.encode(betas1, Ds, gamma)
     
                 liks1_imag[l, i] = psf.likelihood(theta1, data)
         
-        grads_expected = np.stack(((liks1_real - liks) / delta_betas.real, (liks1_imag - liks) / delta_betas.imag), axis=1).flatten()
+        #print((liks1_real - liks) / delta_betas.real, (liks1_imag - liks) / delta_betas.imag)
+        #print(liks1_real)
+        grads_expected = np.stack(((liks1_real - liks) / delta_betas, (liks1_imag - liks) / delta_betas), axis=1).flatten()
     
         grads = psf.likelihood_grad(theta, data)
 

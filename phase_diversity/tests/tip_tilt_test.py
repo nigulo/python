@@ -117,6 +117,7 @@ class test_tip_tilt(unittest.TestCase):
         coords = np.dstack(np.meshgrid(xs, xs)[::-1])
         tt = tip_tilt.tip_tilt(coords, prior_prec=prior_prec)
         tt.set_data(D, S)#, F)
+        coords = fft.ifftshift(coords)
         
         theta = np.random.normal(size=2*(l+1), scale=1./np.sqrt(prior_prec + 1e-10))
 
@@ -147,7 +148,7 @@ class test_tip_tilt(unittest.TestCase):
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_theta = np.ones_like(theta)*1.0e-10#+1e-12
+        delta_theta = np.ones_like(theta)*1e-8#+1e-12
 
         lik = tt.lik(theta)
         liks = np.repeat(lik, len(theta))
@@ -219,7 +220,7 @@ class test_tip_tilt(unittest.TestCase):
             delta = (x_max - x_min)/nx
         xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
-        tt = tip_tilt.tip_tilt(coords, prior_prec=((x_max - x_min)/2)**2, num_rounds=50)
+        tt = tip_tilt.tip_tilt(coords, prior_prec=((x_max - x_min)/2)**2, num_rounds=1)
         #tt = tip_tilt.tip_tilt(coords, initial_a=np.zeros((l+1, 2)), prior_prec=0., num_rounds=1)
         tt.set_data(D, S)#, F)
         image, _, _ = tt.calc()
