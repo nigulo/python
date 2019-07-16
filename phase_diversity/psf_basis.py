@@ -507,6 +507,7 @@ class psf_basis:
         D = Ds[:,0,:,:]
         D_d = Ds[:,1,:,:]
         
+        '''
         Ps1 = np.zeros_like(Ds, dtype = 'complex')
         L = Ds.shape[0]
 
@@ -531,9 +532,10 @@ class psf_basis:
     
                     Ps1[l, 0, :, :] += FX*coef_x + FY*coef_y # focus
                     Ps1[l, 1, :, :] += FX_d*coef_x + FY_d*coef_y # defocus
+        '''
         
         Ps = self.get_FP(betas)
-        np.testing.assert_array_almost_equal(Ps, Ps1)
+        #np.testing.assert_array_almost_equal(Ps, Ps1)
 
         P = Ps[:, 0, :, :]
         P_d = Ps[:, 1, :, :]
