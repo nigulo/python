@@ -446,6 +446,7 @@ cross_convolved = np.array([
 
 ])
 
+
 # Comparison method without optomization for large f-s
 def Vnmf1(radius, f, n, m):
     epsilon = 1.e-10
@@ -660,7 +661,7 @@ class test_psf_basis(unittest.TestCase):
         gamma = 1.
         
         L = 2
-        prior_prec = 0.
+        prior_prec = 1.
         
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec = prior_prec)
         psf.create_basis(do_fft=True, do_defocus=True)
@@ -669,6 +670,9 @@ class test_psf_basis(unittest.TestCase):
         betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
         Ds = np.tile(np.stack((D, D_d)), (L, 1)).reshape((L, 2, nx, nx))
         theta, data = psf.encode(betas, Ds, gamma)
+        
+        D1 = Ds[:,0,:,:]
+        D1_d = Ds[:,1,:,:]
 
         lik = psf.likelihood(theta, data)
         
@@ -676,7 +680,7 @@ class test_psf_basis(unittest.TestCase):
         P = Ps[:, 0, :, :]
         P_d = Ps[:, 1, :, :]
 
-        num = D_d*P-D*P_d
+        num = D1_d*P-D1*P_d
         num *= num.conjugate()
         den = P*P.conjugate() + gamma*P_d*P_d.conjugate()
         lik_expected = np.sum(num/den).real
