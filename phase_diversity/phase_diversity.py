@@ -164,7 +164,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 2
+    jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 50.0
@@ -186,7 +186,7 @@ if state == None:
     #coords = np.dstack(np.meshgrid(xs, xs))
     
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.linspace(1., 0.1, jmax))
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     psf_b.create_basis()
 
@@ -210,7 +210,7 @@ else:
     #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0])))**2)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.linspace(1., 0.1, jmax))
     psf_b.set_state(state[7])
     
 
@@ -267,11 +267,11 @@ if aberration_mode == "psf_basis":
 for trial in np.arange(0, num_frames):
     
     if aberration_mode == "psf":
-        #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*100, -100), 100), start_index=1)
+        pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*100, -100), 100), start_index=1)
         #pa = psf.phase_aberration(np.random.normal(size=jmax))
         #pa = psf.phase_aberration([])
-        #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-        ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+        ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+        #ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
         psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         DF, DF_d = psf_.multiply(fimage)
 

@@ -178,6 +178,9 @@ class psf_basis:
         self.defocus = defocus
         self.tip_tilt = tip_tilt
         self.prior_prec = prior_prec
+        if len(np.shape(self.prior_prec)) == 0:
+            self.prior_prec = np.ones(jmax)*self.prior_prec
+        
     
     def get_state(self):
         return [self.FXs, self.FYs, self.FXs_d, self.FYs_d]
@@ -607,8 +610,8 @@ class psf_basis:
                     Q**2*num_sq*(P.conjugate()*dP_dbeta_imag + gamma*P_d.conjugate()*dP_d_dbeta_imag).real).real
     
                 l_index = l*2*self.jmax
-                grads[l_index + j1-1] = 2.*np.sum(real_part) + betas[l, j1-1].real*self.prior_prec
-                grads[l_index + j1-1 + self.jmax] = 2.*np.sum(imag_part) + betas[l, j1-1].imag*self.prior_prec
+                grads[l_index + j1-1] = 2.*np.sum(real_part) + betas[l, j1-1].real*self.prior_prec[j1-1]
+                grads[l_index + j1-1 + self.jmax] = 2.*np.sum(imag_part) + betas[l, j1-1].imag*self.prior_prec[j1-1]
 
         #eps_indices = np.where(abs(grads) < regularizer_eps)
         #grads[eps_indices] = np.random.normal()*regularizer_eps
