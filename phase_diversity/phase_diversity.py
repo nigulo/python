@@ -144,6 +144,12 @@ image_orig = np.array(image)
 
 state = load(state_file)
 
+
+def center_and_normalize(ds):
+    m = np.mean(ds)
+    std = np.std(ds)
+    return (ds - m)/std, m, std
+
 def get_params(nx):
     #coef1 = 4.**(-np.log2(float(nx)/11))
     #coef2 = 2.**(-np.log2(float(nx)/11))
@@ -186,7 +192,7 @@ if state == None:
     #coords = np.dstack(np.meshgrid(xs, xs))
     
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.linspace(1., 0.1, jmax))
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.linspace(1., 10., jmax))
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     psf_b.create_basis()
 
@@ -208,9 +214,9 @@ else:
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
-    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0])))**2)
+    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.linspace(1., 0.1, jmax))
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.linspace(1., 10, jmax))
     psf_b.set_state(state[7])
     
 
@@ -324,6 +330,8 @@ my_plot.save("estimates.png")
 ###############################################################################
 # Estimate PSF
 ###############################################################################
+
+#Ds, mean, std = center_and_normalize(Ds)
 
 res = sampler.sample(Ds, "samples" + str(trial) + ".png")
 if tt is not None:

@@ -12,7 +12,6 @@ def center(ds, axis = None):
     mean_ds = np.mean(ds, axis=axis)
     return ds - mean_ds
 
-
 def sample_image(image, factor):
     if image.dtype == 'complex':
         real = scipy.ndimage.zoom(image.real, factor, output=None, order=3, mode='constant', cval=0.0, prefilter=True)

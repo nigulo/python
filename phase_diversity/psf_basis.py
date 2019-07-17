@@ -533,6 +533,7 @@ class psf_basis:
         # Priors
         lik += np.sum(betas.real*betas.real*self.prior_prec/2)
         lik += np.sum(betas.imag*betas.imag*self.prior_prec/2)
+        
         #######################################################################
         # Tip-tilt estimation
         #######################################################################
@@ -542,7 +543,7 @@ class psf_basis:
             lik += self.tip_tilt.lik(other)
             #print("lik", lik)
 
-        return lik
+        return lik#/(D.size*(2*len(betas) + 2)+2)
         
     def likelihood_grad(self, theta, data):
         betas, Ds, gamma, other = self.decode(theta, data)
@@ -617,7 +618,6 @@ class psf_basis:
         #grads[eps_indices] = np.random.normal()*regularizer_eps
         #print("likelihood_grad", theta, grads)
         
-        
         #######################################################################
         # Tip-tilt estimation
         #######################################################################
@@ -625,9 +625,9 @@ class psf_basis:
             #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
-            #print("grads", grads)
+        print("grads", grads)
         
-        return grads
+        return grads#/(D.size*(2*len(betas) + 2)+2)
 
 def maybe_invert(image_est, image):
     mse = np.sum((image_est-image)**2)

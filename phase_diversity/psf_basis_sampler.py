@@ -110,24 +110,28 @@ class psf_basis_sampler():
                     initial_a = np.zeros(((L+1), 2))
                     #initial_a = np.random.normal(size=((L+1), 2), scale=1./np.sqrt(tt.prior_prec + 1e-10))#np.zeros(2*self.L)
                 #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='BFGS', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
-                #initial_betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
-                initial_betas = np.zeros((L, jmax), dtype='complex')
+                initial_betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
+                #initial_betas = np.zeros((L, jmax), dtype='complex')
                 params = self.psf_b.encode_params(initial_betas, initial_a)
-                res = scipy.optimize.fmin_cg(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
+                #res = scipy.optimize.fmin_cg(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #res = scipy.optimize.fmin_bfgs(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #lower_bounds = np.zeros(jmax*2)
                 #upper_bounds = np.ones(jmax*2)*1e10
-                #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax*2), method='L-BFGS-B', jac=grad_fn, bounds = zip(lower_bounds, upper_bounds), options={'disp': True, 'gtol':1e-7})
-                loglik = res[1]
+                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':1e-7})
+                print(res)
+                print("Optimization result:" + res["message"])
+                print("Status", res['status'])
+                print("Success", res['success'])
+                loglik=res['fun']
                 #assert(loglik == lik_fn(res['x']))
                 if min_loglik is None or loglik < min_loglik:
                     min_loglik = loglik
-                    min_res = res
+                    min_res = res['x']
             for l in np.arange(0, L):
                 for i in np.arange(0, jmax):
-                    betas_est[l, i] = min_res[0][l*2*jmax + i] + 1.j*min_res[0][l*2*jmax + jmax + i]
+                    betas_est[l, i] = min_res[l*2*jmax + i] + 1.j*min_res[l*2*jmax + jmax + i]
             if tt is not None:
-                a_est = min_res[0][L*2*jmax:L*2*jmax+(2*(L+1))].reshape((L+1, 2))
+                a_est = min_res[L*2*jmax:L*2*jmax+(2*(L+1))].reshape((L+1, 2))
             
         print("betas_est", betas_est)
         print("a_est", a_est)
