@@ -167,7 +167,7 @@ class test_tip_tilt(unittest.TestCase):
         l = 10
         
         d0 = plt.imread('../granulation.png')[:, :, 0]
-        d0 = d0[:99, :99]
+        d0 = d0[:199, :199]
         d0 = utils.downsample(d0)
         #d0 = d0[:39, :39]
         #d0 = utils.downsample(d0)
@@ -196,8 +196,8 @@ class test_tip_tilt(unittest.TestCase):
         #F = np.zeros((l, 1, nx, nx), dtype='complex')
         S = np.ones((l, 2, nx, nx), dtype='complex')
         for i in np.arange(0, l):
-            x_shift = int(np.random.uniform(-nx/5, nx/5))
-            y_shift = int(np.random.uniform(-nx/5, nx/5))
+            x_shift = int(np.random.uniform(-nx/10, nx/10))
+            y_shift = int(np.random.uniform(-nx/10, nx/10))
             #x_shift = int(np.random.normal()*10)
             #y_shift = int(np.random.normal()*10)
             d_shifted[i] = np.roll(np.roll(d0, x_shift, axis=0), y_shift, axis=1)
@@ -213,15 +213,15 @@ class test_tip_tilt(unittest.TestCase):
         
         #D = np.random.normal(size=(l, k, 20, 20)) + np.random.normal(size=(l, k, 20, 20))*1.j
         
-        x_max = 01.
-        x_min = -01.
+        x_max = 1.
+        x_min = -1.
         delta = 0.
         if (nx % 2) == 0:
             delta = (x_max - x_min)/nx
         xs = np.linspace(x_min, x_max-delta, nx)
         coords = np.dstack(np.meshgrid(xs, xs))
-        tt = tip_tilt.tip_tilt(coords, prior_prec=((x_max - x_min)/2)**2, num_rounds=1)
-        #tt = tip_tilt.tip_tilt(coords, initial_a=np.zeros((l+1, 2)), prior_prec=0., num_rounds=1)
+        #tt = tip_tilt.tip_tilt(coords, prior_prec=((x_max - x_min)/2)**2, num_rounds=1)
+        tt = tip_tilt.tip_tilt(coords, initial_a=np.zeros((l+1, 2)), prior_prec=((x_max - x_min)/2)**2., num_rounds=1)
         tt.set_data(D, S)#, F)
         image, _, _ = tt.calc()
 

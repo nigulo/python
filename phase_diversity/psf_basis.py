@@ -538,12 +538,14 @@ class psf_basis:
         # Tip-tilt estimation
         #######################################################################
         if self.tip_tilt is not None:
-            #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
+            Ps = np.ones((D.shape[0], 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             lik += self.tip_tilt.lik(other)
-            #print("lik", lik)
 
-        return lik#/(D.size*(2*len(betas) + 2)+2)
+        #lik /= (D.size*(2*len(betas) + 2)+2)
+        print("lik", lik)
+
+        return lik
         
     def likelihood_grad(self, theta, data):
         betas, Ds, gamma, other = self.decode(theta, data)
@@ -622,12 +624,14 @@ class psf_basis:
         # Tip-tilt estimation
         #######################################################################
         if self.tip_tilt is not None:
-            #Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
+            Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
-        print("grads", grads)
+        #print("grads", grads)
         
-        return grads#/(D.size*(2*len(betas) + 2)+2)
+        #grads /= (D.size*(2*len(betas) + 2)+2)
+        print("grads", np.sqrt(np.sum(grads*grads)))
+        return grads
 
 def maybe_invert(image_est, image):
     mse = np.sum((image_est-image)**2)
