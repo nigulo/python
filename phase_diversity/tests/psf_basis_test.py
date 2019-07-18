@@ -698,7 +698,7 @@ class test_psf_basis(unittest.TestCase):
         
         gamma = 1.
         L = 3
-        prior_prec = 1.
+        prior_prec = np.linspace(0, 1., jmax)**2
         
         psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec=prior_prec)
         psf.create_basis(do_fft=True, do_defocus=True)
