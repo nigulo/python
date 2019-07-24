@@ -151,11 +151,21 @@ else:
         test_plot.save("test_field" + str(i) +".png")
         test_plot.close()
     ###########################################################################
-    
-    print(y.shape)
+
     bx = y[:, :, 4, 0]
     by = y[:, :, 4, 1]
     bz = y[:, :, 4, 2]
+    
+    ###########################################################################
+    # Overwrite some of the vector for depth testing purposes
+    for i in np.arange(0, y.shape[0]):
+        for j in np.arange(0, y.shape[1]):
+            if i == y.shape[0]//2 or j == y.shape[1]//2:
+                bx[i, j] = y[i, j, 3, 0]
+                by[i, j] = y[i, j, 3, 1]
+                bz[i, j] = y[i, j, 3, 2]
+            
+    ###########################################################################
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)
     theta = np.arccos((bz+1e-10)/(b+1e-10))

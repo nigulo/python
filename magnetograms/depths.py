@@ -90,7 +90,7 @@ class depths():
         az[4] = dbz_dz*dz[0]
         az[5] = dbz_dz*dz[1]
         
-        loss = np.sum(b - (d + az)**2)
+        loss = np.sum((b - (d + az))**2)
         
         return loss
 
