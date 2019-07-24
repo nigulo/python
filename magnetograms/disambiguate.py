@@ -238,7 +238,7 @@ x = x_grid.reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
 ###############################################################################
-d = depths.depths(x_grid, bx, by, bz)
+d = depths.depths(x_grid, bx, by, bz, prior_prec=1.)
 d.estimate()
 sys.exit(1)
 ###############################################################################
