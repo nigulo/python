@@ -35,7 +35,6 @@ class depths():
         self.dbzx = bz[1:,:]-bz[:-1,:]
         self.dbzy = bz[:,1:]-bz[:,:-1]
 
-
         self.i = 0
         self.j = 0
 
@@ -91,6 +90,8 @@ class depths():
         az[5] = dbz_dz*dz[1]
         
         loss = np.sum((b - (d + az))**2)
+        print("params", params[8:10])
+        print("loss", loss)
         
         return loss
 
@@ -117,9 +118,9 @@ class depths():
                 min_res = None
         
                 for trial_no in np.arange(0, 1):
-                    #initial_params = np.random.normal(size=12)
+                    #initial_params = np.random.normal(size=10)
                     initial_params = np.zeros(10)
-                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=None, options={'disp': True, 'gtol':100})#, 'eps':.1})
+                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=None, options={'disp': True, 'gtol':1e-9, 'eps':1e-5})
                     print(res)
                     print("Optimization result:" + res["message"])
                     print("Status", res['status'])
@@ -130,6 +131,10 @@ class depths():
                         min_loss = loss
                         min_res = res['x']
                 dz = min_res[8:10]
+                print(dz)
+                print("grad Bx", min_res[:3])
+                print("grad By", min_res[3:6])
+                print("grad Bz", min_res[6:8])
 
                 
                 depths[i+1, j] = depths[i, j] + dz[0]

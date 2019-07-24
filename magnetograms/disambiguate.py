@@ -232,13 +232,16 @@ n = n1*n2
 
 x1 = np.linspace(0, x1_range, n1)
 x2 = np.linspace(0, x2_range, n2)
-x_mesh = np.meshgrid(x2, x1)
+x_mesh = np.meshgrid(x2, x1)[::-1]
 x_grid = np.dstack(x_mesh)
 x = x_grid.reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
+###############################################################################
 d = depths.depths(x_grid, bx, by, bz)
 d.estimate()
+sys.exit(1)
+###############################################################################
 
 
 if mode == 2:
