@@ -40,6 +40,7 @@ from astropy.io import fits
 from scipy.io import readsav
 import scipy.signal as signal
 import pickle
+import depths
 
 
 state_file = None#state.pkl"
@@ -213,7 +214,7 @@ theta = theta[:-1,:-1]
 phi = phi[:-1,:-1]
 bxy = b*np.sin(theta)
 bx = bxy*np.cos(phi)
-by = bxy*np.sin(phi)    
+by = bxy*np.sin(phi)
 
 n1 -= 1
 n2 -= 1
@@ -222,8 +223,12 @@ n = n1*n2
 x1 = np.linspace(0, x1_range, n1)
 x2 = np.linspace(0, x2_range, n2)
 x_mesh = np.meshgrid(x2, x1)
-x = np.dstack(x_mesh).reshape(-1, 2)
+x_grid = np.dstack(x_mesh)
+x = x_grid.reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
+
+d = depths.depths(x_grid, bx, by, bz)
+d.estimate()
 
 
 if mode == 2:

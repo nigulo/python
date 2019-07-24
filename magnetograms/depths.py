@@ -10,12 +10,9 @@ import numpy as np
 import scipy.misc
 import sys
 sys.path.append('../utils')
-import sampling
+import plot
 
-import pymc3 as pm
-import pyhdust.triangle as triangle
 import scipy.optimize
-import matplotlib.pyplot as plt
 
 
 class depths():
@@ -25,8 +22,9 @@ class depths():
         self.bx=bx
         self.by=by
         self.bz=bz
-        self.dx = xs[1:,:]-xs[:-1,:]
-        self.dy = xs[:,1:]-xs[:,:-1]
+        print("xs", xs.shape)
+        self.dx = xs[1:,:,0]-xs[:-1,:,0]
+        self.dy = xs[:,1:,1]-xs[:,:-1,1]
 
         self.dbxx = bx[1:,:]-bx[:-1,:]
         self.dbxy = bx[:,1:]-bx[:,:-1]
@@ -82,7 +80,7 @@ class depths():
         dbx_dz = b_derivs[2]
         dby_dz = b_derivs[5]
         dbz_dz = -dbx_dz - dby_dz
-        az = np.zeros(12)
+        az = np.zeros(6)
         az[0] = dbx_dz*dz[0]
         az[1] = dbx_dz*dz[1]
 
@@ -97,7 +95,7 @@ class depths():
         return loss
 
 
-    def sample(self):
+    def estimate(self):
 
         def lik_fn(params):
             return self.loss_fn(params)
@@ -115,17 +113,12 @@ class depths():
             for j in np.arange(0, ny-1, step=2):
                 self.j = j
             
-                tt = self.psf_b.tip_tilt
-                if tt is not None:
-                    a_est = np.zeros(((L+1), 2))
-        
-        
                 min_loss = None
                 min_res = None
         
-                for trial_no in np.arange(0, self.num_samples):
+                for trial_no in np.arange(0, 1):
                     #initial_params = np.random.normal(size=12)
-                    initial_params = np.zeros(12)
+                    initial_params = np.zeros(10)
                     res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=None, options={'disp': True, 'gtol':100})#, 'eps':.1})
                     print(res)
                     print("Optimization result:" + res["message"])
@@ -143,6 +136,12 @@ class depths():
                 depths[i, j+1] = depths[i, j] + dz[1]
                 
         
-        print("depths", depths)
+        print("nx, ny", nx, ny)
+        #print("depths", depths)
+        
+        my_plot = plot.plot(nrows=1, ncols=1)
+        my_plot.colormap(depths)
+        my_plot.save("depths.png")
+        my_plot.close()
 
         return depths
