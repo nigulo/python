@@ -160,11 +160,11 @@ else:
     # Overwrite some of the vector for depth testing purposes
     for i in np.arange(0, y.shape[0]):
         for j in np.arange(0, y.shape[1]):
-            if i == y.shape[0]//2 or j == y.shape[1]//2:
+            #if i == y.shape[0]//2 or j == y.shape[1]//2:
+            if i == j or y.shape[0] - i == j:
                 bx[i, j] = y[i, j, 3, 0]
                 by[i, j] = y[i, j, 3, 1]
                 bz[i, j] = y[i, j, 3, 2]
-            
     ###########################################################################
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)

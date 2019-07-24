@@ -168,8 +168,8 @@ class depths():
                 print("grad Bz", min_res[6:8])
 
                 
-                #depths[i+1, j] = depths[i, j] + dz[0]
-                #depths[i, j+1] = depths[i, j] + dz[1]
+                depths[i+1, j] = depths[i, j] + dz[1]
+                depths[i, j+1] = depths[i, j] + dz[3]
                 
         
         print("nx, ny", nx, ny)
