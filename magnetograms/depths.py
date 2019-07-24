@@ -115,9 +115,6 @@ class depths():
             for j in np.arange(0, ny-1, step=2):
                 self.j = j
             
-                b_derivs_est = np.zeros(8)
-                dz_est = np.zeros(4)
-        
                 tt = self.psf_b.tip_tilt
                 if tt is not None:
                     a_est = np.zeros(((L+1), 2))
@@ -139,25 +136,13 @@ class depths():
                     if min_loss is None or loss < min_loss:
                         min_loss = loss
                         min_res = res['x']
-                dz = min_res[8:12]
+                dz = min_res[8:10]
 
                 
-                depths[i, j+1] -= dz[0]
-                depths[i+2, j+1] += dz[1]
-
-                depths[i+1, j] -= dz[2]
-                depths[i+1, j+2] += dz[3]
+                depths[i+1, j] = depths[i, j] + dz[0]
+                depths[i, j+1] = depths[i, j] + dz[1]
                 
-                for l in np.arange(0, L):
-                    for i in np.arange(0, jmax):
-                        betas_est[l, i] = min_res[l*2*jmax + i] + 1.j*min_res[l*2*jmax + jmax + i]
-                if tt is not None:
-                    a_est = min_res[L*2*jmax:L*2*jmax+(2*(L+1))].reshape((L+1, 2))
         
-        print("betas_est", betas_est)
-        print("a_est", a_est)
-        #betas_est = np.random.normal(size=psf.jmax) + np.random.normal(size=psf.jmax)*1.j
-        if tt is not None:
-            return (betas_est, a_est)
-        else:
-            return betas_est
+        print("depths", depths)
+
+        return depths
