@@ -27,14 +27,24 @@ class depths():
         self.dx = xs[1:,:,0]-xs[:-1,:,0]
         self.dy = xs[:,1:,1]-xs[:,:-1,1]
 
+        # Calculate horizontal, vertical and diagonal diffs
         self.dbxx = bx[1:,:]-bx[:-1,:]
         self.dbxy = bx[:,1:]-bx[:,:-1]
-        
+
+        self.dbx1 = bx[1:,1:]-bx[:-1,:-1]
+        self.dbx2 = bx[:-1,1:]-bx[1:,:-1]
+
         self.dbyx = by[1:,:]-by[:-1,:]
         self.dbyy = by[:,1:]-by[:,:-1]
 
+        self.dby1 = by[1:,1:]-by[:-1,:-1]
+        self.dby2 = by[:-1,1:]-by[1:,:-1]
+
         self.dbzx = bz[1:,:]-bz[:-1,:]
         self.dbzy = bz[:,1:]-bz[:,:-1]
+
+        self.dbz1 = bz[1:,1:]-bz[:-1,:-1]
+        self.dbz2 = bz[:-1,1:]-bz[1:,:-1]
 
         self.i = 0
         self.j = 0
@@ -54,7 +64,7 @@ class depths():
         # 7: dB_z/d_y
         # dB_z/d_z is omitted, as expressed through others
         
-        dz = params[8:12]
+        dz = params[8:16]
         # 0: dz^-x
         # 1: dz^x
         # 2: dz^-y
@@ -63,7 +73,7 @@ class depths():
         i = self.i
         j = self.j
 
-        b = np.zeros(12)
+        b = np.zeros(24)
         b[0] = self.dbxx[i, j]
         b[1] = self.dbxx[i+1, j]
         
@@ -81,8 +91,30 @@ class depths():
         
         b[10] = self.dbzy[i, j]
         b[11] = self.dbzy[i, j+1]
+
         
-        d = np.zeros(12)
+        b[12] = self.dbx1[i, j]
+        b[13] = self.dbx1[i+1, j+1]
+        
+        b[14] = self.dbx2[i, j]
+        b[15] = self.dbx2[i+1, j-1]
+
+        b[16] = self.dby1[i, j]
+        b[17] = self.dby1[i+1, j+1]
+        
+        b[18] = self.dby2[i, j]
+        b[19] = self.dby2[i+1, j-1]
+
+        b[20] = self.dbz1[i, j]
+        b[21] = self.dbz1[i+1, j+1]
+        
+        b[22] = self.dbz2[i, j]
+        b[23] = self.dbz2[i+1, j-1]
+        
+        
+        
+        
+        d = np.zeros(24)
         d[0] = b_derivs[0]*self.dx[i, j]
         d[1] = -d[0]
         
@@ -101,24 +133,31 @@ class depths():
         d[10] = b_derivs[7]*self.dy[i, j]
         d[11] = -d[10]
         
+        for di in np.arange(12, 24):
+            d[di] = d[di-12] + d[di-10]
+        
         dbx_dz = b_derivs[2]
         dby_dz = b_derivs[5]
         dbz_dz = -b_derivs[0] - b_derivs[4]
-        az = np.zeros(12)
-        az[0] = dbx_dz*dz[0]
-        az[1] = dbx_dz*dz[1]
-        az[2] = dbx_dz*dz[2]
-        az[3] = dbx_dz*dz[3]
+        az = np.zeros(24)
 
-        az[4] = dby_dz*dz[0]
-        az[5] = dby_dz*dz[1]
-        az[6] = dby_dz*dz[2]
-        az[7] = dby_dz*dz[3]
-
-        az[8] = dbz_dz*dz[0]
-        az[9] = dbz_dz*dz[1]
-        az[10] = dbz_dz*dz[2]
-        az[11] = dbz_dz*dz[3]
+        for di in np.arange(0, 4):
+            az[di] = dbx_dz*dz[di]
+        do = 4            
+        for di in np.arange(0, 4):
+            az[di+do] = dby_dz*dz[di]
+        do += 4
+        for di in np.arange(0, 4):
+            az[di+do] = dbz_dz*dz[di]
+        do += 4
+        for di in np.arange(0, 4):
+            az[di+do] = dbx_dz*dz[di+4]
+        do += 4
+        for di in np.arange(0, 4):
+            az[di+do] = dby_dz*dz[di+4]
+        do += 4
+        for di in np.arange(0, 4):
+            az[di+do] = dbz_dz*dz[di+4]
         
         loss = np.sum((b - (d + az))**2) + np.sum(params**2*self.prior_prec/2)
         #print("params", params[8:12])
@@ -150,7 +189,7 @@ class depths():
         
                 for trial_no in np.arange(0, 1):
                     #initial_params = np.random.normal(size=10)
-                    initial_params = np.zeros(12)
+                    initial_params = np.zeros(16)
                     res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=None, options={'disp': True, 'gtol':1e-9, 'eps':1e-5})
                     print(res)
                     print("Optimization result:" + res["message"])
@@ -170,6 +209,11 @@ class depths():
                 
                 depths[i+1, j] = depths[i, j] + dz[1]
                 depths[i, j+1] = depths[i, j] + dz[3]
+
+                #depths[i-1, j] -= dz[0]
+                #depths[i+1, j] += dz[1]
+                #depths[i, j-1] -= dz[2]
+                #depths[i, j+1] += dz[3]
                 
         
         print("nx, ny", nx, ny)
