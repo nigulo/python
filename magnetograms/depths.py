@@ -69,6 +69,12 @@ class depths():
         # 1: dz^x
         # 2: dz^-y
         # 3: dz^y
+        
+        # 0: dz^-x,-y
+        # 1: dz^x,y
+        # 2: dz^-y
+        # 3: dz^y
+        
 
         i = self.i
         j = self.j
@@ -112,8 +118,6 @@ class depths():
         b[23] = self.dbz2[i+1, j-1]
         
         
-        
-        
         d = np.zeros(24)
         d[0] = b_derivs[0]*self.dx[i, j]
         d[1] = -d[0]
@@ -135,12 +139,25 @@ class depths():
         
         for di in np.arange(12, 24):
             d[di] = d[di-12] + d[di-10]
+        for di in np.arange(14, 16):
+            d[di] = -d[di-14] + d[di-12]
+
+        for di in np.arange(16, 18):
+            d[di] = d[di-12] + d[di-10]
+        for di in np.arange(18, 20):
+            d[di] = -d[di-14] + d[di-12]
+
+        for di in np.arange(20, 22):
+            d[di] = d[di-12] + d[di-10]
+        for di in np.arange(22, 24):
+            d[di] = -d[di-14] + d[di-12]
         
         dbx_dz = b_derivs[2]
         dby_dz = b_derivs[5]
         dbz_dz = -b_derivs[0] - b_derivs[4]
         az = np.zeros(24)
 
+        #E-W and N-S
         for di in np.arange(0, 4):
             az[di] = dbx_dz*dz[di]
         do = 4            
@@ -150,6 +167,7 @@ class depths():
         for di in np.arange(0, 4):
             az[di+do] = dbz_dz*dz[di]
         do += 4
+        #SE-NW and NE-SW
         for di in np.arange(0, 4):
             az[di+do] = dbx_dz*dz[di+4]
         do += 4
@@ -178,6 +196,7 @@ class depths():
         nx = self.dx.shape[0]
         ny = self.dy.shape[1]
         depths = np.zeros((nx, ny))
+        counts = np.zeros((nx, ny))
         
         for i in np.arange(0, nx-1, step=2):
             self.i = i
@@ -206,6 +225,8 @@ class depths():
                 print("grad By", min_res[3:6])
                 print("grad Bz", min_res[6:8])
 
+                
+                depths[i, j] = (depths[i-1, j] + dz[0] + depths[i, j-1] + dz[2] + depths[i, j-1] + dz[2])/3 
                 
                 depths[i+1, j] = depths[i, j] + dz[1]
                 depths[i, j+1] = depths[i, j] + dz[3]
