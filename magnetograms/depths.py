@@ -196,7 +196,6 @@ class depths():
         nx = self.dx.shape[0]
         ny = self.dy.shape[1]
         depths = np.zeros((nx, ny))
-        counts = np.zeros((nx, ny))
         
         for i in np.arange(0, nx-1, step=2):
             self.i = i
@@ -219,17 +218,36 @@ class depths():
                     if min_loss is None or loss < min_loss:
                         min_loss = loss
                         min_res = res['x']
-                dz = min_res[8:12]
+                dz = min_res[8:16]
                 print(dz)
                 print("grad Bx", min_res[:3])
                 print("grad By", min_res[3:6])
                 print("grad Bz", min_res[6:8])
 
                 
-                depths[i, j] = (depths[i-1, j] + dz[0] + depths[i, j-1] + dz[2] + depths[i, j-1] + dz[2])/3 
+                contrib = 0.
+                count = 0.
+                if i > 0:
+                    contrib += depths[i-1, j] + dz[0]
+                    count += 1
+                    if j > 0:
+                        contrib += depths[i-1, j-1]
+                        count += 1
+                if j > 0:
+                    contrib += depths[i, j-1] + dz[2] + depths[i+1, j-1] + dz[7]
+                    count += 2
+                if count > 0:
+                    depths[i, j] += contrib/count
+                    depths[i, j] /=2
                 
+                depths[i+1, j+1] = depths[i, j] + dz[5]
                 depths[i+1, j] = depths[i, j] + dz[1]
-                depths[i, j+1] = depths[i, j] + dz[3]
+                depths[i, j+1] += depths[i, j] + dz[3]
+                if i > 0:
+                    depths[i-1, j+1] += depths[i, j] + dz[6]
+                    depths[i-1, j+1] /= 2
+
+                    depths[i, j+1] /= 2
 
                 #depths[i-1, j] -= dz[0]
                 #depths[i+1, j] += dz[1]
