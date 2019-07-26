@@ -95,7 +95,7 @@ else:
     else:
         n1, n2, n3 = 30, 30, 10
         n = n1 * n2 * n3
-        x1_range, x2_range, x3_range = 1., 1., 1.
+        x1_range, x2_range, x3_range = 1., 1., .33
         
         x1 = np.linspace(0, x1_range, n1)
         x2 = np.linspace(0, x2_range, n2)
@@ -142,7 +142,7 @@ else:
     x2 = np.linspace(0, x2_range, y.shape[1])
     x_mesh = np.meshgrid(x2, x1)
 
-    for i in np.arange(0, y.shape[3]):
+    for i in np.arange(0, y.shape[2]):
         test_plot = plot.plot(nrows=1, ncols=1)
         test_plot.set_color_map('bwr')
         
