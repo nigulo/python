@@ -49,36 +49,10 @@ class depths():
         self.i = 0
         self.j = 0
 
-    def loss_fn(self, params):
-        
-        b_derivs = params[:8]
-        # 0: dB_x/d_x
-        # 1: dB_x/d_y
-        # 2: dB_x/d_z
 
-        # 3: dB_y/d_x
-        # 4: dB_y/d_y
-        # 5: dB_y/d_z
-
-        # 6: dB_z/d_x
-        # 7: dB_z/d_y
-        # dB_z/d_z is omitted, as expressed through others
-        
-        dz = params[8:16]
-        # 0: dz^-x
-        # 1: dz^x
-        # 2: dz^-y
-        # 3: dz^y
-        
-        # 0: dz^-x,-y
-        # 1: dz^x,y
-        # 2: dz^-y
-        # 3: dz^y
-        
-
+    def calc_b_d_az(self, b_derivs, dz):
         i = self.i
         j = self.j
-
         b = np.zeros(24)
         b[0] = self.dbxx[i, j]
         b[1] = self.dbxx[i+1, j]
@@ -102,42 +76,41 @@ class depths():
         b[12] = self.dbx1[i, j]
         b[13] = self.dbx1[i+1, j+1]
         
-        b[14] = self.dbx2[i, j]
-        b[15] = self.dbx2[i+1, j-1]
+        b[14] = self.dbx2[i+1, j]
+        b[15] = self.dbx2[i, j+1]
 
         b[16] = self.dby1[i, j]
         b[17] = self.dby1[i+1, j+1]
         
-        b[18] = self.dby2[i, j]
-        b[19] = self.dby2[i+1, j-1]
+        b[14] = self.dbx2[i+1, j]
+        b[15] = self.dbx2[i, j+1]
 
         b[20] = self.dbz1[i, j]
         b[21] = self.dbz1[i+1, j+1]
         
-        b[22] = self.dbz2[i, j]
-        b[23] = self.dbz2[i+1, j-1]
-        
-        
+        b[14] = self.dbx2[i+1, j]
+        b[15] = self.dbx2[i, j+1]
+
         d = np.zeros(24)
-        d[0] = b_derivs[0]*self.dx[i, j]
+        d[0] = -b_derivs[0]*self.dx[i, j]
         d[1] = -d[0]
         
-        d[2] = b_derivs[1]*self.dy[i, j]
+        d[2] = -b_derivs[1]*self.dy[i, j]
         d[3] = -d[2]
 
-        d[4] = b_derivs[3]*self.dx[i, j]
+        d[4] = -b_derivs[3]*self.dx[i, j]
         d[5] = -d[4]
 
-        d[6] = b_derivs[4]*self.dy[i, j]
+        d[6] = -b_derivs[4]*self.dy[i, j]
         d[7] = -d[6]
 
-        d[8] = b_derivs[6]*self.dx[i, j]
+        d[8] = -b_derivs[6]*self.dx[i, j]
         d[9] = -d[8]
 
-        d[10] = b_derivs[7]*self.dy[i, j]
+        d[10] = -b_derivs[7]*self.dy[i, j]
         d[11] = -d[10]
         
-        for di in np.arange(12, 24):
+        for di in np.arange(12, 14):
             d[di] = d[di-12] + d[di-10]
         for di in np.arange(14, 16):
             d[di] = -d[di-14] + d[di-12]
@@ -176,6 +149,37 @@ class depths():
         do += 4
         for di in np.arange(0, 4):
             az[di+do] = dbz_dz*dz[di+4]
+
+        return b, d, az
+
+    def loss_fn(self, params):
+        
+        b_derivs = params[:8]
+        # 0: dB_x/d_x
+        # 1: dB_x/d_y
+        # 2: dB_x/d_z
+
+        # 3: dB_y/d_x
+        # 4: dB_y/d_y
+        # 5: dB_y/d_z
+
+        # 6: dB_z/d_x
+        # 7: dB_z/d_y
+        # dB_z/d_z is omitted, as expressed through others
+        
+        dz = params[8:16]
+        # 0: dz^-x
+        # 1: dz^x
+        # 2: dz^-y
+        # 3: dz^y
+        
+        # 0: dz^-x,-y
+        # 1: dz^x,y
+        # 2: dz^x,-y
+        # 3: dz^y,-x
+        
+        b, d, az = self.calc_b_d_az(b_derivs, dz)
+        
         
         loss = np.sum((b - (d + az))**2) + np.sum(params**2*self.prior_prec/2)
         #print("params", params[8:12])
@@ -184,14 +188,58 @@ class depths():
         return loss
 
 
+    def loss_fn_grad(self, params):
+        b_derivs = params[:8]
+        dz = params[8:16]
+        
+
+        i = self.i
+        j = self.j
+        
+
+        b, d, az = self.calc_b_d_az(b_derivs, dz)
+        
+        grads = np.zeros(len(params))
+        grads[0] = 2.*((b - (d + az))[1] + (b - (d + az))[13] - (b - (d + az))[0] - (b - (d + az))[12])*self.dx[i, j]
+        grads[1] = 2.*((b - (d + az))[3] + (b - (d + az))[15] - (b - (d + az))[2] - (b - (d + az))[14])*self.dy[i, j]
+        grads[3] = 2.*((b - (d + az))[5] + (b - (d + az))[17] - (b - (d + az))[4] - (b - (d + az))[16])*self.dx[i, j]
+        grads[4] = 2.*((b - (d + az))[7] + (b - (d + az))[19] - (b - (d + az))[6] - (b - (d + az))[18])*self.dy[i, j]
+        grads[6] = 2.*((b - (d + az))[9] + (b - (d + az))[21] - (b - (d + az))[8] - (b - (d + az))[20])*self.dx[i, j]
+        grads[7] = 2.*((b - (d + az))[11] + (b - (d + az))[23] - (b - (d + az))[10] - (b - (d + az))[22])*self.dx[i, j]
+        
+        
+        for di in np.arange(0, 4):
+            grads[2] += -2.*((b - (d + az))[di]*dz[di] + (b - (d + az))[12+di]*dz[di+4])
+
+        for di in np.arange(0, 4):
+            grads[5] += -2.*((b - (d + az))[di+4]*dz[di] + (b - (d + az))[16+di]*dz[di+4])
+
+
+        dbx_dz = b_derivs[2]
+        dby_dz = b_derivs[5]
+        dbz_dz = -b_derivs[0] - b_derivs[4]
+
+        for di in np.arange(0, 4):
+            grads[8+di] += -2.*(b - (d + az))[di]*dbx_dz
+            grads[8+di] += -2.*(b - (d + az))[di+4]*dby_dz
+            grads[8+di] += -2.*(b - (d + az))[di+8]*dbz_dz
+
+        for di in np.arange(0, 4):
+            grads[12+di] += -2.*(b - (d + az))[di+12]*dbx_dz
+            grads[12+di] += -2.*(b - (d + az))[di+16]*dby_dz
+            grads[12+di] += -2.*(b - (d + az))[di+20]*dbz_dz
+
+        return grads
+
+
+
     def estimate(self):
 
         def lik_fn(params):
             return self.loss_fn(params)
 
-        #def grad_fn(params):
-        #    data = self.psf_b.encode_data(Ds, self.gamma)
-        #    return self.psf_b.likelihood_grad(params, data)
+        def grad_fn(params):
+            return self.loss_fn(params)
 
         nx = self.dx.shape[0]
         ny = self.dy.shape[1]
@@ -208,7 +256,7 @@ class depths():
                 for trial_no in np.arange(0, 1):
                     #initial_params = np.random.normal(size=10)
                     initial_params = np.zeros(16)
-                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=None, options={'disp': True, 'gtol':1e-9, 'eps':1e-5})
+                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':1e-9, 'eps':1e-5})
                     print(res)
                     print("Optimization result:" + res["message"])
                     print("Status", res['status'])
@@ -224,7 +272,7 @@ class depths():
                 print("grad By", min_res[3:6])
                 print("grad Bz", min_res[6:8])
 
-                
+                '''
                 contrib = 0.
                 count = 0.
                 if i > 0:
@@ -248,11 +296,12 @@ class depths():
                     depths[i-1, j+1] /= 2
 
                     depths[i, j+1] /= 2
+                '''
 
                 #depths[i-1, j] -= dz[0]
-                #depths[i+1, j] += dz[1]
+                depths[i+1, j] = depths[i, j] + dz[1]
                 #depths[i, j-1] -= dz[2]
-                #depths[i, j+1] += dz[3]
+                depths[i, j+1] = depths[i, j] + dz[3]
                 
         
         print("nx, ny", nx, ny)
