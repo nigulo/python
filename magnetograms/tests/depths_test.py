@@ -28,8 +28,8 @@ class test_depths(unittest.TestCase):
         bz = np.random.normal(size=(n1, n2))
         
         dpths = depths.depths(x_grid, bx, by, bz, prior_prec=1.)
-        dpths.i = np.random.randint(1, n1-1)
-        dpths.j = np.random.randint(1, n2-1)
+        dpths.i = np.random.randint(1, n1-2)
+        dpths.j = np.random.randint(1, n2-2)
 
         params = np.random.normal(size=16)
         b_derivs = params[:8]
@@ -38,7 +38,6 @@ class test_depths(unittest.TestCase):
 
         i = dpths.i
         j = dpths.j
-    
         
         b_expected = np.zeros(24)
         b_expected[0] = bx[i, j] - bx[i-1, j]
@@ -79,8 +78,8 @@ class test_depths(unittest.TestCase):
         b_expected[23] = bz[i-1, j+1] - bz[i, j]
 
        
-        dx = x_grid[0, 0, 0] - x_grid[1, 0, 0]
-        dy = x_grid[0, 0, 1] - x_grid[0, 1, 1]
+        dx = x_grid[1, 0, 0] - x_grid[0, 0, 0]
+        dy = x_grid[0, 1, 1] - x_grid[0, 0, 1]
 
         d_expected = np.zeros(24)
         d_expected[0] = -b_derivs[0]*dx

@@ -54,42 +54,42 @@ class depths():
         i = self.i
         j = self.j
         b = np.zeros(24)
-        b[0] = self.dbxx[i, j]
-        b[1] = self.dbxx[i+1, j]
+        b[0] = self.dbxx[i-1, j]
+        b[1] = self.dbxx[i, j]
         
-        b[2] = self.dbxy[i, j]
-        b[3] = self.dbxy[i, j+1]
+        b[2] = self.dbxy[i, j-1]
+        b[3] = self.dbxy[i, j]
 
-        b[4] = self.dbyx[i, j]
-        b[5] = self.dbyx[i+1, j]
+        b[4] = self.dbyx[i-1, j]
+        b[5] = self.dbyx[i, j]
         
-        b[6] = self.dbyy[i, j]
-        b[7] = self.dbyy[i, j+1]
+        b[6] = self.dbyy[i, j-1]
+        b[7] = self.dbyy[i, j]
         
-        b[8] = self.dbzx[i, j]
-        b[9] = self.dbzx[i+1, j]
+        b[8] = self.dbzx[i-1, j]
+        b[9] = self.dbzx[i, j]
         
-        b[10] = self.dbzy[i, j]
-        b[11] = self.dbzy[i, j+1]
+        b[10] = self.dbzy[i, j-1]
+        b[11] = self.dbzy[i, j]
 
         
-        b[12] = self.dbx1[i, j]
-        b[13] = self.dbx1[i+1, j+1]
+        b[12] = self.dbx1[i-1, j-1]
+        b[13] = self.dbx1[i, j]
         
-        b[14] = self.dbx2[i+1, j]
-        b[15] = self.dbx2[i, j+1]
+        b[14] = self.dbx2[i, j-1]
+        b[15] = self.dbx2[i-1, j]
 
-        b[16] = self.dby1[i, j]
-        b[17] = self.dby1[i+1, j+1]
+        b[16] = self.dby1[i-1, j-1]
+        b[17] = self.dby1[i, j]
         
-        b[14] = self.dbx2[i+1, j]
-        b[15] = self.dbx2[i, j+1]
+        b[18] = self.dby2[i, j-1]
+        b[19] = self.dby2[i-1, j]
 
-        b[20] = self.dbz1[i, j]
-        b[21] = self.dbz1[i+1, j+1]
+        b[20] = self.dbz1[i-1, j-1]
+        b[21] = self.dbz1[i, j]
         
-        b[14] = self.dbx2[i+1, j]
-        b[15] = self.dbx2[i, j+1]
+        b[22] = self.dbz2[i, j-1]
+        b[23] = self.dbz2[i-1, j]
 
         d = np.zeros(24)
         d[0] = -b_derivs[0]*self.dx[i, j]
