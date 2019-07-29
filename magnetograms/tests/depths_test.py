@@ -197,60 +197,59 @@ class test_depths(unittest.TestCase):
 
         np.testing.assert_almost_equal(loss, loss_expected, 6)
 
-    '''
+
     def test_loss_fn_grad(self):
+
+
+        n1 = 10
+        n2 = 10
         
-        jmax = 5
-        arcsec_per_px = 0.055
-        diameter = 20.0
-        wavelength = 5250.0
-        nx = 10
-        defocus = 1.0
+        x1_range = 1.0
+        x2_range = 1.0
+
+        x1 = np.linspace(0, x1_range, n1)
+        x2 = np.linspace(0, x2_range, n2)
+        x_mesh = np.meshgrid(x2, x1)[::-1]
+        x_grid = np.dstack(x_mesh)
         
-        gamma = 1.
-        L = 3
-        prior_prec = np.linspace(0, 1., jmax)**2
+        bx = np.random.normal(size=(n1, n2))
+        by = np.random.normal(size=(n1, n2))
+        bz = np.random.normal(size=(n1, n2))
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec=prior_prec)
-        psf.create_basis(do_fft=True, do_defocus=True)
+        dpths = depths.depths(x_grid, bx, by, bz, prior_prec=1.)
+        dpths.i = np.random.randint(1, n1-1)
+        dpths.j = np.random.randint(1, n2-1)
 
+        params = np.random.normal(size=16)
+        grads = dpths.loss_fn_grad(params)
+        
+        b_derivs = params[:8]
+        dz = params[8:16]
+        b, d, az = dpths.calc_b_d_az(b_derivs, dz)
 
-        betas = np.random.normal(size=(L, jmax)) + np.random.normal(size=(L, jmax))*1.j
-        Ds = np.tile(np.stack((D, D_d)), (L, 1)).reshape((L, 2, nx, nx))
-        print("Ds", Ds.shape)
-        theta, data = psf.encode(betas, Ds, gamma)
+        
+ 
+        
+        
+        delta_params = np.ones_like(params, dtype='float')*1.0e-8# + betas*1.0e-7
 
-        delta_betas = np.ones_like(betas, dtype='float')*1.0e-8# + betas*1.0e-7
-
-        lik = psf.likelihood(theta, data)
+        loss = dpths.loss_fn(params)
         #print("lik", lik)
-        liks = np.tile(lik, (betas.shape[0], betas.shape[1]))
+        losses = np.tile(loss, params.shape[0])
         #print("liks", liks)
-        liks1_real = np.zeros_like(betas.real)
-        liks1_imag = np.zeros_like(betas.imag)
-        for l in np.arange(0, L):
-            for i in np.arange(0, betas.shape[1]):
-                delta = np.zeros_like(betas)
-                delta[l, i] = delta_betas[l, i]
-                betas1 = betas+delta
-                theta1, _ = psf.encode(betas1, Ds, gamma)
-                
-                liks1_real[l, i] = psf.likelihood(theta1, data)
-    
-                delta[l, i] = 1.j*delta_betas[l, i]
-                betas1 = betas+delta
-                theta1, _ = psf.encode(betas1, Ds, gamma)
-    
-                liks1_imag[l, i] = psf.likelihood(theta1, data)
-        
+        losses1 = np.zeros_like(params)
+        for i in np.arange(0, params.shape[0]):
+            delta = np.zeros_like(params)
+            delta[i] = delta_params[i]
+            params1 = params+delta
+            
+            losses1[i] = dpths.loss_fn(params1)
+
         #print((liks1_real - liks) / delta_betas.real, (liks1_imag - liks) / delta_betas.imag)
         #print(liks1_real)
-        grads_expected = np.stack(((liks1_real - liks) / delta_betas, (liks1_imag - liks) / delta_betas), axis=1).flatten()
+        grads_expected = (losses1 - losses) / delta_params
     
-        grads = psf.likelihood_grad(theta, data)
-
-        np.testing.assert_array_almost_equal(grads, grads_expected, 1)
-   '''         
+        np.testing.assert_array_almost_equal(grads, grads_expected, 6)
 
         
 if __name__ == '__main__':
