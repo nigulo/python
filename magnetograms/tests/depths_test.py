@@ -228,14 +228,11 @@ class test_depths(unittest.TestCase):
         b, d, az = dpths.calc_b_d_az(b_derivs, dz)
 
         
- 
-        
-        
-        delta_params = np.ones_like(params, dtype='float')*1.0e-8# + betas*1.0e-7
+        delta_params = np.ones_like(params)*1.0e-8# + betas*1.0e-7
 
         loss = dpths.loss_fn(params)
         #print("lik", lik)
-        losses = np.tile(loss, params.shape[0])
+        losses = np.repeat(loss, params.shape[0])
         #print("liks", liks)
         losses1 = np.zeros_like(params)
         for i in np.arange(0, params.shape[0]):

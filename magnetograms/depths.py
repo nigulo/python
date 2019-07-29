@@ -191,7 +191,6 @@ class depths():
     def loss_fn_grad(self, params):
         b_derivs = params[:8]
         dz = params[8:16]
-        
 
         i = self.i
         j = self.j
@@ -200,19 +199,27 @@ class depths():
         b, d, az = self.calc_b_d_az(b_derivs, dz)
         
         grads = np.zeros(len(params))
-        grads[0] = 2.*((b - (d + az))[1] + (b - (d + az))[13] - (b - (d + az))[0] - (b - (d + az))[12])*self.dx[i, j]
-        grads[1] = 2.*((b - (d + az))[3] + (b - (d + az))[15] - (b - (d + az))[2] - (b - (d + az))[14])*self.dy[i, j]
-        grads[3] = 2.*((b - (d + az))[5] + (b - (d + az))[17] - (b - (d + az))[4] - (b - (d + az))[16])*self.dx[i, j]
-        grads[4] = 2.*((b - (d + az))[7] + (b - (d + az))[19] - (b - (d + az))[6] - (b - (d + az))[18])*self.dy[i, j]
-        grads[6] = 2.*((b - (d + az))[9] + (b - (d + az))[21] - (b - (d + az))[8] - (b - (d + az))[20])*self.dx[i, j]
-        grads[7] = 2.*((b - (d + az))[11] + (b - (d + az))[23] - (b - (d + az))[10] - (b - (d + az))[22])*self.dx[i, j]
+        l = 2.*(b - (d + az))
+        grads[0] = (l[0] - l[1] + l[12] - l[13] - l[14] + l[15])*self.dx[i, j]
+        for di in np.arange(0, 4):
+            grads[0] += l[di+8]*dz[di]+l[di+20]*dz[di+4]
+
+        grads[1] = (l[2] - l[3] + l[12] - l[13] + l[14] - l[15])*self.dy[i, j]
+        
+        grads[3] = (l[4] - l[5] + l[16] - l[17] - l[18] + l[19])*self.dx[i, j]
+        grads[4] = (l[6] - l[7] + l[16] - l[17] + l[18] - l[19])*self.dy[i, j]
+        for di in np.arange(0, 4):
+            grads[4] += l[di+8]*dz[di]+l[di+20]*dz[di+4]
+
+        grads[6] = (l[8] - l[9] + l[20] - l[21] - l[22] + l[23])*self.dx[i, j]
+        grads[7] = (l[10] - l[11] + l[20] - l[21] + l[22] - l[23])*self.dy[i, j]
         
         
         for di in np.arange(0, 4):
-            grads[2] += -2.*((b - (d + az))[di]*dz[di] + (b - (d + az))[12+di]*dz[di+4])
+            grads[2] += -(l[di]*dz[di] + l[12+di]*dz[di+4])
 
         for di in np.arange(0, 4):
-            grads[5] += -2.*((b - (d + az))[di+4]*dz[di] + (b - (d + az))[16+di]*dz[di+4])
+            grads[5] += -(l[di+4]*dz[di] + l[16+di]*dz[di+4])
 
 
         dbx_dz = b_derivs[2]
@@ -220,14 +227,17 @@ class depths():
         dbz_dz = -b_derivs[0] - b_derivs[4]
 
         for di in np.arange(0, 4):
-            grads[8+di] += -2.*(b - (d + az))[di]*dbx_dz
-            grads[8+di] += -2.*(b - (d + az))[di+4]*dby_dz
-            grads[8+di] += -2.*(b - (d + az))[di+8]*dbz_dz
+            grads[8+di] += -l[di]*dbx_dz
+            grads[8+di] += -l[di+4]*dby_dz
+            grads[8+di] += -l[di+8]*dbz_dz
 
         for di in np.arange(0, 4):
-            grads[12+di] += -2.*(b - (d + az))[di+12]*dbx_dz
-            grads[12+di] += -2.*(b - (d + az))[di+16]*dby_dz
-            grads[12+di] += -2.*(b - (d + az))[di+20]*dbz_dz
+            grads[12+di] += -l[di+12]*dbx_dz
+            grads[12+di] += -l[di+16]*dby_dz
+            grads[12+di] += -l[di+20]*dbz_dz
+
+
+        grads += params*self.prior_prec
 
         return grads
 
