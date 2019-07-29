@@ -182,6 +182,7 @@ class depths():
         
         
         loss = np.sum((b - (d + az))**2) + np.sum(params**2*self.prior_prec/2)
+        #loss = np.sum(((b - (d + az))**2)[:12]) + np.sum(params[:12]**2*self.prior_prec/2)
         #print("params", params[8:12])
         #print("loss", loss)
         
@@ -255,18 +256,19 @@ class depths():
         ny = self.dy.shape[1]
         depths = np.zeros((nx, ny))
         
-        for i in np.arange(0, nx-1, step=2):
+        for i in np.arange(0, nx-1, step=1):
             self.i = i
-            for j in np.arange(0, ny-1, step=2):
+            for j in np.arange(0, ny-1, step=1):
                 self.j = j
             
                 min_loss = None
                 min_res = None
         
                 for trial_no in np.arange(0, 1):
-                    #initial_params = np.random.normal(size=10)
+                    #initial_params = np.random.normal(size=16)
                     initial_params = np.zeros(16)
-                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':1e-9, 'eps':1e-5})
+                    #res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':1e-9})#, 'eps':.1})
+                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=None, options={'disp': True, 'gtol':.1, 'eps':.01})
                     print(res)
                     print("Optimization result:" + res["message"])
                     print("Status", res['status'])
@@ -308,10 +310,10 @@ class depths():
                     depths[i, j+1] /= 2
                 '''
 
-                #depths[i-1, j] -= dz[0]
-                depths[i+1, j] = depths[i, j] + dz[1]
-                #depths[i, j-1] -= dz[2]
-                depths[i, j+1] = depths[i, j] + dz[3]
+                ##depths[i-1, j] -= dz[0]
+                depths[i+1, j] += depths[i, j] + dz[1]
+                ##depths[i, j-1] -= dz[2]
+                depths[i, j+1] += depths[i, j] + dz[3]
                 
         
         print("nx, ny", nx, ny)

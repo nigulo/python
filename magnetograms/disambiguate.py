@@ -152,9 +152,9 @@ else:
         test_plot.close()
     ###########################################################################
 
-    bx = y[:, :, 4, 0]
-    by = y[:, :, 4, 1]
-    bz = y[:, :, 4, 2]
+    bx = y[:, :, 0, 0]
+    by = y[:, :, 0, 1]
+    bz = y[:, :, 0, 2]
     
     ###########################################################################
     # Overwrite some of the vector for depth testing purposes
@@ -162,9 +162,9 @@ else:
         for j in np.arange(0, y.shape[1]):
             #if i == y.shape[0]//2 or j == y.shape[1]//2:
             if i == j or y.shape[0] - i == j:
-                bx[i, j] = y[i, j, 5, 0]
-                by[i, j] = y[i, j, 5, 1]
-                bz[i, j] = y[i, j, 5, 2]
+                bx[i, j] = y[i, j, 2, 0]
+                by[i, j] = y[i, j, 2, 1]
+                bz[i, j] = y[i, j, 2, 2]
     ###########################################################################
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)
@@ -238,7 +238,7 @@ x = x_grid.reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
 ###############################################################################
-d = depths.depths(x_grid, bx, by, bz, prior_prec=5.)
+d = depths.depths(x_grid, bx, by, bz, prior_prec=2.)
 d.estimate()
 sys.exit(1)
 ###############################################################################
