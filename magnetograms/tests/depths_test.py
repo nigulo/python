@@ -160,7 +160,7 @@ class test_depths(unittest.TestCase):
         np.testing.assert_array_almost_equal(d, d_expected)
         np.testing.assert_array_almost_equal(az, az_expected)
         
-    '''
+
     def test_loss_fn(self):
         
         n1 = 10
@@ -178,123 +178,26 @@ class test_depths(unittest.TestCase):
         by = np.random.normal(size=(n1, n2))
         bz = np.random.normal(size=(n1, n2))
         
-        d = depths.depths(x_grid, bx, by, bz, prior_prec=1.)
-        d.i = np.random.randint(1, n1-1)
-        d.j = np.random.randint(1, n2-1)
-        d.estimate()
+        dpths = depths.depths(x_grid, bx, by, bz, prior_prec=1.)
+        dpths.i = np.random.randint(1, n1-1)
+        dpths.j = np.random.randint(1, n2-1)
+
+
 
         params = np.random.normal(size=16)
-        loss = d.loss_fn(params)
+        loss = dpths.loss_fn(params)
         
         b_derivs = params[:8]
         dz = params[8:16]
+        b, d, az = dpths.calc_b_d_az(b_derivs, dz)
         
-        i = d.i
-        j = d.j
-        b = np.zeros(24)
-        
-        b[0] = bx[i, j] - bx[i-1, j]
-        b[1] = bx[i+1, j] - bx[i, j]
+        loss_expected = np.sum((b - (d + az))**2) + np.sum(params**2/2)
 
-        b[2] = bx[i, j] - bx[i, j-1]
-        b[3] = bx[i, j+1] - bx[i, j]
-        
-        b[4] = by[i, j] - by[i-1, j]
-        b[5] = by[i+1, j] - by[i, j]
-
-        b[6] = by[i, j] - by[i, j-1]
-        b[7] = by[i, j+1] - by[i, j]
-
-        b[8] = bz[i, j] - bz[i-1, j]
-        b[9] = bz[i+1, j] - bz[i, j]
-
-        b[10] = bz[i, j] - bz[i, j-1]
-        b[11] = bz[i, j+1] - bz[i, j]
-
-
-        b[12] = self.bx[i, j] - self.bx[i-1, j-1]
-        b[13] = self.bx[i+1, j+1] -self.bx[i, j]
-
-        b[14] = self.bx[i, j] - self.bx[i+1, j-1]
-        b[15] = self.bx[i-1, j+1] -self.bx[i, j]
-
-        b[16] = self.by[i, j] - self.by[i-1, j-1]
-        b[17] = self.by[i+1, j+1] -self.by[i, j]
-
-        b[18] = self.by[i, j] - self.by[i+1, j-1]
-        b[19] = self.by[i-1, j+1] -self.by[i, j]
-
-        b[20] = self.bz[i, j] - self.bz[i-1, j-1]
-        b[21] = self.bz[i+1, j+1] -self.bz[i, j]
-
-        b[22] = self.bz[i, j] - self.bz[i+1, j-1]
-        b[23] = self.bz[i-1, j+1] -self.bz[i, j]
-
-       
-
-
-        d = np.zeros(24)
-        d[0] = -b_derivs[0]*self.dx[i, j]
-        d[1] = -d[0]
-        
-        d[2] = -b_derivs[1]*self.dy[i, j]
-        d[3] = -d[2]
-
-        d[4] = -b_derivs[3]*self.dx[i, j]
-        d[5] = -d[4]
-
-        d[6] = -b_derivs[4]*self.dy[i, j]
-        d[7] = -d[6]
-
-        d[8] = -b_derivs[6]*self.dx[i, j]
-        d[9] = -d[8]
-
-        d[10] = -b_derivs[7]*self.dy[i, j]
-        d[11] = -d[10]
-        
-        for di in np.arange(12, 14):
-            d[di] = d[di-12] + d[di-10]
-        for di in np.arange(14, 16):
-            d[di] = -d[di-14] + d[di-12]
-
-        for di in np.arange(16, 18):
-            d[di] = d[di-12] + d[di-10]
-        for di in np.arange(18, 20):
-            d[di] = -d[di-14] + d[di-12]
-
-        for di in np.arange(20, 22):
-            d[di] = d[di-12] + d[di-10]
-        for di in np.arange(22, 24):
-            d[di] = -d[di-14] + d[di-12]
-        
-        dbx_dz = b_derivs[2]
-        dby_dz = b_derivs[5]
-        dbz_dz = -b_derivs[0] - b_derivs[4]
-        az = np.zeros(24)
-
-        #E-W and N-S
-        for di in np.arange(0, 4):
-            az[di] = dbx_dz*dz[di]
-        do = 4            
-        for di in np.arange(0, 4):
-            az[di+do] = dby_dz*dz[di]
-        do += 4
-        for di in np.arange(0, 4):
-            az[di+do] = dbz_dz*dz[di]
-        do += 4
-        #SE-NW and NE-SW
-        for di in np.arange(0, 4):
-            az[di+do] = dbx_dz*dz[di+4]
-        do += 4
-        for di in np.arange(0, 4):
-            az[di+do] = dby_dz*dz[di+4]
-        do += 4
-        for di in np.arange(0, 4):
-            az[di+do] = dbz_dz*dz[di+4]
 
 
         np.testing.assert_almost_equal(loss, loss_expected, 6)
 
+    '''
     def test_loss_fn_grad(self):
         
         jmax = 5
