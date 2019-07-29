@@ -162,9 +162,9 @@ else:
         for j in np.arange(0, y.shape[1]):
             #if i == y.shape[0]//2 or j == y.shape[1]//2:
             if i == j or y.shape[0] - i == j:
-                bx[i, j] = y[i, j, 2, 0]
-                by[i, j] = y[i, j, 2, 1]
-                bz[i, j] = y[i, j, 2, 2]
+                bx[i, j] = y[i, j, 9, 0]
+                by[i, j] = y[i, j, 9, 1]
+                bz[i, j] = y[i, j, 9, 2]
     ###########################################################################
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)

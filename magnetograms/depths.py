@@ -268,7 +268,7 @@ class depths():
                     #initial_params = np.random.normal(size=16)
                     initial_params = np.zeros(16)
                     #res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':1e-9})#, 'eps':.1})
-                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':.1, 'eps':.01})
+                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':.01, 'eps':.01})
                     print(res)
                     print("Optimization result:" + res["message"])
                     print("Status", res['status'])
@@ -310,15 +310,20 @@ class depths():
                     depths[i, j+1] /= 2
                 '''
 
-                ##depths[i-1, j] -= dz[0]
                 depths[i+1, j] = depths[i, j] + dz[1]
-                ##depths[i, j-1] -= dz[2]
                 if i > 0:
+                    depths[i, j+1] += depths[i, j] + dz[3]
                     depths[i, j+1] /=2
-                    depths[i, j+1] += (depths[i, j] + dz[3])/2
+
+                    depths[i-1, j] += depths[i, j] + dz[0]
+                    depths[i-1, j] /= 2
                 else:
                     depths[i, j+1] = depths[i, j] + dz[3]
+                    
                 
+                if j > 0:
+                    depths[i, j-1] += depths[i, j] + dz[2]
+                    depths[i, j-1] /= 2
         
         print("nx, ny", nx, ny)
         #print("depths", depths)
