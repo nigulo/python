@@ -306,6 +306,17 @@ class tip_tilt:
         return a_est
         #return a_est[:self.L,:], a_est[self.L,:]#self.get_f(a_est)
     
+    '''
+    dat_F.shape = [l, 2, nx, nx]
+    a.shape = [l+1, 2]
+    '''
+    def multiply(self, dat_F, a):
+        image_F = np.zeros_like(dat_F, dtype = 'complex')
+        for trial in np.arange(0, self.L):
+            tt_phase = np.exp(1.j*(np.tensordot(self.x, a[trial], axes=(2, 0))))
+            image_F[trial] = dat_F[trial]*tt_phase
+        return image_F
+    
     def deconvolve(self, D, S, a_est):
         image_F = np.zeros((self.L, self.x.shape[0], self.x.shape[1]), dtype = 'complex')
         image = np.zeros((self.L, self.x.shape[0], self.x.shape[1]))

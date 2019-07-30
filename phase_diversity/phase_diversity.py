@@ -230,7 +230,7 @@ aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 defocus_func = lambda xs: defocus_psf*np.sum(xs*xs, axis=2)
 
-my_plot = plot.plot(nrows=max_frames + 1, ncols=5)
+my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
 my_plot.set_axis()
 
 image_est_mean = np.zeros((nx, nx))
@@ -244,7 +244,8 @@ sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
 betass = []
 
-Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex')
+Ds = np.zeros((num_frames, 2, nx, nx), dtype='complex') # in Fourier space
+Ds1 = np.zeros((num_frames, 2, nx, nx)) # in image space
 Ps = np.ones((num_frames, 2, nx, nx), dtype='complex')
 Fs = np.ones((num_frames, 1, nx, nx), dtype='complex')
 #true_alphas = np.zeros((num_frames, 2))
@@ -298,9 +299,9 @@ for trial in np.arange(0, num_frames):
         #betas*=1e-10
         #betas[::2] = 1.j*betas[::2]
         
-        Ds1 = psf_b_temp.convolve(image, betas)
-        D = Ds1[0, 0]
-        D_d = Ds1[0, 1]
+        Ds_temp = psf_b_temp.convolve(image, betas)
+        D = Ds_temp[0, 0]
+        D_d = Ds_temp[0, 1]
 
         DF = fft.fft2(D)
         DF_d = fft.fft2(D_d)
@@ -308,6 +309,10 @@ for trial in np.arange(0, num_frames):
     
     Ds[trial, 0] = DF
     Ds[trial, 1] = DF_d
+
+    Ds1[trial, 0] = D
+    Ds1[trial, 1] = D_d
+
     Fs[trial, 0] = np.absolute(DF)
     #np.testing.assert_array_almost_equal(np.absolute(Ds[0, 0]), np.absolute(D))
     #Ps[trial, 0] = P
@@ -350,6 +355,8 @@ image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=
 #image_est, _, _ = tt.calc()
 #image_est, _, _ = tt.deconvolve(Ds[:,0,:,:], Ps, a_est)
 
+images = np.tile(np.array([image, image]), (num_frames, 1)).reshape((num_frames, 2, nx, nx))
+
 image_est = fft.ifftshift(image_est, axes=(-2, -1))
 for trial in np.arange(0, num_frames):
     #image_est_norm = misc.normalize(image_est[trial])
@@ -357,6 +364,12 @@ for trial in np.arange(0, num_frames):
     if trial < max_frames:
         my_plot.colormap(image_est[trial], [trial, 3], vmin=vmin, vmax=vmax)
         my_plot.colormap(np.abs(image_est[trial]-image_center), [trial, 4], vmin=vmin, vmax=vmax)
+        
+        # Convolve the original image with the estimated PSF-s for comparison
+        convolved_images = psf_b.convolve(images, betas_est, normalize=True, a=a_est)
+        
+        my_plot.colormap(np.abs(convolved_images[trial, 0]-Ds1[trial, 0]), [trial, 5], vmin=vmin, vmax=vmax)
+        my_plot.colormap(np.abs(convolved_images[trial, 1]-Ds1[trial, 1]), [trial, 6], vmin=vmin, vmax=vmax)
 
 image_est_mean /= num_frames
 D_mean /= num_frames
@@ -366,7 +379,7 @@ my_plot.colormap(image_center, [max_frames, 0], vmin=vmin, vmax=vmax)
 my_plot.colormap(D_mean, [max_frames, 1], vmin=vmin, vmax=vmax)
 my_plot.colormap(D_d_mean, [max_frames, 2], vmin=vmin, vmax=vmax)
 my_plot.colormap(image_est_mean, [max_frames, 3], vmin=vmin, vmax=vmax)
-my_plot.colormap(np.abs(image_est_mean-image_center), [max_frames, 4], vmin=vmin, vmax=vmax)
+#my_plot.colormap(np.abs(image_est_mean-image_center), [max_frames, 4], vmin=vmin, vmax=vmax)
 
 my_plot.save("estimates.png")
 my_plot.close()

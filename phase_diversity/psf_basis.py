@@ -379,7 +379,9 @@ class psf_basis:
     dat_F.shape = [l, 2, nx, nx]
     betas.shape = [l, jmax]
     '''
-    def multiply(self, dat_F, betas):
+    def multiply(self, dat_F, betas, a=None):
+        if a is not None:
+            assert(self.tip_tilt is not None)
         ret_val = np.zeros_like(dat_F)
         for l in np.arange(0, dat_F.shape[0]):
             for j in np.arange(0, self.jmax+1):
@@ -409,13 +411,16 @@ class psf_basis:
         #print("norm shape", norm.shape)
         #ret_val *= dat_F
         #ret_val /= norm
-        return ret_val*dat_F, ret_val
+        if a is not None:
+            return self.tip_tilt.multiply(ret_val*dat_F, a), ret_val
+        else:
+            return ret_val*dat_F, ret_val
     
     '''
     dat.shape = [l, 2, nx, nx]
     betas.shape = [l, jmax]
     '''
-    def convolve(self, dat, betas, normalize=True):
+    def convolve(self, dat, betas, normalize=True, a=None):
         if len(dat.shape) < 3:
             dat = np.array([[dat, dat]])
         elif len(dat.shape) < 4:
@@ -427,7 +432,7 @@ class psf_basis:
 
         dat_F = fft.fft2(fft.fftshift(dat, axes=(-2, -1)))
         #dat_F = fft.fft2(dat)
-        m_F, norm_F = self.multiply(dat_F, betas) # m_F.shape is [l, 2, nx, nx]
+        m_F, norm_F = self.multiply(dat_F, betas, a) # m_F.shape is [l, 2, nx, nx]
         #m = fft.ifft2(m_F)
         m = fft.ifftshift(fft.ifft2(m_F), axes=(-2, -1))
 
