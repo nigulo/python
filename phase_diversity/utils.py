@@ -90,5 +90,3 @@ def get_coords(nx, arcsec_per_px, diameter, wavelength):
     xs = np.linspace(-x_limit, x_limit, nx)
     print("PSF x_limit", xs[0], xs[-1])
     return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
-
-

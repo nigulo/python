@@ -127,7 +127,7 @@ aberration_mode = "psf"
 #image = misc.sample_image(image,.675)
 
 image = plt.imread('granulation.png')[:, :, 0]
-image = misc.sample_image(image, .25)
+#image = misc.sample_image(image, .25)
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
 nx_orig = 50
@@ -219,6 +219,17 @@ else:
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 1., jmax-2)**2)))
     psf_b.set_state(state[7])
     
+
+for iii in np.arange(0, 5):
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(image)
+    my_test_plot.save("critical_sampling" + str(iii) + ".png")
+    my_test_plot.close()
+    image = psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength)
+    
+#print("image", image.shape)
+#np.testing.assert_array_almost_equal(image, psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength))
+sys.exit(1)
 
 fimage = fft.fft2(image)
 fimage = fft.fftshift(fimage)

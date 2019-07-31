@@ -162,6 +162,26 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_
         return image
 
 
+
+def critical_sampling(image, arcsec_per_px, diameter, wavelength):
+    nx = image.shape[0]
+    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    psf_b = psf_basis(jmax = 0, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
+    psf_b.create_basis()
+    #Ds = psf_b.convolve(image, )
+    #D = Ds[0, 0, :, :]
+    
+    fimage = fft.fft2(fft.fftshift(image))
+    _, coefs = psf_b.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
+    coefs = np.abs(coefs)
+    coefs = coefs[0, 0, :, :]
+    mask = np.ones_like(coefs)
+    print("coefs", np.max(coefs), np.min(coefs), np.mean(coefs), np.std(coefs), np.median(coefs))
+    indices = np.where(coefs < np.max(coefs)*.4)
+    mask[indices] = 0.
+    fimage *= mask
+    return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
+
 class psf_basis:
     '''
         diameter is in centimeters
