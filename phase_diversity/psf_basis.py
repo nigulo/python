@@ -177,7 +177,8 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     coefs = coefs[0, 0, :, :]
     mask = np.ones_like(coefs)
     print("coefs", np.max(coefs), np.min(coefs), np.mean(coefs), np.std(coefs), np.median(coefs))
-    indices = np.where(coefs < np.max(coefs)*.4)
+    indices = np.where(coefs < 1e-2)[0]
+    print("indices", len(indices))
     mask[indices] = 0.
     fimage *= mask
     return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
