@@ -33,13 +33,18 @@ class plot:
     def set_title(self, title):
         self.title = title
 
-    def colormap(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = False, colorbar_prec=None):
+
+    def get_ax(self, ax_index = []):
         if len(ax_index) == 2:
             ax = self.axes[ax_index[0]][ax_index[1]]
         elif len(ax_index) == 1:
             ax = self.axes[ax_index[0]]
         else:
             ax = self.axes
+        return ax
+
+    def colormap(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = False, colorbar_prec=None):
+        ax = self.get_ax(ax_index)
 
         if self.extent is None:
             left, right = ax.get_xlim()
@@ -81,12 +86,7 @@ class plot:
                 ax.set_title(self.title)
 
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
-        if len(ax_index) == 2:
-            ax = self.axes[ax_index[0]][ax_index[1]]
-        elif len(ax_index) == 1:
-            ax = self.axes[ax_index[0]]
-        else:
-            ax = self.axes
+        ax = self.get_ax(ax_index)
         q = ax.quiver(x1s, x2s, y1s, y2s, units=units, scale = scale, color = color)
         if key is not None and key != '':
             ax.quiverkey(q, X=0.3, Y=1.1, U=10,
@@ -108,6 +108,12 @@ class plot:
                     ax1.get_xaxis().set_visible(False)
                 if len(limits[1]) == 0:
                     ax1.get_yaxis().set_visible(False)
+                    
+    def hist(self, data, ax_index = [], bins = 20):
+        ax = self.get_ax(ax_index)
+        hist, bin_edges = np.histogram(data, bins = bins)
+        ax.bar(bin_edges[:-1], hist, width=(bin_edges[-1]-bin_edges[0])/bins)
+
 
     def save(self, file_name):
         self.fig.savefig(file_name)

@@ -173,12 +173,29 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     
     fimage = fft.fft2(fft.fftshift(image))
     _, coefs = psf_b.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
-    coefs = np.abs(coefs)
     coefs = coefs[0, 0, :, :]
+    coefs = np.abs(coefs)
+    
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+    #sys.path.append('../utils')
+    import plot
+
+    my_plot = plot.plot()
+    my_plot.colormap(fft.fftshift(coefs))
+    my_plot.save("transfer_func.png")
+    my_plot.close()
+
+    my_plot = plot.plot()
+    my_plot.hist(coefs, bins=100)
+    my_plot.save("transfer_func_hist.png")
+    my_plot.close()
+    
     mask = np.ones_like(coefs)
-    print("coefs", np.max(coefs), np.min(coefs), np.mean(coefs), np.std(coefs), np.median(coefs))
-    indices = np.where(coefs < 1e-2)[0]
-    print("indices", len(indices))
+    print("critical_sampling coefs", np.max(coefs), np.min(coefs), np.mean(coefs), np.std(coefs), np.median(coefs))
+    indices = np.where(coefs < 1e-5)[0]
+    print("critical_sampling indices", len(indices))
     mask[indices] = 0.
     fimage *= mask
     return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real

@@ -127,7 +127,7 @@ aberration_mode = "psf"
 #image = misc.sample_image(image,.675)
 
 image = plt.imread('granulation.png')[:, :, 0]
-#image = misc.sample_image(image, .25)
+image = misc.sample_image(image, .25)
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
 nx_orig = 50
@@ -170,7 +170,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 20
+    jmax = 50
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 50.0
@@ -192,7 +192,7 @@ if state == None:
     #coords = np.dstack(np.meshgrid(xs, xs))
     
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 1., jmax-2)**2)))
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., .1, jmax-2)**2)))
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     psf_b.create_basis()
 
@@ -216,11 +216,11 @@ else:
     #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 1., jmax-2)**2)))
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., .1, jmax-2)**2)))
     psf_b.set_state(state[7])
     
 
-for iii in np.arange(0, 5):
+for iii in np.arange(0, 2):
     my_test_plot = plot.plot()
     my_test_plot.colormap(image)
     my_test_plot.save("critical_sampling" + str(iii) + ".png")
@@ -229,7 +229,6 @@ for iii in np.arange(0, 5):
     
 #print("image", image.shape)
 #np.testing.assert_array_almost_equal(image, psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength))
-sys.exit(1)
 
 fimage = fft.fft2(image)
 fimage = fft.fftshift(fimage)
