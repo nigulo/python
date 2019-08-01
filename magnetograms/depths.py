@@ -242,11 +242,62 @@ class depths():
 
         return grads
 
+    def calc_depths(self, dzs):
+        num_tries = 100
+        nx = self.dx.shape[0]
+        ny = self.dy.shape[1]
+        depths1 = np.zeros((nx, ny))
+        for trial in np.arange(0, num_tries):
+            depths = np.zeros((nx, ny))
+            counts = np.zeros((nx, ny))
+            coords = np.random.choice(np.arange(0, nx*ny), nx*ny, replace=False)
+            for coord in coords:
+                i = coord// ny
+                j = coord % nx
+                
+                dz = dzs[i, j]
+
+                if i > 0:
+                    depths[i-1, j] += depths[i, j] + dz[0]
+                    counts[i-1, j] += 1
+                    if j > 0:
+                        depths[i-1, j-1] += depths[i, j] + dz[4]
+                        counts[i-1, j-1] += 1
+                if j > 0:
+                    depths[i, j-1] += depths[i, j] + dz[2]
+                    counts[i, j-1] += 1
+                
+                if i < nx - 1:
+                    depths[i+1, j] += depths[i, j] + dz[1]
+                    counts[i+1, j] += 1
+                    if j < ny - 1:
+                        depths[i+1, j+1] += depths[i, j] + dz[5]
+                        counts[i+1, j+1] += 1
+                        
+                    if j > 0:
+                        depths[i+1, j-1] += depths[i, j] + dz[7]
+                        counts[i+1, j-1] += 1
+                        
+                if j < ny - 1:
+                    depths[i, j+1] += depths[i, j] + dz[3]
+                    counts[i, j+1] += 1
+                    if i > 0:
+                        depths[i-1, j+1] += depths[i, j] + dz[6]
+                        counts[i-1, j+1] += 1
+
+            indices = np.where(counts > 0)
+            depths[indices] /= counts[indices]
+            
+            depths1 += depths
+        
+        depths1 /= num_tries
+                
+        return depths1 
 
 
     def estimate(self):
 
-        def lik_fn(params):
+        def loss_fn(params):
             return self.loss_fn(params)
 
         def grad_fn(params):
@@ -255,6 +306,7 @@ class depths():
         nx = self.dx.shape[0]
         ny = self.dy.shape[1]
         depths = np.zeros((nx, ny))
+        dzs = np.zeros((nx, ny, 8))
         
         for i in np.arange(0, nx-1, step=1):
             self.i = i
@@ -267,8 +319,9 @@ class depths():
                 for trial_no in np.arange(0, 1):
                     #initial_params = np.random.normal(size=16)
                     initial_params = np.zeros(16)
+                    initial_loss = loss_fn(initial_params)
                     #res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':1e-9})#, 'eps':.1})
-                    res = scipy.optimize.minimize(lik_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':.01, 'eps':.01})
+                    res = scipy.optimize.minimize(loss_fn, initial_params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':initial_loss*1e-5, 'eps':.01})
                     print(res)
                     print("Optimization result:" + res["message"])
                     print("Status", res['status'])
@@ -283,6 +336,7 @@ class depths():
                 print("grad Bx", min_res[:3])
                 print("grad By", min_res[3:6])
                 print("grad Bz", min_res[6:8])
+                dzs[i, j] = dz
 
                 '''
                 contrib = 0.
@@ -291,7 +345,7 @@ class depths():
                     contrib += depths[i-1, j] + dz[0]
                     count += 1
                     if j > 0:
-                        contrib += depths[i-1, j-1]
+                        contrib += depths[i-1, j-1] + dz[4]
                         count += 1
                 if j > 0:
                     contrib += depths[i, j-1] + dz[2] + depths[i+1, j-1] + dz[7]
@@ -310,6 +364,7 @@ class depths():
                     depths[i, j+1] /= 2
                 '''
 
+                '''
                 depths[i+1, j] = depths[i, j] + dz[1]
                 if i > 0:
                     depths[i, j+1] += depths[i, j] + dz[3]
@@ -324,7 +379,9 @@ class depths():
                 if j > 0:
                     depths[i, j-1] += depths[i, j] + dz[2]
                     depths[i, j-1] /= 2
+                '''
         
+        depths = self.calc_depths(dzs)
         print("nx, ny", nx, ny)
         #print("depths", depths)
         
@@ -332,5 +389,12 @@ class depths():
         my_plot.colormap(depths)
         my_plot.save("depths.png")
         my_plot.close()
+
+        for i in np.arange(0, dzs.shape[2]):
+            my_plot = plot.plot(nrows=1, ncols=1)
+            my_plot.colormap(dzs[:,:,i])
+            my_plot.save("dz" + str(i) + ".png")
+            my_plot.close()
+
 
         return depths
