@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import tip_tilt
 
 import pickle
+from astropy.io import fits
 
 
 image1 = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
@@ -126,7 +127,11 @@ aberration_mode = "psf"
 ##image = misc.sample_image(image,.27)
 #image = misc.sample_image(image,.675)
 
-image = plt.imread('granulation.png')[:, :, 0]
+
+hdul = fits.open('icont.fits')
+image = hdul[0].data
+
+#image = plt.imread('granulation.png')[:, :, 0]
 image = misc.sample_image(image, .25)
 #image = plt.imread('granulation2.png')
 print("Image shape", image.shape)
