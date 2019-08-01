@@ -182,10 +182,6 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     #sys.path.append('../utils')
     import plot
 
-    my_plot = plot.plot()
-    my_plot.colormap(fft.fftshift(coefs))
-    my_plot.save("transfer_func.png")
-    my_plot.close()
 
     my_plot = plot.plot()
     my_plot.hist(coefs, bins=100)
@@ -194,9 +190,16 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     
     mask = np.ones_like(coefs)
     print("critical_sampling coefs", np.max(coefs), np.min(coefs), np.mean(coefs), np.std(coefs), np.median(coefs))
-    indices = np.where(coefs < 1e-5)[0]
-    print("critical_sampling indices", len(indices))
+    indices = np.where(coefs < 1e-3)
+    print("critical_sampling indices", indices)
     mask[indices] = 0.
+    
+    my_plot = plot.plot(nrows=2)
+    my_plot.colormap(fft.fftshift(coefs), [0])
+    my_plot.colormap(fft.fftshift(mask), [1])
+    my_plot.save("transfer_func.png")
+    my_plot.close()
+    
     fimage *= mask
     return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
 

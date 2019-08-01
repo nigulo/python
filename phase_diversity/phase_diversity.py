@@ -170,7 +170,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 50
+    jmax = 100
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 50.0
@@ -192,7 +192,7 @@ if state == None:
     #coords = np.dstack(np.meshgrid(xs, xs))
     
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., .1, jmax-2)**2)))
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 0., jmax-2)**2)))
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     psf_b.create_basis()
 
@@ -216,7 +216,7 @@ else:
     #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
     tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
-    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., .1, jmax-2)**2)))
+    psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 0., jmax-2)**2)))
     psf_b.set_state(state[7])
     
 
