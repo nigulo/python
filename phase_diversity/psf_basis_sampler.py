@@ -113,11 +113,12 @@ class psf_basis_sampler():
                 #initial_betas = np.random.normal(size=(L, jmax)) + 1.j*np.random.normal(size=(L, jmax))
                 initial_betas = np.zeros((L, jmax), dtype='complex')
                 params = self.psf_b.encode_params(initial_betas, initial_a)
+                initial_lik = lik_fn(params)
                 #res = scipy.optimize.fmin_cg(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #res = scipy.optimize.fmin_bfgs(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #lower_bounds = np.zeros(jmax*2)
                 #upper_bounds = np.ones(jmax*2)*1e10
-                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':100})#, 'eps':.1})
+                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':initial_lik*1e-5})#, 'eps':.1})
                 print(res)
                 print("Optimization result:" + res["message"])
                 print("Status", res['status'])

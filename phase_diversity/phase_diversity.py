@@ -106,6 +106,12 @@ if len(sys.argv) > 1:
 
 print(state_file)
 
+wavefront_file = None#state.pkl"
+if len(sys.argv) > 2:
+    wavefront_file = sys.argv[2]
+
+print(wavefront_file)
+
 def load(filename):
     if filename is not None:
         data_file = filename
@@ -119,7 +125,7 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
 
-num_frames = 10
+num_frames = 1
 max_frames = min(10, num_frames)
 aberration_mode = "psf"
 
@@ -148,6 +154,7 @@ assert(np.shape(image)[0] == np.shape(image)[1])
 image_orig = np.array(image)
 
 state = load(state_file)
+wavefront = load(wavefront_file)
 
 
 def center_and_normalize(ds):
@@ -253,7 +260,9 @@ D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
 #image_norm = misc.normalize(image)
-wavefront = kolmogorov.kolmogorov(fried = np.array([.3]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+if wavefront is None:
+    wavefront = kolmogorov.kolmogorov(fried = np.array([.4]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+    save("wavefront.pkl", wavefront)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
