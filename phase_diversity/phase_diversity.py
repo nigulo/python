@@ -100,17 +100,28 @@ image = np.array([[0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
                     [0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. ]
                   ])
 
+
 state_file = None#state.pkl"
-if len(sys.argv) > 1:
-    state_file = sys.argv[1]
+wavefront_file = None#state.pkl"
+image_file = None
+
+for arg in sys.argv:
+    if arg[:6] == "state=":
+        state_file = arg[6:]
+    elif arg[:10] == "wavefront=":
+        wavefront_file = arg[10:]
+    elif arg[:5] == "image=":
+        image_file = arg[5:]
+
+#if len(sys.argv) > 1:
+#    state_file = sys.argv[1]
+
+#if len(sys.argv) > 2:
+#    wavefront_file = sys.argv[2]
 
 print(state_file)
-
-wavefront_file = None#state.pkl"
-if len(sys.argv) > 2:
-    wavefront_file = sys.argv[2]
-
 print(wavefront_file)
+print(image_file)
 
 def load(filename):
     if filename is not None:
@@ -134,24 +145,40 @@ aberration_mode = "psf"
 #image = misc.sample_image(image,.675)
 
 
-hdul = fits.open('icont.fits')
-image = hdul[0].data
+images = []
+images_d = []
+if image_file is None:
+    image_file = 'icont'
 
-#image = plt.imread('granulation.png')[:, :, 0]
-image = misc.sample_image(image, .25)
-#image = plt.imread('granulation2.png')
-print("Image shape", image.shape)
-nx_orig = 50
-#start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
-start_index = 0#np.random.randint(0, start_index_max)
+for root, dirs, files in os.walk("images"):
+    for file in files:
+        if file[:len(image_file)] != image_file:
+            continue
+        if file[-5:] == '.fits':
+            hdul = fits.open(file)
+            image = hdul[0].data
+        else:
+            image = plt.imread(image_file)[:, :, 0]
+            #image = plt.imread('granulation2.png')
+        image = misc.sample_image(image, .25)
+        print("Image shape", image.shape)
 
-image = image[start_index:start_index + nx_orig,start_index:start_index + nx_orig]
+        nx_orig = 50
+        #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+        start_index = 0#np.random.randint(0, start_index_max)
+        
+        image = image[start_index:start_index + nx_orig,start_index:start_index + nx_orig]
+        
+        nx_orig = np.shape(image)[0]
+        image = utils.upsample(image)
+        assert(np.shape(image)[0] == np.shape(image)[1])
+        
+        if '_d.' not in file:
+            images.append(image)
+        else:
+            images_d.append(image)
 
-nx_orig = np.shape(image)[0]
-image = utils.upsample(image)
-assert(np.shape(image)[0] == np.shape(image)[1])
-
-image_orig = np.array(image)
+assert(len(images_d) == 0 or len(images_d) == len(images))
 
 state = load(state_file)
 wavefront = load(wavefront_file)
@@ -188,7 +215,7 @@ if state == None:
     diameter = 50.0
     wavelength = 5250.0
     gamma = 1.0
-    nx = np.shape(image)[0]
+    nx = np.shape(images[0])[0]
 
     arcsec_per_px, defocus1 = get_params(nx_orig)#wavelength/diameter*1e-8*180/np.pi*3600
     (defocus_psf, defocus_psf_b) = defocus1
@@ -222,7 +249,7 @@ else:
     #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
     print("jmax, arcsec_per_px, diameter, wavelength, defocus, gamma, nx", jmax, arcsec_per_px, diameter, wavelength, defocus1, gamma, nx)
     
-    assert(nx == np.shape(image)[0])
+    assert(nx == np.shape(images[0])[0])
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
@@ -232,19 +259,24 @@ else:
     psf_b.set_state(state[7])
     
 
-for iii in np.arange(0, 2):
-    my_test_plot = plot.plot()
-    my_test_plot.colormap(image)
-    my_test_plot.save("critical_sampling" + str(iii) + ".png")
-    my_test_plot.close()
-    image = psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength)
+if len(images) != len(images_d): # Generate the aberrated images
+
+    image = images[0]
+    for iii in np.arange(0, 2):
+        my_test_plot = plot.plot()
+        my_test_plot.colormap(image)
+        my_test_plot.save("critical_sampling" + str(iii) + ".png")
+        my_test_plot.close()
+        image = psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength)
+        
+    #print("image", image.shape)
+    #np.testing.assert_array_almost_equal(image, psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength))
     
-#print("image", image.shape)
-#np.testing.assert_array_almost_equal(image, psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength))
-
-fimage = fft.fft2(image)
-fimage = fft.fftshift(fimage)
-
+    fimage = fft.fft2(image)
+    fimage = fft.fftshift(fimage)
+else:
+    image = None
+    num_frames = len(images)
 
 #aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
 aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
@@ -252,7 +284,18 @@ aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
 #defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 defocus_func = lambda xs: defocus_psf*np.sum(xs*xs, axis=2)
 
-my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
+if image is None:
+    if len(images_d) == 0:
+        my_plot = plot.plot(nrows=max_frames + 1, ncols=2)
+    else:
+        my_plot = plot.plot(nrows=max_frames + 1, ncols=3)
+else:
+    my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
+
+    if wavefront is None:
+        wavefront = kolmogorov.kolmogorov(fried = np.array([.4]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+        save("wavefront.pkl", wavefront)
+
 my_plot.set_axis()
 
 image_est_mean = np.zeros((nx, nx))
@@ -260,9 +303,6 @@ D_mean = np.zeros((nx, nx))
 D_d_mean = np.zeros((nx, nx))
         
 #image_norm = misc.normalize(image)
-if wavefront is None:
-    wavefront = kolmogorov.kolmogorov(fried = np.array([.4]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
-    save("wavefront.pkl", wavefront)
 
 sampler = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
 
@@ -287,49 +327,61 @@ vmax = np.max(image_center)
 ###############################################################################
 # Create abberrated images
 ###############################################################################
-if aberration_mode == "psf_basis":
-    jmax_temp = 10
-    #psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = None)
-    psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = None)
-    psf_b_temp.set_state(state[7])
-    #psf_b_temp.create_basis()
-
-
+if image is not None:
+    if aberration_mode == "psf_basis":
+        jmax_temp = 10
+        #psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = None)
+        psf_b_temp = psf_basis.psf_basis(jmax = jmax_temp, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = None)
+        psf_b_temp.set_state(state[7])
+        #psf_b_temp.create_basis()
+    
+column_index = 0    
 for trial in np.arange(0, num_frames):
     
-    if aberration_mode == "psf":
-        #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*50, -50), 50), start_index=1)
-        #pa = psf.phase_aberration(np.random.normal(size=jmax))
-        #pa = psf.phase_aberration([])
-        #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-        ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
-        psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        DF, DF_d = psf_.multiply(fimage)
-
-        DF = fft.ifftshift(DF)
-        DF_d = fft.ifftshift(DF_d)
-
-        D = fft.ifft2(DF).real
-        D_d = fft.ifft2(DF_d).real
-        
-        #D, D_d = psf_.convolve(image)
-        #DF = fft.fft2(D)
-        #DF_d = fft.fft2(D_d)
-        
-    else:
-
-        betas = np.zeros(jmax, dtype = 'complex')
-        #betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
-        #betas*=1e-10
-        #betas[::2] = 1.j*betas[::2]
-        
-        Ds_temp = psf_b_temp.convolve(image, betas)
-        D = Ds_temp[0, 0]
-        D_d = Ds_temp[0, 1]
-
-        DF = fft.fft2(D)
-        DF_d = fft.fft2(D_d)
+    if image is not None:
+        if aberration_mode == "psf":
+            #pa = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=2)*50, -50), 50), start_index=1)
+            #pa = psf.phase_aberration(np.random.normal(size=jmax))
+            #pa = psf.phase_aberration([])
+            #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+            ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+            psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+            DF, DF_d = psf_.multiply(fimage)
     
+            DF = fft.ifftshift(DF)
+            DF_d = fft.ifftshift(DF_d)
+    
+            D = fft.ifft2(DF).real
+            D_d = fft.ifft2(DF_d).real
+            
+            #D, D_d = psf_.convolve(image)
+            #DF = fft.fft2(D)
+            #DF_d = fft.fft2(D_d)
+            
+        else:
+    
+            betas = np.zeros(jmax, dtype = 'complex')
+            #betas = np.random.normal(size=jmax_temp) + 1.j*np.random.normal(size=jmax_temp)
+            #betas*=1e-10
+            #betas[::2] = 1.j*betas[::2]
+            
+            Ds_temp = psf_b_temp.convolve(image, betas)
+            D = Ds_temp[0, 0]
+            D_d = Ds_temp[0, 1]
+    
+            DF = fft.fft2(D)
+            DF_d = fft.fft2(D_d)
+
+            my_plot.colormap(image_center, [trial, 0], vmin=vmin, vmax=vmax)
+            column_index = 1
+
+    else:
+        D = images[trial]
+        if len(images_d) > 0:
+            D_d = images_d[trial]
+        else:
+            D_d = D
+        
     
     Ds[trial, 0] = DF
     Ds[trial, 1] = DF_d
@@ -343,16 +395,16 @@ for trial in np.arange(0, num_frames):
     #Ps[trial, 1] = P_d
     #Fs[trial, 0] = F
 
-    
-
     print("np.min(image), np.max(image), np.min(D), np.max(D)", np.min(image_center), np.max(image_center), np.min(D), np.max(D))
     if trial < max_frames:
-        my_plot.colormap(image_center, [trial, 0], vmin=vmin, vmax=vmax)
-        my_plot.colormap(D, [trial, 1], vmin=vmin, vmax=vmax)
-        my_plot.colormap(D_d, [trial, 2], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D, [trial, column_index], vmin=vmin, vmax=vmax)
+        my_plot.colormap(D_d, [trial, column_index], vmin=vmin, vmax=vmax)
+    column_index += 2
 
     D_mean += D
     D_d_mean += D_d
+        
+
 my_plot.save("estimates.png")
 
 
@@ -379,30 +431,35 @@ image_est, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=
 #image_est, _, _ = tt.calc()
 #image_est, _, _ = tt.deconvolve(Ds[:,0,:,:], Ps, a_est)
 
-images = np.tile(np.array([image, image]), (num_frames, 1)).reshape((num_frames, 2, nx, nx))
+if image is not None:
+    repeated_images = np.tile(np.array([image, image]), (num_frames, 1)).reshape((num_frames, 2, nx, nx))
 
 image_est = fft.ifftshift(image_est, axes=(-2, -1))
 for trial in np.arange(0, num_frames):
     #image_est_norm = misc.normalize(image_est[trial])
     image_est_mean += image_est[trial]
     if trial < max_frames:
-        my_plot.colormap(image_est[trial], [trial, 3], vmin=vmin, vmax=vmax)
-        my_plot.colormap(np.abs(image_est[trial]-image_center), [trial, 4], vmin=vmin, vmax=vmax)
+        my_plot.colormap(image_est[trial], [trial, column_index], vmin=vmin, vmax=vmax)
+        if image is not None:
+            my_plot.colormap(np.abs(image_est[trial]-image_center), [trial, column_index + 1], vmin=vmin, vmax=vmax)
         
-        # Convolve the original image with the estimated PSF-s for comparison
-        convolved_images = psf_b.convolve(images, betas_est, normalize=True, a=a_est)
-        
-        my_plot.colormap(np.abs(convolved_images[trial, 0]-Ds1[trial, 0]), [trial, 5], vmin=vmin, vmax=vmax)
-        my_plot.colormap(np.abs(convolved_images[trial, 1]-Ds1[trial, 1]), [trial, 6], vmin=vmin, vmax=vmax)
+            # Convolve the original image with the estimated PSF-s for comparison
+            convolved_images = psf_b.convolve(repeated_images, betas_est, normalize=True, a=a_est)
+            
+            my_plot.colormap(np.abs(convolved_images[trial, 0]-Ds1[trial, 0]), [trial, column_index + 2], vmin=vmin, vmax=vmax)
+            my_plot.colormap(np.abs(convolved_images[trial, 1]-Ds1[trial, 1]), [trial, column_index + 3], vmin=vmin, vmax=vmax)
 
 image_est_mean /= num_frames
 D_mean /= num_frames
 D_d_mean /= num_frames
 
-my_plot.colormap(image_center, [max_frames, 0], vmin=vmin, vmax=vmax)
-my_plot.colormap(D_mean, [max_frames, 1], vmin=vmin, vmax=vmax)
-my_plot.colormap(D_d_mean, [max_frames, 2], vmin=vmin, vmax=vmax)
-my_plot.colormap(image_est_mean, [max_frames, 3], vmin=vmin, vmax=vmax)
+column_index = 0
+if image is not None:
+    my_plot.colormap(image_center, [max_frames, 0], vmin=vmin, vmax=vmax)
+    column_index = 1
+my_plot.colormap(D_mean, [max_frames, column_index], vmin=vmin, vmax=vmax)
+my_plot.colormap(D_d_mean, [max_frames, column_index + 1], vmin=vmin, vmax=vmax)
+my_plot.colormap(image_est_mean, [max_frames, column_index + 2], vmin=vmin, vmax=vmax)
 #my_plot.colormap(np.abs(image_est_mean-image_center), [max_frames, 4], vmin=vmin, vmax=vmax)
 
 my_plot.save("estimates.png")
