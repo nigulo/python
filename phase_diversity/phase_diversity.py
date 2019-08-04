@@ -381,6 +381,7 @@ for trial in np.arange(0, num_frames):
             D = Ds_temp[0, 0]
             D_d = Ds_temp[0, 1]
     
+            D_d = images_d[trial]
             DF = fft.fft2(D)
             DF_d = fft.fft2(D_d)
 
@@ -394,9 +395,9 @@ for trial in np.arange(0, num_frames):
         else:
             D_d = D
         DF = fft.fft2(D)
-        DF = fft.fftshift(DF)
+        #DF = fft.fftshift(DF)
         DF_d = fft.fft2(D_d)
-        DF_d = fft.fftshift(DF_d)
+        #DF_d = fft.fftshift(DF_d)
         
     
     Ds[trial, 0] = DF
