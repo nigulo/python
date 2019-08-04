@@ -110,8 +110,8 @@ for arg in sys.argv:
         state_file = arg[6:]
     elif arg[:10] == "wavefront=":
         wavefront_file = arg[10:]
-    elif arg[:5] == "image=":
-        image_file = arg[5:]
+    elif arg[:6] == "image=":
+        image_file = arg[6:]
 
 #if len(sys.argv) > 1:
 #    state_file = sys.argv[1]
@@ -137,7 +137,6 @@ def save(filename, state):
         pickle.dump(state, f)
 
 num_frames = 1
-max_frames = min(10, num_frames)
 aberration_mode = "psf"
 
 #image = plt.imread('granulation31x33arsec.png')
@@ -150,24 +149,37 @@ images_d = []
 if image_file is None:
     image_file = 'icont'
 
-for root, dirs, files in os.walk("images"):
+dir = "images"
+for root, dirs, files in os.walk(dir):
     for file in files:
+        print(file)
         if file[:len(image_file)] != image_file:
             continue
         if file[-5:] == '.fits':
-            hdul = fits.open(file)
+            hdul = fits.open(dir + "/" + file)
             image = hdul[0].data
         else:
-            image = plt.imread(image_file)[:, :, 0]
-            #image = plt.imread('granulation2.png')
-        image = misc.sample_image(image, .25)
+            image = plt.imread(dir + "/" + file)[:, :, 0]
+            #image = plt.imread(dir + "/" + file)
+        image = misc.sample_image(image, .5)
         print("Image shape", image.shape)
 
         nx_orig = 50
-        #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
-        start_index = 0#np.random.randint(0, start_index_max)
+        if True:# Try to detect center
+            row_mean = np.mean(image, axis = 0)
+            col_mean = np.mean(image, axis = 1)
+            
+            max_row = np.argmax(row_mean)
+            max_col = np.argmax(col_mean)
+            
+            #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+            start_index_x = max_col - nx_orig//2#np.random.randint(0, start_index_max)
+            start_index_y = max_row - nx_orig//2#np.random.randint(0, start_index_max)
+        else:
+            start_index_x = 0#np.random.randint(0, start_index_max)
+            start_index_y = 0#np.random.randint(0, start_index_max)
         
-        image = image[start_index:start_index + nx_orig,start_index:start_index + nx_orig]
+        image = image[start_index_x:start_index_x + nx_orig,start_index_y:start_index_y + nx_orig]
         
         nx_orig = np.shape(image)[0]
         image = utils.upsample(image)
@@ -196,8 +208,8 @@ def get_params(nx):
     #arcsec_per_px = coef1*0.2
     arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
-    #defocus = (0., 4.967349723461641)#10.#10.#10.#7.5
-    defocus = (2.*np.pi*100, 4.967349723461641)#10.#10.#10.#7.5
+    #defocus = (2.*np.pi*100, 4.967349723461641)#10.#10.#10.#7.5
+    defocus = (0., 0.)
     #defocus = (6.28, 46.)#10.#10.#10.#7.5
     return (arcsec_per_px, defocus)
 
@@ -209,10 +221,10 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 100
+    jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
-    diameter = 50.0
+    diameter = 20.0
     wavelength = 5250.0
     gamma = 1.0
     nx = np.shape(images[0])[0]
@@ -259,7 +271,7 @@ else:
     psf_b.set_state(state[7])
     
 
-if len(images) != len(images_d): # Generate the aberrated images
+if len(images) == 1 and len(images_d) == 0: # Generate the aberrated images
 
     image = images[0]
     for iii in np.arange(0, 2):
@@ -277,6 +289,9 @@ if len(images) != len(images_d): # Generate the aberrated images
 else:
     image = None
     num_frames = len(images)
+max_frames = min(10, num_frames)
+
+print("num_frames", num_frames)
 
 #aperture_func = lambda xs: utils.aperture_circ(xs, diameter, 15.0)
 aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
@@ -285,10 +300,7 @@ aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
 defocus_func = lambda xs: defocus_psf*np.sum(xs*xs, axis=2)
 
 if image is None:
-    if len(images_d) == 0:
-        my_plot = plot.plot(nrows=max_frames + 1, ncols=2)
-    else:
-        my_plot = plot.plot(nrows=max_frames + 1, ncols=3)
+    my_plot = plot.plot(nrows=max_frames + 1, ncols=3)
 else:
     my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
 
@@ -381,6 +393,10 @@ for trial in np.arange(0, num_frames):
             D_d = images_d[trial]
         else:
             D_d = D
+        DF = fft.fft2(D)
+        DF = fft.fftshift(DF)
+        DF_d = fft.fft2(D_d)
+        DF_d = fft.fftshift(DF_d)
         
     
     Ds[trial, 0] = DF
@@ -398,15 +414,14 @@ for trial in np.arange(0, num_frames):
     print("np.min(image), np.max(image), np.min(D), np.max(D)", np.min(image_center), np.max(image_center), np.min(D), np.max(D))
     if trial < max_frames:
         my_plot.colormap(D, [trial, column_index], vmin=vmin, vmax=vmax)
-        my_plot.colormap(D_d, [trial, column_index], vmin=vmin, vmax=vmax)
-    column_index += 2
+        my_plot.colormap(D_d, [trial, column_index+1], vmin=vmin, vmax=vmax)
 
     D_mean += D
     D_d_mean += D_d
+column_index += 2
         
 
 my_plot.save("estimates.png")
-
 
 ###############################################################################
 # Estimate PSF
