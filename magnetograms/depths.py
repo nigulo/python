@@ -392,7 +392,7 @@ class depths():
 
         for i in np.arange(0, dzs.shape[2]):
             my_plot = plot.plot(nrows=1, ncols=1)
-            my_plot.colormap(dzs[:,:,i])
+            my_plot.colormap(dzs[:,:,i], colorbar=True)
             my_plot.save("dz" + str(i) + ".png")
             my_plot.close()
 

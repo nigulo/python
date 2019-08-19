@@ -104,6 +104,7 @@ image = np.array([[0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 state_file = None#state.pkl"
 wavefront_file = None#state.pkl"
 image_file = None
+is_planet = False
 
 for arg in sys.argv:
     if arg[:6] == "state=":
@@ -165,7 +166,7 @@ for root, dirs, files in os.walk(dir):
         print("Image shape", image.shape)
 
         nx_orig = 50
-        if True:# Try to detect center
+        if is_planet:# Try to detect center
             row_mean = np.mean(image, axis = 0)
             col_mean = np.mean(image, axis = 1)
             
@@ -209,8 +210,8 @@ def get_params(nx):
     arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
     #defocus = (2.*np.pi*100, 4.967349723461641)#10.#10.#10.#7.5
-    defocus = (0., 0.)
-    #defocus = (6.28, 46.)#10.#10.#10.#7.5
+    #defocus = (0., 0.)
+    defocus = (6.28, 46.)#10.#10.#10.#7.5
     return (arcsec_per_px, defocus)
 
 
@@ -224,7 +225,7 @@ if state == None:
     jmax = 10
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
-    diameter = 20.0
+    diameter = 50.0
     wavelength = 5250.0
     gamma = 1.0
     nx = np.shape(images[0])[0]
@@ -385,8 +386,8 @@ for trial in np.arange(0, num_frames):
             DF = fft.fft2(D)
             DF_d = fft.fft2(D_d)
 
-            my_plot.colormap(image_center, [trial, 0], vmin=vmin, vmax=vmax)
-            column_index = 1
+        my_plot.colormap(image_center, [trial, 0], vmin=vmin, vmax=vmax)
+        column_index = 1
 
     else:
         D = images[trial]
