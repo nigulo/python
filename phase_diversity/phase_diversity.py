@@ -1,19 +1,15 @@
+import sys
+sys.path.append('../utils')
+sys.path.append('..')
+import config
+
 import os
-os.environ["OMP_NUM_THREADS"] = "3" # export OMP_NUM_THREADS=4
-os.environ["OPENBLAS_NUM_THREADS"] = "3" # export OPENBLAS_NUM_THREADS=4 
-os.environ["MKL_NUM_THREADS"] = "3" # export MKL_NUM_THREADS=6
-os.environ["VECLIB_MAXIMUM_THREADS"] = "3" # export VECLIB_MAXIMUM_THREADS=4
-os.environ["NUMEXPR_NUM_THREADS"] = "3" # export NUMEXPR_NUM_THREADS=6
-
-
 import numpy as np
 import scipy.misc
 import scipy.special as special
 import scipy.signal as signal
 import numpy.fft as fft
 import utils
-import sys
-sys.path.append('../utils')
 import plot
 import misc
 import psf_basis_sampler
@@ -139,6 +135,7 @@ def save(filename, state):
 
 num_frames = 1
 aberration_mode = "psf"
+fried_param=0.1
 
 #image = plt.imread('granulation31x33arsec.png')
 ##image = misc.sample_image(image,.27)
@@ -159,6 +156,7 @@ for root, dirs, files in os.walk(dir):
         if file[-5:] == '.fits':
             hdul = fits.open(dir + "/" + file)
             image = hdul[0].data
+            hdul.close()
         else:
             image = plt.imread(dir + "/" + file)[:, :, 0]
             #image = plt.imread(dir + "/" + file)
@@ -209,9 +207,8 @@ def get_params(nx):
     #arcsec_per_px = coef1*0.2
     arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
-    #defocus = (2.*np.pi*100, 4.967349723461641)#10.#10.#10.#7.5
+    defocus = (2.*np.pi*100, 4.967349723461641)
     #defocus = (0., 0.)
-    defocus = (6.28, 46.)#10.#10.#10.#7.5
     return (arcsec_per_px, defocus)
 
 
@@ -222,7 +219,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 10
+    jmax = 100
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 50.0
@@ -243,7 +240,10 @@ if state == None:
     #xs = np.linspace(x_min, x_max-delta, nx)
     #coords = np.dstack(np.meshgrid(xs, xs))
     
-    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
+    if num_frames == 1:
+        tt = None
+    else:
+        tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 0., jmax-2)**2)))
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt = tt)
     psf_b.create_basis()
@@ -266,7 +266,10 @@ else:
     
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     #tt = tip_tilt.tip_tilt(coords, prior_prec=0.)
-    tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
+    if num_frames == 1:
+        tt = None
+    else:
+        tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
     #psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
     psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt, prior_prec=np.concatenate(([0., 0.], np.linspace(0., 0., jmax-2)**2)))
     psf_b.set_state(state[7])
@@ -306,7 +309,7 @@ else:
     my_plot = plot.plot(nrows=max_frames + 1, ncols=7)
 
     if wavefront is None:
-        wavefront = kolmogorov.kolmogorov(fried = np.array([.4]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+        wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
         save("wavefront.pkl", wavefront)
 
 my_plot.set_axis()

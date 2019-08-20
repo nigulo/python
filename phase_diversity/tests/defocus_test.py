@@ -10,6 +10,7 @@ import utils
 import misc
 import scipy.optimize
 import matplotlib.pyplot as plt
+from astropy.io import fits
 
 image_a = np.array([[0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0. ],
                     [0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0. ],
@@ -226,7 +227,13 @@ class test_find_defocus(unittest.TestCase):
         ##image = misc.sample_image(image,.27)
         #image = misc.sample_image(image,.675)
         
-        image = plt.imread('../granulation.png')[:, :, 0]
+        #image = plt.imread('../granulation.png')[:, :, 0]
+        
+        hdul = fits.open("../images/icont.fits")
+        image = hdul[0].data
+        hdul.close()
+        
+        
         image = misc.sample_image(image, .25)
         
         #image = plt.imread('granulation.png')[:, :, 0]
@@ -242,6 +249,14 @@ class test_find_defocus(unittest.TestCase):
         arcsec_per_px_psf_b = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
         arcsec_per_px = arcsec_per_px_psf_b#/nx_orig
         print("arcsec_per_px=", arcsec_per_px)
+
+        for iii in np.arange(0, 2):
+            my_test_plot = plot.plot()
+            my_test_plot.colormap(image)
+            my_test_plot.save("critical_sampling" + str(iii) + ".png")
+            my_test_plot.close()
+            image = psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength)
+
 
         #defocus=nx_orig*nx_orig/2
         defocus=2.*np.pi
