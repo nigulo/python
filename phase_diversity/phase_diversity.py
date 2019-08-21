@@ -135,7 +135,8 @@ def save(filename, state):
 
 num_frames = 1
 aberration_mode = "psf"
-fried_param=0.1
+fried_param=0.3
+noise_var = 100000.
 
 #image = plt.imread('granulation31x33arsec.png')
 ##image = misc.sample_image(image,.27)
@@ -363,6 +364,18 @@ for trial in np.arange(0, num_frames):
             ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
             psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
             DF, DF_d = psf_.multiply(fimage)
+            
+            if noise_var > 0.:
+                noise = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+                fnoise = fft.fft2(noise)
+                #fnoise = fft.fftshift(fnoise)
+
+                noise_d = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+                fnoise_d = fft.fft2(noise_d)
+                #fnoise_d = fft.fftshift(fnoise_d)
+
+                DF += fnoise
+                DF_d += fnoise_d
     
             DF = fft.ifftshift(DF)
             DF_d = fft.ifftshift(DF_d)
@@ -386,6 +399,15 @@ for trial in np.arange(0, num_frames):
             D_d = Ds_temp[0, 1]
     
             D_d = images_d[trial]
+
+            if noise_var > 0.:
+                noise = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+                noise_d = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+
+                D += noise
+                D_d += noise_d
+
+
             DF = fft.fft2(D)
             DF_d = fft.fft2(D_d)
 
@@ -456,12 +478,14 @@ if image is not None:
 
 image_est = fft.ifftshift(image_est, axes=(-2, -1))
 for trial in np.arange(0, num_frames):
+    image_est_i = image_est[trial]
+    #image_est_i = psf_basis.critical_sampling(image_est_i, arcsec_per_px, diameter, wavelength)
     #image_est_norm = misc.normalize(image_est[trial])
-    image_est_mean += image_est[trial]
+    image_est_mean += image_est_i
     if trial < max_frames:
-        my_plot.colormap(image_est[trial], [trial, column_index], vmin=vmin, vmax=vmax)
+        my_plot.colormap(image_est_i, [trial, column_index], vmin=vmin, vmax=vmax)
         if image is not None:
-            my_plot.colormap(np.abs(image_est[trial]-image_center), [trial, column_index + 1], vmin=vmin, vmax=vmax)
+            my_plot.colormap(np.abs(image_est_i-image_center), [trial, column_index + 1], vmin=vmin, vmax=vmax)
         
             # Convolve the original image with the estimated PSF-s for comparison
             convolved_images = psf_b.convolve(repeated_images, betas_est, normalize=True, a=a_est)
