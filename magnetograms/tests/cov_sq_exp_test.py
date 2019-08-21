@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 import numpy as np
 import cov_sq_exp
 import unittest

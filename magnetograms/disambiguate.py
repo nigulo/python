@@ -1,12 +1,7 @@
-import os
-os.environ["OMP_NUM_THREADS"] = "16" # export OMP_NUM_THREADS=4
-os.environ["OPENBLAS_NUM_THREADS"] = "16" # export OPENBLAS_NUM_THREADS=4 
-os.environ["MKL_NUM_THREADS"] = "16" # export MKL_NUM_THREADS=6
-os.environ["VECLIB_MAXIMUM_THREADS"] = "16" # export VECLIB_MAXIMUM_THREADS=4
-os.environ["NUMEXPR_NUM_THREADS"] = "16" # export NUMEXPR_NUM_THREADS=6
-
 import sys
 sys.path.append('../utils')
+sys.path.append('..')
+import config
 import matplotlib as mpl
 
 mpl.use('Agg')

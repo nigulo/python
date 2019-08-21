@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 import numpy as np
 import scipy.linalg as la
 import kiss_gp
