@@ -36,7 +36,6 @@ from astropy.io import fits
 from scipy.io import readsav
 import scipy.signal as signal
 import pickle
-import depths
 
 
 state_file = None#state.pkl"
@@ -234,10 +233,6 @@ x = x_grid.reshape(-1, 2)
 x_flat = np.reshape(x, (2*n, -1))
 
 ###############################################################################
-d = depths.depths(x_grid, bx, by, bz, prior_prec=1.)
-d.estimate()
-sys.exit(1)
-###############################################################################
 
 
 if mode == 2:
@@ -282,7 +277,8 @@ u1 = np.linspace(0, x1_range, m1)
 u2 = np.linspace(0, x2_range, m2)
 u_mesh = np.meshgrid(u1, u2)
 u = np.dstack(u_mesh).reshape(-1, 2)
-    
+u = np.column_stack((u, np.zeros(u.shape[0]))) # Add dummy z-coordinate
+
 print("u_mesh=", u_mesh)
 print("u=", u)
 print(x_mesh)
@@ -367,7 +363,7 @@ print("data_var:", data_var)
 def sample(x, y):
 
     def cov_func(theta, data, u1, u2, data_or_test):
-        assert(u1 == u2)
+        np.testing.assert_array_almost_equal(u1, u2)
         assert(data_or_test)
         sig_var = theta[0]
         ell = theta[1]
@@ -375,14 +371,15 @@ def sample(x, y):
         sig_var2 = theta[3]
         ell2 = theta[4]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
-        U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
+        U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
         
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0.)
-        U1, U1_grads = gp1.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0., dim_out=3)
+        U1, U1_grads = gp1.calc_cov(u, u, data_or_test=True, calc_grad = True)
         
+        print("U, U1", U.shape, U1.shape)
         return  U + U1, np.concatenate((U_grads, U1_grads))
 
-    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
+    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y, dim=3)
 
     if sample_or_optimize:
         s = sampling.Sampling()
@@ -395,7 +392,7 @@ def sample(x, y):
             ell2 = pm.HalfNormal('ell2', sd=1.0)
             sig_var2 = pm.HalfNormal('sig_var2', sd=0.1)
         
-        trace = s.sample(kgp.likelihood2, [sig_var, ell, noise_var, sig_var2, ell2], [], num_samples, num_chains, kgp.likelihood_grad2)
+        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var, sig_var2, ell2], [], num_samples, num_chains, kgp.likelihood_grad2)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
@@ -406,10 +403,10 @@ def sample(x, y):
         m_sig_var2 = np.mean(trace['sig_var2'])
     else:
         def lik_fn(params):
-            return -kgp.likelihood2(params, [])
+            return -kgp.likelihood(params, [])
 
         def grad_fn(params):
-            return -kgp.likelihood_grad2(params, [])
+            return -kgp.likelihood_grad(params, [])
 
         min_loglik = None
         min_res = None
@@ -571,7 +568,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             x_test = x[mask][inds_test]
             y_test_obs = y[mask][inds_test]
     
-            y_train_flat = np.reshape(y_train, (2*len(y_train), -1))
+            y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
             #loglik = gp.init(x, y)
             #print(x_train.shape, y_train_flat.shape)
             gp.init(x_train, y_train_flat)
@@ -644,7 +641,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
             
-            length_scale, sig_var, noise_var, length_scale2, sig_var2 = sample(x, np.reshape(y, (2*n, -1)))
+            length_scale, sig_var, noise_var, length_scale2, sig_var2 = sample(x, np.reshape(y, (3*n, -1)))
         #else:
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
@@ -655,11 +652,11 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
             
-            gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0.)
+            gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3)
             U1 = gp1.calc_cov(u, u, data_or_test=True)
             
             W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            loglik = calc_loglik_approx(U + U1, W, np.reshape(y, (2*n, -1)))
+            loglik = calc_loglik_approx(U + U1, W, np.reshape(y, (3*n, -1)))
             
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
@@ -678,7 +675,6 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
         
         random_indices = get_random_indices(x, n, temp*length_scale, thetas, y)
 
-
         start = time.time()
 
         affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
@@ -693,12 +689,12 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
         gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
         
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0.)
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3)
         U1 = gp1.calc_cov(u, u, data_or_test=True)
         
         W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
-        loglik1 = calc_loglik_approx(U + U1, W, np.reshape(y, (2*n, -1)))
+        loglik1 = calc_loglik_approx(U + U1, W, np.reshape(y, (3*n, -1)))
         end = time.time()
         print("Inference took: " + str(end - start))
 

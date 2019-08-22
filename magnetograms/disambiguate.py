@@ -395,7 +395,7 @@ print("data_var:", data_var)
 def sample(x, y):
 
     def cov_func(theta, data, u1, u2, data_or_test):
-        assert(u1 == u2)
+        np.testing.assert_array_almost_equal(u1, u2)
         assert(data_or_test)
         sig_var = theta[0]
         ell = theta[1]
@@ -417,7 +417,7 @@ def sample(x, y):
             
         
         
-        trace = s.sample(kgp.likelihood2, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad2)
+        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad2)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
@@ -425,10 +425,10 @@ def sample(x, y):
         m_noise_var = np.mean(trace['noise_var'])
     else:
         def lik_fn(params):
-            return -kgp.likelihood2(params, [])
+            return -kgp.likelihood(params, [])
 
         def grad_fn(params):
-            return -kgp.likelihood_grad2(params, [])
+            return -kgp.likelihood_grad(params, [])
 
         min_loglik = None
         min_res = None
