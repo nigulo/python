@@ -394,15 +394,16 @@ def sample(x, y):
             noise_var = pm.HalfNormal('noise_var', sd=1.0)
             ell2 = pm.HalfNormal('ell2', sd=1.0)
             sig_var2 = pm.HalfNormal('sig_var2', sd=0.1)
-            
         
-        
-        trace = s.sample(kgp.likelihood2, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad2)
+        trace = s.sample(kgp.likelihood2, [sig_var, ell, noise_var, sig_var2, ell2], [], num_samples, num_chains, kgp.likelihood_grad2)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
         m_sig_var = np.mean(trace['sig_var'])
         m_noise_var = np.mean(trace['noise_var'])
+
+        m_ell2 = np.mean(trace['ell2'])
+        m_sig_var2 = np.mean(trace['sig_var2'])
     else:
         def lik_fn(params):
             return -kgp.likelihood2(params, [])
@@ -419,11 +420,21 @@ def sample(x, y):
             sig_var_max = data_var*2.
             noise_var_min = data_var*0.0001#*.001
             noise_var_max = data_var*0.01#*.5
+
+            ell2_min = 0.2#.05
+            ell2_max = 0.5#1.
+            sig_var2_min = data_var*.01
+            sig_var2_max = data_var*.2
+
             ell_init = random.uniform(ell_min, ell_max)
             sig_var_init = random.uniform(sig_var_min, sig_var_max)
             noise_var_init = random.uniform(noise_var_min, noise_var_max)
+
+            ell2_init = random.uniform(ell2_min, ell2_max)
+            sig_var2_init = random.uniform(sig_var2_min, sig_var2_max)
+
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init], method='L-BFGS-B', jac=grad_fn, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init, sig_var2_init, ell2_init], method='L-BFGS-B', jac=grad_fn, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max), (sig_var2_min, sig_var2_max), (ell2_min, ell2_max)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -432,7 +443,9 @@ def sample(x, y):
         m_ell = min_res['x'][0]
         m_sig_var = min_res['x'][1]
         m_noise_var = min_res['x'][2]
-    return m_ell, m_sig_var, m_noise_var
+        m_ell2 = min_res['x'][3]
+        m_sig_var2 = min_res['x'][4]
+    return m_ell, m_sig_var, m_noise_var, m_ell2, m_sig_var2
         
 
 def calc_loglik_approx(U, W, y):
@@ -450,34 +463,7 @@ def calc_loglik(K, y):
     return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
 
 
-def recalc_offsets(y, bx_offset1, by_offset1):
-    y = y*norm
-    y[:,0] += bx_offset
-    y[:,1] += by_offset
-
-    y[:,0] += bx_offset1
-    y[:,1] += by_offset1
-
-    bx = np.reshape(y[:,0], (n1, n2))
-    by = np.reshape(y[:,1], (n1, n2))
-    bx_smooth = signal.convolve2d(bx, np.ones((5,5)), mode = 'same') #Smooth it a little
-    by_smooth = signal.convolve2d(by, np.ones((5,5)), mode = 'same') #Smooth it a little
-    bx_smooth = np.reshape(bx_smooth, n)
-    by_smooth = np.reshape(by_smooth, n)
-
-    bx_offset1 = -alpha*by_smooth
-    by_offset1 = -alpha*bx_smooth
-
-    y[:,0] -= bx_offset1
-    y[:,1] -= by_offset1
-
-    y[:,0] -= bx_offset
-    y[:,1] -= by_offset
-    y/=norm
-
-    return (y, bx_offset1, by_offset1)
-
-def reverse(y, y_sign, ii, bx_offset1, by_offset1):
+def reverse(y, y_sign, ii):
     y[ii]*=norm
     
     y[ii,:2] *= -1
@@ -505,7 +491,7 @@ def get_probs(thetas, y):
     #p /= np.sum(p)
     #return p    
 
-def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative, bx_offset1, by_offset1):
+def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
     #inv_ell_sq_two = -1./(2.*length_scale**2)
     inv_ell_sq_two = 1./(2.*length_scale)
     #normal_dist = stats.norm(0.0, length_scale)
@@ -558,12 +544,12 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
                 th = 0.8
             if r < th:
                 if y_sign[ri] < 0:
-                    reverse(y, y_sign, ri, bx_offset1, by_offset1)
+                    reverse(y, y_sign, ri)
                     y_sign[ri] = 1 # overwrite sign
                     #sign_change[ri] = True
             else:
                 if y_sign[ri] > 0:
-                    reverse(y, y_sign, ri, bx_offset1, by_offset1)
+                    reverse(y, y_sign, ri)
                     y_sign[ri] = -1 # overwrite sign
                     #sign_change[ri] = True
             #print(np.exp(thetas[ri]))
@@ -601,7 +587,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             sim_indices = np.where(sim < 0.)[0]
             #y_copy=np.array(y)
             #y_sign_copy=np.array(y_sign)
-            reverse(y, y_sign, mask[inds_test][sim_indices], bx_offset1, by_offset1)
+            reverse(y, y_sign, mask[inds_test][sim_indices])
             #y_copy1=np.array(y)
             #y_sign_copy1=np.array(y_sign)
             #reverse(y_copy1, y_sign_copy1, mask[inds_test][sim_indices])
@@ -628,7 +614,7 @@ def get_random_indices(x, n, length_scale, thetas, y):
         i += 1
     return random_indices
 
-def algorithm_a(x, y, sig_var, length_scale, noise_var):
+def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2):
     print(sig_var)
     y_in = np.array(y)
     y_sign = np.ones(n)
@@ -658,7 +644,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var):
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
             
-            length_scale, sig_var, noise_var = sample(x, np.reshape(y, (2*n, -1)))
+            length_scale, sig_var, noise_var, length_scale2, sig_var2 = sample(x, np.reshape(y, (2*n, -1)))
         #else:
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
@@ -668,12 +654,18 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var):
             gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
+            
+            gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0.)
+            U1 = gp1.calc_cov(u, u, data_or_test=True)
+            
             W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+            loglik = calc_loglik_approx(U + U1, W, np.reshape(y, (2*n, -1)))
             
         print("sig_var=", sig_var)
-        print("noise_var=", noise_var)
         print("length_scale", length_scale)
+        print("noise_var=", noise_var)
+        print("sig_var2=", sig_var2)
+        print("length_scale2", length_scale2)
         #print("mean", mean)
         print("loglik=", loglik, "max_loglik=", max_loglik)
         
@@ -681,10 +673,6 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var):
             num_tries = 1
             max_loglik = loglik
         
-        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-        U = gp.calc_cov(u, u, data_or_test=True)
-        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)
         
@@ -693,16 +681,24 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var):
 
         start = time.time()
 
-        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative, bx_offset1, by_offset1)
+        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
         end = time.time()
         print("Align took: " + str(end - start))
 
-
         do_plots(y)    
 
         start = time.time()
-        loglik1 = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
+
+        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
+        U = gp.calc_cov(u, u, data_or_test=True)
+        
+        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0.)
+        U1 = gp1.calc_cov(u, u, data_or_test=True)
+        
+        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+
+        loglik1 = calc_loglik_approx(U + U1, W, np.reshape(y, (2*n, -1)))
         end = time.time()
         print("Inference took: " + str(end - start))
 
@@ -754,13 +750,18 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var):
 sig_var = None
 length_scale = None
 noise_var = None
+sig_var2 = None
+length_scale2 = None
 if not inference:
 
     sig_var=0.9*np.var(bx) + 0.9*np.var(by)
     length_scale=0.2
     noise_var=0.1*sig_var
+    
+    sig_var2 = 0.
+    length_scale2=0.2
 
 
-prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale, noise_var)
+prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
 
