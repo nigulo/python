@@ -136,7 +136,7 @@ def save(filename, state):
 num_frames = 1
 aberration_mode = "psf"
 fried_param=0.3
-noise_var = 100000.
+noise_std_perc = 0.#1e-5
 
 #image = plt.imread('granulation31x33arsec.png')
 ##image = misc.sample_image(image,.27)
@@ -365,12 +365,12 @@ for trial in np.arange(0, num_frames):
             psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
             DF, DF_d = psf_.multiply(fimage)
             
-            if noise_var > 0.:
-                noise = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+            if noise_std_perc > 0.:
+                noise = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
                 fnoise = fft.fft2(noise)
                 #fnoise = fft.fftshift(fnoise)
 
-                noise_d = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+                noise_d = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
                 fnoise_d = fft.fft2(noise_d)
                 #fnoise_d = fft.fftshift(fnoise_d)
 
@@ -400,9 +400,9 @@ for trial in np.arange(0, num_frames):
     
             D_d = images_d[trial]
 
-            if noise_var > 0.:
-                noise = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
-                noise_d = np.random.normal(loc=0., scale=np.sqrt(noise_var), size=(nx, nx))
+            if noise_std_perc > 0.:
+                noise = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
+                noise_d = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
 
                 D += noise
                 D_d += noise_d
@@ -479,7 +479,7 @@ if image is not None:
 image_est = fft.ifftshift(image_est, axes=(-2, -1))
 for trial in np.arange(0, num_frames):
     image_est_i = image_est[trial]
-    #image_est_i = psf_basis.critical_sampling(image_est_i, arcsec_per_px, diameter, wavelength)
+    image_est_i = psf_basis.critical_sampling(image_est_i, arcsec_per_px, diameter, wavelength)
     #image_est_norm = misc.normalize(image_est[trial])
     image_est_mean += image_est_i
     if trial < max_frames:
