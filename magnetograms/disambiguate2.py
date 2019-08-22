@@ -366,16 +366,23 @@ print("data_var:", data_var)
 
 def sample(x, y):
 
-    def cov_func(sig_var, ell, noise_var, sig_var2, ell2, u):
+    def cov_func(theta, data, u1, u2, data_or_test):
+        assert(u1 == u2)
+        assert(data_or_test)
+        sig_var = theta[0]
+        ell = theta[1]
+        noise_var = theta[2]
+        sig_var2 = theta[3]
+        ell2 = theta[4]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
-        U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
+        U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
         
         gp1 = cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0.)
-        U1, U1_grads = gp1.calc_cov(u, u, data_or_test=True, calc_grad = True)
+        U1, U1_grads = gp1.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
         
         return  U + U1, np.concatenate((U_grads, U1_grads))
 
-    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func)
+    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
 
     if sample_or_optimize:
         s = sampling.Sampling()
@@ -390,7 +397,7 @@ def sample(x, y):
             
         
         
-        trace = s.sample(kgp.likelihood2, [ell, sig_var], [noise_var, y], num_samples, num_chains, kgp.likelihood_grad2)
+        trace = s.sample(kgp.likelihood2, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad2)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
@@ -398,10 +405,10 @@ def sample(x, y):
         m_noise_var = np.mean(trace['noise_var'])
     else:
         def lik_fn(params):
-            return -kgp.likelihood2(params, [y])
+            return -kgp.likelihood2(params, [])
 
         def grad_fn(params):
-            return -kgp.likelihood_grad2(params, [y])
+            return -kgp.likelihood_grad2(params, [])
 
         min_loglik = None
         min_res = None
@@ -416,7 +423,7 @@ def sample(x, y):
             sig_var_init = random.uniform(sig_var_min, sig_var_max)
             noise_var_init = random.uniform(noise_var_min, noise_var_max)
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [ell_init, sig_var_init, noise_var_init], method='L-BFGS-B', jac=grad_fn, bounds = [(ell_min, ell_max), (sig_var_min, sig_var_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init], method='L-BFGS-B', jac=grad_fn, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:

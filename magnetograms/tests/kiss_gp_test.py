@@ -6,7 +6,10 @@ import kiss_gp
 import cov_div_free
 import unittest
 
-def cov_func(sig_var, ell, noise_var, u1, u2, data_or_test):
+def cov_func(theta, data, u1, u2, data_or_test):
+    sig_var = theta[0]
+    ell = theta[1]
+    noise_var = data[0]
     gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
     U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
     return  U, U_grads
@@ -50,31 +53,31 @@ class test_kiss_gp(unittest.TestCase):
 
 
 
-        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func)
+        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
 
         sig_var = 0.5
         ell = 0.2
         noise_var = 0.07        
 
-        loglik = kgp.likelihood([ell, sig_var], [noise_var, y])
-        loglik_grads = kgp.likelihood_grad([ell, sig_var], [noise_var, y])
+        loglik = kgp.likelihood([sig_var, ell], [noise_var])
+        loglik_grads = kgp.likelihood_grad([sig_var, ell], [noise_var])
         
-        delta_sig_var = sig_var*1.0e-7
-        delta_ell = ell * 1.0e-7
+        delta_sig_var = 1.0e-7
+        delta_ell = 1.0e-7
 
-        loglik1 = kgp.likelihood([ell + delta_ell, sig_var], [noise_var, y])
+        loglik1 = kgp.likelihood([sig_var, ell + delta_ell], [noise_var])
         loglik_grad_expected = (loglik1 - loglik) / delta_ell
         np.testing.assert_approx_equal(loglik_grads[0], loglik_grad_expected, 5)
         
-        loglik1 = kgp.likelihood([ell - delta_ell, sig_var], [noise_var, y])
+        loglik1 = kgp.likelihood([sig_var, ell - delta_ell], [noise_var])
         loglik_grad_expected = -(loglik1 - loglik) / delta_ell
         np.testing.assert_approx_equal(loglik_grads[0], loglik_grad_expected, 5)
 
-        loglik1 = kgp.likelihood([ell, sig_var + delta_sig_var], [noise_var, y])
+        loglik1 = kgp.likelihood([sig_var + delta_sig_var, ell], [noise_var])
         loglik_grad_expected = (loglik1 - loglik) / delta_sig_var
         np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 5)
 
-        loglik1 = kgp.likelihood([ell, sig_var - delta_sig_var], [noise_var, y])
+        loglik1 = kgp.likelihood([sig_var - delta_sig_var, ell], [noise_var])
         loglik_grad_expected = -(loglik1 - loglik) / delta_sig_var
         np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 5)
 
@@ -128,14 +131,14 @@ class test_kiss_gp(unittest.TestCase):
         #print(y.shape, y_downsampled.shape)
 
 
-        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func)
+        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
 
         sig_var = .8
         ell = 12.5
         noise_var = 0.07        
 
         # Call to calculate covariance matrix etc (TODO: should be moved out from likelihood)
-        _ = kgp.likelihood([ell, sig_var], [noise_var, y])
+        _ = kgp.likelihood([sig_var, ell], [noise_var])
         f_mean, f_var = kgp.fit(x_test, calc_var = True)
         f_mean = np.reshape(f_mean, (-1, 2))
 
