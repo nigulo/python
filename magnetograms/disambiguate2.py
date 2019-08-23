@@ -283,15 +283,6 @@ print("u_mesh=", u_mesh)
 print("u=", u)
 print(x_mesh)
 
-#for i in np.arange(0, n):
-    #if np.random.uniform() < 0.5:
-    #    bx[i] *= -1
-    #    by[i] *= -1
-
-#    bx[i] = abs(bx[i])
-#    by[i] = abs(by[i])
-
-
 norm = 1.#np.std(np.sqrt(bx**2+by**2))
 y = np.column_stack((bx, by, bz))
 
@@ -299,6 +290,12 @@ y = np.column_stack((bx, by, bz))
 y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
+
+for i in np.arange(0, n):
+    #if np.random.uniform() < 0.5:
+    #    #y[i, :2] *= -1
+    y[i, :2] = np.abs(y[i, :2])
+
 
 def do_plots(y):
     components_plot = plot.plot(nrows=2, ncols=3)
@@ -410,8 +407,8 @@ def sample(x, y):
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
-            ell_min = 0.2#.05
-            ell_max = 0.5#1.
+            ell_min = 0.5#.05
+            ell_max = 2.#1.
             sig_var_min = data_var*.1
             sig_var_max = data_var*2.
             noise_var_min = data_var*0.0001#*.001
@@ -436,11 +433,11 @@ def sample(x, y):
             if min_loglik is None or loglik < min_loglik:
                 min_loglik = loglik
                 min_res = res
-        m_ell = min_res['x'][0]
-        m_sig_var = min_res['x'][1]
+        m_sig_var = min_res['x'][0]
+        m_ell = min_res['x'][1]
         m_noise_var = min_res['x'][2]
-        m_ell2 = min_res['x'][3]
-        m_sig_var2 = min_res['x'][4]
+        m_sig_var2 = min_res['x'][3]
+        m_ell2 = min_res['x'][4]
     return m_ell, m_sig_var, m_noise_var, m_ell2, m_sig_var2
         
 
@@ -476,7 +473,7 @@ def get_b(y, ii):
     return y1
 
 def get_probs(thetas, y):
-    b = np.sqrt(np.sum(y*y, axis=1))
+    b = np.sqrt(np.sum(y[:,:2]*y[:,:2], axis=1))
     return b/np.sum(b)
     
     #p = np.exp(thetas)
