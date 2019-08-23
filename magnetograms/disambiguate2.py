@@ -153,13 +153,13 @@ else:
     
     ###########################################################################
     # Overwrite some of the vector for depth testing purposes
-    for i in np.arange(0, y.shape[0]):
-        for j in np.arange(0, y.shape[1]):
-            #if i == y.shape[0]//2 or j == y.shape[1]//2:
-            if i == j or y.shape[0] - i == j:
-                bx[i, j] = y[i, j, 1, 0]
-                by[i, j] = y[i, j, 1, 1]
-                bz[i, j] = y[i, j, 1, 2]
+    #for i in np.arange(0, y.shape[0]):
+    #    for j in np.arange(0, y.shape[1]):
+    #        #if i == y.shape[0]//2 or j == y.shape[1]//2:
+    #        if i == j or y.shape[0] - i == j:
+    #            bx[i, j] = y[i, j, 1, 0]
+    #            by[i, j] = y[i, j, 1, 1]
+    #            bz[i, j] = y[i, j, 1, 2]
     ###########################################################################
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)
@@ -371,15 +371,12 @@ def sample(x, y):
         sig_var2 = theta[3]
         ell2 = theta[4]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
+        gp.add(cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0., dim_out=3))
         U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
         
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0., dim_out=3)
-        U1, U1_grads = gp1.calc_cov(u, u, data_or_test=True, calc_grad = True)
+        U_grads = U_grads[:-1] # Exclude noise variance derivative
         
-        U1_grads = U1_grads[:-1] # Exclude noise variance derivative
-        
-        print("U, U1", U.shape, U1.shape, U_grads.shape, U1_grads.shape)
-        return  U + U1, np.concatenate((U_grads, U1_grads))
+        return U, U_grads
 
     kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y, dim=3)
 
@@ -490,7 +487,7 @@ def get_probs(thetas, y):
     #p /= np.sum(p)
     #return p    
 
-def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
+def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative, length_scale2, sig_var2):
     #inv_ell_sq_two = -1./(2.*length_scale**2)
     inv_ell_sq_two = 1./(2.*length_scale)
     #normal_dist = stats.norm(0.0, length_scale)
@@ -501,6 +498,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     mask = np.where(~mask)[0]
     affected_indices = set()
     gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
+    gp.add(cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, 0., dim_out=3))
     for i in indices:
 
         #######################################################################
@@ -654,14 +652,12 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         if loglik is None:
             gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
+            gp.add(cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3))
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
             
-            gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3)
-            U1 = gp1.calc_cov(u, u, data_or_test=True)
-            
             W = utils.calc_W(u_mesh, u, x, dim=3)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            loglik = calc_loglik_approx(U + U1, W, np.reshape(y, (3*n, -1)))
+            loglik = calc_loglik_approx(U, W, np.reshape(y, (3*n, -1)))
             
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
@@ -682,7 +678,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         start = time.time()
 
-        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
+        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative, length_scale2, sig_var2)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
         end = time.time()
         print("Align took: " + str(end - start))
@@ -692,14 +688,12 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
         start = time.time()
 
         gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
+        gp.add(cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3))
         U = gp.calc_cov(u, u, data_or_test=True)
-        
-        gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3)
-        U1 = gp1.calc_cov(u, u, data_or_test=True)
         
         W = utils.calc_W(u_mesh, u, x, dim=3)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
-        loglik1 = calc_loglik_approx(U + U1, W, np.reshape(y, (3*n, -1)))
+        loglik1 = calc_loglik_approx(U, W, np.reshape(y, (3*n, -1)))
         end = time.time()
         print("Inference took: " + str(end - start))
 

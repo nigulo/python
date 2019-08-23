@@ -12,6 +12,7 @@ def cov_func(theta, data, u1, u2, data_or_test):
     noise_var = data[0]
     gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
     U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
+    U_grads = U_grads[:-1] # Omit noise_var
     return  U, U_grads
 
 class test_kiss_gp(unittest.TestCase):

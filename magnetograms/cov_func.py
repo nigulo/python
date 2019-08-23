@@ -89,3 +89,19 @@ class cov_func:
         #print loglik
         return (f_mean, var, loglik)
 
+
+    def add(self, other_cov_func):
+        
+        self.old_calc_cov = self.calc_cov
+        
+        def new_cov(x1, x2, data_or_test, calc_grad = False):
+            if calc_grad:
+                K, K_grads = self.old_calc_cov(x1, x2, data_or_test, calc_grad)
+                K1, K1_grads = other_cov_func.calc_cov(x1, x2, data_or_test, calc_grad)
+                return K + K1, np.concatenate((K_grads, K1_grads))
+            else:
+                K = self.old_calc_cov(x1, x2, data_or_test, calc_grad)
+                K1 = other_cov_func.calc_cov(x1, x2, data_or_test, calc_grad)
+                return K + K1
+        
+        self.calc_cov = new_cov
