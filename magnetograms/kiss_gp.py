@@ -44,7 +44,7 @@ class kiss_gp:
         
 
     def likelihood_grad(self, theta, data):
-        if self.theta != theta or self.data != data:
+        if not np.array_equal(self.theta, theta) or not np.array_equal(self.data, data):
             self.theta = theta
             self.data = data
             U, U_grads = self.cov_func(self.theta, self.data, self.u, self.u, data_or_test=True)
@@ -61,18 +61,15 @@ class kiss_gp:
         
         U_inv = np.dot(L_inv.T, L_inv)
         #np.testing.assert_almost_equal(U_inv, la.inv(self.U), 4)
-        ret_val = np.zeros(2)
-
-
         
-        # The indices of parameters are different in U_grads that in the return value of this function        
-        exp_part = 0.5 * np.dot(self.alpha.T, np.dot(self.U_grads[0,:,:], self.alpha))
-        det_part = -0.5 * sum(np.diag(np.dot(U_inv, self.U_grads[0,:,:])))
-        ret_val[1] = exp_part + det_part
+        num_params = self.U_grads.shape[0]
+        ret_val = np.zeros(num_params)
 
-        exp_part = 0.5 * np.dot(self.alpha.T, np.dot(self.U_grads[1,:,:], self.alpha))
-        det_part = -0.5 * sum(np.diag(np.dot(U_inv, self.U_grads[1,:,:])))
-        ret_val[0] = exp_part + det_part
+        for param_index in np.arange(0, num_params):
+
+            exp_part = 0.5 * np.dot(self.alpha.T, np.dot(self.U_grads[param_index,:,:], self.alpha))
+            det_part = -0.5 * sum(np.diag(np.dot(U_inv, self.U_grads[param_index,:,:])))
+            ret_val[param_index] = exp_part + det_part
         
         self.U = None
 

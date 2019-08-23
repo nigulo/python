@@ -118,7 +118,7 @@ class psf_basis_sampler():
                 #res = scipy.optimize.fmin_bfgs(lik_fn, params, fprime=grad_fn, args=(), full_output=True)
                 #lower_bounds = np.zeros(jmax*2)
                 #upper_bounds = np.ones(jmax*2)*1e10
-                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':initial_lik*1e-3})#, 'eps':.1})
+                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':initial_lik*1e-2})#, 'eps':.1})
                 print(res)
                 print("Optimization result:" + res["message"])
                 print("Status", res['status'])

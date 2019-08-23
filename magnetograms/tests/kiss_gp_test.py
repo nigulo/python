@@ -65,21 +65,21 @@ class test_kiss_gp(unittest.TestCase):
         delta_sig_var = 1.0e-7
         delta_ell = 1.0e-7
 
-        loglik1 = kgp.likelihood([sig_var, ell + delta_ell], [noise_var])
-        loglik_grad_expected = (loglik1 - loglik) / delta_ell
-        np.testing.assert_approx_equal(loglik_grads[0], loglik_grad_expected, 5)
-        
-        loglik1 = kgp.likelihood([sig_var, ell - delta_ell], [noise_var])
-        loglik_grad_expected = -(loglik1 - loglik) / delta_ell
-        np.testing.assert_approx_equal(loglik_grads[0], loglik_grad_expected, 5)
-
         loglik1 = kgp.likelihood([sig_var + delta_sig_var, ell], [noise_var])
         loglik_grad_expected = (loglik1 - loglik) / delta_sig_var
-        np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 5)
+        np.testing.assert_almost_equal(loglik_grads[0], loglik_grad_expected, 5)
 
         loglik1 = kgp.likelihood([sig_var - delta_sig_var, ell], [noise_var])
         loglik_grad_expected = -(loglik1 - loglik) / delta_sig_var
-        np.testing.assert_almost_equal(loglik_grads[1], loglik_grad_expected, 5)
+        np.testing.assert_almost_equal(loglik_grads[0], loglik_grad_expected, 5)
+
+        loglik1 = kgp.likelihood([sig_var, ell + delta_ell], [noise_var])
+        loglik_grad_expected = (loglik1 - loglik) / delta_ell
+        np.testing.assert_approx_equal(loglik_grads[1], loglik_grad_expected, 5)
+        
+        loglik1 = kgp.likelihood([sig_var, ell - delta_ell], [noise_var])
+        loglik_grad_expected = -(loglik1 - loglik) / delta_ell
+        np.testing.assert_approx_equal(loglik_grads[1], loglik_grad_expected, 5)
 
     def test_fit(self):
         

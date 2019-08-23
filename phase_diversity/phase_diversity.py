@@ -131,12 +131,12 @@ def save(filename, state):
     if filename is None:
         filename = "state.pkl"
     with open(filename, 'wb') as f:
-        pickle.dump(state, f)
+        pickle.dump(state, f, protocol=4)
 
 num_frames = 1
 aberration_mode = "psf"
-fried_param=0.3
-noise_std_perc = 0.#1e-5
+fried_param=0.2
+noise_std_perc = .01
 
 #image = plt.imread('granulation31x33arsec.png')
 ##image = misc.sample_image(image,.27)
@@ -220,7 +220,7 @@ def calibrate(arcsec_per_px, nx):
 
 if state == None:
     print("Creating new state")
-    jmax = 100
+    jmax = 200
     #arcsec_per_px = 0.057
     #arcsec_per_px = 0.011
     diameter = 50.0
