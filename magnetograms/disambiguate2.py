@@ -376,7 +376,9 @@ def sample(x, y):
         gp1 = cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0., dim_out=3)
         U1, U1_grads = gp1.calc_cov(u, u, data_or_test=True, calc_grad = True)
         
-        print("U, U1", U.shape, U1.shape)
+        U1_grads = U1_grads[:-1] # Exclude noise variance derivative
+        
+        print("U, U1", U.shape, U1.shape, U_grads.shape, U1_grads.shape)
         return  U + U1, np.concatenate((U_grads, U1_grads))
 
     kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y, dim=3)
@@ -446,7 +448,7 @@ def sample(x, y):
         
 
 def calc_loglik_approx(U, W, y):
-    #print np.shape(W), np.shape(y)
+    print("W, y", np.shape(W), np.shape(y))
     (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
     #print x
     L = la.cholesky(U)
@@ -563,14 +565,17 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             #print(len(inds_train), len(inds_test))
     
             x_train = x[inds_train]
+            x_train = np.column_stack((x_train, np.zeros(x_train.shape[0]))) # Add dummpy z coordinate
             y_train = y[inds_train]
     
             x_test = x[mask][inds_test]
+            x_test = np.column_stack((x_test, np.zeros(x_test.shape[0]))) # Add dummpy z coordinate
             y_test_obs = y[mask][inds_test]
     
             y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
             #loglik = gp.init(x, y)
             #print(x_train.shape, y_train_flat.shape)
+            print("x_train", x_train.shape)
             gp.init(x_train, y_train_flat)
             
             y_test_mean = gp.fit(x_test, calc_var = False)
@@ -655,7 +660,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
             gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3)
             U1 = gp1.calc_cov(u, u, data_or_test=True)
             
-            W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+            W = utils.calc_W(u_mesh, u, x, dim=3)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
             loglik = calc_loglik_approx(U + U1, W, np.reshape(y, (3*n, -1)))
             
         print("sig_var=", sig_var)
@@ -692,7 +697,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
         gp1 = cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3)
         U1 = gp1.calc_cov(u, u, data_or_test=True)
         
-        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        W = utils.calc_W(u_mesh, u, x, dim=3)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
         loglik1 = calc_loglik_approx(U + U1, W, np.reshape(y, (3*n, -1)))
         end = time.time()

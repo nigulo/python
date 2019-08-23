@@ -62,7 +62,8 @@ class kiss_gp:
         U_inv = np.dot(L_inv.T, L_inv)
         #np.testing.assert_almost_equal(U_inv, la.inv(self.U), 4)
         
-        num_params = self.U_grads.shape[0]
+        assert(self.U_grads.shape[0] == len(theta))
+        num_params = len(theta)
         ret_val = np.zeros(num_params)
 
         for param_index in np.arange(0, num_params):
