@@ -85,7 +85,7 @@ class coh_trans_func():
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
         
-    def calc(self, xs, rc):
+    def calc(self, xs):
         self.phase_aberr.calc_terms(xs)
         self.pupil = self.pupil_func(xs)
         self.defocus = self.defocus_func(xs)
@@ -146,7 +146,7 @@ class psf():
         self.otf_vals = dict()
         self.corr = dict() # only for testing purposes
         self.coh_trans_func = coh_trans_func
-        self.coh_trans_func.calc(self.coords, rc)
+        self.coh_trans_func.calc(self.coords)
         
         # Repeat the same for bigger grid
         xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
@@ -156,12 +156,12 @@ class psf():
         self.nx1 = self.nx * 2 - 1
 
         self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
-        self.coh_trans_func1.calc(coords1, rc)
+        self.coh_trans_func1.calc(coords1)
 
         xs2 = np.linspace(-x_limit, x_limit, (self.nx*2-1)*2-1)
         coords2 = np.dstack(np.meshgrid(xs2, xs2)[::-1])
         self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
-        self.coh_trans_func2.calc(coords2, rc)
+        self.coh_trans_func2.calc(coords2)
         
         self.corr_or_fft = corr_or_fft
         
