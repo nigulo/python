@@ -423,6 +423,7 @@ class psf_basis:
     def multiply(self, dat_F, betas, a=None):
         if a is not None:
             assert(self.tip_tilt is not None)
+        assert(dat_F.shape[0] == betas.shape[0])
         ret_val = np.zeros_like(dat_F)
         for l in np.arange(0, dat_F.shape[0]):
             for j in np.arange(0, self.jmax+1):

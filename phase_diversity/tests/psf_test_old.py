@@ -2,7 +2,6 @@ import sys
 sys.path.append('..')
 import numpy as np
 import psf
-import psf_old
 import zernike
 import numpy.fft as fft
 import scipy.signal as signal
@@ -221,7 +220,6 @@ def calc_psf_via_fft(wfs, mask, normalize = True):
 
 class test_psf(unittest.TestCase):
 
-    '''
     def test_corr_vs_fft(self):
         arcsec_per_px = 0.055
         diameter = 20.0
@@ -426,8 +424,8 @@ class test_psf(unittest.TestCase):
         D, D_d = psf_.multiply(image1_F)
         reconst = psf_.deconvolve(D, D_d, alphas=coefs, gamma=1., do_fft=True)
         np.testing.assert_almost_equal(reconst, image1, 15)
-    '''
-      
+
+       
     def test_likelihood(self):
         arcsec_per_px = 0.055
         diameter = 20.0
@@ -435,23 +433,19 @@ class test_psf(unittest.TestCase):
 
         n_coefs = 20
         gamma = 1.
-        L = 3
         
         nx = np.shape(image10x10)[0]
-        nx1 = nx*2 - 1
 
         #######################################################################
         # Create data
-        pa = psf.phase_aberration(n_coefs)
+        pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
         aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
         image1 = utils.upsample(image10x10)
         image1_F = fft.fft2(image1)
-        image1_F  = np.tile(np.array([image1_F, image1_F]), (L, 1)).reshape((L, 2, nx1, nx1))
-        alphas = np.random.normal(size=(L, n_coefs))*10.
-        Ds = psf_.multiply(image1_F, alphas)
+        D, D_d = psf_.multiply(image1_F)
         
         #######################################################################
         # Calculate likelihood
@@ -461,28 +455,26 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
-        alphas = np.random.normal(size=(L, n_coefs))*10.
-        lik = psf_.likelihood(alphas.flatten(), [Ds, gamma])
+        alphas = np.random.normal(size=n_coefs)*10.
+        lik = psf_.likelihood(alphas, [D, D_d, gamma])
 
         #######################################################################
         # Check against expected value
-        pa = psf.phase_aberration(n_coefs)
+        pa = psf.phase_aberration(alphas)
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
 
-        psf_.calc(alphas)
-        S = psf_.otf_vals[:,0,:,:]
-        S_d = psf_.otf_vals[:,1,:,:]
+        S = psf_.calc_otf(defocus = False)
+        S_d = psf_.calc_otf(defocus = True)
 
-        num = Ds[:,1,:,:]*S - Ds[:,0,:,:]*S_d
+        num = D_d*S - D*S_d
         num *= num.conjugate()
-        den = S*S.conjugate()+gamma*S_d*S_d.conjugate()# + 1e-10
+        den = S*S.conjugate()+gamma*S_d*S_d.conjugate() + 1e-10
 
         lik_expected = np.sum((num/den).real)
         
-        np.testing.assert_almost_equal(lik, lik_expected)
-
+        np.testing.assert_almost_equal(lik, lik_expected, 5)
 
     def test_likelihood_grad(self):
         arcsec_per_px = 0.055
@@ -491,24 +483,19 @@ class test_psf(unittest.TestCase):
         
         n_coefs = 10
         gamma = 1.
-        L = 1
         
         nx = np.shape(image10x10)[0]
-        nx1 = nx*2-1
 
         #######################################################################
         # Create data
-        pa = psf.phase_aberration(n_coefs)
+        pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
         aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
         image1 = utils.upsample(image10x10)
         image1_F = fft.fft2(image1)
-        image1_F  = np.tile(np.array([image1_F, image1_F]), (L, 1)).reshape((L, 2, nx1, nx1))
-        alphas = np.random.normal(size=(L, n_coefs))*10.
-        print("image1_F, alphas", image1_F.shape, alphas.shape)
-        Ds = psf_.multiply(image1_F, alphas)
+        D, D_d = psf_.multiply(image1_F)
         
         #######################################################################
         # Calculate gradients
@@ -518,34 +505,25 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
-        alphas = np.random.normal(size=(L, n_coefs))*10.
-        grads = psf_.likelihood_grad(alphas.flatten(), [Ds, gamma])
-        
-        pa_old = psf_old.phase_aberration(alphas[0])#zip(np.arange(1, n_coefs + 1), coefs))
-        ctf_old = psf_old.coh_trans_func(aperture_func, pa_old, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_o = psf_old.psf(ctf_old, nx, arcsec_per_px, diameter, wavelength)
-        grads_o = psf_o.likelihood_grad(alphas[0], [Ds[0, 0], Ds[0, 1], gamma])
+        alphas = np.random.normal(size=n_coefs)*10.
+        grads = psf_.likelihood_grad(alphas, [D, D_d, gamma])
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_alphas = np.ones_like(alphas)*1.0e-8
+        delta_alphas = alphas*1.0e-7
 
-        lik = psf_.likelihood(alphas.flatten(), [Ds, gamma])
-        liks = np.tile(lik, (alphas.shape[0], alphas.shape[1]))
+        lik = psf_.likelihood(alphas, [D, D_d, gamma])
+        liks = np.repeat(lik, len(alphas))
         liks1 = np.zeros_like(alphas)
-        for l in np.arange(0, L):
-            for i in np.arange(0, len(alphas)):
-                delta = np.zeros_like(alphas)
-                delta[l, i] = delta_alphas[l, i]
-                liks1[l, i] = psf_.likelihood((alphas+delta).flatten(), [Ds, gamma])
+        for i in np.arange(0, len(alphas)):
+            delta = np.zeros_like(alphas)
+            delta[i] = delta_alphas[i]
+            liks1[i] = psf_.likelihood(alphas+delta, [D, D_d, gamma])
 
-        grads_expected = ((liks1 - liks) / delta_alphas).flatten()
+        grads_expected = (liks1 - liks) / delta_alphas
 
-        print(grads)
-        #print(grads_expected)
-        print(grads_o)
         np.testing.assert_almost_equal(grads, grads_expected, 3)
-    '''
+
 
     def test_S_prime(self):
         arcsec_per_px = 0.055
@@ -554,22 +532,19 @@ class test_psf(unittest.TestCase):
 
         n_coefs = 25
         gamma = 1.
-        L = 5
         
         nx = np.shape(image10x10)[0]
 
         #######################################################################
         # Create data
-        pa = psf.phase_aberration(n_coefs)
+        pa = psf.phase_aberration(np.random.normal(size=n_coefs)*10.)
         aperture_func = lambda xs: utils.aperture_circ(xs, coef=15.0, radius=diameter)
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
         image1 = utils.upsample(image10x10)
         image1_F = fft.fft2(image1)
-        image1_F  = np.tile(np.array([image1_F, image1_F]), (L, 1)).reshape((L, 2, nx, nx))
-        alphas = np.random.normal(size=(L, n_coefs))*10.
-        Ds = psf_.multiply(image1_F, alphas)
+        D, D_d = psf_.multiply(image1_F)
         
         #######################################################################
         # Calculate gradients
@@ -579,25 +554,24 @@ class test_psf(unittest.TestCase):
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
         psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
         
-        alphas = np.random.normal(size=(L, n_coefs))*10.
-        grads = psf_.S_prime(alphas, [Ds, gamma])
+        alphas = np.random.normal(size=n_coefs)*10.
+        grads = psf_.S_prime(alphas, [D, D_d, gamma])
 
         #######################################################################
         # Check against values calculated using finite differences
         delta_alphas = alphas*1.0e-7
         pa = psf_.coh_trans_func.phase_aberr
 
-        psf_.calc(alphas)
-        Ss = psf_.otf_vals[:,0,:,:]
-        #Ss = np.broadcast_to(S, (len(alphas), S.shape[0], S.shape[1]))
+        S = psf_.calc_otf(defocus=False)
+        Ss = np.broadcast_to(S, (len(alphas), S.shape[0], S.shape[1]))
         Ss1 = np.zeros_like(grads)
         for i in np.arange(0, len(alphas)):
             delta = np.zeros_like(alphas)
             delta[i] = delta_alphas[i]
-            psf_.calc(alphas+delta)
-            Ss1[i] = psf_.otf_vals[:,0,:,:]
+            pa.set_alphas(alphas+delta)
+            Ss1[i] = psf_.calc_otf(defocus=False)
 
-        delta_alphas1 = np.reshape(np.repeat(delta_alphas, Ss.shape[-2]*Ss.shape[-1], axis=0), np.shape(grads))
+        delta_alphas1 = np.reshape(np.repeat(delta_alphas, S.shape[0]*S.shape[1], axis=0), np.shape(grads))
         grads_expected = (Ss1 - Ss) / delta_alphas1
         
         num_plots = min(4, len(alphas))
@@ -618,7 +592,7 @@ class test_psf(unittest.TestCase):
             
             
         np.testing.assert_almost_equal(grads, grads_expected, 4)
-    '''
+
         
 if __name__ == '__main__':
     unittest.main()
