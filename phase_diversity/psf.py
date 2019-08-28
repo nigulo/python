@@ -254,7 +254,6 @@ class psf():
         S = self.otf_vals[:,0,:,:]
         S_d = self.otf_vals[:,1,:,:]
         nzi = np.nonzero(np.abs(S) + np.abs(S_d))
-        print("nzi", nzi[0].shape, S.shape[0]*S.shape[1]*S.shape[2])
         
         num = D[nzi]*S[nzi].conjugate() + D_d[nzi]*S_d[nzi].conjugate()
         num *= num.conjugate()

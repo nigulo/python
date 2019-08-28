@@ -483,7 +483,7 @@ class test_psf(unittest.TestCase):
         
         np.testing.assert_almost_equal(lik, lik_expected)
 
-
+    
     def test_likelihood_grad(self):
         arcsec_per_px = 0.055
         diameter = 20.0
@@ -491,7 +491,7 @@ class test_psf(unittest.TestCase):
         
         n_coefs = 10
         gamma = 1.
-        L = 1
+        L = 3
         
         nx = np.shape(image10x10)[0]
         nx1 = nx*2-1
@@ -507,7 +507,6 @@ class test_psf(unittest.TestCase):
         image1_F = fft.fft2(image1)
         image1_F  = np.tile(np.array([image1_F, image1_F]), (L, 1)).reshape((L, 2, nx1, nx1))
         alphas = np.random.normal(size=(L, n_coefs))*10.
-        print("image1_F, alphas", image1_F.shape, alphas.shape)
         Ds = psf_.multiply(image1_F, alphas)
         
         #######################################################################
@@ -521,10 +520,6 @@ class test_psf(unittest.TestCase):
         alphas = np.random.normal(size=(L, n_coefs))*10.
         grads = psf_.likelihood_grad(alphas.flatten(), [Ds, gamma])
         
-        pa_old = psf_old.phase_aberration(alphas[0])#zip(np.arange(1, n_coefs + 1), coefs))
-        ctf_old = psf_old.coh_trans_func(aperture_func, pa_old, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_o = psf_old.psf(ctf_old, nx, arcsec_per_px, diameter, wavelength)
-        grads_o = psf_o.likelihood_grad(alphas[0], [Ds[0, 0], Ds[0, 1], gamma])
 
         #######################################################################
         # Check against values calculated using finite differences
@@ -534,17 +529,14 @@ class test_psf(unittest.TestCase):
         liks = np.tile(lik, (alphas.shape[0], alphas.shape[1]))
         liks1 = np.zeros_like(alphas)
         for l in np.arange(0, L):
-            for i in np.arange(0, len(alphas)):
+            for i in np.arange(0, alphas.shape[1]):
                 delta = np.zeros_like(alphas)
                 delta[l, i] = delta_alphas[l, i]
                 liks1[l, i] = psf_.likelihood((alphas+delta).flatten(), [Ds, gamma])
 
         grads_expected = ((liks1 - liks) / delta_alphas).flatten()
 
-        print(grads)
-        #print(grads_expected)
-        print(grads_o)
-        np.testing.assert_almost_equal(grads, grads_expected, 3)
+        np.testing.assert_almost_equal(grads, grads_expected, 6)
     '''
 
     def test_S_prime(self):
