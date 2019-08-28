@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
 import numpy as np
-import psf
+import psf_old as psf
 import zernike
 import numpy.fft as fft
 import scipy.signal as signal

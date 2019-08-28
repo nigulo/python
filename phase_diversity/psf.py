@@ -176,7 +176,7 @@ class psf():
         
     def calc(self, alphas, normalize = True):
         l = alphas.shape[0]
-        self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
+        self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1))
         self.otf_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
         
         for i in np.arange(0, l):
@@ -191,8 +191,7 @@ class psf():
                 vals = fft.ifft2(coh_vals, axes=(-2, -1))
                 vals = (vals*vals.conjugate()).real
                 vals = fft.ifftshift(vals, axes=(-2, -1))
-                vals[0] = utils.upsample(vals[0])
-                vals[1] = utils.upsample(vals[1])
+                vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
                 # In principle there shouldn't be negative values, but ...
                 vals[vals < 0] = 0. # Set negative values to zero
                 corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
@@ -202,7 +201,7 @@ class psf():
                 vals /= norm
             self.incoh_vals[i] = vals
             self.otf_vals[i] = corr
-
+        return self.incoh_vals
 
     '''
     dat_F.shape = [l, 2, nx, nx]
@@ -336,7 +335,7 @@ class psf():
         gamma = data[1] # Not used
         alphas = theta.reshape(L, -1)
         
-        grads = np.zeros((L, alphas.shape[1], Ds.shape[-2]*2-1, Ds.shape[-1]*2-1), dtype='complex')
+        grads = np.zeros((L, alphas.shape[1], Ds.shape[-2], Ds.shape[-1]), dtype='complex')
         for l in np.arange(0, L):
             self.coh_trans_func.phase_aberr.set_alphas(alphas[l])
         
