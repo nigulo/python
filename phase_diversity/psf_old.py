@@ -316,8 +316,7 @@ class psf():
         H1 = self.coh_trans_func(defocus = False)
         H1_d = self.coh_trans_func(defocus = True)
         zs1 = self.coh_trans_func.phase_aberr.get_pol_values()
-
-
+        
         grads1 = np.zeros_like(alphas)
         for i in np.arange(0, len(alphas)):
             zsH = zs1[i]*H1

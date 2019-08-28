@@ -176,8 +176,8 @@ class psf():
         
     def calc(self, alphas, normalize = True):
         l = alphas.shape[0]
-        self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1))
-        self.otf_vals = np.zeros((l, 2, self.nx1, self.nx1))
+        self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
+        self.otf_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
         
         for i in np.arange(0, l):
             self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
