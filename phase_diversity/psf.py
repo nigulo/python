@@ -24,6 +24,7 @@ class phase_aberration():
         else:
             self.create_pols(len(alphas))
             self.set_alphas(alphas)
+            self.jmax = len(alphas)
     
     def create_pols(self, num):
         self.pols = []
@@ -106,7 +107,7 @@ class coh_trans_func():
 
         return np.array([self.pupil*np.exp(1.j * phase), self.pupil*np.exp(1.j * (phase + self.defocus))])
 
-def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True):
+def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, tip_tilt = None, a_est=None):
     assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
     D = Ds[:,0]
     D_d = Ds[:,1]
@@ -132,7 +133,10 @@ def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True):
     if not do_fft:
         return F_image
 
-    image = fft.ifft2(F_image).real
+    if tip_tilt is not None and a_est is not None:
+        image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
+    else:
+        image = fft.ifft2(F_image).real
     #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
     return image
 
@@ -142,7 +146,7 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True, tip_tilt=None):
         self.nx= nx
         coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
@@ -172,6 +176,7 @@ class psf():
         self.coh_trans_func2.calc(coords2)
         
         self.corr_or_fft = corr_or_fft
+        self.tip_tilt = tip_tilt
         
         
     def calc(self, alphas, normalize = True):
@@ -207,17 +212,22 @@ class psf():
     dat_F.shape = [l, 2, nx, nx]
     alphas.shape = [l, jmax]
     '''
-    def multiply(self, dat_F, alphas):
+    def multiply(self, dat_F, alphas, a=None):
+        if a is not None:
+            assert(self.tip_tilt is not None)
         assert(dat_F.shape[0] == alphas.shape[0])
         if len(self.otf_vals) < alphas.shape[0]:
             self.calc(alphas)
-        return dat_F * self.otf_vals
+        if a is not None:
+            return self.tip_tilt.multiply(dat_F * self.otf_vals, a)
+        else:
+            return dat_F * self.otf_vals
             
     '''
     dat.shape = [l, 2, nx, nx]
     alphas.shape = [l, jmax]
     '''
-    def convolve(self, dat, alphas):
+    def convolve(self, dat, alphas, a=None):
         if len(dat.shape) < 3:
             dat = np.array([[dat, dat]])
         elif len(dat.shape) < 4:
@@ -227,13 +237,14 @@ class psf():
             
         print("dat", dat.shape)
         dat_F = fft.fftshift(fft.fft2(dat), axes=(-2, -1))
+        dat_F= self.multiply(dat_F, alphas, a)
         
         return fft.ifft2(fft.ifftshift(dat_F, axes=(-2, -1))).real
         
 
-    def deconvolve(self, Ds, alphas, gamma, do_fft = True):
+    def deconvolve(self, Ds, alphas, gamma, do_fft = True, a_est=None):
         self.calc(alphas)
-        return deconvolve_(Ds, self.otf_vals, gamma, do_fft = do_fft)
+        return deconvolve_(Ds, self.otf_vals, gamma, do_fft = do_fft, tip_tilt=self.tip_tilt, a_est=a_est)
 
     '''
         Actually this is negative log likelihood
@@ -246,7 +257,9 @@ class psf():
         D_d = Ds[:,1,:,:]
         
         gamma = data[1] # Not used
-        alphas = theta.reshape((L, -1))
+        jmax = self.coh_trans_func.phase_aberr.jmax
+        alphas = theta[:L*jmax].reshape((L, -1))
+        other = theta[L*jmax:]
         
         self.calc(alphas)
         
@@ -260,6 +273,13 @@ class psf():
 
         lik = -np.sum((num/den).real) + np.sum((D*D.conjugate() + D_d*D_d.conjugate()).real)
         
+        #######################################################################
+        # Tip-tilt estimation
+        #######################################################################
+        if self.tip_tilt is not None:
+            Ps = np.ones((D.shape[0], 2, self.nx, self.nx), dtype='complex')
+            self.tip_tilt.set_data(Ds, Ps)#, F)
+            lik += self.tip_tilt.lik(other)
 
         return lik
         
@@ -274,7 +294,9 @@ class psf():
         D_d = Ds[:,1,:,:]
 
         gamma = data[1] # Not used
-        alphas = theta.reshape((L, -1))
+        jmax = self.coh_trans_func.phase_aberr.jmax
+        alphas = theta[:L*jmax].reshape((L, -1))
+        other = theta[L*jmax:]
         
         self.calc(alphas)
         
@@ -304,7 +326,7 @@ class psf():
         Z_d[nzi] = (SDS*D_d_nzi.conjugate()-SD2*S_d_nzi_conj)*den
         
         jmax = alphas.shape[1]
-        grads1 = np.zeros(L*jmax)#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
+        grads = np.zeros(L*jmax)#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
         
         for l in np.arange(0, L):
             self.coh_trans_func.phase_aberr.set_alphas(alphas[l])
@@ -320,9 +342,19 @@ class psf():
                 S_primes = -1.j*(signal.correlate2d(zsH, H1) - signal.correlate2d(H1, zsH))
                 S_d_primes = -1.j*(signal.correlate2d(zsH_d, H1_d) - signal.correlate2d(H1_d, zsH_d))
                 a = np.sum(Z[l]*S_primes + Z_d[l]*S_d_primes)
-                grads1[l*jmax + i] = (a + a.conjugate()).real
+                grads[l*jmax + i] = (a + a.conjugate()).real
+        grads /= (self.nx*self.nx)
         
-        return grads1/(self.nx*self.nx)
+        
+        #######################################################################
+        # Tip-tilt estimation
+        #######################################################################
+        if self.tip_tilt is not None:
+            Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
+            self.tip_tilt.set_data(Ds, Ps)#, F)
+            grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
+
+        return grads
 
     def S_prime(self, theta, data):
         #regularizer_eps = 1e-10
