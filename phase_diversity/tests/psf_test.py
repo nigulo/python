@@ -337,9 +337,9 @@ class test_psf(unittest.TestCase):
         my_plot.save("test_calc_via_fft.png")
         my_plot.close()
 
-        indices = np.where(psf_vals[0, 0]-psf_vals_expected > 0)
-        print(psf_vals[0, 0][indices])
-        print(psf_vals_expected[indices])
+        #indices = np.where(psf_vals[0, 0]-psf_vals_expected > 0)
+        #print(psf_vals[0, 0][indices])
+        #print(psf_vals_expected[indices])
         np.testing.assert_almost_equal(psf_vals[0, 0], psf_vals_expected, 8)
 
     def test_calc_otf(self):
@@ -565,7 +565,7 @@ class test_psf(unittest.TestCase):
 
         n_coefs = 25
         gamma = 1.
-        L = 5
+        L = 3
         
         nx = np.shape(image10x10)[0]
         nx1 = nx*2-1
@@ -596,12 +596,12 @@ class test_psf(unittest.TestCase):
 
         #######################################################################
         # Check against values calculated using finite differences
-        delta_alphas = np.ones_like(alphas)*1.0e-8
+        delta_alphas = np.ones_like(alphas)*1e-8
         pa = psf_.coh_trans_func.phase_aberr
 
         psf_.calc(alphas)
-        Ss = psf_.otf_vals[:,0,:,:]
-        #Ss = np.broadcast_to(S, (len(alphas), S.shape[0], S.shape[1]))
+        S = psf_.otf_vals[:,0,:,:]
+        Ss = np.tile(np.reshape(S, (S.shape[0], 1, S.shape[1], S.shape[2])), (1, alphas.shape[1], 1, 1))
         Ss1 = np.zeros_like(grads)
         for l in np.arange(0, L):
             for i in np.arange(0, len(alphas)):
@@ -610,7 +610,8 @@ class test_psf(unittest.TestCase):
                 psf_.calc(alphas+delta)
                 Ss1[l, i] = psf_.otf_vals[l,0,:,:]
 
-        delta_alphas1 = np.reshape(np.repeat(delta_alphas, Ss.shape[-2]*Ss.shape[-1], axis=0), np.shape(grads))
+        delta_alphas1 = np.tile(np.reshape(delta_alphas, (delta_alphas.shape[0], delta_alphas.shape[1], 1, 1)), (1, 1, Ss.shape[-2], Ss.shape[-1]))
+        #delta_alphas1 = np.reshape(np.repeat(delta_alphas, Ss.shape[-2]*Ss.shape[-1], axis=0), np.shape(grads))
         grads_expected = (Ss1 - Ss) / delta_alphas1
         
         #num_plots = min(4, len(alphas))
@@ -629,8 +630,10 @@ class test_psf(unittest.TestCase):
         #        for k in np.arange(grads[i].shape[1]):
         #            print(grads[i, j, k], grads_expected[i, j, k])
             
-            
-        np.testing.assert_almost_equal(grads, grads_expected, 4)
+        indices =np.where((grads-grads_expected) > 1e-7)
+        print(grads[indices])
+        print(grads_expected[indices])
+        np.testing.assert_array_almost_equal(grads, grads_expected, 4)
 
         
 if __name__ == '__main__':

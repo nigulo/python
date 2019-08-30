@@ -572,6 +572,7 @@ class test_psf(unittest.TestCase):
             Ss1[i] = psf_.calc_otf(defocus=False)
 
         delta_alphas1 = np.reshape(np.repeat(delta_alphas, S.shape[0]*S.shape[1], axis=0), np.shape(grads))
+        print("Ss1, Ss, delta_alphas1", Ss1.shape, Ss.shape, delta_alphas1.shape)
         grads_expected = (Ss1 - Ss) / delta_alphas1
         
         num_plots = min(4, len(alphas))
