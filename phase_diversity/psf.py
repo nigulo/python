@@ -179,13 +179,17 @@ class psf():
         self.tip_tilt = tip_tilt
         
         
-    def calc(self, alphas, normalize = True):
-        l = alphas.shape[0]
+    def calc(self, alphas=None, normalize = True):
+        if alphas is None:
+            l = 1
+        else:
+            l = alphas.shape[0]
         self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1))
         self.otf_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
         
         for i in np.arange(0, l):
-            self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
+            if alphas is not None:
+                self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
             coh_vals = self.coh_trans_func()
         
             if self.corr_or_fft:
@@ -212,11 +216,18 @@ class psf():
     dat_F.shape = [l, 2, nx, nx]
     alphas.shape = [l, jmax]
     '''
-    def multiply(self, dat_F, alphas, a=None):
+    def multiply(self, dat_F, alphas=None, a=None):
+        if len(dat_F.shape) < 3:
+            dat_F = np.array([[dat_F, dat_F]])
+        elif len(dat_F.shape) < 4:
+            dat_F = np.tile(dat_F, (2,1)).reshape((dat_F.shape[0],2,dat_F.shape[-2],dat_F.shape[-1]))
+        if alphas is not None and len(alphas.shape) < 2:
+            alphas = np.array([alphas])
+
         if a is not None:
             assert(self.tip_tilt is not None)
-        assert(dat_F.shape[0] == alphas.shape[0])
-        if len(self.otf_vals) < alphas.shape[0]:
+
+        if len(self.otf_vals) == 0:
             self.calc(alphas)
         if a is not None:
             return self.tip_tilt.multiply(dat_F * self.otf_vals, a)
@@ -227,15 +238,14 @@ class psf():
     dat.shape = [l, 2, nx, nx]
     alphas.shape = [l, jmax]
     '''
-    def convolve(self, dat, alphas, a=None):
+    def convolve(self, dat, alphas=None, a=None):
         if len(dat.shape) < 3:
             dat = np.array([[dat, dat]])
         elif len(dat.shape) < 4:
             dat = np.tile(dat, (2,1)).reshape((dat.shape[0],2,dat.shape[-2],dat.shape[-1]))
-        if len(alphas.shape) < 2:
+        if alphas is not None and len(alphas.shape) < 2:
             alphas = np.array([alphas])
             
-        print("dat", dat.shape)
         dat_F = fft.fftshift(fft.fft2(dat), axes=(-2, -1))
         dat_F= self.multiply(dat_F, alphas, a)
         

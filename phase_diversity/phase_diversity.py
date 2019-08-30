@@ -335,8 +335,7 @@ Fs = np.ones((num_frames, 1, nx, nx), dtype='complex')
 pa_null = psf.phase_aberration([])
 ctf_null = psf.coh_trans_func(aperture_func, pa_null, defocus_func)
 psf_null = psf.psf(ctf_null, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-psf_null.calc(defocus=False)
-psf_null.calc(defocus=True)
+psf_null.calc()
 
 image_center = image#misc.center(image)
 vmin = np.min(image_center)
@@ -361,9 +360,11 @@ for trial in np.arange(0, num_frames):
             #pa = psf.phase_aberration(np.random.normal(size=jmax))
             #pa = psf.phase_aberration([])
             #ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-            ctf = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
-            psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-            DF, DF_d = psf_.multiply(fimage)
+            ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,trial,:,:]), defocus_func)
+            psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+            DFs = psf_true.multiply(fimage)
+            DF = DFs[0, 0]
+            DF_d = DFs[0, 1]
             
             if noise_std_perc > 0.:
                 noise = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
@@ -456,7 +457,7 @@ my_plot.save("estimates.png")
 
 #Ds, mean, std = center_and_normalize(Ds)
 
-res = sampler.sample(Ds, "samples" + str(trial) + ".png")
+res = sampler.sample(Ds, "samples.png")
 if tt is not None:
     betas_est, a_est = res
 else:
