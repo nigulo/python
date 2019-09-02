@@ -107,7 +107,6 @@ class coh_trans_func():
 
         return np.array([self.pupil*np.exp(1.j * phase), self.pupil*np.exp(1.j * (phase + self.defocus))])
 
-'''
 def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, ret_all=False, tip_tilt = None, a_est=None):
     assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
     D = Ds[:,0]
@@ -116,6 +115,7 @@ def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, ret_all=False, t
 
     S = Ss[:,0]
     S_d = Ss[:,1]
+    
 
     regularizer_eps = 0.#1e-10
     #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
@@ -147,7 +147,6 @@ def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, ret_all=False, t
         return image, F_image, Ss
     else:
         return image
-'''
 
     
 class psf():
@@ -267,6 +266,7 @@ class psf():
         Ps = self.otf_vals
         if normalize:
             Ds = utils.normalize_(Ds, Ps)
+        #return deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift = fft_shift_before, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est)
         return utils.deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift_before = fft_shift_before, ret_all=ret_all, tip_tilt=self.tip_tilt, a_est=a_est)
 
 

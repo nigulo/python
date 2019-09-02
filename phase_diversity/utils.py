@@ -129,7 +129,7 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     if fft_shift_before:
         F_image = fft.ifftshift(F_image, axes=(-2, -1))
 
-    '''
+
     # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
     D1 = D[0]
     D1_d = D_d[0]
@@ -144,28 +144,28 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     F1_image /= den1
     
     if fft_shift_before:
-        D1 = fft.ifftshift(D1, axes=(-2, -1))
-        D1_d = fft.ifftshift(D1_d, axes=(-2, -1))
-        F1_image = fft.ifftshift(F1_image, axes=(-2, -1))
+        D1 = fft.ifftshift(D1)
+        D1_d = fft.ifftshift(D1_d)
+        F1_image = fft.ifftshift(F1_image)
         P1 = fft.ifft2(fft.ifftshift(P1)).real
-        P1_d = fft.ifft2(fft.ifftshift(P1)).real
+        P1_d = fft.ifft2(fft.ifftshift(P1_d)).real
     else:
         P1 = fft.ifftshift(fft.ifft2(P1)).real
-        P1_d = fft.ifftshift(fft.ifft2(P1)).real
+        P1_d = fft.ifftshift(fft.ifft2(P1_d)).real
     D1 = fft.ifft2(D1).real
     D1_d = fft.ifft2(D1_d).real
     import sys
     sys.path.append('../utils')
     import plot
+    import datetime
     my_plot = plot.plot(nrows=1, ncols=5)
     my_plot.colormap(D1, [0])
     my_plot.colormap(D1_d, [1])
     my_plot.colormap(fft.ifft2(F1_image).real, [2])
-    my_plot.colormap(P1, [3])
-    my_plot.colormap(P1_d.real, [4])
-    my_plot.save("psf_basis_deconvolve_.png")
+    my_plot.colormap(np.log(P1), [3])
+    my_plot.colormap(np.log(P1_d), [4])
+    my_plot.save("psf_basis_deconvolve" + str(datetime.datetime.now().timestamp()) + ".png")
     # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
-    '''
     
     #np.savetxt("F.txt", F_image, fmt='%f')
     

@@ -210,7 +210,7 @@ def main():
     ###########################################################################
     # Create objects for image reconstruction
     
-    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax, start_index=0), defocus_func)
+    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, tip_tilt=None)
     sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=1)
 
