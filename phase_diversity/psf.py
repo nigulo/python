@@ -50,6 +50,7 @@ class phase_aberration():
             
     def __call__(self):
         vals = np.zeros(np.shape(self.terms)[1:])
+        print("terms, alphas", self.terms.shape, self.alphas.shape, len(self.pols))
         for i in np.arange(0, len(self.terms)):
             vals += self.terms[i] * self.alphas[i]
         return vals
@@ -189,6 +190,7 @@ class psf():
         
         for i in np.arange(0, l):
             if alphas is not None:
+                print("alphass", alphas.shape)
                 self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
             coh_vals = self.coh_trans_func()
         
@@ -256,20 +258,39 @@ class psf():
         self.calc(alphas)
         return deconvolve_(Ds, self.otf_vals, gamma, do_fft = do_fft, tip_tilt=self.tip_tilt, a_est=a_est)
 
+
+    def encode_params(self, alphas, a = None):
+        theta = alphas.flatten()
+        if self.tip_tilt is not None:
+            theta = np.concatenate((theta, self.tip_tilt.encode(a)))
+        return theta
+
+    def encode_data(self, Ds, gamma):
+        return [Ds, gamma]
+    
+    def encode(self, alphas, Ds, gamma, a = []):
+        return self.encode_params(alphas, a), self.encode_data(Ds, gamma)
+
+    def decode(self, theta, data):
+        Ds = data[0]
+        gamma = data[1]
+        L = Ds.shape[0]
+        jmax = self.coh_trans_func.phase_aberr.jmax
+        alphas = np.zeros((L, jmax))
+        #print("theta.shape", theta.shape, L, self.jmax, theta)
+        for l in np.arange(0, L):
+            begin_index = l*jmax
+            alphas[l] = theta[begin_index:begin_index+jmax]
+        return alphas, Ds, gamma, theta[L*jmax:]
+
     '''
         Actually this is negative log likelihood
     '''
     def likelihood(self, theta, data):
+        alphas, Ds, gamma, other = self.decode(theta, data)
         regularizer_eps = 0.#1e-10
-        Ds = data[0]
-        L = Ds.shape[0]
         D = Ds[:,0,:,:]
         D_d = Ds[:,1,:,:]
-        
-        gamma = data[1] # Not used
-        jmax = self.coh_trans_func.phase_aberr.jmax
-        alphas = theta[:L*jmax].reshape((L, -1))
-        other = theta[L*jmax:]
         
         self.calc(alphas)
         
@@ -295,18 +316,15 @@ class psf():
         
 
     def likelihood_grad(self, theta, data):
+        alphas, Ds, gamma, other = self.decode(theta, data)
         #print("likelihood_grad")
         regularizer_eps = 0.#1e-10
 
-        Ds = data[0]
         L = Ds.shape[0]
+        jmax = self.coh_trans_func.phase_aberr.jmax
+
         D = Ds[:,0,:,:]
         D_d = Ds[:,1,:,:]
-
-        gamma = data[1] # Not used
-        jmax = self.coh_trans_func.phase_aberr.jmax
-        alphas = theta[:L*jmax].reshape((L, -1))
-        other = theta[L*jmax:]
         
         self.calc(alphas)
         

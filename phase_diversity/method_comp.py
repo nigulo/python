@@ -95,7 +95,7 @@ def main():
     print(image_file)
 
     if image_file is None:
-        image_file = 'icont'
+        image_file = 'icont.fits'
         dir = "images"
 
 
@@ -219,45 +219,44 @@ def main():
     D_mean = np.zeros((nx, nx))
     D_d_mean = np.zeros((nx, nx))
     
-    for i in np.arange(0, len(fried)):
-        for j in np.arange(0, num_realizations):
-            print("Realization: " + str(j))
-            my_plot1 = plot.plot(nrows=1, ncols=1)
-            my_plot1.colormap(wavefront[i,j,:,:])
-            my_plot1.save("kolmogorov" + str(i) + "_" + str(j) + ".png")
-            my_plot1.close()
+    for i in np.arange(0, num_realizations):
+        print("Realization: " + str(i))
+        my_plot1 = plot.plot(nrows=1, ncols=1)
+        my_plot1.colormap(wavefront[0,i,:,:])
+        my_plot1.save("kolmogorov" + str(i) + ".png")
+        my_plot1.close()
 
-            #pa_true = psf.phase_aberration(np.random.normal(size=5)*2)
-            #pa_true = psf.phase_aberration([])
-            #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+        #pa_true = psf.phase_aberration(np.random.normal(size=5)*2)
+        #pa_true = psf.phase_aberration([])
+        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
 
-            #pa_true = psf.phase_aberration(np.random.normal(size=5)*.001)
-            #pa_true = psf.phase_aberration([])
-            #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-            ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[i,j,:,:]), defocus_func)
-            psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        #pa_true = psf.phase_aberration(np.random.normal(size=5)*.001)
+        #pa_true = psf.phase_aberration([])
+        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+        ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,i,:,:]), defocus_func)
+        psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
-            ###################################################################
-            # Create convolved image and do the estimation
-            DFs = psf_true.multiply(fimage)
-            DF = DFs[0, 0]
-            DF_d = DFs[0, 1]
-            
-            DF = fft.ifftshift(DF)
-            DF_d = fft.ifftshift(DF_d)
+        ###################################################################
+        # Create convolved image and do the estimation
+        DFs = psf_true.multiply(fimage)
+        DF = DFs[0, 0]
+        DF_d = DFs[0, 1]
+        
+        DF = fft.ifftshift(DF)
+        DF_d = fft.ifftshift(DF_d)
+
+        D = fft.ifft2(DF).real
+        D_d = fft.ifft2(DF_d).real
+        
+        Ds[i, 0] = DF
+        Ds[i, 1] = DF_d
+
+        Ds1[i, 0] = D
+        Ds1[i, 1] = D_d
     
-            D = fft.ifft2(DF).real
-            D_d = fft.ifft2(DF_d).real
-            
-            Ds[i, 0] = DF
-            Ds[i, 1] = DF_d
-
-            Ds1[i, 0] = D
-            Ds1[i, 1] = D_d
-        
-        
-            D_mean += D
-            D_d_mean += D_d
+    
+        D_mean += D
+        D_d_mean += D_d
 
 
     res = sampler.sample(Ds, "samples.png")
