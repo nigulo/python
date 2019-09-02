@@ -17,6 +17,7 @@ from scipy.signal import correlate2d as correlate
 from multiprocessing import Pool
 from functools import partial
 
+import time
 import utils
 import psf
 import psf_sampler
@@ -47,7 +48,7 @@ def save(filename, state):
 # Parameters
 num_realizations = 5    # Number of realizations per fried parameter. 
 max_frames = min(10, num_realizations)
-fried_param=0.2
+fried_param=5.
 #jmax = 5
 #arcsec_per_px = 0.055
 #diameter = 50.0
@@ -209,8 +210,8 @@ def main():
     ###########################################################################
     # Create objects for image reconstruction
     
-    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
-    psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, tip_tilt=tt)
+    ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax, start_index=0), defocus_func)
+    psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, tip_tilt=None)
     sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=1)
 
     sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
@@ -238,9 +239,9 @@ def main():
         #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
 
         #pa_true = psf.phase_aberration(np.random.normal(size=5)*.001)
-        #pa_true = psf.phase_aberration([])
-        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-        ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,i,:,:]), defocus_func)
+        pa_true = psf.phase_aberration([])
+        ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+        #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,i,:,:]), defocus_func)
         psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
         ###################################################################
@@ -265,17 +266,23 @@ def main():
         D_mean += D
         D_d_mean += D_d
 
+    start = time.time()
 
     res = sampler.sample(Ds, "samples.png")
-    if tt is not None:
+    if False:#tt is not None:
         alphas_est, a_est = res
     else:
         alphas_est = res
         a_est = None
     #print("betas_est, a_est", betas_est, a_est)
-    image_est, F, Ps = psf_b.deconvolve(Ds, alphas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+    image_est, F, Ps = psf_.deconvolve(Ds, alphas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+    #image_est, F, Ps = psf_b.deconvolve(Ds, alphas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+
+    end = time.time()
+    print("PSF reconstruction took: " + str(end - start))
 
 
+    start = time.time()
     res_b = sampler_b.sample(Ds, "samples_b.png")
     if tt is not None:
         betas_est, a_est = res_b
@@ -283,7 +290,10 @@ def main():
         betas_est = res_b
         a_est = None
     #print("betas_est, a_est", betas_est, a_est)
-    image_est_b, F, Ps = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+    image_est_b, F_b, Ps_b = psf_b.deconvolve(Ds, betas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
+
+    end = time.time()
+    print("PSF_basis reconstruction took: " + str(end - start))
     
     
     vmin = np.min(image)
@@ -302,7 +312,7 @@ def main():
     
     for trial in np.arange(0, num_realizations):
         image_est_i = image_est[trial]
-        image_est_i = psf_basis.critical_sampling(image_est_i, arcsec_per_px, diameter, wavelength)
+        #image_est_i = psf_basis.critical_sampling(image_est_i, arcsec_per_px, diameter, wavelength)
 
         image_est_b_i = image_est_b[trial]
         image_est_b_i = psf_basis.critical_sampling(image_est_b_i, arcsec_per_px, diameter, wavelength)
@@ -315,13 +325,18 @@ def main():
             my_plot.colormap(Ds1[trial, 1], [trial, 2], vmin=vmin, vmax=vmax)
             
             my_plot.colormap(image_est_i, [trial, 3], vmin=vmin, vmax=vmax)
-            my_plot.colormap(image_est_i, [trial, 4], vmin=vmin, vmax=vmax)
+            my_plot.colormap(image_est_b_i, [trial, 4], vmin=vmin, vmax=vmax)
             
             my_plot.colormap(np.abs(image_est_i-image), [trial, 5], vmin=vmin, vmax=vmax)
-            my_plot.colormap(np.abs(image_est_i-image), [trial, 6], vmin=vmin, vmax=vmax)
+            my_plot.colormap(np.abs(image_est_b_i-image), [trial, 6], vmin=vmin, vmax=vmax)
+
+
+    image_est_mean /= num_realizations
+    image_est_b_mean /= num_realizations
+    D_mean /= num_realizations
+    D_d_mean /= num_realizations
             
     my_plot.colormap(image, [max_frames, 0], vmin=vmin, vmax=vmax)
-
     my_plot.colormap(D_mean, [max_frames, 1], vmin=vmin, vmax=vmax)
     my_plot.colormap(D_d_mean, [max_frames, 2], vmin=vmin, vmax=vmax)
     my_plot.colormap(image_est_mean, [max_frames, 3], vmin=vmin, vmax=vmax)

@@ -84,84 +84,6 @@ def Vnmf(radius, f, n, m):
                 
     return Vnm
 
-def normalize_(Ds, Ps):
-    Ds = fft.ifftshift(fft.ifft2(Ds), axes=(-2, -1)).real
-    norm = fft.ifftshift(fft.ifft2(Ps), axes=(-2, -1)).real
-    norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
-    Ds *= norm
-    return fft.fft2(fft.fftshift(Ds, axes=(-2, -1)))
-
-    #Ds = fft.ifft2(Ds).real
-    #norm = fft.ifftshift(fft.ifft2(Ps)).real
-    #norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
-    #Ds *= norm
-    #1return fft.fft2(Ds)
-
-def deconvolve_(Ds, Ps, gamma, do_fft = True, ret_all=False, tip_tilt = None, a_est=None):
-    D = Ds[:,0]
-    D_d = Ds[:,1]
-    
-
-    P = Ps[:,0]
-    P_d = Ps[:,1]
-
-    P_conj = P.conjugate()
-    P_d_conj = P_d.conjugate()
-
-    F_image = D * P_conj + gamma * D_d * P_d_conj
-    den = P*P_conj + gamma * P_d * P_d_conj
-    F_image /= den
-
-
-    ###########################################################################
-    # TESTTESTTEST
-    D1 = D[0]
-    D1_d = D_d[0]
-    P1 = P[0]
-    P1_d = P_d[0]
-
-    P1_conj = P1.conjugate()
-    P1_d_conj = P1_d.conjugate()
-
-    F1_image = D1 * P1_conj + gamma * D1_d * P1_d_conj
-    den1 = P1*P1_conj + gamma * P1_d * P1_d_conj
-    F1_image /= den1
-    
-    D1 = fft.ifft2(D1).real
-    D1_d = fft.ifft2(D1_d).real
-    import sys
-    sys.path.append('../utils')
-    import plot
-    my_plot = plot.plot(nrows=1, ncols=5)
-    my_plot.colormap(D1, [0])
-    my_plot.colormap(D1_d, [1])
-    my_plot.colormap(fft.ifft2(F1_image).real, [2])
-    my_plot.colormap(np.log(fft.ifftshift(fft.ifft2(P1)).real), [3])
-    my_plot.colormap(np.log(fft.ifftshift(fft.ifft2(P1_d)).real), [4])
-    my_plot.save("psf_basis_deconvolve_.png")
-    
-    ###########################################################################
-    
-    #np.savetxt("F.txt", F_image, fmt='%f')
-    
-    if not do_fft and not ret_all:
-        return F_image
-
-    if tip_tilt is not None and a_est is not None:
-        #Ps = np.ones_like(Ps)
-        #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
-        image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
-    else:
-        image = fft.ifftshift(fft.ifft2(F_image), axes=(-2, -1)).real
-        #image = fft.ifft2(F_image).real
-        
-       
-    if ret_all:
-        return image, F_image, Ps
-    else:
-        return image
-
-
 
 def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     nx = image.shape[0]
@@ -189,9 +111,7 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     my_plot.close()
     
     mask = np.ones_like(coefs)
-    print("critical_sampling coefs", np.max(coefs), np.min(coefs), np.mean(coefs), np.std(coefs), np.median(coefs))
     indices = np.where(coefs < 1e-3)
-    print("critical_sampling indices", indices)
     mask[indices] = 0.
     
     my_plot = plot.plot(nrows=2)
@@ -490,8 +410,8 @@ class psf_basis:
     def deconvolve(self, Ds, betas, gamma, do_fft = True, ret_all=False, a_est=None, normalize = False):
         Ps = self.get_FP(betas)
         if normalize:
-            Ds = normalize_(Ds, Ps)
-        return deconvolve_(Ds, Ps, gamma, do_fft = do_fft, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est)
+            Ds = utils.normalize_(Ds, Ps)
+        return utils.deconvolve_(Ds, Ps, gamma, do_fft = do_fft, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est)
         #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
         #print(D)

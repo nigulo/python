@@ -107,7 +107,8 @@ class coh_trans_func():
 
         return np.array([self.pupil*np.exp(1.j * phase), self.pupil*np.exp(1.j * (phase + self.defocus))])
 
-def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, tip_tilt = None, a_est=None):
+'''
+def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, ret_all=False, tip_tilt = None, a_est=None):
     assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
     D = Ds[:,0]
     D_d = Ds[:,1]
@@ -116,7 +117,7 @@ def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, tip_tilt = None,
     S = Ss[:,0]
     S_d = Ss[:,1]
 
-    regularizer_eps = 1e-10
+    regularizer_eps = 0.#1e-10
     #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
     #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
     
@@ -128,18 +129,27 @@ def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, tip_tilt = None,
     F_image /= (S*S_conj + gamma * S_d * S_d_conj + regularizer_eps)
 
     if fft_shift:
-        F_image = fft.ifftshift(F_image)
+        F_image = fft.ifftshift(F_image, axes=(-2, -1))
     
-    if not do_fft:
+    if not do_fft and not ret_all:
         return F_image
 
     if tip_tilt is not None and a_est is not None:
-        image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
+        #Ps = np.ones_like(Ps)
+        #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
+        image, image_F, Ss = tip_tilt.deconvolve(F_image, Ss, a_est)
     else:
         image = fft.ifft2(F_image).real
-    #image = np.roll(np.roll(image, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-    return image
+        #image = fft.ifft2(F_image).real
+        
+       
+    if ret_all:
+        return image, F_image, Ss
+    else:
+        return image
+'''
 
+    
 class psf():
 
     '''
@@ -228,7 +238,7 @@ class psf():
             assert(self.tip_tilt is not None)
 
         if len(self.otf_vals) == 0:
-            self.calc(alphas)
+            self.calc(alphas=alphas)
         if a is not None:
             return self.tip_tilt.multiply(dat_F * self.otf_vals, a)
         else:
@@ -252,9 +262,12 @@ class psf():
         return fft.ifft2(fft.ifftshift(dat_F, axes=(-2, -1))).real
         
 
-    def deconvolve(self, Ds, alphas, gamma, do_fft = True, a_est=None):
-        self.calc(alphas)
-        return deconvolve_(Ds, self.otf_vals, gamma, do_fft = do_fft, tip_tilt=self.tip_tilt, a_est=a_est)
+    def deconvolve(self, Ds, alphas, gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False):
+        self.calc(alphas=alphas)
+        Ps = self.otf_vals
+        if normalize:
+            Ds = utils.normalize_(Ds, Ps)
+        return utils.deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift_before = fft_shift_before, ret_all=ret_all, tip_tilt=self.tip_tilt, a_est=a_est)
 
 
     def encode_params(self, alphas, a = None):
@@ -290,7 +303,7 @@ class psf():
         D = Ds[:,0,:,:]
         D_d = Ds[:,1,:,:]
         
-        self.calc(alphas)
+        self.calc(alphas=alphas)
         
         S = self.otf_vals[:,0,:,:]
         S_d = self.otf_vals[:,1,:,:]
@@ -324,7 +337,7 @@ class psf():
         D = Ds[:,0,:,:]
         D_d = Ds[:,1,:,:]
         
-        self.calc(alphas)
+        self.calc(alphas=alphas)
         
         S = self.otf_vals[:,0,:,:]
         S_d = self.otf_vals[:,1,:,:]

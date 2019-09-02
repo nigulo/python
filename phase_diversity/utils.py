@@ -2,6 +2,7 @@ import numpy as np
 import scipy.special as special
 #import scipy.misc
 import scipy.ndimage
+import numpy.fft as fft
 
 def cart_to_polar(xs):
     scalar = False
@@ -90,3 +91,99 @@ def get_coords(nx, arcsec_per_px, diameter, wavelength):
     xs = np.linspace(-x_limit, x_limit, nx)
     print("PSF x_limit", xs[0], xs[-1])
     return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
+
+
+def normalize_(Ds, Ps):
+    Ds = fft.ifftshift(fft.ifft2(Ds), axes=(-2, -1)).real
+    norm = fft.ifftshift(fft.ifft2(Ps), axes=(-2, -1)).real
+    norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
+    Ds *= norm
+    return fft.fft2(fft.fftshift(Ds, axes=(-2, -1)))
+
+    #Ds = fft.ifft2(Ds).real
+    #norm = fft.ifftshift(fft.ifft2(Ps)).real
+    #norm = np.sum(norm, axis=(2, 3)).repeat(Ds.shape[2]*Ds.shape[3]).reshape((Ds.shape[0], Ds.shape[1], Ds.shape[2], Ds.shape[3]))
+    #Ds *= norm
+    #1return fft.fft2(Ds)
+
+'''
+    When calling from psf, set fft_shift_before = True, 
+    when from psf_basis, set fft_shift_before = False
+'''
+def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=False, tip_tilt = None, a_est=None):
+    regularizer_eps = 1e-10
+    assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
+    D = Ds[:, 0, :, :]
+    D_d = Ds[:, 1, :, :]
+    
+    P = Ps[:, 0, :, :]
+    P_d = Ps[:, 1, :, :]
+
+    P_conj = P.conjugate()
+    P_d_conj = P_d.conjugate()
+
+    F_image = D * P_conj + gamma * D_d * P_d_conj + regularizer_eps
+    den = P*P_conj + gamma * P_d * P_d_conj + regularizer_eps
+    F_image /= den
+
+    if fft_shift_before:
+        F_image = fft.ifftshift(F_image, axes=(-2, -1))
+
+    '''
+    # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
+    D1 = D[0]
+    D1_d = D_d[0]
+    P1 = P[0]
+    P1_d = P_d[0]
+
+    P1_conj = P1.conjugate()
+    P1_d_conj = P1_d.conjugate()
+
+    F1_image = D1 * P1_conj + gamma * D1_d * P1_d_conj + regularizer_eps
+    den1 = P1*P1_conj + gamma * P1_d * P1_d_conj + regularizer_eps
+    F1_image /= den1
+    
+    if fft_shift_before:
+        D1 = fft.ifftshift(D1, axes=(-2, -1))
+        D1_d = fft.ifftshift(D1_d, axes=(-2, -1))
+        F1_image = fft.ifftshift(F1_image, axes=(-2, -1))
+        P1 = fft.ifft2(fft.ifftshift(P1)).real
+        P1_d = fft.ifft2(fft.ifftshift(P1)).real
+    else:
+        P1 = fft.ifftshift(fft.ifft2(P1)).real
+        P1_d = fft.ifftshift(fft.ifft2(P1)).real
+    D1 = fft.ifft2(D1).real
+    D1_d = fft.ifft2(D1_d).real
+    import sys
+    sys.path.append('../utils')
+    import plot
+    my_plot = plot.plot(nrows=1, ncols=5)
+    my_plot.colormap(D1, [0])
+    my_plot.colormap(D1_d, [1])
+    my_plot.colormap(fft.ifft2(F1_image).real, [2])
+    my_plot.colormap(P1, [3])
+    my_plot.colormap(P1_d.real, [4])
+    my_plot.save("psf_basis_deconvolve_.png")
+    # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
+    '''
+    
+    #np.savetxt("F.txt", F_image, fmt='%f')
+    
+    if not do_fft and not ret_all:
+        return F_image
+
+    if tip_tilt is not None and a_est is not None:
+        #Ps = np.ones_like(Ps)
+        #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
+        image, image_F, Ps = tip_tilt.deconvolve(F_image, Ps, a_est)
+    else:
+        image = fft.ifft2(F_image).real
+        if not fft_shift_before:
+            image = fft.ifftshift(image, axes=(-2, -1))
+        #image = fft.ifft2(F_image).real
+        
+       
+    if ret_all:
+        return image, F_image, Ps
+    else:
+        return image

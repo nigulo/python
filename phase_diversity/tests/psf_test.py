@@ -444,7 +444,8 @@ class test_psf(unittest.TestCase):
         image1_F = fft.fftshift(fft.fft2(image1))
         image1_F  = np.tile(np.array([image1_F, image1_F]), (L, 1)).reshape((L, 2, nx1, nx1))
         Ds = psf_.multiply(image1_F, coefs)
-        reconst = psf_.deconvolve(Ds, alphas=coefs, gamma=1., do_fft=True)
+        reconst = psf_.deconvolve(Ds, alphas=coefs, gamma=1., do_fft=True, fft_shift_before=True)
+        #reconst = fft.ifftshift(reconst, axes=(-2, -1))
         np.testing.assert_almost_equal(reconst[0], image1)
       
     def test_likelihood(self):
