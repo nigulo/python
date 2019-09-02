@@ -50,7 +50,6 @@ class phase_aberration():
             
     def __call__(self):
         vals = np.zeros(np.shape(self.terms)[1:])
-        print("terms, alphas", self.terms.shape, self.alphas.shape, len(self.pols))
         for i in np.arange(0, len(self.terms)):
             vals += self.terms[i] * self.alphas[i]
         return vals
@@ -190,7 +189,6 @@ class psf():
         
         for i in np.arange(0, l):
             if alphas is not None:
-                print("alphass", alphas.shape)
                 self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
             coh_vals = self.coh_trans_func()
         
@@ -308,7 +306,7 @@ class psf():
         # Tip-tilt estimation
         #######################################################################
         if self.tip_tilt is not None:
-            Ps = np.ones((D.shape[0], 2, self.nx, self.nx), dtype='complex')
+            Ps = np.ones((D.shape[0], 2, self.nx1, self.nx1), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             lik += self.tip_tilt.lik(other)
 
@@ -378,7 +376,7 @@ class psf():
         # Tip-tilt estimation
         #######################################################################
         if self.tip_tilt is not None:
-            Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
+            Ps = np.ones((L, 2, self.nx1, self.nx1), dtype='complex')
             self.tip_tilt.set_data(Ds, Ps)#, F)
             grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
 

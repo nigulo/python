@@ -91,11 +91,18 @@ class psf_sampler():
                 #assert(loglik == lik_fn(res['x']))
                 if min_loglik is None or loglik < min_loglik:
                     min_loglik = loglik
-                    min_res = res
-            for i in np.arange(0, jmax):
-                alphas_est[i] = min_res['x'][i]
+                    min_res = res['x']
+            for l in np.arange(0, L):
+                for i in np.arange(0, jmax):
+                    alphas_est[l, i] = min_res[l*jmax + i]
+            if tt is not None:
+                a_est = min_res[L*jmax:L*jmax+(2*(L+1))].reshape((L+1, 2))
             
-        print(alphas_est)
+        print("alphas_est", alphas_est)
+        if tt is not None:
+            print("a_est", a_est)
         #betas_est = np.random.normal(size=psf.jmax) + np.random.normal(size=psf.jmax)*1.j
-        
-        return alphas_est
+        if tt is not None:
+            return (alphas_est, a_est)
+        else:
+            return alphas_est

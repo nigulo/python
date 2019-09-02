@@ -140,14 +140,14 @@ def main():
         (defocus_psf, defocus_psf_b) = defocus1
         #arcsec_per_px1=wavelength/diameter*1e-8*180/np.pi*3600/4.58
     
-        coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     
         if num_realizations == 1:
             tt = None
         else:
+            coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
             tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
 
-        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
+        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
         psf_b.create_basis()
     
         save(state_file, [jmax, arcsec_per_px, diameter, wavelength, defocus1, gamma, nx, psf_b.get_state()])
@@ -166,17 +166,23 @@ def main():
         
         assert(nx == np.shape(image)[0])
 
-        coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         
         if num_realizations == 1:
             tt = None
         else:
+            coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
             tt = tip_tilt.tip_tilt(coords, prior_prec=((np.max(coords[0])-np.min(coords[0]))/2)**2)
         
-        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = calibrate(arcsec_per_px, nx_orig), diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
+        psf_b = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus_psf_b, tip_tilt=tt)
         psf_b.set_state(state[7])
 
 
+    for iii in np.arange(0, 2):
+        my_test_plot = plot.plot()
+        my_test_plot.colormap(image)
+        my_test_plot.save("critical_sampling" + str(iii) + ".png")
+        my_test_plot.close()
+        image = psf_basis.critical_sampling(image, arcsec_per_px, diameter, wavelength)
     
     fimage = fft.fft2(image)
     fimage = fft.fftshift(fimage)
@@ -202,6 +208,7 @@ def main():
     
     ###########################################################################
     # Create objects for image reconstruction
+    
     ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
     psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, tip_tilt=tt)
     sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=1)
