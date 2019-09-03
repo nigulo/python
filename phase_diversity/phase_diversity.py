@@ -133,9 +133,9 @@ def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f, protocol=4)
 
-num_frames = 1
+num_frames = 10
 aberration_mode = "psf"
-fried_param=0.2
+fried_param=0.3
 noise_std_perc = .01
 
 #image = plt.imread('granulation31x33arsec.png')

@@ -86,7 +86,7 @@ class psf_sampler():
                 params = self.psf.encode_params(initial_alphas, initial_a)
                 initial_lik = lik_fn(params)
                 #res = scipy.optimize.minimize(lik_fn, np.random.normal(size=jmax), method='BFGS', jac=grad_fn, options={'disp': True})
-                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':initial_lik*1e-5})#, 'eps':.1})
+                res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=grad_fn, options={'disp': True, 'gtol':initial_lik*1e-7})#, 'eps':.1})
                 loglik = res['fun']
                 #assert(loglik == lik_fn(res['x']))
                 if min_loglik is None or loglik < min_loglik:
