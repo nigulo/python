@@ -11,6 +11,7 @@ import utils
 sys.path.append('../../utils')
 import plot
 import misc
+import tip_tilt
 
 image10x10 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804,  0.45882353, 0.5137255 ],
@@ -535,26 +536,42 @@ class test_psf(unittest.TestCase):
         pa = psf.phase_aberration(n_coefs)#zip(np.arange(1, n_coefs + 1), coefs))
 
         ctf = psf.coh_trans_func(aperture_func, pa, lambda xs: 100.*(2*np.sum(xs*xs, axis=2) - 1.))
-        psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
+        coords, _, _ = utils.get_coords(nx1, arcsec_per_px, diameter, wavelength)
+        tt = tip_tilt.tip_tilt(coords)
+        psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength, tip_tilt=tt)
         
         alphas = np.random.normal(size=(L, n_coefs))*10.
-        grads = psf_.likelihood_grad(alphas.flatten(), [Ds, gamma])
+        a = np.random.normal(size=(L+1, 2))
+        theta, data = psf_.encode(alphas, Ds, gamma, a = a)
+        grads = psf_.likelihood_grad(theta, data)
         
 
         #######################################################################
         # Check against values calculated using finite differences
         delta_alphas = np.ones_like(alphas)*1.0e-8
+        delta_a = np.ones_like(a)*1.0e-8
 
-        lik = psf_.likelihood(alphas.flatten(), [Ds, gamma])
-        liks = np.tile(lik, (alphas.shape[0], alphas.shape[1]))
-        liks1 = np.zeros_like(alphas)
+        lik = psf_.likelihood(theta, data)
+        liks = np.array([lik])
+        liks = np.repeat(liks, alphas.shape[0]*alphas.shape[1] + a.shape[0]*a.shape[1], axis=0)
+        liks1 = np.zeros_like(liks)
+        #liks = np.tile(lik, (alphas.shape[0], alphas.shape[1]))
+        #liks1 = np.zeros_like(alphas)
         for l in np.arange(0, L):
-            for i in np.arange(0, alphas.shape[1]):
+            for i in np.arange(0, n_coefs):
                 delta = np.zeros_like(alphas)
                 delta[l, i] = delta_alphas[l, i]
-                liks1[l, i] = psf_.likelihood((alphas+delta).flatten(), [Ds, gamma])
+                theta, data = psf_.encode(alphas+delta, Ds, gamma, a = a)
+                liks1[l*n_coefs + i] = psf_.likelihood(theta, data)
 
-        grads_expected = ((liks1 - liks) / delta_alphas).flatten()
+        for l in np.arange(0, L+1):
+            for i in np.arange(0, 2):
+                delta = np.zeros_like(a)
+                delta[l, i] = delta_a[l, i]
+                theta, data = psf_.encode(alphas, Ds, gamma, a = a+delta)
+                liks1[L*n_coefs + l*2 + i] = psf_.likelihood(theta, data)
+
+        grads_expected = (liks1 - liks) / np.concatenate((delta_alphas.flatten(), delta_a.flatten()))
 
         np.testing.assert_almost_equal(grads, grads_expected, 6)
 

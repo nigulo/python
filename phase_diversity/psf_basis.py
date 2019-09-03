@@ -85,7 +85,7 @@ def Vnmf(radius, f, n, m):
     return Vnm
 
 
-def critical_sampling(image, arcsec_per_px, diameter, wavelength):
+def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3):
     nx = image.shape[0]
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
     psf_b = psf_basis(jmax = 0, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
@@ -111,7 +111,7 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength):
     my_plot.close()
     
     mask = np.ones_like(coefs)
-    indices = np.where(coefs < 1e-3)
+    indices = np.where(coefs < threshold)
     mask[indices] = 0.
     
     my_plot = plot.plot(nrows=2)

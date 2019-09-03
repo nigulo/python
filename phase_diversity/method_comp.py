@@ -46,7 +46,7 @@ def save(filename, state):
 
 ###############################################################################
 # Parameters
-num_realizations = 5    # Number of realizations per fried parameter. 
+num_realizations = 10    # Number of realizations per fried parameter. 
 max_frames = min(10, num_realizations)
 fried_param=.3
 noise_std_perc = .01
@@ -328,7 +328,7 @@ def main():
         #image_est_i = psf_basis.critical_sampling(image_est_i, arcsec_per_px, diameter, wavelength)
 
         image_est_b_i = image_est_b[trial]
-        image_est_b_i = psf_basis.critical_sampling(image_est_b_i, arcsec_per_px, diameter, wavelength)
+        image_est_b_i = psf_basis.critical_sampling(image_est_b_i, arcsec_per_px, diameter, wavelength, threshold=1e-1)
 
         image_est_mean += image_est_i
         image_est_b_mean += image_est_b_i

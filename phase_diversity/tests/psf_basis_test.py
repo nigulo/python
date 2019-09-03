@@ -9,6 +9,7 @@ import plot
 import misc
 import zernike
 import utils
+#import tip_tilt
 import scipy.special as special
 
 image = [[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
@@ -700,7 +701,9 @@ class test_psf_basis(unittest.TestCase):
         L = 3
         prior_prec = np.linspace(0, 1., jmax)**2
         
-        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec=prior_prec)
+        #coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+        #tt = tip_tilt.tip_tilt(coords)
+        psf = psf_basis.psf_basis(jmax = jmax, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = defocus, prior_prec=prior_prec)#, tip_tilt=tt)
         psf.create_basis(do_fft=True, do_defocus=True)
 
 
