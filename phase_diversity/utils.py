@@ -129,8 +129,9 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     if fft_shift_before:
         F_image = fft.ifftshift(F_image, axes=(-2, -1))
 
-
-    # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
+    '''
+    ###########################################################################
+    # REMOVE THIS BLOCK
     D1 = D[0]
     D1_d = D_d[0]
     P1 = P[0]
@@ -165,7 +166,9 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     my_plot.colormap(np.log(P1), [3])
     my_plot.colormap(np.log(P1_d), [4])
     my_plot.save("psf_basis_deconvolve" + str(datetime.datetime.now().timestamp()) + ".png")
-    # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
+    # REMOVE THIS BLOCK
+    ###########################################################################
+    '''
     
     #np.savetxt("F.txt", F_image, fmt='%f')
     

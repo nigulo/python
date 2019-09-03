@@ -107,48 +107,7 @@ class coh_trans_func():
 
         return np.array([self.pupil*np.exp(1.j * phase), self.pupil*np.exp(1.j * (phase + self.defocus))])
 
-def deconvolve_(Ds, Ss, gamma, do_fft = True, fft_shift = True, ret_all=False, tip_tilt = None, a_est=None):
-    assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
-    D = Ds[:,0]
-    D_d = Ds[:,1]
-    
 
-    S = Ss[:,0]
-    S_d = Ss[:,1]
-    
-
-    regularizer_eps = 0.#1e-10
-    #P = np.roll(np.roll(P, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-    #P_d = np.roll(np.roll(P_d, int(self.nx/2), axis=0), int(self.nx/2), axis=1)
-    
-    S_conj = S.conjugate()
-    S_d_conj = S_d.conjugate()
-    
-    F_image = D * S_conj + gamma * D_d * S_d_conj + regularizer_eps
-    np.set_printoptions(threshold=np.inf)
-    F_image /= (S*S_conj + gamma * S_d * S_d_conj + regularizer_eps)
-
-    if fft_shift:
-        F_image = fft.ifftshift(F_image, axes=(-2, -1))
-    
-    if not do_fft and not ret_all:
-        return F_image
-
-    if tip_tilt is not None and a_est is not None:
-        #Ps = np.ones_like(Ps)
-        #image, image_F, Ps = tip_tilt.deconvolve(D, Ps, a_est)
-        image, image_F, Ss = tip_tilt.deconvolve(F_image, Ss, a_est)
-    else:
-        image = fft.ifft2(F_image).real
-        #image = fft.ifft2(F_image).real
-        
-       
-    if ret_all:
-        return image, F_image, Ss
-    else:
-        return image
-
-    
 class psf():
 
     '''
@@ -268,7 +227,6 @@ class psf():
             Ps = fft.ifftshift(Ps, axes=(-2, -1))
         if normalize:
             Ds = utils.normalize_(Ds, Ps)
-        #return deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift = fft_shift_before, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est)
         return utils.deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift_before = fft_shift_before, ret_all=ret_all, tip_tilt=self.tip_tilt, a_est=a_est)
 
 

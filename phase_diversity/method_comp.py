@@ -211,7 +211,7 @@ def main():
     # Create objects for image reconstruction
     
     ctf = psf.coh_trans_func(aperture_func, psf.phase_aberration(jmax), defocus_func)
-    psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, tip_tilt=None)
+    psf_ = psf.psf(ctf, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, tip_tilt=tt)
     sampler = psf_sampler.psf_sampler(psf_, gamma, num_samples=1)
 
     sampler_b = psf_basis_sampler.psf_basis_sampler(psf_b, gamma, num_samples=1)
@@ -266,62 +266,17 @@ def main():
         D_mean += D
         D_d_mean += D_d
         
-        
-        # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
-        # Remove after checked
-        D1 = DF
-        D1_d = DF_d
-        print("psf_true.otf_vals", psf_true.otf_vals.shape)
-        P1 = psf_true.otf_vals[0, 0, :, :]
-        P1_d = psf_true.otf_vals[0, 1, :, :]
-    
-        P1_conj = P1.conjugate()
-        P1_d_conj = P1_d.conjugate()
-    
-    
-        #D1 = fft.ifftshift(D1)
-        #D1_d = fft.ifftshift(D1_d)
-        P1 = fft.ifftshift(P1)
-        P1_d = fft.ifftshift(P1_d)
-        
-        F1_image = D1 * P1_conj + gamma * D1_d * P1_d_conj
-        den1 = P1*P1_conj + gamma * P1_d * P1_d_conj
-        F1_image /= den1
-    
-   
-        if False:
-            D1 = fft.ifftshift(D1)
-            D1_d = fft.ifftshift(D1_d)
-            F1_image = fft.ifftshift(F1_image)
-            P1 = fft.ifft2(fft.ifftshift(P1)).real
-            P1_d = fft.ifft2(fft.ifftshift(P1_d)).real
-        else:
-            P1 = fft.ifftshift(fft.ifft2(P1)).real
-            P1_d = fft.ifftshift(fft.ifft2(P1_d)).real
-        D1 = fft.ifft2(D1).real
-        D1_d = fft.ifft2(D1_d).real
-        my_plot = plot.plot(nrows=1, ncols=5)
-        my_plot.colormap(D1, [0])
-        my_plot.colormap(D1_d, [1])
-        my_plot.colormap(fft.ifft2(F1_image).real, [2])
-        my_plot.colormap(np.log(P1), [3])
-        my_plot.colormap(np.log(P1_d), [4])
-        my_plot.save("method_comp_deconvolve" + str(i) + ".png")
-        # Remove after checked
-        # TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
-        
 
     start = time.time()
 
     res = sampler.sample(Ds, "samples.png")
-    if False:#tt is not None:
+    if tt is not None:
         alphas_est, a_est = res
     else:
         alphas_est = res
         a_est = None
     #print("betas_est, a_est", betas_est, a_est)
     image_est, F, Ps = psf_.deconvolve(Ds, alphas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
-    #image_est, F, Ps = psf_b.deconvolve(Ds, alphas_est, gamma, ret_all = True, a_est=a_est, normalize=True)
 
     end = time.time()
     print("PSF reconstruction took: " + str(end - start))
