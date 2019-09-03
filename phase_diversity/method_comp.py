@@ -48,7 +48,8 @@ def save(filename, state):
 # Parameters
 num_realizations = 5    # Number of realizations per fried parameter. 
 max_frames = min(10, num_realizations)
-fried_param=5.
+fried_param=.3
+noise_std_perc = .01
 #jmax = 5
 #arcsec_per_px = 0.055
 #diameter = 50.0
@@ -239,9 +240,9 @@ def main():
         #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
 
         #pa_true = psf.phase_aberration(np.random.normal(size=5)*.001)
-        pa_true = psf.phase_aberration([])
-        ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-        #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,i,:,:]), defocus_func)
+        #pa_true = psf.phase_aberration([])
+        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+        ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,i,:,:]), defocus_func)
         psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
         ###################################################################
@@ -249,6 +250,18 @@ def main():
         DFs = psf_true.multiply(fimage)
         DF = DFs[0, 0]
         DF_d = DFs[0, 1]
+        
+        if noise_std_perc > 0.:
+            noise = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
+            fnoise = fft.fft2(noise)
+            fnoise = fft.fftshift(fnoise)
+
+            noise_d = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
+            fnoise_d = fft.fft2(noise_d)
+            fnoise_d = fft.fftshift(fnoise_d)
+
+            DF += fnoise
+            DF_d += fnoise_d
         
         DF = fft.ifftshift(DF)
         DF_d = fft.ifftshift(DF_d)

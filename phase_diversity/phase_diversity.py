@@ -369,11 +369,11 @@ for trial in np.arange(0, num_frames):
             if noise_std_perc > 0.:
                 noise = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
                 fnoise = fft.fft2(noise)
-                #fnoise = fft.fftshift(fnoise)
+                fnoise = fft.fftshift(fnoise)
 
                 noise_d = np.random.poisson(lam=noise_std_perc*np.mean(image), size=(nx, nx))
                 fnoise_d = fft.fft2(noise_d)
-                #fnoise_d = fft.fftshift(fnoise_d)
+                fnoise_d = fft.fftshift(fnoise_d)
 
                 DF += fnoise
                 DF_d += fnoise_d
