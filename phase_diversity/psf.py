@@ -264,6 +264,8 @@ class psf():
     def deconvolve(self, Ds, alphas, gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False):
         self.calc(alphas=alphas)
         Ps = self.otf_vals
+        if not fft_shift_before:
+            Ps = fft.ifftshift(Ps, axes=(-2, -1))
         if normalize:
             Ds = utils.normalize_(Ds, Ps)
         #return deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift = fft_shift_before, ret_all=ret_all, tip_tilt = self.tip_tilt, a_est=a_est)
