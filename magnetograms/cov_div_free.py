@@ -56,3 +56,31 @@ class cov_div_free(cov_func):
             return K, K_grads
         else:
             return K
+
+
+    def calc_cov_ij(self, x1, x2, i, j):
+        Kij = 0.
+        dim = x1.shape[1]
+        ii = i // dim
+        i1 = i % dim
+
+        jj = j // dim
+        j1 = j % dim
+        
+        x_diff = x1[ii] - x2[jj]
+        x_diff_sq = np.dot(x_diff, x_diff)
+        i_abs = dim*ii + i1
+        j_abs = dim*jj + j1
+        assert(i == i_abs and j == j_abs)
+        Kij = x_diff[i1] * x_diff[j1] * self.inv_length_scale_sq
+        if (i1 == j1):
+            Kij += (dim - 1.) - x_diff_sq * self.inv_length_scale_sq
+        exp_fact = np.exp(-0.5 * self.inv_length_scale_sq * x_diff_sq)
+        Kij *= self.sig_var * exp_fact
+             
+        if i == j:
+            if (np.isscalar(self.noise_var)):
+                Kij += self.noise_var
+            else:
+                Kij += self.noise_var[ii]
+        return Kij

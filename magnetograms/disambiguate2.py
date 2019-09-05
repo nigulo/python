@@ -27,7 +27,6 @@ import pymc3 as pm
 import numpy.linalg as la
 import matplotlib.pyplot as plt
 import sampling
-import kiss_gp
 from scipy.integrate import simps
 
 import time
@@ -147,9 +146,9 @@ else:
         test_plot.close()
     ###########################################################################
 
-    bx = y[:, :, 0, 0]
-    by = y[:, :, 0, 1]
-    bz = y[:, :, 0, 2]
+    bx = y[:, :, :3, 0]
+    by = y[:, :, :3, 1]
+    bz = y[:, :, :3, 2]
     
     ###########################################################################
     # Overwrite some of the vector for depth testing purposes
@@ -166,12 +165,15 @@ else:
     theta = np.arccos((bz+1e-10)/(b+1e-10))
 
 
-    truth_plot = plot.plot(nrows=1, ncols=3)
-    truth_plot.set_color_map('bwr')
-    
-    truth_plot.colormap(bx, [0])
-    truth_plot.colormap(by, [1])
-    truth_plot.colormap(phi, [2])
+    num_layers = bx.shape[-1]
+
+    truth_plot = plot.plot(nrows=num_layers, ncols=3)
+    for layer in np.arange(0, num_layers):
+        truth_plot.set_color_map('bwr')
+        
+        truth_plot.colormap(bx[:, :, layer], [layer, 0])
+        truth_plot.colormap(by[:, :, layer], [layer, 1])
+        truth_plot.colormap(phi[:, :, layer], [layer, 2])
     
     truth_plot.save("truth.png")
     truth_plot.close()
@@ -200,90 +202,47 @@ n_jobs = num_chains
 data_loaded = False
 n1 = b.shape[0]
 n2 = b.shape[1]
+n3 = b.shape[2]
 x1_range = 1.0
 x2_range = 1.0
-
-m1 = 10
-m2 = 10
+x3_range = x1_range*n3/n1
 
 
 bz = b*np.cos(theta)
-bz_smooth = signal.convolve2d(bz, np.ones((5,5)), mode = 'same') #Smooth it a little
-dbzy = bz_smooth[1:,:-1]-bz_smooth[:-1,:-1]
-dbzx = bz_smooth[:-1,1:]-bz_smooth[:-1,:-1]
-
-
-b = b[:-1,:-1]
-bz = bz[:-1,:-1]
-theta = theta[:-1,:-1]
-phi = phi[:-1,:-1]
 bxy = b*np.sin(theta)
 bx = bxy*np.cos(phi)
 by = bxy*np.sin(phi)
 
-n1 -= 1
-n2 -= 1
-n = n1*n2
+n = n1*n2*n3
 
 x1 = np.linspace(0, x1_range, n1)
 x2 = np.linspace(0, x2_range, n2)
-x_mesh = np.meshgrid(x2, x1)[::-1]
-x_grid = np.dstack(x_mesh)
-x = x_grid.reshape(-1, 2)
-x_flat = np.reshape(x, (2*n, -1))
+x3 = np.linspace(0, x3_range, n3)
+
+x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
+x_grid = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
+x = x_grid.reshape(-1, 3)
+x_flat = np.reshape(x, (3*n, -1))
 
 ###############################################################################
 
 
 if mode == 2:
     
-    truth_plot = plot.plot(nrows=1, ncols=1)
+    truth_plot = plot.plot(nrows=n3, ncols=1)
     truth_plot.set_color_map('bwr')
-    
-    truth_plot.colormap(bz)
-    truth_plot.vectors(x_mesh[0], x_mesh[1], bx, by, [], units='width', color = 'k')
+    for layer in np.arange(0, n3):
+        truth_plot.colormap(bz, ax_index = [layer, 0])
+        truth_plot.vectors(x_mesh[0], x_mesh[1], bx, by, ax_index = [layer, 0], units='width', color = 'k')
     truth_plot.save("truth_field.png")
     truth_plot.close()
 
 
-def calc_p(x, y):
-    xs = np.dstack(x_mesh)
-    #print("xs:",xs)
-    r = xs - np.array([x, y])
-    r = np.sqrt(np.sum(r*r, axis=2))
-    indices = np.where(r == 0.)
-    bz1 = np.array(bz)
-    bz1[indices] = 0.
-    r[indices] = 1.
-    z = bz/r
-    p = simps(simps(z, x2), x1)
-    return -p/2./np.pi
-
-p = np.zeros_like(bz)
-for i in np.arange(0, len(x1)):
-    for j in np.arange(0, len(x2)):
-        p[i, j] = calc_p(x1[i], x2[j])
-print("p:", p)
-
 bx = np.reshape(bx, n)
 by = np.reshape(by, n)
 bz = np.reshape(bz, n)
-dbzx = np.reshape(dbzx, n)
-dbzy = np.reshape(dbzy, n)
-bxy = np.reshape(bz, n)
 
-m = m1 * m2
-u1 = np.linspace(0, x1_range, m1)
-u2 = np.linspace(0, x2_range, m2)
-u_mesh = np.meshgrid(u1, u2)
-u = np.dstack(u_mesh).reshape(-1, 2)
-u = np.column_stack((u, np.zeros(u.shape[0]))) # Add dummy z-coordinate
 
-print("u_mesh=", u_mesh)
-print("u=", u)
-print(x_mesh)
-
-norm = 1.#np.std(np.sqrt(bx**2+by**2))
 y = np.column_stack((bx, by, bz))
 
 
@@ -291,6 +250,7 @@ y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
+# Align all the transverse components either randomly or identically
 for i in np.arange(0, n):
     #if np.random.uniform() < 0.5:
     #    #y[i, :2] *= -1
@@ -298,45 +258,32 @@ for i in np.arange(0, n):
 
 
 def do_plots(y):
-    components_plot = plot.plot(nrows=2, ncols=3)
-    components_plot.set_color_map('bwr')
-    
-    bx_norm = y_orig[:,0]*norm
-    by_norm = y_orig[:,1]*norm
-    
-    components_plot.colormap(np.reshape(bx_norm, (n1, n2)), [0, 0])
-    components_plot.colormap(np.reshape(by_norm, (n1, n2)), [0, 1])
-    components_plot.colormap(np.reshape(np.arctan2(by_norm, bx_norm), (n1, n2)), [0, 2])
-    
-    components_plot2 = plot.plot(nrows=2, ncols=2)
-    components_plot2.set_color_map('bwr')
-    components_plot2.colormap(np.reshape(dbzx, (n1, n2)), [0, 0])
-    components_plot2.colormap(np.reshape(dbzy, (n1, n2)), [0, 1])
-    
+    bx_orig = y_orig[:, 0]    
+    by_orig = y_orig[:, 1]
+    bx_orig = np.reshape(bx_orig, (n1, n2, n3))
+    by_orig = np.reshape(by_orig, (n1, n2, n3))
 
-    if y is not None:    
-        bx_dis = y[:,0]*norm
-        by_dis = y[:,1]*norm
-       
-        components_plot.colormap(np.reshape(bx_dis, (n1, n2)), [1, 0])
-        components_plot.colormap(np.reshape(by_dis, (n1, n2)), [1, 1])
-        components_plot.colormap(np.reshape(np.arctan2(by_dis, bx_dis), (n1, n2)), [1, 2])
-    
-        components_plot2.colormap(np.reshape(y[:,0], (n1, n2)), [1, 0])
-        components_plot2.colormap(np.reshape(y[:,1], (n1, n2)), [1, 1])
+    bx_dis = y[:, 0]
+    by_dis = y[:, 1]
+    bx_dis = np.reshape(bx_dis, (n1, n2, n3))
+    by_dis = np.reshape(by_dis, (n1, n2, n3))
 
-    components_plot.save("components.png")
-    components_plot2.save("components2.png")
-    
-    components_plot.close()
-    components_plot2.close()
+    for layer in np.arange(0, n3):
+        components_plot = plot.plot(nrows=2, ncols=3)
+        components_plot.set_color_map('bwr')
+        
+        components_plot.colormap(bx_orig[:, :, layer], [0, 0])
+        components_plot.colormap(by_orig[:, :, layer], [0, 1])
+        components_plot.colormap(np.reshape(np.arctan2(by_orig[:, :, layer], bx_orig[:, :, layer]), (n1, n2)), [0, 2])
+        
+        if y is not None:    
+            components_plot.colormap(bx_dis[:, :, layer], [1, 0])
+            components_plot.colormap(by_dis[:, :, layer], [1, 1])
+            components_plot.colormap(np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2)), [1, 2])
+        
+        components_plot.save("components" + str(layer) +".png")
+        components_plot.close()
 
-
-bx_norm = y[:,0]*norm
-by_norm = y[:,1]*norm
-
-energy = np.sum(bx**2 + by**2)
-np.testing.assert_array_almost_equal(np.sum(bx_norm**2 + by_norm**2), energy)
 
 do_plots(None)
 
@@ -359,23 +306,14 @@ print("data_var:", data_var)
 
 def sample(x, y):
 
-    def cov_func(theta, data, u1, u2, data_or_test):
-        np.testing.assert_array_almost_equal(u1, u2)
-        assert(data_or_test)
+    def lik_fn(theta):
         sig_var = theta[0]
         ell = theta[1]
         noise_var = theta[2]
-        sig_var2 = theta[3]
-        ell2 = theta[4]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
-        gp.add(cov_sq_exp.cov_sq_exp(sig_var2, ell2, noise_var=0., dim_out=3))
-        U, U_grads = gp.calc_cov(u, u, data_or_test=True, calc_grad = True)
-        
-        U_grads = U_grads[:-1] # Exclude noise variance derivative
-        
-        return U, U_grads
+        return gp.loglik_approx(x, y)
 
-    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y, dim=3)
+    lik_grad = None
 
     if sample_or_optimize:
         s = sampling.Sampling()
@@ -385,24 +323,15 @@ def sample(x, y):
             ell = pm.HalfNormal('ell', sd=1.0)
             sig_var = pm.HalfNormal('sig_var', sd=1.0)
             noise_var = pm.HalfNormal('noise_var', sd=1.0)
-            ell2 = pm.HalfNormal('ell2', sd=1.0)
-            sig_var2 = pm.HalfNormal('sig_var2', sd=0.1)
         
-        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var, sig_var2, ell2], [], num_samples, num_chains, kgp.likelihood_grad2)
+        trace = s.sample(lik_fn, [sig_var, ell, noise_var], [], num_samples, num_chains, lik_grad)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
         m_sig_var = np.mean(trace['sig_var'])
         m_noise_var = np.mean(trace['noise_var'])
 
-        m_ell2 = np.mean(trace['ell2'])
-        m_sig_var2 = np.mean(trace['sig_var2'])
     else:
-        def lik_fn(params):
-            return -kgp.likelihood(params, [])
-
-        def grad_fn(params):
-            return -kgp.likelihood_grad(params, [])
 
         min_loglik = None
         min_res = None
@@ -414,20 +343,13 @@ def sample(x, y):
             noise_var_min = data_var*0.0001#*.001
             noise_var_max = data_var*0.01#*.5
 
-            ell2_min = 0.2#.05
-            ell2_max = 0.5#1.
-            sig_var2_min = data_var*.01
-            sig_var2_max = data_var*.2
 
             ell_init = random.uniform(ell_min, ell_max)
             sig_var_init = random.uniform(sig_var_min, sig_var_max)
             noise_var_init = random.uniform(noise_var_min, noise_var_max)
 
-            ell2_init = random.uniform(ell2_min, ell2_max)
-            sig_var2_init = random.uniform(sig_var2_min, sig_var2_max)
-
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init, sig_var2_init, ell2_init], method='L-BFGS-B', jac=grad_fn, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max), (sig_var2_min, sig_var2_max), (ell2_min, ell2_max)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init], method='CG', jac=lik_grad, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -436,9 +358,7 @@ def sample(x, y):
         m_sig_var = min_res['x'][0]
         m_ell = min_res['x'][1]
         m_noise_var = min_res['x'][2]
-        m_sig_var2 = min_res['x'][3]
-        m_ell2 = min_res['x'][4]
-    return m_ell, m_sig_var, m_noise_var, m_ell2, m_sig_var2
+    return m_ell, m_sig_var, m_noise_var
         
 
 def calc_loglik_approx(U, W, y):
@@ -457,34 +377,16 @@ def calc_loglik(K, y):
 
 
 def reverse(y, y_sign, ii):
-    y[ii]*=norm
-    
     y[ii,:2] *= -1
-
-    y[ii]/=norm
     y_sign[ii] *= -1
 
-    #np.testing.assert_almost_equal(yc_sign, y_sign)
-    #np.testing.assert_almost_equal(yc, y)
-
-    
-def get_b(y, ii):
-    y1 = y * norm
-    return y1
 
 def get_probs(thetas, y):
     b = np.sqrt(np.sum(y[:,:2]*y[:,:2], axis=1))
     return b/np.sum(b)
     
-    #p = np.exp(thetas)
-    #p -= 0.5
-    #p = np.abs(p)*2.
-    #p[p > 0.8] = 0.8
-    #p[p < 0.2] = 0.2
-    #p /= np.sum(p)
-    #return p    
 
-def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative, length_scale2, sig_var2):
+def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
     #inv_ell_sq_two = -1./(2.*length_scale**2)
     inv_ell_sq_two = 1./(2.*length_scale)
     #normal_dist = stats.norm(0.0, length_scale)
@@ -495,7 +397,6 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     mask = np.where(~mask)[0]
     affected_indices = set()
     gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-    gp.add(cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, 0., dim_out=3))
     for i in indices:
 
         #######################################################################
@@ -575,10 +476,8 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             
             y_test_mean = gp.fit(x_test, calc_var = False)
             y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
-            b_test_mean = get_b(y_test_mean, mask[inds_test])
-            b_test_obs = get_b(y_test_obs, mask[inds_test])
 
-            sim = np.sum(b_test_obs*b_test_mean, axis=1)
+            sim = np.sum(y_test_obs*y_test_mean, axis=1)
             #sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
     
             sim_indices = np.where(sim < 0.)[0]
@@ -613,13 +512,11 @@ def get_random_indices(x, n, length_scale, thetas, y):
 
 def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2):
     print(sig_var)
-    y_in = np.array(y)
     y_sign = np.ones(n)
     num_positive = np.zeros(n)
     num_negative = np.zeros(n)
     loglik = None
     max_loglik = None
-    y_best = None
     
     iteration = -1
 
@@ -649,12 +546,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         if loglik is None:
             gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-            gp.add(cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3))
-            #loglik = gp.init(x, y)
-            U = gp.calc_cov(u, u, data_or_test=True)
-            
-            W = utils.calc_W(u_mesh, u, x, dim=3)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            loglik = calc_loglik_approx(U, W, np.reshape(y, (3*n, -1)))
+            loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)))
             
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
@@ -685,12 +577,8 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
         start = time.time()
 
         gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-        gp.add(cov_sq_exp.cov_sq_exp(sig_var2, length_scale2, noise_var=0., dim_out=3))
-        U = gp.calc_cov(u, u, data_or_test=True)
-        
-        W = utils.calc_W(u_mesh, u, x, dim=3)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
-        loglik1 = calc_loglik_approx(U, W, np.reshape(y, (3*n, -1)))
+        loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)))
         end = time.time()
         print("Inference took: " + str(end - start))
 
@@ -698,12 +586,6 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         if loglik1 > loglik:
             loglik = loglik1
-            bx_dis = y[:,0]*norm
-            by_dis = y[:,1]*norm
-        
-            energy1 = np.sum(bx_dis**2 + by_dis**2)
-            print("Energy diff before:", (energy1-energy)/energy)
-            #y, bx_offset1, by_offset1 = recalc_offsets(y, bx_offset1, by_offset1)
 
 
             for ri in np.arange(0, n):
@@ -721,39 +603,28 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
             y_sign = y_sign_last
             
 
-        bx_dis = y[:,0]*norm
-        by_dis = y[:,1]*norm
-    
-        energy1 = np.sum(bx_dis**2 + by_dis**2)
-        print("Energy diff:", (energy1-energy)/energy)
-        #np.testing.assert_almost_equal(energy1, energy)
-
         do_plots(y)
 
 
     do_plots(y)
 
     exp_thetas = np.exp(thetas)
-
-
+    bx_dis = y[:,0]
+    by_dis = y[:,1]
     return exp_thetas, bx_dis, by_dis
 
     
 sig_var = None
 length_scale = None
 noise_var = None
-sig_var2 = None
-length_scale2 = None
 if not inference:
 
     sig_var=0.9*np.var(bx) + 0.9*np.var(by)
     length_scale=0.2
     noise_var=0.1*sig_var
     
-    sig_var2 = 0.
-    length_scale2=0.2
 
 
-prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale, noise_var, sig_var2, length_scale2)
+prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale, noise_var)
 
 
