@@ -42,6 +42,7 @@ if len(sys.argv) > 1:
     state_file = sys.argv[1]
 
 mode = 2
+subsample = 10000
 
 if mode == 0:
     if state_file is None:
@@ -180,7 +181,7 @@ else:
 
 
 
-inference = True
+inference = False
 sample_or_optimize = False
 num_samples = 1
 num_chains = 4
@@ -232,8 +233,8 @@ if mode == 2:
     truth_plot = plot.plot(nrows=n3, ncols=1)
     truth_plot.set_color_map('bwr')
     for layer in np.arange(0, n3):
-        truth_plot.colormap(bz, ax_index = [layer, 0])
-        truth_plot.vectors(x_mesh[0], x_mesh[1], bx, by, ax_index = [layer, 0], units='width', color = 'k')
+        truth_plot.colormap(bz[:, :, layer], ax_index = [layer])
+        truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
     truth_plot.save("truth_field.png")
     truth_plot.close()
 
@@ -251,10 +252,10 @@ print(y_orig)
 print(y.shape)
 
 # Align all the transverse components either randomly or identically
-for i in np.arange(0, n):
-    #if np.random.uniform() < 0.5:
-    #    #y[i, :2] *= -1
-    y[i, :2] = np.abs(y[i, :2])
+#for i in np.arange(0, n):
+#    #if np.random.uniform() < 0.5:
+#    #    #y[i, :2] *= -1
+#    y[i, :2] = np.abs(y[i, :2])
 
 
 def do_plots(y):
@@ -263,10 +264,11 @@ def do_plots(y):
     bx_orig = np.reshape(bx_orig, (n1, n2, n3))
     by_orig = np.reshape(by_orig, (n1, n2, n3))
 
-    bx_dis = y[:, 0]
-    by_dis = y[:, 1]
-    bx_dis = np.reshape(bx_dis, (n1, n2, n3))
-    by_dis = np.reshape(by_dis, (n1, n2, n3))
+    if y is not None:
+        bx_dis = y[:, 0]
+        by_dis = y[:, 1]
+        bx_dis = np.reshape(bx_dis, (n1, n2, n3))
+        by_dis = np.reshape(by_dis, (n1, n2, n3))
 
     for layer in np.arange(0, n3):
         components_plot = plot.plot(nrows=2, ncols=3)
@@ -311,7 +313,7 @@ def sample(x, y):
         ell = theta[1]
         noise_var = theta[2]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
-        return gp.loglik_approx(x, y)
+        return gp.loglik_approx(x, y, subsample=subsample)
 
     lik_grad = None
 
@@ -349,7 +351,7 @@ def sample(x, y):
             noise_var_init = random.uniform(noise_var_min, noise_var_max)
 
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init], method='CG', jac=lik_grad, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init], method='L-BFGS-B', jac=lik_grad, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
@@ -461,11 +463,9 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
             #print(len(inds_train), len(inds_test))
     
             x_train = x[inds_train]
-            x_train = np.column_stack((x_train, np.zeros(x_train.shape[0]))) # Add dummpy z coordinate
             y_train = y[inds_train]
     
             x_test = x[mask][inds_test]
-            x_test = np.column_stack((x_test, np.zeros(x_test.shape[0]))) # Add dummpy z coordinate
             y_test_obs = y[mask][inds_test]
     
             y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
@@ -510,7 +510,7 @@ def get_random_indices(x, n, length_scale, thetas, y):
         i += 1
     return random_indices
 
-def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2):
+def algorithm_a(x, y, sig_var, length_scale, noise_var):
     print(sig_var)
     y_sign = np.ones(n)
     num_positive = np.zeros(n)
@@ -538,7 +538,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
             
-            length_scale, sig_var, noise_var, length_scale2, sig_var2 = sample(x, np.reshape(y, (3*n, -1)))
+            length_scale, sig_var, noise_var = sample(x, np.reshape(y, (3*n, -1)))
         #else:
             #if temp <= 1.0:
             #    temp += temp_delta*temp    
@@ -546,13 +546,11 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         if loglik is None:
             gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-            loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)))
+            loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
             
         print("sig_var=", sig_var)
         print("length_scale", length_scale)
         print("noise_var=", noise_var)
-        print("sig_var2=", sig_var2)
-        print("length_scale2", length_scale2)
         #print("mean", mean)
         print("loglik=", loglik, "max_loglik=", max_loglik)
         
@@ -567,7 +565,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         start = time.time()
 
-        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative, length_scale2, sig_var2)
+        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
         #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
         end = time.time()
         print("Align took: " + str(end - start))
@@ -578,7 +576,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, sig_var2, length_scale2)
 
         gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
 
-        loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)))
+        loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
         end = time.time()
         print("Inference took: " + str(end - start))
 
@@ -619,9 +617,9 @@ length_scale = None
 noise_var = None
 if not inference:
 
-    sig_var=0.9*np.var(bx) + 0.9*np.var(by)
-    length_scale=0.2
-    noise_var=0.1*sig_var
+    sig_var=1.
+    length_scale=.1
+    noise_var=0.01
     
 
 

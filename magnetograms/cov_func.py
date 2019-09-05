@@ -47,7 +47,7 @@ class cov_func:
         return self.loglik
 
     
-    def loglik_approx(self, x, y):
+    def loglik_approx(self, x, y, subsample = 0):
         if len(x) <= 100:
             if not hasattr(self, 'K'):
                 self.K=self.calc_cov(x, x, True)
@@ -57,17 +57,28 @@ class cov_func:
             return -np.dot(ones, np.dot(self.G1, y*y)) + np.dot(y, np.dot(self.G2, y)) - self.G_log
         else:
             loglik = 0.
-            sigma = self.calc_cov(x, x, 0, 0)
+            sigma = self.calc_cov_ij(x, x, 0, 0)
             sigma2 = sigma*sigma
-            for i in np.arange(0, np.size(x)):
-                for j in np.arange(i, np.size(x)):
-                    K_ij = self.calc_cov(x, x, i, j)
+            if subsample > 0:
+                i_s = np.random.choice(np.arange(0, np.size(x)), size=int(np.sqrt(subsample)), replace=False)
+                j_s = np.random.choice(np.arange(0, np.size(x)), size=int(np.sqrt(subsample)), replace=False)
+            else:
+                i_s = np.arange(0, np.size(x))
+                j_s = np.arange(0, np.size(x))
+            for i in i_s:
+                for j in j_s:
+                    if j < i:
+                        continue
+                    K_ij = self.calc_cov_ij(x, x, i, j)
                     if i == j:
                         assert(K_ij == sigma) # In this approximation we assume constant variance
                     else:
                         K_ij2 = K_ij*K_ij
                         val = sigma2 - K_ij2
                         loglik += (sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val)
+            
+            if subsample > 0:
+                loglik *= np.size(x)*np.size(x)/(subsample)
             return loglik                        
                     
 
