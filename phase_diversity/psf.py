@@ -280,7 +280,7 @@ class psf():
         #######################################################################
         if self.tip_tilt is not None:
             Ps = np.ones((D.shape[0], 2, self.nx1, self.nx1), dtype='complex')
-            self.tip_tilt.set_data(Ds, Ps)#, F)
+            self.tip_tilt.set_data(fft.ifftshift(Ds, axes=(-2, -1)), Ps)#, F)
             lik += self.tip_tilt.lik(other)
 
         return lik
@@ -350,7 +350,7 @@ class psf():
         #######################################################################
         if self.tip_tilt is not None:
             Ps = np.ones((L, 2, self.nx1, self.nx1), dtype='complex')
-            self.tip_tilt.set_data(Ds, Ps)#, F)
+            self.tip_tilt.set_data(fft.ifftshift(Ds, axes=(-2, -1)), Ps)#, F)
             grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
 
         return grads
