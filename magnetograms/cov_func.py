@@ -77,7 +77,7 @@ class cov_func:
                     else:
                         K_ij2 = K_ij*K_ij
                         val = sigma2 - K_ij2
-                        loglik += -(sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val)
+                        loglik += -(sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val) - np.log(2.*np.pi)
             
             if subsample > 0:
                 loglik *= np.size(x)*np.size(x)/(subsample)
@@ -103,7 +103,7 @@ class cov_func:
                 G2[j, i] = G2[i, j]
         self.G1 = G1
         self.G2 = G2
-        self.G_log = 0.5*G_log
+        self.G_log = 0.5*G_log + (self.K.shape[0]*(self.K.shape[0]-1)/2)*np.log(2.*np.pi)
         
 
     def fit(self, x_test, calc_var = True):
