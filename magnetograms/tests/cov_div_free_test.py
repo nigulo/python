@@ -3,6 +3,7 @@ sys.path.append('..')
 import numpy as np
 import cov_div_free
 import unittest
+import numpy.linalg as la
 
 class test_cov_div_free(unittest.TestCase):
 
@@ -126,10 +127,66 @@ class test_cov_div_free(unittest.TestCase):
         for i in np.arange(0, K.shape[0]):
             for j in np.arange(0, K.shape[1]):
                 K_ij = gp.calc_cov_ij(x, x, i, j)
-                #print(K_ij, K[i, j])
-                #if K_ij != K[i, j]:
-                #    print(i, j)
                 np.testing.assert_almost_equal(K_ij, K[i, j])
+
+    def test_loglik(self):
+        x1_range = 1.0
+        x2_range = 1.0
+        n1 = 2
+        n2 = 2
+        x1 = np.linspace(0, x1_range, n1)
+        x2 = np.linspace(0, x2_range, n2)
+        x_mesh = np.meshgrid(x1, x2)
+        x = np.dstack(x_mesh).reshape(-1, 2)
+        
+        y = np.random.normal(size=(n1, n2, 2))
+        y = np.column_stack((np.reshape(y[:, :, 0], n1*n2), np.reshape(y[:, :, 1], n1*n2)))
+
+        sig_var = 0.5
+        ell = 0.2
+        noise_var = 0.07        
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
+        loglik = gp.loglik(x, y)
+        
+        
+        n = np.shape(x)[0]
+        if (len(np.shape(x)) > 1):
+            k = np.shape(x)[1]
+        else:
+            k = 1
+        y_flat = np.reshape(y, (k*n, -1))
+        K = gp.calc_cov(x, x, True)
+        L = la.cholesky(K)
+        alpha = la.solve(L.T, la.solve(L, y_flat))
+        loglik_expected = (-0.5 * np.dot(y_flat.T, alpha) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)).item()
+        np.testing.assert_almost_equal(loglik, loglik_expected)
+        
+
+                
+    def test_loglik_approx(self):
+        x1_range = 1.0
+        x2_range = 1.0
+        n1 = 2
+        n2 = 2
+        x1 = np.linspace(0, x1_range, n1)
+        x2 = np.linspace(0, x2_range, n2)
+        x_mesh = np.meshgrid(x1, x2)
+        x = np.dstack(x_mesh).reshape(-1, 2)
+        
+        y = np.random.normal(size=(n1, n2, 2))
+        y = np.column_stack((np.reshape(y[:, :, 0], n1*n2), np.reshape(y[:, :, 1], n1*n2))).flatten()
+
+        sig_var = 0.5
+        ell = 0.2
+        noise_var = 0.07        
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
+        
+        loglik1 = gp.loglik_approx(x, y, use_vector_form = False)
+        loglik2 = gp.loglik_approx(x, y, use_vector_form = True)
+        #loglik = gp.init(x, y)
+        np.testing.assert_almost_equal(loglik1, loglik2)
+        #np.testing.assert_almost_equal(loglik1, loglik)
+        
         
 if __name__ == '__main__':
     unittest.main()

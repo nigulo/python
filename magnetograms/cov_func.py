@@ -22,13 +22,9 @@ class cov_func:
 
     def init(self, x, y):
         self.n = np.shape(x)[0]
-        if (len(np.shape(x)) > 1):
-            self.k = np.shape(x)[1]
-        else:
-            self.k = 1
         self.x = x
         self.y = y
-        self.y_flat = np.reshape(y, (self.k*self.n, -1))
+        self.y_flat = y.flatten()
         self.K = self.calc_cov(x, x, True)
         if self.toeplitz:
             #L1 = toeplitz_cholesky_lower(np.shape(self.K)[0], self.K)
@@ -43,18 +39,24 @@ class cov_func:
         else:
             self.L = la.cholesky(self.K)
         self.alpha = la.solve(self.L.T, la.solve(self.L, self.y_flat))
-        self.loglik = (-0.5 * np.dot(self.y_flat.T, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)).item()
+        self.loglik = -0.5 * np.dot(self.y_flat, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         return self.loglik
+    
+    def loglik(self, x, y):
+        return self.init(x, y)
 
     
-    def loglik_approx(self, x, y, subsample = 0):
-        if len(x) <= 100:
+    '''
+        This is pairwise factor graph approximation to the log-likelihood
+    '''
+    def loglik_approx(self, x, y, use_vector_form = False, subsample = 0):
+        if use_vector_form:
             if not hasattr(self, 'K'):
                 self.K=self.calc_cov(x, x, True)
             if not hasattr(self, 'G1'):
                 self.calc_G(x)
-            ones = np.ones_like(y)
-            return -np.dot(ones, np.dot(self.G1, y*y)) + np.dot(y, np.dot(self.G2, y)) - self.G_log
+            ones = np.ones(len(y))
+            return -np.dot(ones, np.dot(self.G1, y*y)) + np.dot(y.T, np.dot(self.G2, y)) - self.G_log
         else:
             loglik = 0.
             sigma = self.calc_cov_ij(x, x, 0, 0)
@@ -75,7 +77,7 @@ class cov_func:
                     else:
                         K_ij2 = K_ij*K_ij
                         val = sigma2 - K_ij2
-                        loglik += (sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val)
+                        loglik += -(sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val)
             
             if subsample > 0:
                 loglik *= np.size(x)*np.size(x)/(subsample)
@@ -88,7 +90,7 @@ class cov_func:
         G_log = 0.
         sigma = self.K[0, 0]
         sigma2 = sigma*sigma
-        for i in np.arange(0, self.shape[0]):
+        for i in np.arange(0, self.K.shape[0]):
             assert(self.K[i, i] == sigma) # In this approximation we assume constant variance
             for j in np.arange(i + 1, self.K.shape[1]):
                 K_ij2 = self.K[i, j]*self.K[i, j]
