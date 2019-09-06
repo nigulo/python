@@ -61,23 +61,31 @@ class cov_func:
             loglik = 0.
             sigma = self.calc_cov_ij(x, x, 0, 0)
             sigma2 = sigma*sigma
-            if subsample > 0:
-                i_s = np.random.choice(np.arange(0, np.size(x)), size=int(np.sqrt(subsample)), replace=False)
-                j_s = np.random.choice(np.arange(0, np.size(x)), size=int(np.sqrt(subsample)), replace=False)
+            inds = np.arange(0, np.size(x))
+            if subsample > 0 and subsample < np.size(x)*np.size(x):
+                subsample = max(np.size(x) - 1, subsample)
+                ijs = np.column_stack((inds[:-1], inds[1:]))
+                subsample -= len(ijs)
+                i_s = np.random.choice(np.arange(0, np.size(x)), size=int(np.sqrt(subsample)))
+                j_s = (np.random.choice(np.arange(2, np.size(x) + 2), size=int(np.sqrt(subsample))) + i_s) % np.size(x)
+                print("ijs", ijs.shape)
+                ijs = np.concatenate((ijs, np.transpose([np.tile(i_s, len(j_s)), np.repeat(j_s, len(i_s))])))
+                print("ijs", ijs.shape)
             else:
-                i_s = np.arange(0, np.size(x))
-                j_s = np.arange(0, np.size(x))
-            for i in i_s:
-                for j in j_s:
-                    if j < i:
-                        continue
-                    K_ij = self.calc_cov_ij(x, x, i, j)
-                    if i == j:
-                        assert(K_ij == sigma) # In this approximation we assume constant variance
-                    else:
-                        K_ij2 = K_ij*K_ij
-                        val = sigma2 - K_ij2
-                        loglik += -(sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val) - np.log(2.*np.pi)
+                ijs = np.transpose([np.tile(inds, len(inds)), np.repeat(inds, len(inds))])
+                #i_s = np.arange(0, np.size(x))
+                #j_s = np.arange(0, np.size(x))
+            print(ijs)
+            for i, j in ijs:
+                if j < i:
+                    continue
+                K_ij = self.calc_cov_ij(x, x, i, j)
+                if i == j:
+                    assert(K_ij == sigma) # In this approximation we assume constant variance
+                else:
+                    K_ij2 = K_ij*K_ij
+                    val = sigma2 - K_ij2
+                    loglik += -(sigma*(y[i]*y[i] + y[j]*y[j]) - 2.*K_ij*y[i]*y[j])/val - np.log(val) - np.log(2.*np.pi)
             
             if subsample > 0:
                 loglik *= np.size(x)*np.size(x)/(subsample)

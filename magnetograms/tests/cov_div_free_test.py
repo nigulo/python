@@ -183,8 +183,8 @@ class test_cov_div_free(unittest.TestCase):
         
         loglik1 = gp.loglik_approx(x, y, use_vector_form = False)
         loglik2 = gp.loglik_approx(x, y, use_vector_form = True)
-        #loglik = gp.init(x, y)
         np.testing.assert_almost_equal(loglik1, loglik2)
+        #loglik = gp.init(x, y)
         #np.testing.assert_almost_equal(loglik1, loglik)
         
         
