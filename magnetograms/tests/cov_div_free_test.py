@@ -8,7 +8,6 @@ class test_cov_div_free(unittest.TestCase):
 
     def test_calc_cov(self):
         
-        
         x1_range = 1.0
         x2_range = 1.0
         n1 = 2
@@ -107,6 +106,30 @@ class test_cov_div_free(unittest.TestCase):
         np.testing.assert_almost_equal(K_grads[2,:,:], K_grads_expected, 10)
 
 
+    def test_calc_cov_ij(self):
+        x1_range = 1.0
+        x2_range = 1.0
+        n1 = 2
+        n2 = 2
+        x1 = np.linspace(0, x1_range, n1)
+        x2 = np.linspace(0, x2_range, n2)
+        x_mesh = np.meshgrid(x1, x2)
+        x = np.dstack(x_mesh).reshape(-1, 2)
+
+        sig_var = 0.5
+        ell = 0.2
+        noise_var = 0.07        
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
+        
+        K, K_grads = gp.calc_cov(x, x, data_or_test=True, calc_grad = True)
+
+        for i in np.arange(0, K.shape[0]):
+            for j in np.arange(0, K.shape[1]):
+                K_ij = gp.calc_cov_ij(x, x, i, j)
+                #print(K_ij, K[i, j])
+                #if K_ij != K[i, j]:
+                #    print(i, j)
+                np.testing.assert_almost_equal(K_ij, K[i, j])
         
 if __name__ == '__main__':
     unittest.main()
