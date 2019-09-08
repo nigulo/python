@@ -250,11 +250,12 @@ y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
+
 # Align all the transverse components either randomly or identically
 for i in np.arange(0, n):
-    #if np.random.uniform() < 0.5:
-    #    y[i, :2] *= -1
-    y[i, :2] = np.abs(y[i, :2])
+    if np.random.uniform() < 0.5:
+        y[i, :2] *= -1
+    #y[i, :2] = np.abs(y[i, :2])
 
 
 def do_plots(y):
@@ -495,15 +496,76 @@ class disambiguator():
         assert(self.n == n1*n2*n3)
         
         self.y_sign = np.ones(n)
-        thetas = np.ones(n)/2.
+        thetas = np.ones(self.n)/2.
         self.thetas = np.log(thetas)
 
-        self.num_positive = np.zeros(n)
-        self.num_negative = np.zeros(n)
+        self.num_positive = np.zeros(self.n)
+        self.num_negative = np.zeros(self.n)
         
+        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
+        self.true_loglik = gp.loglik(x, np.reshape(y_orig, (3*n, -1)))
 
-    def collect_evidence(self):
-        random_indices = get_random_indices(x, n, thetas, y)
+    def reverse(self):
+        num_positive = np.zeros(self.n)
+        num_negative = np.zeros(self.n)
+        gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+        for round_no in np.arange(0, 10):
+            #i = self.get_random_indices()[0]
+            #inds_train = np.array([i])
+            inds_train = self.get_random_indices()
+        
+            x_train = self.x[inds_train]
+            y_train = np.array(self.y[inds_train])
+            #reverse(y_train, np.ones(len(y_train)), np.arange(0, len(y_train)))
+        
+            # Determine the points which lie in the vicinity of the point i
+            
+            #######################################################################
+            # Determine the points wich lie in the vicinity of the point i
+            #r = random.uniform()
+            #x_diff = self.x - np.repeat(np.array([self.x[i]]), self.x.shape[0], axis=0)
+            #x_diff = np.sum(x_diff**2, axis=1)
+            #p = .5*(1+special.erf(np.sqrt(x_diff)/(self.length_scale*self.length_scale)))
+            #i1 = np.where(p > 0.5)[0]
+            #p[i1] = 1. - p[i1]
+            #p *= 2.
+            #inds1 = np.where(p >= r)[0]
+            #######################################################################
+            inds1 = np.random.choice(self.n, size=10000)
+            inds1 = np.setdiff1d(inds1, inds_train)
+            
+            #print("inds_test", inds1)
+            while len(inds1) > 0:
+                inds_test = inds1[:min(1000, len(inds1))]
+                inds1 = inds1[min(1000, len(inds1)):]
+            
+                x_test = self.x[inds_test]
+                y_test_obs = self.y[inds_test]
+            
+                y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
+                gp.init(x_train, y_train_flat)
+            
+                y_test_mean = gp.fit(x_test, calc_var = False)
+                y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
+            
+                sim = np.sum(y_test_obs[:,:2]*y_test_mean[:,:2], axis=1)
+            
+                pos_indices = np.where(sim >= 0.)[0]
+                neg_indices = np.where(sim < 0.)[0]
+                
+                num_positive[inds_test[pos_indices]] += 1.0
+                num_negative[inds_test[neg_indices]] += 1.0
+        
+        indices_to_reverse = np.where(num_negative > num_positive)
+        print("indices_to_reverse", indices_to_reverse[0])
+        
+        if len(indices_to_reverse[0]) == 0:
+            return False
+        else:
+            #print("num_positive, num_negative:", num_positive, num_negative)
+            reverse(self.y, self.y_sign, indices_to_reverse)
+            return True
+                
         
     
     def align2(self, indices, length_scale):
@@ -551,7 +613,7 @@ class disambiguator():
         p = get_probs(self.thetas, self.y)
         #random_indices = np.random.choice(n, size=int(n/2), replace=False)
         #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
-        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 100))
+        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
         random_indices = np.random.choice(self.n, num_indices, replace=False, p=p)
         if length_scale is not None:
             i = 0
@@ -566,7 +628,7 @@ class disambiguator():
                                 random_index_filter[j] = False
                 random_indices = random_indices[random_index_filter]
                 i += 1
-        print("random_indices", random_indices)
+        #print("random_indices", random_indices)
         return random_indices
     
     def algorithm_a(self):
@@ -724,6 +786,109 @@ class disambiguator():
         by_dis = self.y[:,1]
         return exp_thetas, bx_dis, by_dis
 
+
+    def algorithm_b(self):
+        print(self.sig_var)
+        loglik = None
+        max_loglik = None
+        
+        iteration = -1
+    
+        #thetas = random.uniform(size=n)
+        num_tries = 0
+        
+        changed = True
+        while max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+            iteration += 1
+            print("num_tries", num_tries)
+        
+            num_tries += 1
+        
+            if inference and (iteration % inference_after_iter == 0):
+                #if temp <= 1.0:
+                #    temp += temp_delta*temp    
+                
+                length_scale, sig_var, noise_var = sample(self.x, np.reshape(self.y, (3*self.n, -1)))
+                changed = True
+                self.length_scale = length_scale
+                self.sig_var = sig_var
+                self.noise_var = noise_var
+            #else:
+                #if temp <= 1.0:
+                #    temp += temp_delta*temp    
+                
+    
+            if changed:
+                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+                #loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
+                loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+                changed = False
+                
+            print("sig_var=", self.sig_var)
+            print("length_scale", self.length_scale)
+            print("noise_var=", self.noise_var)
+            #print("mean", mean)
+            print("loglik=", loglik, "max_loglik=", max_loglik, "true_loglik=", self.true_loglik)
+            
+            if max_loglik is None or loglik > max_loglik:
+                num_tries = 1
+                max_loglik = loglik
+            
+            
+            y_last = np.array(self.y)
+            y_sign_last = np.array(self.y_sign)
+            
+            start = time.time()
+            did_reverse = self.reverse()
+            end = time.time()
+            print("Reverse took: " + str(end - start))
+    
+            if did_reverse:
+                do_plots(self.y)
+        
+                start = time.time()
+        
+                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+        
+                #loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
+                loglik1 = gp.loglik(x, np.reshape(self.y, (3*self.n, -1)))
+                end = time.time()
+                print("Inference took: " + str(end - start))
+        
+                do_plots(self.y)
+        
+                print("loglik1=", loglik1)
+                print("loglik1=", loglik1, "max_loglik=", max_loglik)
+        
+                if loglik1 > loglik:
+                    loglik = loglik1
+                    changed = True
+        
+                    for ri in np.arange(0, n):
+                        if self.y_sign[ri] > 0:
+                            self.num_positive[ri] += 1.0
+                        else:
+                            self.num_negative[ri] += 1.0
+                        if self.num_positive[ri] + self.num_negative[ri] >= 10:
+                            theta = float(self.num_positive[ri])/(self.num_positive[ri] + self.num_negative[ri])
+                            self.thetas[ri] = np.log(theta)
+                        print("num_positive, num_negative:", self.num_positive[ri], self.num_negative[ri])
+                else:
+                    self.y = y_last
+                    self.y_sign = y_sign_last
+            else:
+                self.y = y_last
+                self.y_sign = y_sign_last
+                 
+            do_plots(self.y)
+    
+    
+        do_plots(self.y)
+    
+        exp_thetas = np.exp(self.thetas)
+        bx_dis = self.y[:,0]
+        by_dis = self.y[:,1]
+        return exp_thetas, bx_dis, by_dis
     
 sig_var = None
 length_scale = None
@@ -736,6 +901,6 @@ if not inference:
     
 
 d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
-prob_a, field_a_x, field_a_y = d.algorithm_a()
+prob_a, field_a_x, field_a_y = d.algorithm_b()
 
 
