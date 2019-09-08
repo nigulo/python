@@ -483,224 +483,246 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     return affected_indices
 '''
 
-def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
-    print("len(indices)", len(indices))
+class disambiguator():
     
-    #include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
-    #mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
-    #mask = np.where(~mask)[0]
-    affected_indices = set()
-    gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-
-    inds_train = np.array(indices)
-    
-    # Determine the points which lie in the vicinity of the point i
-    inds1 = np.random.choice(n, size=10000)
-    inds1 = np.setdiff1d(inds1, inds_train)
-    affected_indices.update(inds1)
-    
-    while len(inds1) > 0:
-        inds_test = inds1[:min(1000, len(inds1))]
-        inds1 = inds1[min(1000, len(inds1)):]
-    
-        x_train = x[inds_train]
-        y_train = y[inds_train]
-    
-        x_test = x[inds_test]
-        y_test_obs = y[inds_test]
-    
-        y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
-        print("x_train", x_train.shape)
-        gp.init(x_train, y_train_flat)
-    
-        y_test_mean = gp.fit(x_test, calc_var = False)
-        y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
-    
-        sim = np.sum(y_test_obs*y_test_mean, axis=1)
-    
-        sim_indices = np.where(sim < 0.)[0]
-        reverse(y, y_sign, inds_test[sim_indices])
-    
-    return affected_indices
-
-
-def get_random_indices(x, n, length_scale, thetas, y):
-    p = get_probs(thetas, y)
-    #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-    #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
-    num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 100))
-    random_indices = np.random.choice(n, num_indices, replace=False, p=p)
-    print("random_indices", random_indices)
-    i = 0
-    while i < len(random_indices):
-        random_index_filter = np.ones_like(random_indices, dtype=bool)
-        ri = random_indices[i]
-        for rj in np.arange(0, n):
-            x_diff = x[rj] - x[ri]
-            if (np.dot(x_diff, x_diff) < (3.*length_scale)**2):
-                for j in np.arange(i + 1, len(random_indices)):
-                    if random_indices[j] == rj:
-                        random_index_filter[j] = False
-        random_indices = random_indices[random_index_filter]
-        i += 1
-    return random_indices
-
-def algorithm_a(x, y, sig_var, length_scale, noise_var):
-    print(sig_var)
-    y_sign = np.ones(n)
-    num_positive = np.zeros(n)
-    num_negative = np.zeros(n)
-    loglik = None
-    max_loglik = None
-    
-    iteration = -1
-
-    #thetas = random.uniform(size=n)
-    thetas = np.ones(n)/2.
-    thetas = np.log(thetas)
-    num_tries = 0
-    
-    temp = initial_temp
-    changed = True
-    while max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
-        iteration += 1
-        print("num_tries", num_tries)
-    
-        num_tries += 1
-    
-        temp = 1.#random.uniform(initial_temp, 2.)
-        if inference and (iteration % inference_after_iter == 0):
-            #if temp <= 1.0:
-            #    temp += temp_delta*temp    
-            
-            length_scale, sig_var, noise_var = sample(x, np.reshape(y, (3*n, -1)))
-            changed = True
-        #else:
-            #if temp <= 1.0:
-            #    temp += temp_delta*temp    
-            
-
-        if changed:
-            gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-            #loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-            loglik = gp.loglik(x, np.reshape(y, (3*n, -1)))
-            changed = False
-            
-        print("sig_var=", sig_var)
-        print("length_scale", length_scale)
-        print("noise_var=", noise_var)
-        #print("mean", mean)
-        print("loglik=", loglik, "max_loglik=", max_loglik)
+    def __init__(self, x, y, sig_var, length_scale, noise_var):
+        self.x = x
+        self.y = y
+        self.sig_var = sig_var
+        self.length_scale = length_scale
+        self.noise_var = noise_var
+        self.n = len(x)
+        assert(self.n == n1*n2*n3)
         
-        if max_loglik is None or loglik > max_loglik:
-            num_tries = 1
-            max_loglik = loglik
-        
-        y_last = np.array(y)
-        y_sign_last = np.array(y_sign)
-        
-        random_indices = get_random_indices(x, n, temp*length_scale, thetas, y)
+        self.y_sign = np.ones(n)
+        thetas = np.ones(n)/2.
+        self.thetas = np.log(thetas)
 
+        self.num_positive = np.zeros(n)
+        self.num_negative = np.zeros(n)
         
-        #######################################################################
-        # Do aligning of the chosen training vectors
-        # based on most likely direction
-        #r = random.uniform()
-        #for ri in random_indices:
-        #    if num_positive[ri] + num_negative[ri] < 10:
-        #        theta = 0.5
-        #    else:
-        #        theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-        #    th = theta
-        #    if th < 0.2:
-        #        th = 0.2
-        #    if th > 0.8:
-        #        th = 0.8
-        #    if r < th:
-        #        if y_sign[ri] < 0:
-        #            reverse(y, y_sign, ri)
-        #            y_sign[ri] = 1 # overwrite sign
-        #    else:
-        #        if y_sign[ri] > 0:
-        #            reverse(y, y_sign, ri)
-        #            y_sign[ri] = -1 # overwrite sign
-        
-        
-        #gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-        ##loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-        #loglik1 = gp.loglik(x, np.reshape(y, (3*n, -1)))
-        #print("loglik1=", loglik1, "max_loglik=", max_loglik)
 
-        #if loglik1 > loglik:
-        #    loglik = loglik1
-        #    changed = True
+    def collect_evidence(self):
+        random_indices = get_random_indices(x, n, thetas, y)
+        
+    
+    def align2(self, indices, length_scale):
+        print("len(indices)", len(indices))
+        
+        #include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
+        #mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
+        #mask = np.where(~mask)[0]
+        affected_indices = set()
+        gp = cov_div_free.cov_div_free(self.sig_var, length_scale, self.noise_var)
+    
+        inds_train = np.array(indices)
+        
+        # Determine the points which lie in the vicinity of the point i
+        inds1 = np.random.choice(self.n, size=10000)
+        inds1 = np.setdiff1d(inds1, inds_train)
+        affected_indices.update(inds1)
+        
+        while len(inds1) > 0:
+            inds_test = inds1[:min(1000, len(inds1))]
+            inds1 = inds1[min(1000, len(inds1)):]
+        
+            x_train = self.x[inds_train]
+            y_train = self.y[inds_train]
+        
+            x_test = self.x[inds_test]
+            y_test_obs = self.y[inds_test]
+        
+            y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
+            print("x_train", x_train.shape)
+            gp.init(x_train, y_train_flat)
+        
+            y_test_mean = gp.fit(x_test, calc_var = False)
+            y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
+        
+            sim = np.sum(y_test_obs*y_test_mean, axis=1)
+        
+            sim_indices = np.where(sim < 0.)[0]
+            reverse(self.y, self.y_sign, inds_test[sim_indices])
+        
+        return affected_indices
+    
+    
+    def get_random_indices(self, length_scale=None):
+        p = get_probs(self.thetas, self.y)
+        #random_indices = np.random.choice(n, size=int(n/2), replace=False)
+        #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
+        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 100))
+        random_indices = np.random.choice(self.n, num_indices, replace=False, p=p)
+        if length_scale is not None:
+            i = 0
+            while i < len(random_indices):
+                random_index_filter = np.ones_like(random_indices, dtype=bool)
+                ri = random_indices[i]
+                for rj in np.arange(0, self.n):
+                    x_diff = self.x[rj] - self.x[ri]
+                    if (np.dot(x_diff, x_diff) < (3.*length_scale)**2):
+                        for j in np.arange(i + 1, len(random_indices)):
+                            if random_indices[j] == rj:
+                                random_index_filter[j] = False
+                random_indices = random_indices[random_index_filter]
+                i += 1
+        print("random_indices", random_indices)
+        return random_indices
+    
+    def algorithm_a(self):
+        print(self.sig_var)
+        loglik = None
+        max_loglik = None
+        
+        iteration = -1
+    
+        #thetas = random.uniform(size=n)
+        num_tries = 0
+        
+        temp = initial_temp
+        changed = True
+        while max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+            iteration += 1
+            print("num_tries", num_tries)
+        
+            num_tries += 1
+        
+            temp = 1.#random.uniform(initial_temp, 2.)
+            if inference and (iteration % inference_after_iter == 0):
+                #if temp <= 1.0:
+                #    temp += temp_delta*temp    
+                
+                length_scale, sig_var, noise_var = sample(self.x, np.reshape(self.y, (3*self.n, -1)))
+                changed = True
+                self.length_scale = length_scale
+                self.sig_var = sig_var
+                self.noise_var = noise_var
+            #else:
+                #if temp <= 1.0:
+                #    temp += temp_delta*temp    
+                
+    
+            if changed:
+                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+                #loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
+                loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+                changed = False
+                
+            print("sig_var=", self.sig_var)
+            print("length_scale", self.length_scale)
+            print("noise_var=", self.noise_var)
+            #print("mean", mean)
+            print("loglik=", loglik, "max_loglik=", max_loglik)
             
-        #    for ri in random_indices:
-        #        if y_sign[ri] > 0:
-        #            num_positive[ri] += 1.0
-        #        else:
-        #            num_negative[ri] += 1.0
-        #        if num_positive[ri] + num_negative[ri] >= 10:
-        #            theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-        #            thetas[ri] = np.log(theta)
-        #        print("num_positive, num_negative:", num_positive[ri], num_negative[ri])
+            if max_loglik is None or loglik > max_loglik:
+                num_tries = 1
+                max_loglik = loglik
             
-        y_last = np.array(y)
-        y_sign_last = np.array(y_sign)
-
-        start = time.time()
-        affected_indices = align2(x, y, y_sign, random_indices, n, temp*length_scale, sig_var, noise_var, thetas, num_positive, num_negative)
-        #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
-        end = time.time()
-        print("Align took: " + str(end - start))
-
-        do_plots(y)    
-
-        start = time.time()
-
-        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-
-        #loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-        loglik1 = gp.loglik(x, np.reshape(y, (3*n, -1)))
-        end = time.time()
-        print("Inference took: " + str(end - start))
-
-        do_plots(y)
-
-        print("loglik1=", loglik1)
-        print("loglik1=", loglik1, "max_loglik=", max_loglik)
-
-        if loglik1 > loglik:
-            loglik = loglik1
-            changed = True
-
-
-            for ri in affected_indices:
-                if y_sign[ri] > 0:
-                    num_positive[ri] += 1.0
-                else:
-                    num_negative[ri] += 1.0
-                if num_positive[ri] + num_negative[ri] >= 10:
-                    theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-                    thetas[ri] = np.log(theta)
-                print("num_positive, num_negative:", num_positive[ri], num_negative[ri])
-        else:
-            y = y_last
-            y_sign = y_sign_last
-        #else:
-        #    y = y_last
-        #    y_sign = y_sign_last
+            #y_last = np.array(self.y)
+            #y_sign_last = np.array(self.y_sign)
             
-
-        do_plots(y)
-
-
-    do_plots(y)
-
-    exp_thetas = np.exp(thetas)
-    bx_dis = y[:,0]
-    by_dis = y[:,1]
-    return exp_thetas, bx_dis, by_dis
+            random_indices = self.get_random_indices(length_scale = temp*self.length_scale)
+    
+            
+            #######################################################################
+            # Do aligning of the chosen training vectors
+            # based on most likely direction
+            #r = random.uniform()
+            #for ri in random_indices:
+            #    if num_positive[ri] + num_negative[ri] < 10:
+            #        theta = 0.5
+            #    else:
+            #        theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
+            #    th = theta
+            #    if th < 0.2:
+            #        th = 0.2
+            #    if th > 0.8:
+            #        th = 0.8
+            #    if r < th:
+            #        if y_sign[ri] < 0:
+            #            reverse(y, y_sign, ri)
+            #            y_sign[ri] = 1 # overwrite sign
+            #    else:
+            #        if y_sign[ri] > 0:
+            #            reverse(y, y_sign, ri)
+            #            y_sign[ri] = -1 # overwrite sign
+            
+            
+            #gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
+            ##loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
+            #loglik1 = gp.loglik(x, np.reshape(y, (3*n, -1)))
+            #print("loglik1=", loglik1, "max_loglik=", max_loglik)
+    
+            #if loglik1 > loglik:
+            #    loglik = loglik1
+            #    changed = True
+                
+            #    for ri in random_indices:
+            #        if y_sign[ri] > 0:
+            #            num_positive[ri] += 1.0
+            #        else:
+            #            num_negative[ri] += 1.0
+            #        if num_positive[ri] + num_negative[ri] >= 10:
+            #            theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
+            #            thetas[ri] = np.log(theta)
+            #        print("num_positive, num_negative:", num_positive[ri], num_negative[ri])
+                
+            y_last = np.array(self.y)
+            y_sign_last = np.array(self.y_sign)
+    
+            start = time.time()
+            affected_indices = self.align2(random_indices, temp*self.length_scale)
+            #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
+            end = time.time()
+            print("Align took: " + str(end - start))
+    
+            do_plots(self.y)    
+    
+            start = time.time()
+    
+            gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+    
+            #loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
+            loglik1 = gp.loglik(x, np.reshape(self.y, (3*self.n, -1)))
+            end = time.time()
+            print("Inference took: " + str(end - start))
+    
+            do_plots(self.y)
+    
+            print("loglik1=", loglik1)
+            print("loglik1=", loglik1, "max_loglik=", max_loglik)
+    
+            if loglik1 > loglik:
+                loglik = loglik1
+                changed = True
+    
+    
+                for ri in affected_indices:
+                    if self.y_sign[ri] > 0:
+                        self.num_positive[ri] += 1.0
+                    else:
+                        self.num_negative[ri] += 1.0
+                    if self.num_positive[ri] + self.num_negative[ri] >= 10:
+                        theta = float(self.num_positive[ri])/(self.num_positive[ri] + self.num_negative[ri])
+                        self.thetas[ri] = np.log(theta)
+                    print("num_positive, num_negative:", self.num_positive[ri], self.num_negative[ri])
+            else:
+                self.y = y_last
+                self.y_sign = y_sign_last
+            #else:
+            #    y = y_last
+            #    y_sign = y_sign_last
+                
+    
+            do_plots(self.y)
+    
+    
+        do_plots(self.y)
+    
+        exp_thetas = np.exp(self.thetas)
+        bx_dis = self.y[:,0]
+        by_dis = self.y[:,1]
+        return exp_thetas, bx_dis, by_dis
 
     
 sig_var = None
@@ -713,7 +735,7 @@ if not inference:
     noise_var=0.01
     
 
-
-prob_a, field_a_x, field_a_y = algorithm_a(x, np.array(y), sig_var, length_scale, noise_var)
+d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
+prob_a, field_a_x, field_a_y = d.algorithm_a()
 
 
