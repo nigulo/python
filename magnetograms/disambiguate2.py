@@ -941,7 +941,7 @@ class disambiguator():
         exp_thetas = np.exp(self.thetas)
         bx_dis = self.y[:,0]
         by_dis = self.y[:,1]
-        return exp_thetas, bx_dis, by_dis, loglik
+        return exp_thetas, self.y, loglik
     
 sig_var = None
 length_scale = None
@@ -956,7 +956,7 @@ best_loglik = None
 
 for i in np.arange(0, total_num_tries):
     d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
-    prob_a, field_x, field_y, loglik = d.algorithm_b()
+    prob_a, field_y, loglik = d.algorithm_b()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik
         best_y = field_y
