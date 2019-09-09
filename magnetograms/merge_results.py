@@ -12,10 +12,12 @@ for root, dirs, files in os.walk("."):
             continue
         (n1, n2, n3, num_x, num_y, x_no, y_no, field_y) = misc.load(file)
         if results is None:
-            results = np.array((n1*n2*n3, 3))
+            results = np.zeros((30*30*3, 3))
         nx = n1//num_x
         ny = n2//num_y
-        results[nx*ny*n3*x_no + ny*n3*y_no] = field_y
+        index = nx*ny*n3*x_no + ny*n3*y_no
+        print(results.shape, index)
+        results[index] = field_y
 y = np.reshape(results, (n1, n2, n3, 3))
 misc.save("results.pkl", y)
 

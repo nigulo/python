@@ -60,8 +60,17 @@ if len(sys.argv) > 5:
 mode = 2
 
 subsample = 1000000
-num_reps = 1
+num_subsample_reps = 1
 num_layers = 3
+
+inference = False
+sample_or_optimize = False
+num_samples = 1
+num_chains = 4
+inference_after_iter = 20
+
+total_num_tries = 1
+num_tries_without_progress = 1
 
 if state_file[-4:] == '.sav':
     if state_file is None:
@@ -166,6 +175,10 @@ elif state_file[-4:] == '.pkl':
         test_plot.close()
     ###########################################################################
 
+    n1_orig = y.shape[0]
+    n2_orig = y.shape[1]
+    n3_orig = y.shape[2]
+
     n1 = y.shape[0]//num_x
     n2 = y.shape[1]//num_y
     x_start = n1*x_no
@@ -210,22 +223,7 @@ else:
     print("Unknown input file type")
     sys.exit(1)
 
-inference = False
-sample_or_optimize = False
-num_samples = 1
-num_chains = 4
-inference_after_iter = 20
 
-eps = 0.001
-learning_rate = 0.1
-max_num_tries = 20
-initial_temp = 0.1
-temp_delta = 0.01
-
-if len(sys.argv) > 3:
-    num_iters = int(sys.argv[3])
-if len(sys.argv) > 4:
-    num_chains = int(sys.argv[4])
 
 n_jobs = num_chains
 
@@ -537,11 +535,11 @@ class disambiguator():
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         if self.approx:
             self.true_loglik = 0.
-            for i in np.arange(0, num_reps):
+            for i in np.arange(0, num_subsample_reps):
                 self.true_loglik += gp.loglik_approx(self.x, np.reshape(y_orig, (3*self.n, -1)), subsample=subsample)
                 #if (self.true_loglik is None or true_loglik > self.true_loglik):
                 #    self.true_loglik = true_loglik
-            self.true_loglik /= num_reps
+            self.true_loglik /= num_subsample_reps
         else:
             self.true_loglik = gp.loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
 
@@ -549,11 +547,11 @@ class disambiguator():
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         if (self.approx):
             loglik = 0.
-            for i in np.arange(0, num_reps):
+            for i in np.arange(0, num_subsample_reps):
                 loglik += gp.loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
                 #if (best_loglik is None or loglik > best_loglik):
                 #    best_loglik = loglik
-            return loglik/num_reps
+            return loglik/num_subsample_reps
         else:
             return gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
@@ -706,9 +704,8 @@ class disambiguator():
         #thetas = random.uniform(size=n)
         num_tries = 0
         
-        temp = initial_temp
         changed = True
-        while max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+        while max_loglik is None or num_tries % num_tries_without_progress != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
             iteration += 1
             print("num_tries", num_tries)
         
@@ -858,7 +855,7 @@ class disambiguator():
         num_tries = 0
         
         changed = True
-        while max_loglik is None or num_tries % max_num_tries != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
+        while max_loglik is None or num_tries % num_tries_without_progress != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
             iteration += 1
             print("num_tries", num_tries)
         
@@ -944,7 +941,7 @@ class disambiguator():
         exp_thetas = np.exp(self.thetas)
         bx_dis = self.y[:,0]
         by_dis = self.y[:,1]
-        return exp_thetas, bx_dis, by_dis
+        return exp_thetas, bx_dis, by_dis, loglik
     
 sig_var = None
 length_scale = None
@@ -952,13 +949,18 @@ noise_var = None
 if not inference:
 
     sig_var=1.
-    length_scale=.1*30/20
+    length_scale=.1*n1_orig/n1
     noise_var=0.01
     
+best_loglik = None
 
-d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
-prob_a, field_x, field_y = d.algorithm_b()
+for i in np.arange(0, total_num_tries):
+    d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
+    prob_a, field_x, field_y, loglik = d.algorithm_b()
+    if best_loglik is None or loglik > best_loglik:
+        best_loglik = loglik
+        best_y = field_y
 
-misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1, n2, n3, num_x, num_y, x_no, y_no, field_y))
+misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1, n2, n3, num_x, num_y, x_no, y_no, best_y))
 
 
