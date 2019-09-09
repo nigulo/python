@@ -18,6 +18,7 @@ import scipy.stats as stats
 import scipy.special as special
 import utils
 import plot
+import misc
 import pymc3 as pm
 #import os
 #import os.path
@@ -36,14 +37,33 @@ import scipy.signal as signal
 import pickle
 
 
-state_file = None#state.pkl"
+state_file = 'data3d.pkl'
+#state_file = 'data/IVM_AR9026.sav'
+#state_file = 'pi-ambiguity-test/amb_turb.fits'
+
+num_x = 1
+num_y = 1
+x_no = 0
+y_no = 0
+
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
+if len(sys.argv) > 2:
+    num_x = int(sys.argv[2])
+if len(sys.argv) > 3:
+    num_y = int(sys.argv[3])
+if len(sys.argv) > 4:
+    x_no = int(sys.argv[4])
+if len(sys.argv) > 5:
+    y_no = int(sys.argv[5])
 
 mode = 2
-subsample = 200000
 
-if mode == 0:
+subsample = 1000000
+num_reps = 1
+num_layers = 3
+
+if state_file[-4:] == '.sav':
     if state_file is None:
         state_file = 'data/IVM_AR9026.sav'
     idl_dict = readsav(state_file)
@@ -69,7 +89,7 @@ if mode == 0:
     print(phi)
     print(theta)
 
-elif mode == 1:
+elif state_file[-5:] == '.fits':
     if state_file is None:
         state_file = 'pi-ambiguity-test/amb_turb.fits'
     hdul = fits.open(state_file)
@@ -78,7 +98,7 @@ elif mode == 1:
     b = dat[0]
     theta = dat[1]
     phi = dat[2]
-else:
+elif state_file[-4:] == '.pkl':
     
     if state_file is None:
         state_file = 'data3d.pkl'
@@ -146,9 +166,17 @@ else:
         test_plot.close()
     ###########################################################################
 
-    bx = y[:7, :7, :3, 0]
-    by = y[:7, :7, :3, 1]
-    bz = y[:7, :7, :3, 2]
+    n1 = y.shape[0]//num_x
+    n2 = y.shape[1]//num_y
+    x_start = n1*x_no
+    x_end = min(x_start + n1, y.shape[0])
+    y_start = n2*y_no
+    y_end = min(y_start + n1, y.shape[1])
+    
+
+    bx = y[x_start:x_end, y_start:y_end, :num_layers, 0]
+    by = y[x_start:x_end, y_start:y_end, :num_layers, 1]
+    bz = y[x_start:x_end, y_start:y_end, :num_layers, 2]
     
     ###########################################################################
     # Overwrite some of the vector for depth testing purposes
@@ -178,7 +206,9 @@ else:
     truth_plot.save("truth.png")
     truth_plot.close()
 
-
+else:
+    print("Unknown input file type")
+    sys.exit(1)
 
 inference = False
 sample_or_optimize = False
@@ -188,7 +218,7 @@ inference_after_iter = 20
 
 eps = 0.001
 learning_rate = 0.1
-max_num_tries = 10000
+max_num_tries = 20
 initial_temp = 0.1
 temp_delta = 0.01
 
@@ -234,7 +264,7 @@ if mode == 2:
     for layer in np.arange(0, n3):
         truth_plot.colormap(bz[:, :, layer], ax_index = [layer])
         truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
-    truth_plot.save("truth_field.png")
+    truth_plot.save("truth_field_" + str(x_no) + "_" + str(y_no) + ".png")
     truth_plot.close()
 
 
@@ -258,7 +288,7 @@ for i in np.arange(0, n):
     #y[i, :2] = np.abs(y[i, :2])
 
 
-def do_plots(y):
+def do_plots(y, title = None):
     bx_orig = y_orig[:, 0]    
     by_orig = y_orig[:, 1]
     bx_orig = np.reshape(bx_orig, (n1, n2, n3))
@@ -271,7 +301,7 @@ def do_plots(y):
         by_dis = np.reshape(by_dis, (n1, n2, n3))
 
     for layer in np.arange(0, n3):
-        components_plot = plot.plot(nrows=2, ncols=3)
+        components_plot = plot.plot(nrows=2, ncols=3, title = title)
         components_plot.set_color_map('bwr')
         
         components_plot.colormap(bx_orig[:, :, layer], [0, 0])
@@ -283,7 +313,7 @@ def do_plots(y):
             components_plot.colormap(by_dis[:, :, layer], [1, 1])
             components_plot.colormap(np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2)), [1, 2])
         
-        components_plot.save("components" + str(layer) +".png")
+        components_plot.save("components_" + str(x_no) + "_" + str(y_no) + "_" + str(layer) +".png")
         components_plot.close()
 
 
@@ -486,7 +516,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
 
 class disambiguator():
     
-    def __init__(self, x, y, sig_var, length_scale, noise_var):
+    def __init__(self, x, y, sig_var, length_scale, noise_var, approx=True):
         self.x = x
         self.y = y
         self.sig_var = sig_var
@@ -502,8 +532,31 @@ class disambiguator():
         self.num_positive = np.zeros(self.n)
         self.num_negative = np.zeros(self.n)
         
-        gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-        self.true_loglik = gp.loglik(x, np.reshape(y_orig, (3*n, -1)))
+        self.approx = approx
+        
+        gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+        if self.approx:
+            self.true_loglik = 0.
+            for i in np.arange(0, num_reps):
+                self.true_loglik += gp.loglik_approx(self.x, np.reshape(y_orig, (3*self.n, -1)), subsample=subsample)
+                #if (self.true_loglik is None or true_loglik > self.true_loglik):
+                #    self.true_loglik = true_loglik
+            self.true_loglik /= num_reps
+        else:
+            self.true_loglik = gp.loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
+
+    def loglik(self):
+        gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+        if (self.approx):
+            loglik = 0.
+            for i in np.arange(0, num_reps):
+                loglik += gp.loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
+                #if (best_loglik is None or loglik > best_loglik):
+                #    best_loglik = loglik
+            return loglik/num_reps
+        else:
+            return gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+        
 
     def reverse(self):
         num_positive = np.zeros(self.n)
@@ -610,11 +663,23 @@ class disambiguator():
     
     
     def get_random_indices(self, length_scale=None):
-        p = get_probs(self.thetas, self.y)
+        
         #random_indices = np.random.choice(n, size=int(n/2), replace=False)
         #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
-        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
-        random_indices = np.random.choice(self.n, num_indices, replace=False, p=p)
+        #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
+        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 4))
+
+        assert(num_layers == 3)
+        # Take support points from all three layers
+        p1 = get_probs(self.thetas, self.y[::3])
+        indices1 = np.random.choice(self.n//3, num_indices, replace=False, p=p1)*3
+        p2 = get_probs(self.thetas, self.y[1::3])
+        indices2 = np.random.choice(self.n//3, num_indices, replace=False, p=p2)*3
+        p3 = get_probs(self.thetas, self.y[2::3])
+        indices3 = np.random.choice(self.n//3, num_indices, replace=False, p=p3)*3
+
+        #random_indices = np.random.choice(self.n, num_indices, replace=False, p=p)
+        random_indices = np.concatenate((indices1, indices2, indices3))
         if length_scale is not None:
             i = 0
             while i < len(random_indices):
@@ -665,9 +730,7 @@ class disambiguator():
                 
     
             if changed:
-                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-                #loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-                loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+                loglik = self.loglik()
                 changed = False
                 
             print("sig_var=", self.sig_var)
@@ -738,18 +801,15 @@ class disambiguator():
             end = time.time()
             print("Align took: " + str(end - start))
     
-            do_plots(self.y)    
+            do_plots(self.y, "Guess")    
     
             start = time.time()
     
-            gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-    
-            #loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-            loglik1 = gp.loglik(x, np.reshape(self.y, (3*self.n, -1)))
+            loglik1 = self.loglik()
             end = time.time()
             print("Inference took: " + str(end - start))
     
-            do_plots(self.y)
+            #do_plots(self.y)
     
             print("loglik1=", loglik1)
             print("loglik1=", loglik1, "max_loglik=", max_loglik)
@@ -776,10 +836,10 @@ class disambiguator():
             #    y_sign = y_sign_last
                 
     
-            do_plots(self.y)
+            do_plots(self.y, "Current best")
     
     
-        do_plots(self.y)
+        do_plots(self.y, "Result")
     
         exp_thetas = np.exp(self.thetas)
         bx_dis = self.y[:,0]
@@ -819,9 +879,8 @@ class disambiguator():
                 
     
             if changed:
-                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-                #loglik = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-                loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+                loglik = self.loglik()
+                #loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
                 changed = False
                 
             print("sig_var=", self.sig_var)
@@ -844,18 +903,15 @@ class disambiguator():
             print("Reverse took: " + str(end - start))
     
             if did_reverse:
-                do_plots(self.y)
+                do_plots(self.y, "Guess")
         
                 start = time.time()
         
-                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-        
-                #loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-                loglik1 = gp.loglik(x, np.reshape(self.y, (3*self.n, -1)))
+                loglik1 = self.loglik()
                 end = time.time()
                 print("Inference took: " + str(end - start))
         
-                do_plots(self.y)
+                #do_plots(self.y)
         
                 print("loglik1=", loglik1)
                 print("loglik1=", loglik1, "max_loglik=", max_loglik)
@@ -880,10 +936,10 @@ class disambiguator():
                 self.y = y_last
                 self.y_sign = y_sign_last
                  
-            do_plots(self.y)
+            do_plots(self.y, "Current best")
     
     
-        do_plots(self.y)
+        do_plots(self.y, "Result")
     
         exp_thetas = np.exp(self.thetas)
         bx_dis = self.y[:,0]
@@ -896,11 +952,13 @@ noise_var = None
 if not inference:
 
     sig_var=1.
-    length_scale=.1*30/7
+    length_scale=.1*30/20
     noise_var=0.01
     
 
 d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
-prob_a, field_a_x, field_a_y = d.algorithm_b()
+prob_a, field_x, field_y = d.algorithm_b()
+
+misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1, n2, n3, num_x, num_y, x_no, y_no, field_y))
 
 

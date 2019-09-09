@@ -14,14 +14,15 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 
 class plot:
 
-    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., extent=[0., 1., 0., 1.]):
+    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., extent=[0., 1., 0., 1.], title=None):
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
+        fig.suptitle(title, fontsize=16)
         self.fig = fig
         self.axes = axes
         self.extent = extent
         self.my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
-        self.title=None
+        self.title = None
         self.colorbars = dict()
 
     def set_color_map(self, color_map, reverse=True):
@@ -30,6 +31,9 @@ class plot:
         else:
             self.my_cmap = plt.get_cmap(color_map)
 
+    '''
+        Set the current axis title
+    '''
     def set_title(self, title):
         self.title = title
 

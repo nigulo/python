@@ -59,3 +59,4 @@ def calc_W(u_mesh, us, xys, dim = 2):
         assert(coef_ind == len(coefs))
         i += 1
     return W
+

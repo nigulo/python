@@ -1,5 +1,7 @@
 import numpy as np
 import scipy.ndimage
+import os
+import pickle
 
 def normalize(ds, axis = None):
     min_ds = np.min(ds, axis=axis)
@@ -20,3 +22,14 @@ def sample_image(image, factor):
     else:
         return scipy.ndimage.zoom(image, factor, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
 
+
+def load(filename):
+    if filename is not None:
+        data_file = filename
+        if os.path.isfile(data_file):
+            return pickle.load(open(data_file, 'rb'))
+    return None
+
+def save(filename, state):
+    with open(filename, 'wb') as f:
+        pickle.dump(state, f, protocol=4)
