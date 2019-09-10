@@ -9,7 +9,7 @@ import cov_div_free
 
 subsample = 1000000
 num_subsample_reps = 1
-num_tries_without_progress = 10
+num_tries_without_progress = 20
 approx = True
 
 sig_var=1.
@@ -120,13 +120,22 @@ while max_loglik is None or num_tries % num_tries_without_progress != 0:
 ###############################################################################
 y = np.reshape(y, (n1, n2, n3, 3))
 
-my_plot = plot.plot(nrows=n3, ncols=1)
-my_plot.set_color_map('bwr')
+#my_plot = plot.plot(nrows=n3, ncols=1)
+#my_plot.set_color_map('bwr')
+#for layer in np.arange(0, n3):
+#    my_plot.colormap(y[:, :, layer, 2], ax_index = [layer])
+#    my_plot.vectors(x1_mesh, x2_mesh, y[:, :, layer, 0], y[:, :, layer, 1], ax_index = [layer], units='width', color = 'k')
+#my_plot.save("results.png")
+#my_plot.close()
+
+results_plot = plot.plot(nrows=n3, ncols=3)
+results_plot.set_color_map('bwr')
 for layer in np.arange(0, n3):
-    my_plot.colormap(y[:, :, layer, 2], ax_index = [layer])
-    my_plot.vectors(x1_mesh, x2_mesh, y[:, :, layer, 0], y[:, :, layer, 1], ax_index = [layer], units='width', color = 'k')
-my_plot.save("result.png")
-my_plot.close()
+    results_plot.colormap(y[:, :, layer, 0], [layer, 0])
+    results_plot.colormap(y[:, :, layer, 1], [layer, 1])
+    results_plot.colormap(np.reshape(np.arctan2(y[:, :, layer, 1], y[:, :, layer, 0]), (n1, n2)), [layer, 2])
+results_plot.save("results.png")
+results_plot.close()
 
 misc.save("results.pkl", y)
 
