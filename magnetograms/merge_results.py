@@ -46,7 +46,7 @@ for root, dirs, files in os.walk("."):
             print(nx, ny, results[index+n2*n3*i:index+n2*n3*i+ny*n3].shape, field_y[ny*n3*i:ny*n3*(i+1)].shape)
             results[index+n2*n3*i:index+n2*n3*i+ny*n3] = field_y[ny*n3*i:ny*n3*(i+1)]
 y_grid = np.reshape(results, (n1, n2, n3, 3))
-misc.save("results.pkl", y)
+misc.save("results.pkl", y_grid)
 
 
 x1_range = 1.0
@@ -72,8 +72,8 @@ y = np.column_stack((bx, by, bz))
 
 def invert_random_patch(y):
     y_grid = np.reshape(y, (n1, n2, n3, 3))
-    i = np.random.randint(high = num_x)
-    j = np.random.randint(high = num_y)
+    i = np.random.randint(0, high = num_x)
+    j = np.random.randint(0, high = num_y)
     nx = n1//num_x
     ny = n2//num_y
     x_start = i*nx
@@ -83,7 +83,7 @@ def invert_random_patch(y):
     y_patch = y_grid[x_start:x_end, y_start:y_end, :, :]
     y_patch[:, :, :, :2] *= -1
     
-def loglik(y):
+def calc_loglik(y):
     gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
     if (approx):
         loglik = 0.
@@ -99,19 +99,19 @@ def loglik(y):
 # Now try gradually flipping the horizontal directions of the
 # consecutive patches to obtain the optimal configuration
 max_loglik = None
-num_tries = 0
+num_tries = 1
 
 changed = True
 while max_loglik is None or num_tries % num_tries_without_progress != 0:
     y_copy = np.array(y)
     invert_random_patch(y)
-    loglik = loglik(y)
+    loglik = calc_loglik(y)
 
     print("loglik=", loglik, "max_loglik=", max_loglik)
 
-    if loglik > max_loglik:
+    if max_loglik is None or loglik > max_loglik:
         max_loglik = loglik
-        num_tries = 0
+        num_tries = 1
     else:
         y = y_copy
         num_tries += 1
