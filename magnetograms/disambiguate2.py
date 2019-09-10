@@ -69,8 +69,8 @@ num_samples = 1
 num_chains = 4
 inference_after_iter = 20
 
-total_num_tries = 1
-num_tries_without_progress = 1
+total_num_tries = 10
+num_tries_without_progress = 10
 
 if state_file[-4:] == '.sav':
     if state_file is None:
@@ -175,21 +175,9 @@ elif state_file[-4:] == '.pkl':
         test_plot.close()
     ###########################################################################
 
-    n1_orig = y.shape[0]
-    n2_orig = y.shape[1]
-    n3_orig = y.shape[2]
-
-    n1 = y.shape[0]//num_x
-    n2 = y.shape[1]//num_y
-    x_start = n1*x_no
-    x_end = min(x_start + n1, y.shape[0])
-    y_start = n2*y_no
-    y_end = min(y_start + n1, y.shape[1])
-    
-
-    bx = y[x_start:x_end, y_start:y_end, :num_layers, 0]
-    by = y[x_start:x_end, y_start:y_end, :num_layers, 1]
-    bz = y[x_start:x_end, y_start:y_end, :num_layers, 2]
+    bx = y[:, :, :, 0]
+    by = y[:, :, :, 1]
+    bz = y[:, :, :, 2]
     
     ###########################################################################
     # Overwrite some of the vector for depth testing purposes
@@ -204,9 +192,6 @@ elif state_file[-4:] == '.pkl':
     b = np.sqrt(bx**2 + by**2 + bz**2)
     phi = np.arctan2(by, bx)
     theta = np.arccos((bz+1e-10)/(b+1e-10))
-
-
-    num_layers = bx.shape[-1]
 
     truth_plot = plot.plot(nrows=num_layers, ncols=3)
     for layer in np.arange(0, num_layers):
@@ -223,7 +208,23 @@ else:
     print("Unknown input file type")
     sys.exit(1)
 
+###############################################################################
+# Cut out the patch as specified by program arguments
+n1_orig = y.shape[0]
+n2_orig = y.shape[1]
+n3_orig = num_layers
 
+n1 = y.shape[0]//num_x
+n2 = y.shape[1]//num_y
+x_start = n1*x_no
+x_end = min(x_start + n1, y.shape[0])
+y_start = n2*y_no
+y_end = min(y_start + n1, y.shape[1])
+
+b = b[x_start:x_end, y_start:y_end, :num_layers]
+phi = phi[x_start:x_end, y_start:y_end, :num_layers]
+theta = theta[x_start:x_end, y_start:y_end, :num_layers]
+###############################################################################
 
 n_jobs = num_chains
 
@@ -939,8 +940,8 @@ class disambiguator():
         do_plots(self.y, "Result")
     
         exp_thetas = np.exp(self.thetas)
-        bx_dis = self.y[:,0]
-        by_dis = self.y[:,1]
+        #bx_dis = self.y[:,0]
+        #by_dis = self.y[:,1]
         return exp_thetas, self.y, loglik
     
 sig_var = None
@@ -961,6 +962,6 @@ for i in np.arange(0, total_num_tries):
         best_loglik = loglik
         best_y = field_y
 
-misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1, n2, n3, num_x, num_y, x_no, y_no, best_y))
+misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1_orig, n2_orig, n3_orig, num_x, num_y, x_no, y_no, best_y))
 
 
