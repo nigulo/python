@@ -72,7 +72,7 @@ num_samples = 1
 num_chains = 4
 inference_after_iter = 20
 
-total_num_tries = 100
+total_num_tries = 10
 num_tries_without_progress = 10
 
 
@@ -287,7 +287,6 @@ print(y.shape)
 
 if true_input is None:
     y_true = y_orig
-    print("SIIN", true_input)
 else:
     assert(os.path.isfile(true_input))
     b_true, phi_true, theta_true = load(true_input)
@@ -582,19 +581,26 @@ class disambiguator():
         
             # Determine the points which lie in the vicinity of the point i
             
-            #######################################################################
-            # Determine the points wich lie in the vicinity of the point i
-            #r = random.uniform()
-            #x_diff = self.x - np.repeat(np.array([self.x[i]]), self.x.shape[0], axis=0)
-            #x_diff = np.sum(x_diff**2, axis=1)
-            #p = .5*(1+special.erf(np.sqrt(x_diff)/(self.length_scale*self.length_scale)))
-            #i1 = np.where(p > 0.5)[0]
-            #p[i1] = 1. - p[i1]
-            #p *= 2.
-            #inds1 = np.where(p >= r)[0]
-            #######################################################################
             inds1 = np.random.choice(self.n, size=10000)
             inds1 = np.setdiff1d(inds1, inds_train)
+            #######################################################################
+            # Determine the points wich lie in the vicinity of at least one training point
+            #close_mask = np.zeros(len(inds1), dtype='bool')
+            #x_test1 = self.x[inds1]
+            #for x_t in x_train:
+            #    print("x_t", x_t)
+            #    r = random.uniform()
+            #    x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
+            #    x_diff = np.sum(x_diff**2, axis=1)
+            #    p = .5*(1+special.erf(np.sqrt(x_diff)/(self.length_scale*self.length_scale)))
+            #    i1 = np.where(p > 0.5)[0]
+            #    p[i1] = 1. - p[i1]
+            #    p *= 2.
+            #    close_inds = np.where(p >= r)[0]
+            #    close_mask[close_inds] = True
+            #print("close_mask", np.where(close_mask))
+            #inds1 = inds1[close_mask]
+            #######################################################################
             
             #print("inds_test", inds1)
             while len(inds1) > 0:
@@ -683,9 +689,9 @@ class disambiguator():
         p1 = get_probs(self.thetas, self.y[::3])
         indices1 = np.random.choice(self.n//3, num_indices, replace=False, p=p1)*3
         p2 = get_probs(self.thetas, self.y[1::3])
-        indices2 = np.random.choice(self.n//3, num_indices, replace=False, p=p2)*3
+        indices2 = np.random.choice(self.n//3, num_indices, replace=False, p=p2)*3 + 1
         p3 = get_probs(self.thetas, self.y[2::3])
-        indices3 = np.random.choice(self.n//3, num_indices, replace=False, p=p3)*3
+        indices3 = np.random.choice(self.n//3, num_indices, replace=False, p=p3)*3 + 2
 
         #random_indices = np.random.choice(self.n, num_indices, replace=False, p=p)
         random_indices = np.concatenate((indices1, indices2, indices3))
@@ -967,14 +973,15 @@ best_loglik = None
 
 for i in np.arange(0, total_num_tries):
     
-    if true_input:
+    y = np.array(y_orig)
+    if true_input is None:
         # Align all the transverse components either randomly or identically
         for i in np.arange(0, n):
             if np.random.uniform() < 0.5:
                 y[i, :2] *= -1
             #y[i, :2] = np.abs(y[i, :2])
     
-    d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
+    d = disambiguator(x, y, sig_var, length_scale, noise_var)
     prob_a, field_y, loglik = d.algorithm_b()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik
