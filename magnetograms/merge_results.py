@@ -9,7 +9,7 @@ import cov_div_free
 
 subsample = 1000000
 num_subsample_reps = 1
-num_tries_without_progress = 20
+num_tries_without_progress = 100
 approx = True
 
 sig_var=1.
@@ -69,11 +69,17 @@ bz = np.reshape(y_grid[:, :, :, 2], n)
 
 y = np.column_stack((bx, by, bz))
 
+ri = 0
+rj = 0
 
 def invert_random_patch(y):
     y_grid = np.reshape(y, (n1, n2, n3, 3))
-    i = np.random.randint(0, high = num_x)
-    j = np.random.randint(0, high = num_y)
+    if np.random.choice([True, False]):
+        i = np.random.randint(0, high = num_x)
+        j = np.random.randint(0, high = num_y)
+    else:
+        i = ri
+        j = rj
     nx = n1//num_x
     ny = n2//num_y
     x_start = i*nx
@@ -104,7 +110,14 @@ num_tries = 1
 changed = True
 while max_loglik is None or num_tries % num_tries_without_progress != 0:
     y_copy = np.array(y)
-    invert_random_patch(y)
+    count = np.random.randint(0, num_x*num_y//2)
+    for _ in np.arange(0, count):
+        invert_random_patch(y)
+        ri += 1
+        rj += 1
+        ri %= num_x
+        rj %= num_y
+
     loglik = calc_loglik(y)
 
     print("loglik=", loglik, "max_loglik=", max_loglik)
@@ -116,26 +129,15 @@ while max_loglik is None or num_tries % num_tries_without_progress != 0:
         y = y_copy
         num_tries += 1
 
+    results_plot = plot.plot(nrows=n3, ncols=3)
+    results_plot.set_color_map('bwr')
+    y_grid = np.reshape(y, (n1, n2, n3, 3))
+    for layer in np.arange(0, n3):
+        results_plot.colormap(y_grid[:, :, layer, 0], [layer, 0])
+        results_plot.colormap(y_grid[:, :, layer, 1], [layer, 1])
+        results_plot.colormap(np.reshape(np.arctan2(y_grid[:, :, layer, 1], y_grid[:, :, layer, 0]), (n1, n2)), [layer, 2])
+    results_plot.save("results.png")
+    results_plot.close()
 
-###############################################################################
-y = np.reshape(y, (n1, n2, n3, 3))
-
-#my_plot = plot.plot(nrows=n3, ncols=1)
-#my_plot.set_color_map('bwr')
-#for layer in np.arange(0, n3):
-#    my_plot.colormap(y[:, :, layer, 2], ax_index = [layer])
-#    my_plot.vectors(x1_mesh, x2_mesh, y[:, :, layer, 0], y[:, :, layer, 1], ax_index = [layer], units='width', color = 'k')
-#my_plot.save("results.png")
-#my_plot.close()
-
-results_plot = plot.plot(nrows=n3, ncols=3)
-results_plot.set_color_map('bwr')
-for layer in np.arange(0, n3):
-    results_plot.colormap(y[:, :, layer, 0], [layer, 0])
-    results_plot.colormap(y[:, :, layer, 1], [layer, 1])
-    results_plot.colormap(np.reshape(np.arctan2(y[:, :, layer, 1], y[:, :, layer, 0]), (n1, n2)), [layer, 2])
-results_plot.save("results.png")
-results_plot.close()
-
-misc.save("results.pkl", y)
+    misc.save("results.pkl", y_grid)
 

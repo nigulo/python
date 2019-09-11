@@ -45,6 +45,7 @@ num_x = 1
 num_y = 1
 x_no = 0
 y_no = 0
+true_input = None # If False, then already processed input and no shuffling needed
 
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
@@ -56,6 +57,8 @@ if len(sys.argv) > 4:
     x_no = int(sys.argv[4])
 if len(sys.argv) > 5:
     y_no = int(sys.argv[5])
+if len(sys.argv) > 6:
+    true_input = sys.argv[6]
 
 mode = 2
 
@@ -69,229 +72,234 @@ num_samples = 1
 num_chains = 4
 inference_after_iter = 20
 
-total_num_tries = 10
+total_num_tries = 100
 num_tries_without_progress = 10
 
-if state_file[-4:] == '.sav':
-    if state_file is None:
-        state_file = 'data/IVM_AR9026.sav'
-    idl_dict = readsav(state_file)
-    #idl_dict = readsav('data/fan_simu_ts56.sav')
-    
-    lat = idl_dict['b'][0][1]
-    long = idl_dict['b'][0][2]
-    b_long = idl_dict['b'][0][3]
-    b_trans = idl_dict['b'][0][4]
-    b_azim = idl_dict['b'][0][5]
-    
-    #print(lat)
-    #print(long)
-    #print(b_long)
-    #print(b_trans)
-    #print(b_azim)
-    
-    b = np.sqrt(b_long**2 + b_trans**2)
-    phi = b_azim*np.pi/180
-    theta = np.arccos((b_long+1e-10)/(b+1e-10))
-    
-    print(b)
-    print(phi)
-    print(theta)
 
-elif state_file[-5:] == '.fits':
-    if state_file is None:
-        state_file = 'pi-ambiguity-test/amb_turb.fits'
-    hdul = fits.open(state_file)
-    #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
-    dat = hdul[0].data[:,::4,::4]
-    b = dat[0]
-    theta = dat[1]
-    phi = dat[2]
-elif state_file[-4:] == '.pkl':
+def load(file_name):
     
-    if state_file is None:
-        state_file = 'data3d.pkl'
-    if os.path.isfile(state_file):
-        y = pickle.load(open(state_file, 'rb'))
-#    if os.path.isfile('data3d50x50x10.pkl'):
-#        y = pickle.load(open('data3d50x50x10.pkl', 'rb'))
+    if file_name[-4:] == '.sav':
+        idl_dict = readsav(file_name)
+        #idl_dict = readsav('data/fan_simu_ts56.sav')
+        
+        lat = idl_dict['b'][0][1]
+        long = idl_dict['b'][0][2]
+        b_long = idl_dict['b'][0][3]
+        b_trans = idl_dict['b'][0][4]
+        b_azim = idl_dict['b'][0][5]
+        
+        #print(lat)
+        #print(long)
+        #print(b_long)
+        #print(b_trans)
+        #print(b_azim)
+        
+        b = np.sqrt(b_long**2 + b_trans**2)
+        phi = b_azim*np.pi/180
+        theta = np.arccos((b_long+1e-10)/(b+1e-10))
+        
+        print(b)
+        print(phi)
+        print(theta)
+    
+    elif file_name[-5:] == '.fits':
+        hdul = fits.open(file_name)
+        #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+        dat = hdul[0].data[:,::4,::4]
+        b = dat[0]
+        theta = dat[1]
+        phi = dat[2]
+    elif file_name[-4:] == '.pkl':
+        if os.path.isfile(file_name):
+            y = pickle.load(open(file_name, 'rb'))
+    #    if os.path.isfile('data3d50x50x10.pkl'):
+    #        y = pickle.load(open('data3d50x50x10.pkl', 'rb'))
+        else:
+            n1, n2, n3 = 30, 30, 10
+            n = n1 * n2 * n3
+            x1_range, x2_range, x3_range = 1., 1., .33
+            
+            x1 = np.linspace(0, x1_range, n1)
+            x2 = np.linspace(0, x2_range, n2)
+            x3 = np.linspace(0, x3_range, n3)
+            x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
+            assert np.all(x1_mesh[:,0,0] == x1)
+            assert np.all(x2_mesh[0,:,0] == x2)
+            assert np.all(x3_mesh[0,0,:] == x3)
+            x = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
+            print("x1_mesh", x1_mesh)
+            print("x2_mesh", x2_mesh)
+            print("x3_mesh", x3_mesh)
+            print("x", x)
+            x = x.reshape(-1, 3)
+            print("x", x)
+            
+            sig_var_train = 1.0
+            length_scale_train = .1
+            noise_var_train = 0.01
+            mean_train = 0.
+    
+            gp_train = cov_div_free.cov_div_free(sig_var_train, length_scale_train, noise_var_train)
+            K = gp_train.calc_cov(x, x, True)
+    
+            print("SIIN")
+            for i in np.arange(0, n1):
+                for j in np.arange(0, n2):
+                    assert(K[i, j]==K[j, i])
+            
+            L = la.cholesky(K)
+            s = np.random.normal(0.0, 1.0, 3*n)
+            
+            y = np.repeat(mean_train, 3*n) + np.dot(L, s)
+            
+            y = np.reshape(y, (n1, n2, n3, 3))
+            
+            with open(file_name, 'wb') as f:
+                pickle.dump(y, f)    
+        
+        ###########################################################################
+        # Plotting the whole qube
+        x1_range, x2_range = 1., 1.
+        x1 = np.linspace(0, x1_range, y.shape[0])
+        x2 = np.linspace(0, x2_range, y.shape[1])
+        x_mesh = np.meshgrid(x2, x1)
+    
+        if true_input is None:
+            for i in np.arange(0, y.shape[2]):
+                test_plot = plot.plot(nrows=1, ncols=1)
+                test_plot.set_color_map('bwr')
+                
+                test_plot.colormap(y[:, :, i, 2])
+                test_plot.vectors(x_mesh[0], x_mesh[1], y[:, :, i, 0], y[:, :, i, 1], [], units='width', color = 'k')
+                test_plot.save("test_field" + str(i) +".png")
+                test_plot.close()
+        ###########################################################################
+    
+        bx = y[:, :, :, 0]
+        by = y[:, :, :, 1]
+        bz = y[:, :, :, 2]
+        
+        ###########################################################################
+        # Overwrite some of the vector for depth testing purposes
+        #for i in np.arange(0, y.shape[0]):
+        #    for j in np.arange(0, y.shape[1]):
+        #        #if i == y.shape[0]//2 or j == y.shape[1]//2:
+        #        if i == j or y.shape[0] - i == j:
+        #            bx[i, j] = y[i, j, 1, 0]
+        #            by[i, j] = y[i, j, 1, 1]
+        #            bz[i, j] = y[i, j, 1, 2]
+        ###########################################################################
+        b = np.sqrt(bx**2 + by**2 + bz**2)
+        phi = np.arctan2(by, bx)
+        theta = np.arccos((bz+1e-10)/(b+1e-10))
+    
+        if true_input is None or file_name == true_input:
+    
+            truth_plot = plot.plot(nrows=num_layers, ncols=3)
+            for layer in np.arange(0, num_layers):
+                truth_plot.set_color_map('bwr')
+                
+                truth_plot.colormap(bx[:, :, layer], [layer, 0])
+                truth_plot.colormap(by[:, :, layer], [layer, 1])
+                truth_plot.colormap(phi[:, :, layer], [layer, 2])
+            
+            truth_plot.save("truth.png")
+            truth_plot.close()
+    
     else:
-        n1, n2, n3 = 30, 30, 10
-        n = n1 * n2 * n3
-        x1_range, x2_range, x3_range = 1., 1., .33
-        
-        x1 = np.linspace(0, x1_range, n1)
-        x2 = np.linspace(0, x2_range, n2)
-        x3 = np.linspace(0, x3_range, n3)
-        x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
-        assert np.all(x1_mesh[:,0,0] == x1)
-        assert np.all(x2_mesh[0,:,0] == x2)
-        assert np.all(x3_mesh[0,0,:] == x3)
-        x = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
-        print("x1_mesh", x1_mesh)
-        print("x2_mesh", x2_mesh)
-        print("x3_mesh", x3_mesh)
-        print("x", x)
-        x = x.reshape(-1, 3)
-        print("x", x)
-        
-        sig_var_train = 1.0
-        length_scale_train = .1
-        noise_var_train = 0.01
-        mean_train = 0.
+        print("Unknown input file type")
+        sys.exit(1)
+    return b, phi, theta
 
-        gp_train = cov_div_free.cov_div_free(sig_var_train, length_scale_train, noise_var_train)
-        K = gp_train.calc_cov(x, x, True)
-
-        print("SIIN")
-        for i in np.arange(0, n1):
-            for j in np.arange(0, n2):
-                assert(K[i, j]==K[j, i])
-        
-        L = la.cholesky(K)
-        s = np.random.normal(0.0, 1.0, 3*n)
-        
-        y = np.repeat(mean_train, 3*n) + np.dot(L, s)
-        
-        y = np.reshape(y, (n1, n2, n3, 3))
-        
-        with open(state_file, 'wb') as f:
-            pickle.dump(y, f)    
+def convert(b, phi, theta):
     
     ###########################################################################
-    # Plotting the whole qube
-    x1_range, x2_range = 1., 1.
-    x1 = np.linspace(0, x1_range, y.shape[0])
-    x2 = np.linspace(0, x2_range, y.shape[1])
-    x_mesh = np.meshgrid(x2, x1)
-
-    for i in np.arange(0, y.shape[2]):
-        test_plot = plot.plot(nrows=1, ncols=1)
-        test_plot.set_color_map('bwr')
-        
-        test_plot.colormap(y[:, :, i, 2])
-        test_plot.vectors(x_mesh[0], x_mesh[1], y[:, :, i, 0], y[:, :, i, 1], [], units='width', color = 'k')
-        test_plot.save("test_field" + str(i) +".png")
-        test_plot.close()
-    ###########################################################################
-
-    bx = y[:, :, :, 0]
-    by = y[:, :, :, 1]
-    bz = y[:, :, :, 2]
+    # Cut out the patch as specified by program arguments
     
+    n1 = b.shape[0]//num_x
+    n2 = b.shape[1]//num_y
+    x_start = n1*x_no
+    x_end = min(x_start + n1, b.shape[0])
+    y_start = n2*y_no
+    y_end = min(y_start + n1, b.shape[1])
+    
+    b = b[x_start:x_end, y_start:y_end, :num_layers]
+    phi = phi[x_start:x_end, y_start:y_end, :num_layers]
+    theta = theta[x_start:x_end, y_start:y_end, :num_layers]
     ###########################################################################
-    # Overwrite some of the vector for depth testing purposes
-    #for i in np.arange(0, y.shape[0]):
-    #    for j in np.arange(0, y.shape[1]):
-    #        #if i == y.shape[0]//2 or j == y.shape[1]//2:
-    #        if i == j or y.shape[0] - i == j:
-    #            bx[i, j] = y[i, j, 1, 0]
-    #            by[i, j] = y[i, j, 1, 1]
-    #            bz[i, j] = y[i, j, 1, 2]
-    ###########################################################################
-    b = np.sqrt(bx**2 + by**2 + bz**2)
-    phi = np.arctan2(by, bx)
-    theta = np.arccos((bz+1e-10)/(b+1e-10))
+    
+    n1 = b.shape[0]
+    n2 = b.shape[1]
+    n3 = b.shape[2]
+    x1_range = 1.0
+    x2_range = 1.0
+    x3_range = x1_range*n3/n1
+    
+    
+    bz = b*np.cos(theta)
+    bxy = b*np.sin(theta)
+    bx = bxy*np.cos(phi)
+    by = bxy*np.sin(phi)
+    
+    n = n1*n2*n3
+    
+    x1 = np.linspace(0, x1_range, n1)
+    x2 = np.linspace(0, x2_range, n2)
+    x3 = np.linspace(0, x3_range, n3)
+    
+    x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
+    x_grid = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
+    x = x_grid.reshape(-1, 3)
+    x_flat = np.reshape(x, (3*n, -1))
 
-    truth_plot = plot.plot(nrows=num_layers, ncols=3)
-    for layer in np.arange(0, num_layers):
+    if mode == 2:
+        
+        truth_plot = plot.plot(nrows=n3, ncols=1)
         truth_plot.set_color_map('bwr')
-        
-        truth_plot.colormap(bx[:, :, layer], [layer, 0])
-        truth_plot.colormap(by[:, :, layer], [layer, 1])
-        truth_plot.colormap(phi[:, :, layer], [layer, 2])
+        for layer in np.arange(0, n3):
+            truth_plot.colormap(bz[:, :, layer], ax_index = [layer])
+            truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
+        truth_plot.save("truth_field_" + str(x_no) + "_" + str(y_no) + ".png")
+        truth_plot.close()
+
+    bx = np.reshape(bx, n)
+    by = np.reshape(by, n)
+    bz = np.reshape(bz, n)
     
-    truth_plot.save("truth.png")
-    truth_plot.close()
+    y = np.column_stack((bx, by, bz))
+    
+    return x, y, n1, n2, n3
+    ###########################################################################
 
-else:
-    print("Unknown input file type")
-    sys.exit(1)
+b, phi, theta = load(state_file)
 
-###############################################################################
-# Cut out the patch as specified by program arguments
-n1_orig = y.shape[0]
-n2_orig = y.shape[1]
+n1_orig = b.shape[0]
+n2_orig = b.shape[1]
 n3_orig = num_layers
 
-n1 = y.shape[0]//num_x
-n2 = y.shape[1]//num_y
-x_start = n1*x_no
-x_end = min(x_start + n1, y.shape[0])
-y_start = n2*y_no
-y_end = min(y_start + n1, y.shape[1])
-
-b = b[x_start:x_end, y_start:y_end, :num_layers]
-phi = phi[x_start:x_end, y_start:y_end, :num_layers]
-theta = theta[x_start:x_end, y_start:y_end, :num_layers]
-###############################################################################
-
-n_jobs = num_chains
-
-data_loaded = False
-n1 = b.shape[0]
-n2 = b.shape[1]
-n3 = b.shape[2]
-x1_range = 1.0
-x2_range = 1.0
-x3_range = x1_range*n3/n1
-
-
-bz = b*np.cos(theta)
-bxy = b*np.sin(theta)
-bx = bxy*np.cos(phi)
-by = bxy*np.sin(phi)
-
+x, y, n1, n2, n3 = convert(b, phi, theta)
 n = n1*n2*n3
-
-x1 = np.linspace(0, x1_range, n1)
-x2 = np.linspace(0, x2_range, n2)
-x3 = np.linspace(0, x3_range, n3)
-
-x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
-x_grid = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
-x = x_grid.reshape(-1, 3)
-x_flat = np.reshape(x, (3*n, -1))
-
-###############################################################################
-
-
-if mode == 2:
-    
-    truth_plot = plot.plot(nrows=n3, ncols=1)
-    truth_plot.set_color_map('bwr')
-    for layer in np.arange(0, n3):
-        truth_plot.colormap(bz[:, :, layer], ax_index = [layer])
-        truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
-    truth_plot.save("truth_field_" + str(x_no) + "_" + str(y_no) + ".png")
-    truth_plot.close()
-
-
-bx = np.reshape(bx, n)
-by = np.reshape(by, n)
-bz = np.reshape(bz, n)
-
-
-y = np.column_stack((bx, by, bz))
-
 
 y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
 
-# Align all the transverse components either randomly or identically
-for i in np.arange(0, n):
-    if np.random.uniform() < 0.5:
-        y[i, :2] *= -1
-    #y[i, :2] = np.abs(y[i, :2])
+if true_input is None:
+    y_true = y_orig
+    print("SIIN", true_input)
+else:
+    assert(os.path.isfile(true_input))
+    b_true, phi_true, theta_true = load(true_input)
+    _, y_true, _, _, _ = convert(b_true, phi_true, theta_true)
+    
 
 
-def do_plots(y, title = None):
-    bx_orig = y_orig[:, 0]    
-    by_orig = y_orig[:, 1]
-    bx_orig = np.reshape(bx_orig, (n1, n2, n3))
-    by_orig = np.reshape(by_orig, (n1, n2, n3))
+def do_plots(y, title = None, file_name=None):
+    bx_true = y_true[:, 0]    
+    by_true = y_true[:, 1]
+    bx_true = np.reshape(bx_true, (n1, n2, n3))
+    by_true = np.reshape(by_true, (n1, n2, n3))
 
     if y is not None:
         bx_dis = y[:, 0]
@@ -303,16 +311,18 @@ def do_plots(y, title = None):
         components_plot = plot.plot(nrows=2, ncols=3, title = title)
         components_plot.set_color_map('bwr')
         
-        components_plot.colormap(bx_orig[:, :, layer], [0, 0])
-        components_plot.colormap(by_orig[:, :, layer], [0, 1])
-        components_plot.colormap(np.reshape(np.arctan2(by_orig[:, :, layer], bx_orig[:, :, layer]), (n1, n2)), [0, 2])
+        components_plot.colormap(bx_true[:, :, layer], [0, 0])
+        components_plot.colormap(by_true[:, :, layer], [0, 1])
+        components_plot.colormap(np.reshape(np.arctan2(by_true[:, :, layer], bx_true[:, :, layer]), (n1, n2)), [0, 2])
         
         if y is not None:    
             components_plot.colormap(bx_dis[:, :, layer], [1, 0])
             components_plot.colormap(by_dis[:, :, layer], [1, 1])
             components_plot.colormap(np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2)), [1, 2])
         
-        components_plot.save("components_" + str(x_no) + "_" + str(y_no) + "_" + str(layer) +".png")
+        if file_name is None:
+            file_name = "components"
+        components_plot.save(file_name + "_" + str(x_no) + "_" + str(y_no) + "_" + str(layer) +".png")
         components_plot.close()
 
 
@@ -956,12 +966,21 @@ if not inference:
 best_loglik = None
 
 for i in np.arange(0, total_num_tries):
+    
+    if true_input:
+        # Align all the transverse components either randomly or identically
+        for i in np.arange(0, n):
+            if np.random.uniform() < 0.5:
+                y[i, :2] *= -1
+            #y[i, :2] = np.abs(y[i, :2])
+    
     d = disambiguator(x, np.array(y), sig_var, length_scale, noise_var)
     prob_a, field_y, loglik = d.algorithm_b()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik
         best_y = field_y
+        do_plots(best_y, title="Current best", file_name="best_result")
 
-misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1_orig, n2_orig, n3_orig, num_x, num_y, x_no, y_no, best_y))
+        misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1_orig, n2_orig, n3_orig, num_x, num_y, x_no, y_no, best_y))
 
 
