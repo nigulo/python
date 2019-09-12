@@ -734,7 +734,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
             gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
             #loglik = gp.init(x, y)
             U = gp.calc_cov(u, u, data_or_test=True)
-            W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+            W = utils.calc_W(u_mesh, x, us=u)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
             loglik = calc_loglik_approx(U, W, np.reshape(y, (2*n, -1)))
             
         print("sig_var=", sig_var)
@@ -749,7 +749,7 @@ def algorithm_a(x, y, sig_var, length_scale, noise_var, bx_offset1, by_offset1):
         
         gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
         U = gp.calc_cov(u, u, data_or_test=True)
-        W = utils.calc_W(u_mesh, u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        W = utils.calc_W(u_mesh, x, us=u)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
 
         y_last = np.array(y)
         y_sign_last = np.array(y_sign)

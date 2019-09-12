@@ -287,6 +287,19 @@ y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
+m1 = max(5, n1//10)
+m2 = max(5, n2//10)
+m3 = n3
+m = m1 * m2 * m3
+u1_range = np.max(x[:,0])
+u2_range = np.max(x[:,1])
+u3_range = np.max(x[:,2])
+
+u1 = np.linspace(0, u1_range, m1)
+u2 = np.linspace(0, u2_range, m2)
+u3 = np.linspace(0, u3_range, m3)
+u_mesh = np.meshgrid(u1, u2, u3, indexing='ij')
+
 
 if true_input is None:
     y_true = y_orig
@@ -525,9 +538,10 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     return affected_indices
 '''
 
+
 class disambiguator():
     
-    def __init__(self, x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp'):
+    def __init__(self, x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=None):
         self.x = x
         self.y = y
         self.sig_var = sig_var
@@ -545,6 +559,11 @@ class disambiguator():
         
         self.approx_type = approx_type
         
+        if approx_type == 'kiss-gp':
+            assert(u_mesh is not None)
+            self.u_mesh = u_mesh
+            self.u = np.stack(u_mesh, axis=3).reshape(-1, 3)
+        
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         if self.approx_type == 'd2':
             self.true_loglik = 0.
@@ -554,7 +573,13 @@ class disambiguator():
                 #    self.true_loglik = true_loglik
             self.true_loglik /= num_subsample_reps
         
-        #elif self.approx_type == 'kiss-gp':
+        elif self.approx_type == 'kiss-gp':
+            U = gp.calc_cov(self.u, self.u, data_or_test=True)
+            W = utils.calc_W(self.u_mesh, self.x, us=self.u, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+            (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(y_orig, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+            L = la.cholesky(U)
+            v = la.solve(L, x)
+            self.true_loglik = -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         else:
             self.true_loglik = gp.loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
 
@@ -567,15 +592,13 @@ class disambiguator():
                 #if (best_loglik is None or loglik > best_loglik):
                 #    best_loglik = loglik
             return loglik/num_subsample_reps
-        #elif self.approx_type == 'kiss-gp':
-        #    U = gp.calc_cov(u, u, data_or_test=True)
-        #    W = utils.calc_W(u_mesh, u=u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-        #    (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
-        #    #print x
-        #    L = la.cholesky(U)
-        #    #print L
-        #    v = la.solve(L, x)
-        #    return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
+        elif self.approx_type == 'kiss-gp':
+            U = gp.calc_cov(self.u, self.u, data_or_test=True)
+            W = utils.calc_W(self.u_mesh, self.x, us=self.u, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+            (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(self.y, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+            L = la.cholesky(U)
+            v = la.solve(L, x)
+            return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         else:
             return gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
@@ -995,7 +1018,7 @@ for i in np.arange(0, total_num_tries):
                 y[i, :2] *= -1
             #y[i, :2] = np.abs(y[i, :2])
     
-    d = disambiguator(x, y, sig_var, length_scale, noise_var)
+    d = disambiguator(x, y, sig_var, length_scale, noise_var, u_mesh=u_mesh)
     prob_a, field_y, loglik = d.algorithm_b()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik

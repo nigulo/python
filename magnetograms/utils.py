@@ -140,8 +140,6 @@ def calc_W(u_mesh, xs, us=None, dim = None, indexing_type=True):
         closest_inds = list(reversed(closest_inds))
         closest_inds = np.array([x for x in itertools.product(*closest_inds)])
         for closest_index in closest_inds:
-            #j = closest_index[-1]
-            #for iii in np.arange(len(closest_index)-2, -1, step=-1):
             j = closest_index[0]
             for iii in np.arange(1, len(closest_index)):
                 j *= len(u_mesh[iii])
