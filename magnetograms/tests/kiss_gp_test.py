@@ -54,7 +54,7 @@ class test_kiss_gp(unittest.TestCase):
 
 
 
-        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
+        kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y)
 
         sig_var = 0.5
         ell = 0.2
@@ -132,7 +132,7 @@ class test_kiss_gp(unittest.TestCase):
         #print(y.shape, y_downsampled.shape)
 
 
-        kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
+        kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y)
 
         sig_var = .8
         ell = 12.5

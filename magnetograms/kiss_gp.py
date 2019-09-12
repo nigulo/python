@@ -5,12 +5,12 @@ import numpy.linalg as la
 
 class kiss_gp:
     
-    def __init__(self, x, u_mesh, u, cov_func, y, dim=2):
+    def __init__(self, x, u_mesh, cov_func, y, dim=2):
         self.n = np.size(x)/2
         self.u_mesh = u_mesh
-        self.u = u
+        self.u = np.dstack(u_mesh).reshape(-1, 2)
         self.cov_func = cov_func
-        self.W = utils.calc_W(u_mesh, u, x, dim=dim)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        self.W = utils.calc_W(u_mesh, x, dim=dim)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         self.U = None
         self.y = y
 

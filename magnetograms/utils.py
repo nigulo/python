@@ -108,7 +108,8 @@ def get_closest(grid, point, counts_in = None):
     us - same as u_mesh, but flat (m1*m2, dim)
     dim - the dimensionality of the vector field on the grid
 '''
-def calc_W(u_mesh, us, xys, dim = 2):
+def calc_W(u_mesh, xys, dim = 2):
+    us = np.dstack(u_mesh).reshape(-1, 2)
     W = np.zeros((np.shape(xys)[0]*dim, np.shape(us)[0]*dim))
     i = 0
     for point in xys:

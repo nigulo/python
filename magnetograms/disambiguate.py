@@ -404,7 +404,7 @@ def sample(x, y):
         U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
         return  U, U_grads
 
-    kgp = kiss_gp.kiss_gp(x, u_mesh, u, cov_func, y)
+    kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y)
 
     if sample_or_optimize:
         s = sampling.Sampling()

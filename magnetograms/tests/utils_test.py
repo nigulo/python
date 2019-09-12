@@ -65,11 +65,10 @@ class test_calc_W(unittest.TestCase):
     
     def test(self):
         u_mesh = [np.array([[0., 1.], [0., 1.]]), np.array([[-0.25, -0.25], [0.25, 0.25]])]
-        us = np.array([[0., -0.25], [1., -0.25], [0., 0.25], [1., 0.25]])
 
         xys = np.array([[0., -0.25], [1., -0.25], 
                         [0., 0.25], [1., 0.25]])
-        W = utils.calc_W(u_mesh, us, xys)
+        W = utils.calc_W(u_mesh, xys)
         np.testing.assert_array_almost_equal(W, np.array(
             [[1.,   0.,   0.,   0.,   0.,   0.,   0.,   0.],
              [0.,   1.,   0.,   0.,   0.,   0.,   0.,   0.],
@@ -83,7 +82,7 @@ class test_calc_W(unittest.TestCase):
         xys = np.array([[0., -0.25], [0.5, -0.25], [1., -0.25], 
                         [0., 0.], [0.5, 0.], [1., 0.], 
                         [0., 0.25], [0.5, 0.25], [1., 0.25]])
-        W = utils.calc_W(u_mesh, us, xys)
+        W = utils.calc_W(u_mesh, xys)
         np.testing.assert_array_almost_equal(W, np.array(
             [[1.,   0.,   0.,   0.,   0.,   0.,   0.,   0.  ],
              [0.,   1.,   0.,   0.,   0.,   0.,   0.,   0.  ],
