@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 11 14:02:01 2018
-
-@author: olspern1
-"""
 import numpy as np
-import numpy.random as random
+#import numpy.random as random
+import itertools
 
+'''
 def bilinear_interp(xs, ys, x, y):
     coefs = np.zeros(len(xs)*len(ys))
     h = 0
@@ -18,11 +14,44 @@ def bilinear_interp(xs, ys, x, y):
                 if k != l:
                     for j in np.arange(0, len(xs)):
                         if i != j:
+                            print("points A", [x, y], [xs[i], ys[k]], [xs[j], ys[l]])
                             num *= (x - xs[j])*(y - ys[l])
                             denom *= (xs[i] - xs[j])*(ys[k] - ys[l])
             coefs[h] = num/denom
             h += 1
     return coefs
+'''
+
+'''
+    Bilinear interpolation coefficients for a point in a given grid
+    grid - the list with dim elements e.g. [xs, ys, zs], each element representing the 
+        coordinate array in one dimension
+    point - the point with shape (dim), e.g. array([x, y, z]) for which the interpolation weights are calculated
+'''
+def bilinear_interp(grid, point):
+    size = 1
+    for xs in grid:
+        size *= len(xs)
+    coefs = np.zeros(size)
+    h = 0
+    # TODO: get rid of reversings
+    grid = list(reversed(grid))
+    grid_points = np.array([x for x in itertools.product(*grid)])
+    point = point[::-1]
+    #grid_points = misc.cartesian_product(grid)
+    for grid_point1 in grid_points:
+        assert(point.shape[0] == grid_point1.shape[0])
+        num = 1.
+        denom = 1.
+        for grid_point2 in grid_points:
+            if np.all(grid_point1 != grid_point2):
+                for i in np.arange(0, len(point)):
+                    num *= (point[i] - grid_point2[i])
+                    denom *= (grid_point1[i] - grid_point2[i])
+        coefs[h] = num/denom
+        h += 1
+    return coefs
+
 
 def get_closest(xs, ys, x, y, count_x=2, count_y=2):
     dists_x = np.abs(xs - x)
@@ -37,12 +66,21 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
         ys_c[i] = ys[indices_y[i]]
     return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
 
+
+'''
+    Caclulates the matrix projecting one grid (usually denser)
+    to another grid (usually less dense)
+    xys - dense grid (n, dim)
+    u_mesh - sparse grid (m1, m2, dim)
+    us - same as u_mesh, but flat (m1*m2, dim)
+    dim - the dimensionality of the vector field on the grid
+'''
 def calc_W(u_mesh, us, xys, dim = 2):
     W = np.zeros((np.shape(xys)[0]*dim, np.shape(us)[0]*dim))
     i = 0
     for (x, y) in xys:
         (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
-        coefs = bilinear_interp(u1s, u2s, x, y)
+        coefs = bilinear_interp([u1s, u2s], np.array([x, y]))
         coef_ind = 0
         for u2_index in indices_u2:
             for u1_index in indices_u1:

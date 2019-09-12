@@ -33,17 +33,17 @@ class test_bilinear_interp(unittest.TestCase):
     def test(self):
         xs = np.array([0.0, 1.0])
         ys = np.array([-0.5, 0.0])
-        coefs = utils.bilinear_interp(xs, ys, 0.0, 0.0)
+        coefs = utils.bilinear_interp([xs, ys], np.array([0.0, 0.0]))
         np.testing.assert_equal(coefs, np.array([0., 0., 1., 0.]))
 
         xs = np.array([2.0, 3.0])
         ys = np.array([0.5, 1.0])
-        coefs = utils.bilinear_interp(xs, ys, 3.0, 1.0)
+        coefs = utils.bilinear_interp([xs, ys], np.array([3.0, 1.0]))
         np.testing.assert_equal(coefs, np.array([0., 0., 0., 1.]))
 
         xs = np.array([1.0, 2.0])
         ys = np.array([-0.5, 0.0])
-        coefs = utils.bilinear_interp(xs, ys, 1.6, -0.4)
+        coefs = utils.bilinear_interp([xs, ys], np.array([1.6, -0.4]))
         np.testing.assert_array_almost_equal(coefs, np.array([0.32, 0.48, 0.08, 0.12]))
 
 class test_calc_W(unittest.TestCase):
