@@ -248,6 +248,9 @@ def convert(b, phi, theta):
     x3 = np.linspace(0, x3_range, n3)
     
     x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
+    print("x1_mesh", x1_mesh[:,0,0])
+    print("x2_mesh", x2_mesh[0,:,0])
+    print("x3_mesh", x3_mesh[0,0,:])
     x_grid = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
     x = x_grid.reshape(-1, 3)
     x_flat = np.reshape(x, (3*n, -1))
@@ -524,7 +527,7 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
 
 class disambiguator():
     
-    def __init__(self, x, y, sig_var, length_scale, noise_var, approx=True):
+    def __init__(self, x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp'):
         self.x = x
         self.y = y
         self.sig_var = sig_var
@@ -540,28 +543,39 @@ class disambiguator():
         self.num_positive = np.zeros(self.n)
         self.num_negative = np.zeros(self.n)
         
-        self.approx = approx
+        self.approx_type = approx_type
         
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-        if self.approx:
+        if self.approx_type == 'd2':
             self.true_loglik = 0.
             for i in np.arange(0, num_subsample_reps):
                 self.true_loglik += gp.loglik_approx(self.x, np.reshape(y_orig, (3*self.n, -1)), subsample=subsample)
                 #if (self.true_loglik is None or true_loglik > self.true_loglik):
                 #    self.true_loglik = true_loglik
             self.true_loglik /= num_subsample_reps
+        
+        #elif self.approx_type == 'kiss-gp':
         else:
             self.true_loglik = gp.loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
 
     def loglik(self):
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-        if (self.approx):
+        if (self.approx_type == 'd2'):
             loglik = 0.
             for i in np.arange(0, num_subsample_reps):
                 loglik += gp.loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
                 #if (best_loglik is None or loglik > best_loglik):
                 #    best_loglik = loglik
             return loglik/num_subsample_reps
+        #elif self.approx_type == 'kiss-gp':
+        #    U = gp.calc_cov(u, u, data_or_test=True)
+        #    W = utils.calc_W(u_mesh, u=u, x)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        #    (x, istop, itn, normr) = sparse.lsqr(W, y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+        #    #print x
+        #    L = la.cholesky(U)
+        #    #print L
+        #    v = la.solve(L, x)
+        #    return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
         else:
             return gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
