@@ -112,7 +112,7 @@ while max_loglik is None or num_tries % num_tries_without_progress != 0:
     y_copy = np.array(y)
     count = np.random.randint(0, num_x*num_y//2)
     for _ in np.arange(0, count):
-        invert_random_patch(y)
+        #invert_random_patch(y)
         ri += 1
         rj += 1
         ri %= num_x

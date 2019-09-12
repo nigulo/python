@@ -72,7 +72,7 @@ num_samples = 1
 num_chains = 4
 inference_after_iter = 20
 
-total_num_tries = 10
+total_num_tries = 100
 num_tries_without_progress = 10
 
 
