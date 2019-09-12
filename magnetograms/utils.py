@@ -3,6 +3,7 @@ import numpy as np
 import itertools
 
 '''
+# Old method supporting 2 dimensions
 def bilinear_interp(xs, ys, x, y):
     coefs = np.zeros(len(xs)*len(ys))
     h = 0
@@ -52,7 +53,8 @@ def bilinear_interp(grid, point):
         h += 1
     return coefs
 
-
+'''
+# Old method supporting 2 dimensions
 def get_closest(xs, ys, x, y, count_x=2, count_y=2):
     dists_x = np.abs(xs - x)
     dists_y = np.abs(ys - y)
@@ -65,6 +67,37 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
     for i in np.arange(0, count_y):
         ys_c[i] = ys[indices_y[i]]
     return (xs_c, ys_c), (indices_x[:count_x], indices_y[:count_y])
+'''
+
+'''
+    Returns the arrays of coordinates of the mesh of data points
+    encompassing the given data point.
+    
+    grid - the list with dim elements e.g. [xs, ys, zs], each element representing the 
+        coordinate array in one dimension
+    point - the point with shape (dim), e.g. array([x, y, z]) for which the interpolation weights are calculated
+    counts - counts of mesh points to return in all directions. 
+    The default is 2.    
+'''
+def get_closest(grid, point, counts_in = None):
+    dists = []
+    indices = []
+    if counts_in is None:
+        counts = []
+    for i in np.arange(len(point)):
+        dists.append(np.abs(grid[i] - point[i]))
+        indices.append(np.argsort(dists[i]))
+        if counts_in is None:
+            counts.append(2)
+    closest_coords = []
+    closest_indices = []
+    for i in np.arange(len(dists)):
+        closest = np.zeros(counts[i])
+        for j in np.arange(counts[i]):
+            closest[j] = grid[i][indices[i][j]]
+        closest_coords.append(closest)
+        closest_indices.append(indices[i][:counts[i]])
+    return closest_coords, closest_indices
 
 
 '''
@@ -78,9 +111,9 @@ def get_closest(xs, ys, x, y, count_x=2, count_y=2):
 def calc_W(u_mesh, us, xys, dim = 2):
     W = np.zeros((np.shape(xys)[0]*dim, np.shape(us)[0]*dim))
     i = 0
-    for (x, y) in xys:
-        (u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
-        coefs = bilinear_interp([u1s, u2s], np.array([x, y]))
+    for point in xys:
+        (u1s, u2s), (indices_u1, indices_u2) = get_closest([u_mesh[0][0,:], u_mesh[1][:,0]], point)
+        coefs = bilinear_interp([u1s, u2s], point)
         coef_ind = 0
         for u2_index in indices_u2:
             for u1_index in indices_u1:
