@@ -42,14 +42,14 @@ class cov_func:
         self.loglik = -0.5 * np.dot(self.y_flat, self.alpha) - sum(np.log(np.diag(self.L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         return self.loglik
     
-    def loglik(self, x, y):
+    def calc_loglik(self, x, y):
         return self.init(x, y)
 
     
     '''
         This is pairwise factor graph approximation to the log-likelihood
     '''
-    def loglik_approx(self, x, y, use_vector_form = False, subsample = 0):
+    def calc_loglik_approx(self, x, y, use_vector_form = False, subsample = 0):
         if use_vector_form:
             if not hasattr(self, 'K'):
                 self.K=self.calc_cov(x, x, True)

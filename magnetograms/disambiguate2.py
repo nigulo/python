@@ -72,7 +72,7 @@ num_samples = 1
 num_chains = 4
 inference_after_iter = 20
 
-total_num_tries = 100
+total_num_tries = 10
 num_tries_without_progress = 10
 
 
@@ -287,8 +287,8 @@ y_orig = np.array(y)
 print(y_orig)
 print(y.shape)
 
-m1 = max(5, n1//10)
-m2 = max(5, n2//10)
+m1 = max(10, n1//10)
+m2 = max(10, n2//10)
 m3 = n3
 m = m1 * m2 * m3
 u1_range = np.max(x[:,0])
@@ -367,7 +367,7 @@ def sample(x, y):
         ell = theta[1]
         noise_var = theta[2]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
-        return gp.loglik_approx(x, y, subsample=subsample)
+        return gp.calc_loglik_approx(x, y, subsample=subsample)
 
     lik_grad = None
 
@@ -568,7 +568,7 @@ class disambiguator():
         if self.approx_type == 'd2':
             self.true_loglik = 0.
             for i in np.arange(0, num_subsample_reps):
-                self.true_loglik += gp.loglik_approx(self.x, np.reshape(y_orig, (3*self.n, -1)), subsample=subsample)
+                self.true_loglik += gp.calc_loglik_approx(self.x, np.reshape(y_orig, (3*self.n, -1)), subsample=subsample)
                 #if (self.true_loglik is None or true_loglik > self.true_loglik):
                 #    self.true_loglik = true_loglik
             self.true_loglik /= num_subsample_reps
@@ -581,14 +581,14 @@ class disambiguator():
             v = la.solve(L, x)
             self.true_loglik = -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         else:
-            self.true_loglik = gp.loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
+            self.true_loglik = gp.calc_loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
 
     def loglik(self):
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         if (self.approx_type == 'd2'):
             loglik = 0.
             for i in np.arange(0, num_subsample_reps):
-                loglik += gp.loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
+                loglik += gp.calc_loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
                 #if (best_loglik is None or loglik > best_loglik):
                 #    best_loglik = loglik
             return loglik/num_subsample_reps
@@ -600,7 +600,7 @@ class disambiguator():
             v = la.solve(L, x)
             return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         else:
-            return gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+            return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
 
     def reverse(self):
@@ -1018,7 +1018,7 @@ for i in np.arange(0, total_num_tries):
                 y[i, :2] *= -1
             #y[i, :2] = np.abs(y[i, :2])
     
-    d = disambiguator(x, y, sig_var, length_scale, noise_var, u_mesh=u_mesh)
+    d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type=None, u_mesh=u_mesh)
     prob_a, field_y, loglik = d.algorithm_b()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik

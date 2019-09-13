@@ -5,12 +5,23 @@ import numpy.linalg as la
 
 class kiss_gp:
     
-    def __init__(self, x, u_mesh, cov_func, y, dim=2):
+    '''
+        indexing_type depends on in which order u_mesh is created. It should be set False, if
+            u_mesh = np.meshgrid(u1, u2, u3, indexing='ij')
+        and True, if
+            u_mesh = np.meshgrid(u1, u2)
+
+    '''
+    def __init__(self, x, u_mesh, cov_func, y, us = None, dim=None, indexing_type=True):
+        if us is None:
+            us = np.dstack(u_mesh).reshape(-1, len(u_mesh))
+        if dim is None:
+            dim = len(u_mesh)
         self.n = np.size(x)/2
         self.u_mesh = u_mesh
-        self.u = np.dstack(u_mesh).reshape(-1, 2)
+        self.us = us
         self.cov_func = cov_func
-        self.W = utils.calc_W(u_mesh, x, dim=dim)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+        self.W = utils.calc_W(u_mesh, x, us = self.us, dim = dim, indexing_type=indexing_type)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
         self.U = None
         self.y = y
 
@@ -18,7 +29,7 @@ class kiss_gp:
     def likelihood(self, theta, data):
         self.theta = theta
         self.data = data
-        U, U_grads = self.cov_func(self.theta, self.data, self.u, self.u, data_or_test=True)
+        U, U_grads = self.cov_func(self.theta, self.data, self.us, self.us, data_or_test=True)
         self.U_grads = U_grads
 
         (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
@@ -47,7 +58,7 @@ class kiss_gp:
         if not np.array_equal(self.theta, theta) or not np.array_equal(self.data, data):
             self.theta = theta
             self.data = data
-            U, U_grads = self.cov_func(self.theta, self.data, self.u, self.u, data_or_test=True)
+            U, U_grads = self.cov_func(self.theta, self.data, self.us, self.us, data_or_test=True)
             self.U_grads = U_grads
 
             (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]
@@ -78,7 +89,7 @@ class kiss_gp:
 
 
     def fit(self, x_test, calc_var = True):
-        K_test, _ = self.cov_func(self.theta, self.data, x_test, self.u, data_or_test=False)
+        K_test, _ = self.cov_func(self.theta, self.data, x_test, self.us, data_or_test=False)
         f_mean = np.dot(K_test, self.alpha)
         if calc_var:
             v = la.solve(self.L, K_test.T)
