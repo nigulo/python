@@ -152,7 +152,6 @@ def calc_W(u_mesh, xs, us=None, dim = None, indexing_type=True):
             for i1 in np.arange(dim):
                 for j1 in np.arange(dim):
                     if i1 == j1:
-                        print(i, j, i1, j1)
                         W[dim*i+i1,dim*j+j1] = coefs[coef_ind]
             coef_ind += 1
         assert(coef_ind == len(coefs))

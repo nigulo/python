@@ -1018,7 +1018,7 @@ for i in np.arange(0, total_num_tries):
                 y[i, :2] *= -1
             #y[i, :2] = np.abs(y[i, :2])
     
-    d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type=None, u_mesh=u_mesh)
+    d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
     prob_a, field_y, loglik = d.algorithm_b()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik
