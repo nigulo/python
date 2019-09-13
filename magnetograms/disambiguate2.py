@@ -73,7 +73,7 @@ num_chains = 4
 inference_after_iter = 20
 
 total_num_tries = 10
-num_tries_without_progress = 10
+num_tries_without_progress = 100
 
 
 def load(file_name):
@@ -614,29 +614,34 @@ class disambiguator():
         
             x_train = self.x[inds_train]
             y_train = np.array(self.y[inds_train])
-            #reverse(y_train, np.ones(len(y_train)), np.arange(0, len(y_train)))
+            
+            if random.uniform() > 0.5:
+                reverse(self.y, self.y_sign, inds_train)
         
             # Determine the points which lie in the vicinity of the point i
             
-            inds1 = np.random.choice(self.n, size=10000)
+            #inds1 = np.random.choice(self.n, size=10000, replace=False)
+            inds1 = np.arange(self.n)
             inds1 = np.setdiff1d(inds1, inds_train)
             #######################################################################
             # Determine the points wich lie in the vicinity of at least one training point
-            #close_mask = np.zeros(len(inds1), dtype='bool')
-            #x_test1 = self.x[inds1]
-            #for x_t in x_train:
-            #    print("x_t", x_t)
-            #    r = random.uniform()
-            #    x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
-            #    x_diff = np.sum(x_diff**2, axis=1)
-            #    p = .5*(1+special.erf(np.sqrt(x_diff)/(self.length_scale*self.length_scale)))
-            #    i1 = np.where(p > 0.5)[0]
-            #    p[i1] = 1. - p[i1]
-            #    p *= 2.
-            #    close_inds = np.where(p >= r)[0]
-            #    close_mask[close_inds] = True
+            close_mask = np.zeros(len(inds1), dtype='bool')
+            x_test1 = self.x[inds1]
+            for x_t in x_train:
+                #print("x_t", x_t)
+                r = random.uniform()
+                x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
+                x_diff = np.sum(x_diff**2, axis=1)
+                p = .5*(1+special.erf(np.sqrt(.5*x_diff)/self.length_scale))
+                #print(p[1:10], self.length_scale)
+                i1 = np.where(p > 0.5)[0]
+                p[i1] = 1. - p[i1]
+                p *= 2.
+                close_inds = np.where(p >= r)[0]
+                close_mask[close_inds] = True
+                #print("close_inds", r, p, np.where(close_inds))
             #print("close_mask", np.where(close_mask))
-            #inds1 = inds1[close_mask]
+            inds1 = inds1[close_mask]
             #######################################################################
             
             #print("inds_test", inds1)
