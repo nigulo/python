@@ -94,12 +94,12 @@ def calc_loglik(y):
     if (approx):
         loglik = 0.
         for i in np.arange(0, num_subsample_reps):
-            loglik += gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
+            loglik += gp.calc_loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
             #if (best_loglik is None or loglik > best_loglik):
             #    best_loglik = loglik
         return loglik/num_subsample_reps
     else:
-        return gp.loglik(x, np.reshape(y, (3*n, -1)))
+        return gp.calc_loglik(x, np.reshape(y, (3*n, -1)))
     
 ###############################################################################
 # Now try gradually flipping the horizontal directions of the

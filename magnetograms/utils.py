@@ -130,9 +130,12 @@ def calc_W(u_mesh, xs, us=None, dim = None, indexing_type=True):
             indices1[i] = np.arange(u_mesh[i].shape[i])
         u_mesh1.append(u_mesh[i][tuple(indices1)])
 
+    if indexing_type:
+        dims = list(reversed(u_mesh[0].shape))
+    else:
+        dims = u_mesh[0].shape
     i = 0
     for point in xs:
-        #(u1s, u2s), (indices_u1, indices_u2) = get_closest([u_mesh[0][0,:], u_mesh[1][:,0]], point)
         closest_us, closest_inds = get_closest(u_mesh1, point)
         coefs = bilinear_interp(closest_us, point)
         coef_ind = 0
@@ -140,28 +143,18 @@ def calc_W(u_mesh, xs, us=None, dim = None, indexing_type=True):
         closest_inds = list(reversed(closest_inds))
         closest_inds = np.array([x for x in itertools.product(*closest_inds)])
         for closest_index in closest_inds:
+            if not indexing_type:
+                closest_index = closest_index[::-1]
             j = closest_index[0]
             for iii in np.arange(1, len(closest_index)):
-                j *= len(u_mesh[iii])
+                j *= dims[iii]
                 j += closest_index[iii]
             for i1 in np.arange(dim):
                 for j1 in np.arange(dim):
                     if i1 == j1:
+                        print(i, j, i1, j1)
                         W[dim*i+i1,dim*j+j1] = coefs[coef_ind]
             coef_ind += 1
-        
-        #(u1s, u2s) = closest_us
-        #(indices_u1, indices_u2) = closest_inds
-        #(u1s, u2s), (indices_u1, indices_u2) = get_closest(u_mesh[0][0,:], u_mesh[1][:,0], x, y)
-        #coefs = bilinear_interp([u1s, u2s], np.array([x, y]))
-        #for u2_index in indices_u2:
-        #    for u1_index in indices_u1:
-        #        j = u2_index * len(u_mesh[0]) + u1_index
-        #        for i1 in np.arange(0, dim):
-        #            for j1 in np.arange(0, dim):
-        #                if i1 == j1:
-        #                    W[dim*i+i1,dim*j+j1] = coefs[coef_ind]
-        #        coef_ind += 1
         assert(coef_ind == len(coefs))
         i += 1
     return W
