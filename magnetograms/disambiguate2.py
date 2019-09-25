@@ -72,8 +72,8 @@ num_samples = 1
 num_chains = 4
 inference_after_iter = 20
 
-total_num_tries = 10
-num_tries_without_progress = 100
+total_num_tries = 100
+num_tries_without_progress = 20
 
 
 def load(file_name):
@@ -310,11 +310,17 @@ else:
     
 
 
-def do_plots(y, title = None, file_name=None):
+def do_plots(y, thetas, title = None, file_name=None):
     bx_true = y_true[:, 0]    
     by_true = y_true[:, 1]
     bx_true = np.reshape(bx_true, (n1, n2, n3))
     by_true = np.reshape(by_true, (n1, n2, n3))
+    
+    if thetas is not None:
+        thetas = np.exp(thetas)
+        ids = np.where(thetas > 0.5)
+        thetas[ids] = 1. - thetas[ids]
+        thetas = np.reshape(thetas*2., (n1, n2, n3))
 
     if y is not None:
         bx_dis = y[:, 0]
@@ -323,17 +329,26 @@ def do_plots(y, title = None, file_name=None):
         by_dis = np.reshape(by_dis, (n1, n2, n3))
 
     for layer in np.arange(0, n3):
-        components_plot = plot.plot(nrows=2, ncols=3, title = title)
+        components_plot = plot.plot(nrows=3, ncols=3, title = title)
         components_plot.set_color_map('bwr')
         
         components_plot.colormap(bx_true[:, :, layer], [0, 0])
         components_plot.colormap(by_true[:, :, layer], [0, 1])
         components_plot.colormap(np.reshape(np.arctan2(by_true[:, :, layer], bx_true[:, :, layer]), (n1, n2)), [0, 2])
         
+        
         if y is not None:    
             components_plot.colormap(bx_dis[:, :, layer], [1, 0])
             components_plot.colormap(by_dis[:, :, layer], [1, 1])
             components_plot.colormap(np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2)), [1, 2])
+
+            components_plot.set_color_map('Greys')
+            components_plot.colormap(bx_true[:, :, layer] - bx_dis[:, :, layer], [2, 0])
+            components_plot.colormap(by_true[:, :, layer] - by_dis[:, :, layer], [2, 1])
+
+        if thetas is not None:
+            components_plot.set_color_map('Greys')
+            components_plot.colormap(thetas[:, :, layer], [2, 2], vmin=0., vmax=1.)
         
         if file_name is None:
             file_name = "components"
@@ -341,7 +356,7 @@ def do_plots(y, title = None, file_name=None):
         components_plot.close()
 
 
-do_plots(None)
+do_plots(None, None)
 
 print(np.shape(x))
 print(np.shape(y))
@@ -628,8 +643,8 @@ class disambiguator():
             close_mask = np.zeros(len(inds1), dtype='bool')
             x_test1 = self.x[inds1]
             for x_t in x_train:
-                #print("x_t", x_t)
                 r = random.uniform()
+                #print("x_t", x_t)
                 x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
                 x_diff = np.sum(x_diff**2, axis=1)
                 p = .5*(1+special.erf(np.sqrt(.5*x_diff)/self.length_scale))
@@ -724,7 +739,7 @@ class disambiguator():
         #random_indices = np.random.choice(n, size=int(n/2), replace=False)
         #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
         #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
-        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 4))
+        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 2))
 
         assert(num_layers == 3)
         # Take support points from all three layers
@@ -753,6 +768,7 @@ class disambiguator():
         #print("random_indices", random_indices)
         return random_indices
     
+    '''
     def algorithm_a(self):
         print(self.sig_var)
         loglik = None
@@ -901,7 +917,7 @@ class disambiguator():
         bx_dis = self.y[:,0]
         by_dis = self.y[:,1]
         return exp_thetas, bx_dis, by_dis
-
+    '''
 
     def algorithm_b(self):
         print(self.sig_var)
@@ -959,7 +975,7 @@ class disambiguator():
             print("Reverse took: " + str(end - start))
     
             if did_reverse:
-                do_plots(self.y, "Guess")
+                do_plots(self.y, self.thetas, "Guess")
         
                 start = time.time()
         
@@ -977,13 +993,6 @@ class disambiguator():
                     changed = True
         
                     for ri in np.arange(0, n):
-                        if self.y_sign[ri] > 0:
-                            self.num_positive[ri] += 1.0
-                        else:
-                            self.num_negative[ri] += 1.0
-                        if self.num_positive[ri] + self.num_negative[ri] >= 10:
-                            theta = float(self.num_positive[ri])/(self.num_positive[ri] + self.num_negative[ri])
-                            self.thetas[ri] = np.log(theta)
                         print("num_positive, num_negative:", self.num_positive[ri], self.num_negative[ri])
                 else:
                     self.y = y_last
@@ -991,11 +1000,20 @@ class disambiguator():
             else:
                 self.y = y_last
                 self.y_sign = y_sign_last
+
+            for ri in np.arange(0, n):
+                if self.y_sign[ri] > 0:
+                    self.num_positive[ri] += 1.0
+                else:
+                    self.num_negative[ri] += 1.0
+                if self.num_positive[ri] + self.num_negative[ri] >= 10:
+                    theta = float(self.num_positive[ri])/(self.num_positive[ri] + self.num_negative[ri])
+                    self.thetas[ri] = np.log(theta)
                  
-            do_plots(self.y, "Current best")
+            do_plots(self.y, self.thetas, "Current best")
     
     
-        do_plots(self.y, "Result")
+        do_plots(self.y, self.thetas, "Result")
     
         exp_thetas = np.exp(self.thetas)
         #bx_dis = self.y[:,0]
@@ -1028,7 +1046,7 @@ for i in np.arange(0, total_num_tries):
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik
         best_y = field_y
-        do_plots(best_y, title="Current best", file_name="best_result")
+        do_plots(best_y, d.thetas, title="Current best", file_name="best_result")
 
         misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1_orig, n2_orig, n3_orig, num_x, num_y, x_no, y_no, best_y))
 
