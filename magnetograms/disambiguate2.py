@@ -114,10 +114,11 @@ def load(file_name):
             y = pickle.load(open(file_name, 'rb'))
     #    if os.path.isfile('data3d50x50x10.pkl'):
     #        y = pickle.load(open('data3d50x50x10.pkl', 'rb'))
-        else:
-            n1, n2, n3 = 30, 30, 10
+        else: 
+            # Data not present, generate new
+            n1, n2, n3 = 100, 100, 3
             n = n1 * n2 * n3
-            x1_range, x2_range, x3_range = 1., 1., .33
+            x1_range, x2_range, x3_range = 1., 1., .03
             
             x1 = np.linspace(0, x1_range, n1)
             x2 = np.linspace(0, x2_range, n2)
@@ -135,7 +136,7 @@ def load(file_name):
             print("x", x)
             
             sig_var_train = 1.0
-            length_scale_train = .1
+            length_scale_train = .03
             noise_var_train = 0.01
             mean_train = 0.
     
@@ -343,8 +344,11 @@ def do_plots(y, thetas, title = None, file_name=None):
             components_plot.colormap(np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2)), [1, 2])
 
             components_plot.set_color_map('Greys')
-            components_plot.colormap(bx_true[:, :, layer] - bx_dis[:, :, layer], [2, 0])
-            components_plot.colormap(by_true[:, :, layer] - by_dis[:, :, layer], [2, 1])
+            
+            bx_diff = bx_true[:, :, layer] - bx_dis[:, :, layer]
+            by_diff = by_true[:, :, layer] - by_dis[:, :, layer]
+            components_plot.colormap(np.array(bx_diff == 0., dtype='float'), [2, 0])
+            components_plot.colormap(np.array(by_diff == 0., dtype='float'), [2, 1])
 
         if thetas is not None:
             components_plot.set_color_map('Greys')
@@ -630,7 +634,7 @@ class disambiguator():
             x_train = self.x[inds_train]
             y_train = np.array(self.y[inds_train])
             
-            if random.uniform() > 0.5:
+            if random.uniform() > (1. - 1./len(inds_train)):
                 reverse(self.y, self.y_sign, inds_train)
         
             # Determine the points which lie in the vicinity of the point i
@@ -739,7 +743,7 @@ class disambiguator():
         #random_indices = np.random.choice(n, size=int(n/2), replace=False)
         #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
         #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
-        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 2))
+        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
 
         assert(num_layers == 3)
         # Take support points from all three layers
@@ -1026,6 +1030,7 @@ noise_var = None
 if not inference:
 
     sig_var=1.
+    #length_scale=.03*n1_orig/n1
     length_scale=.1*n1_orig/n1
     noise_var=0.01
     
