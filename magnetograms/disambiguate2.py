@@ -622,19 +622,21 @@ class disambiguator():
             return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
 
-    def reverse(self):
+    def reverse(self, try_no):
         num_positive = np.zeros(self.n)
         num_negative = np.zeros(self.n)
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-        for round_no in np.arange(0, 10):
+        for round_no in np.arange(0, 10):#max(1, min(10, try_no//4))):
             #i = self.get_random_indices()[0]
             #inds_train = np.array([i])
-            inds_train = self.get_random_indices()
+            inds_train = self.get_random_indices(try_no)
         
             x_train = self.x[inds_train]
             y_train = np.array(self.y[inds_train])
             
-            if random.uniform() > (1. - 1./len(inds_train)):
+            y_train_copy = np.array(self.y[inds_train])
+            y_sign_train_copy = np.array(self.y_sign[inds_train])
+            if random.uniform() > min(0.9, 0.5+float(try_no)/num_tries_without_progress):
                 reverse(self.y, self.y_sign, inds_train)
         
             # Determine the points which lie in the vicinity of the point i
@@ -646,12 +648,14 @@ class disambiguator():
             # Determine the points wich lie in the vicinity of at least one training point
             close_mask = np.zeros(len(inds1), dtype='bool')
             x_test1 = self.x[inds1]
+            ell = self.length_scale
             for x_t in x_train:
                 r = random.uniform()
                 #print("x_t", x_t)
                 x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
                 x_diff = np.sum(x_diff**2, axis=1)
-                p = .5*(1+special.erf(np.sqrt(.5*x_diff)/self.length_scale))
+                
+                p = .5*(1+special.erf(np.sqrt(.5*x_diff)/ell))
                 #print(p[1:10], self.length_scale)
                 i1 = np.where(p > 0.5)[0]
                 p[i1] = 1. - p[i1]
@@ -684,6 +688,10 @@ class disambiguator():
                 
                 num_positive[inds_test[pos_indices]] += 1.0
                 num_negative[inds_test[neg_indices]] += 1.0
+        
+            self.y[inds_train] = y_train_copy
+            self.y_sign[inds_train] = y_sign_train_copy
+            
         
         indices_to_reverse = np.where(num_negative > num_positive)
         print("indices_to_reverse", indices_to_reverse[0])
@@ -738,12 +746,13 @@ class disambiguator():
         return affected_indices
     
     
-    def get_random_indices(self, length_scale=None):
+    def get_random_indices(self, try_no, length_scale=None):
         
         #random_indices = np.random.choice(n, size=int(n/2), replace=False)
         #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
         #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
-        num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
+        #num_indices = np.random.randint(low=1, high=min(10, max(2, try_no//2)))
+        num_indices = min(6, max(2, try_no//2))
 
         assert(num_layers == 3)
         # Take support points from all three layers
@@ -923,7 +932,7 @@ class disambiguator():
         return exp_thetas, bx_dis, by_dis
     '''
 
-    def algorithm_b(self):
+    def algorithm_b(self):#, best_loglik = sys.float_info.min):
         print(self.sig_var)
         loglik = None
         max_loglik = None
@@ -932,6 +941,7 @@ class disambiguator():
     
         #thetas = random.uniform(size=n)
         num_tries = 0
+        tot_num_tries = 0
         
         changed = True
         while max_loglik is None or num_tries % num_tries_without_progress != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
@@ -939,6 +949,7 @@ class disambiguator():
             print("num_tries", num_tries)
         
             num_tries += 1
+            tot_num_tries += 1 # This counter is not reset
         
             if inference and (iteration % inference_after_iter == 0):
                 #if temp <= 1.0:
@@ -974,7 +985,7 @@ class disambiguator():
             y_sign_last = np.array(self.y_sign)
             
             start = time.time()
-            did_reverse = self.reverse()
+            did_reverse = self.reverse(tot_num_tries)
             end = time.time()
             print("Reverse took: " + str(end - start))
     
