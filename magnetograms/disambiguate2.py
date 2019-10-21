@@ -73,7 +73,7 @@ num_chains = 4
 inference_after_iter = 20
 
 total_num_tries = 100
-num_tries_without_progress = 20
+num_tries_without_progress = 100
 
 
 def load(file_name):
@@ -626,10 +626,11 @@ class disambiguator():
         num_positive = np.zeros(self.n)
         num_negative = np.zeros(self.n)
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+        in_or_out = np.random.choice([True, False])
         for round_no in np.arange(0, 10):#max(1, min(10, try_no//4))):
             #i = self.get_random_indices()[0]
             #inds_train = np.array([i])
-            inds_train = self.get_random_indices(try_no)
+            inds_train = self.get_random_indices(try_no, length_scale=self.length_scale, in_or_out = in_or_out)
         
             x_train = self.x[inds_train]
             y_train = np.array(self.y[inds_train])
@@ -746,13 +747,13 @@ class disambiguator():
         return affected_indices
     
     
-    def get_random_indices(self, try_no, length_scale=None):
+    def get_random_indices(self, try_no, length_scale=None, in_or_out=False):
         
         #random_indices = np.random.choice(n, size=int(n/2), replace=False)
         #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
         #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
-        #num_indices = np.random.randint(low=1, high=min(10, max(2, try_no//2)))
-        num_indices = min(6, max(2, try_no//2))
+        num_indices = np.random.randint(low=1, high=12)#min(10, max(2, try_no//2)))
+        #num_indices = 9#min(6, max(2, try_no//2))
 
         assert(num_layers == 3)
         # Take support points from all three layers
@@ -772,7 +773,8 @@ class disambiguator():
                 ri = random_indices[i]
                 for rj in np.arange(0, self.n):
                     x_diff = self.x[rj] - self.x[ri]
-                    if (np.dot(x_diff, x_diff) < (3.*length_scale)**2):
+                    dist = np.dot(x_diff, x_diff)
+                    if ((in_or_out and dist > (3.*length_scale)**2) or (not in_or_out and dist < (length_scale)**2)):
                         for j in np.arange(i + 1, len(random_indices)):
                             if random_indices[j] == rj:
                                 random_index_filter[j] = False
