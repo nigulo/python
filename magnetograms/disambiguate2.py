@@ -623,25 +623,30 @@ class disambiguator():
         
 
     def reverse(self, try_no):
-        num_positive = np.zeros(self.n)
-        num_negative = np.zeros(self.n)
+        num_positive = np.ones(self.n)
+        num_negative = np.ones(self.n)
+        #probs = np.zeros(self.n)
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         in_or_out = np.random.choice([True, False])
-        for round_no in np.arange(0, 10):#max(1, min(10, try_no//4))):
+        num_indices = np.random.randint(low=1, high=12)
+        num_train_sets = 10
+        #inds_train_all = self.get_random_indices(try_no, num_indices = num_indices*num_train_sets)#, length_scale=self.length_scale, in_or_out = in_or_out)
+
+        for round_no in np.arange(0, num_train_sets):#max(1, min(10, try_no//4))):
             #i = self.get_random_indices()[0]
             #inds_train = np.array([i])
-            inds_train = self.get_random_indices(try_no, length_scale=self.length_scale, in_or_out = in_or_out)
+            inds_train = self.get_random_indices(try_no, num_indices = num_indices)#, length_scale=self.length_scale, in_or_out = in_or_out)
+            #inds_train = inds_train_all[round_no*num_indices:(round_no+1)*num_indices]
         
             x_train = self.x[inds_train]
             y_train = np.array(self.y[inds_train])
             
             y_train_copy = np.array(self.y[inds_train])
             y_sign_train_copy = np.array(self.y_sign[inds_train])
-            if random.uniform() > min(0.9, 0.5+float(try_no)/num_tries_without_progress):
-                reverse(self.y, self.y_sign, inds_train)
+            #if random.uniform() > min(0.9, 0.5+float(try_no)/num_tries_without_progress):
+            #    reverse(self.y, self.y_sign, inds_train)
         
-            # Determine the points which lie in the vicinity of the point i
-            
+            # Determine the points which lie in the vicinity of the point i            
             #inds1 = np.random.choice(self.n, size=10000, replace=False)
             inds1 = np.arange(self.n)
             inds1 = np.setdiff1d(inds1, inds_train)
@@ -649,8 +654,8 @@ class disambiguator():
             # Determine the points wich lie in the vicinity of at least one training point
             close_mask = np.zeros(len(inds1), dtype='bool')
             x_test1 = self.x[inds1]
-            ell = self.length_scale
-            for x_t in x_train:
+            ell = self.length_scale#max(self.length_scale, 3*self.length_scale*try_no/num_tries_without_progress)
+            for x_t in self.x[inds_train]:
                 r = random.uniform()
                 #print("x_t", x_t)
                 x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
@@ -667,6 +672,7 @@ class disambiguator():
             #print("close_mask", np.where(close_mask))
             inds1 = inds1[close_mask]
             #######################################################################
+        
             
             #print("inds_test", inds1)
             while len(inds1) > 0:
@@ -683,7 +689,10 @@ class disambiguator():
                 y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
             
                 sim = np.sum(y_test_obs[:,:2]*y_test_mean[:,:2], axis=1)
+                #sim_norm = sim / np.sqrt(np.sum(y_test_obs[:,:2]*y_test_obs[:,:2], axis=1)*np.sum(y_test_mean[:,:2]*y_test_mean[:,:2], axis=1))
             
+                #probs[inds_test] = (sim_norm + 1.) / 2.
+                #assert(np.all(probs >= 0) and np.all(probs <= 1))
                 pos_indices = np.where(sim >= 0.)[0]
                 neg_indices = np.where(sim < 0.)[0]
                 
@@ -694,7 +703,12 @@ class disambiguator():
             self.y_sign[inds_train] = y_sign_train_copy
             
         
-        indices_to_reverse = np.where(num_negative > num_positive)
+        reverse_probs = num_negative / (num_negative + num_positive)
+        reverse_probs[reverse_probs < .6] = 0.
+        indices_to_reverse = np.where(random.uniform(size = len(reverse_probs)) < reverse_probs)
+        #indices_to_reverse = np.where(random.uniform(size = len(probs)) > probs)
+        
+        #indices_to_reverse = np.where(num_negative > num_positive)
         print("indices_to_reverse", indices_to_reverse[0])
         
         if len(indices_to_reverse[0]) == 0:
@@ -747,13 +761,14 @@ class disambiguator():
         return affected_indices
     
     
-    def get_random_indices(self, try_no, length_scale=None, in_or_out=False):
+    def get_random_indices(self, try_no, num_indices = None, length_scale=None, in_or_out=False):
         
-        #random_indices = np.random.choice(n, size=int(n/2), replace=False)
-        #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
-        #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
-        num_indices = np.random.randint(low=1, high=12)#min(10, max(2, try_no//2)))
-        #num_indices = 9#min(6, max(2, try_no//2))
+        if num_indices is None:
+            #random_indices = np.random.choice(n, size=int(n/2), replace=False)
+            #num_indices = np.random.randint(low=1, high=min(max(2, int(1./(np.pi*length_scale**2))), 100))
+            #num_indices = np.random.randint(low=1, high=min(max(2, int(100)), 10))
+            num_indices = np.random.randint(low=1, high=12)#min(10, max(2, try_no//2)))
+            #num_indices = 9#min(6, max(2, try_no//2))
 
         assert(num_layers == 3)
         # Take support points from all three layers
@@ -765,7 +780,8 @@ class disambiguator():
         indices3 = np.random.choice(self.n//3, num_indices, replace=False, p=p3)*3 + 2
 
         #random_indices = np.random.choice(self.n, num_indices, replace=False, p=p)
-        random_indices = np.concatenate((indices1, indices2, indices3))
+        #random_indices = np.concatenate((indices1, indices2, indices3))
+        random_indices = np.array([indices1, indices2, indices3]).T.flatten()
         if length_scale is not None:
             i = 0
             while i < len(random_indices):
