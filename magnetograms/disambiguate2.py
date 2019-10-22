@@ -632,6 +632,7 @@ class disambiguator():
         num_train_sets = 10
         #inds_train_all = self.get_random_indices(try_no, num_indices = num_indices*num_train_sets)#, length_scale=self.length_scale, in_or_out = in_or_out)
 
+        r1 = random.uniform()
         for round_no in np.arange(0, num_train_sets):#max(1, min(10, try_no//4))):
             #i = self.get_random_indices()[0]
             #inds_train = np.array([i])
@@ -643,8 +644,8 @@ class disambiguator():
             
             y_train_copy = np.array(self.y[inds_train])
             y_sign_train_copy = np.array(self.y_sign[inds_train])
-            #if random.uniform() > min(0.9, 0.5+float(try_no)/num_tries_without_progress):
-            #    reverse(self.y, self.y_sign, inds_train)
+            if r1 > min(0.9, 0.5+float(try_no)/num_tries_without_progress):
+                reverse(self.y, self.y_sign, inds_train)
         
             # Determine the points which lie in the vicinity of the point i            
             #inds1 = np.random.choice(self.n, size=10000, replace=False)
