@@ -341,7 +341,7 @@ class psf():
                 S_primes = -1.j*(signal.correlate2d(zsH, H1) - signal.correlate2d(H1, zsH))
                 S_d_primes = -1.j*(signal.correlate2d(zsH_d, H1_d) - signal.correlate2d(H1_d, zsH_d))
                 a = np.sum(Z[l]*S_primes + Z_d[l]*S_d_primes)
-                grads[l*jmax + i] = (a + a.conjugate()).real
+                grads[l*jmax + i] = (a + a.conjugate()).real # This is just 2*a.real
         grads /= (self.nx*self.nx)
         
         

@@ -599,6 +599,102 @@ class psf_basis:
         print("grads", np.sqrt(np.sum(grads*grads)))
         return grads
 
+
+    def likelihood_grad_alt(self, theta, data):
+        betas, Ds, gamma, other = self.decode(theta, data)
+        L = Ds.shape[0]
+        regularizer_eps = 1e-10
+        
+        
+        grads = np.zeros(L*2*self.jmax)#, np.shape(D)[0], np.shape(D)[1]), dtype='complex')
+
+        Ps = self.get_FP(betas)
+
+            
+        D = Ds[:,0,:,:]
+        D_d = Ds[:,1,:,:]
+
+        P = Ps[:, 0, :, :]
+        P_d = Ps[:, 1, :, :]
+        
+        nzi = np.nonzero(np.abs(P)+np.abs(P_d))
+        S_nzi = P[nzi]
+        S_d_nzi = P_d[nzi]
+        S_nzi_conj = S_nzi.conjugate()
+        S_d_nzi_conj = S_d_nzi.conjugate()
+        D_nzi = D[nzi]
+        D_d_nzi = D_d[nzi]
+        
+        Z = np.zeros_like(P)
+        Z_d = np.zeros_like(P_d)
+
+        #S_conj = S.conjugate()
+        #S_d_conj = S_d.conjugate()
+        SD = D_nzi*S_nzi_conj + D_d_nzi*S_d_nzi_conj
+        SD2 = SD*SD.conjugate()
+        den = 1./((S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)**2 + regularizer_eps)
+        
+        SDS = (S_nzi*S_nzi_conj + S_d_nzi*S_d_nzi_conj)*SD
+        
+        Z[nzi] = (SDS*D_nzi.conjugate()-SD2*S_nzi_conj)*den
+        Z_d[nzi] = (SDS*D_d_nzi.conjugate()-SD2*S_d_nzi_conj)*den
+
+        for l in np.arange(0, L):
+            
+            for j1 in np.arange(1, self.jmax+1):
+                dP_dbeta_real = np.zeros((self.nx, self.nx), dtype = 'complex')
+                dP_dbeta_imag = np.zeros((self.nx, self.nx), dtype = 'complex')
+                dP_d_dbeta_real = np.zeros((self.nx, self.nx), dtype = 'complex')
+                dP_d_dbeta_imag = np.zeros((self.nx, self.nx), dtype = 'complex')
+                for k1 in np.arange(0, self.jmax+1):
+                    eps = 1.0
+                    if j1 == k1:
+                        eps = 0.5
+                    if k1 > j1:
+                        FX, FY = self.get_FXFY(k1, j1, defocus=False)
+                        FX_d, FY_d = self.get_FXFY(k1, j1, defocus=True)
+                        eps *= -1.
+                    else:
+                        FX, FY = self.get_FXFY(j1, k1, defocus=False)
+                        FX_d, FY_d = self.get_FXFY(j1, k1, defocus=True)
+                    if k1 == 0:
+                        betas_k1 = 1.
+                    else:
+                        betas_k1 = betas[l, k1-1]
+                    dP_dbeta_real += betas_k1.real*FX - eps*betas_k1.imag*FY
+                    dP_dbeta_imag += eps*betas_k1.real*FY + betas_k1.imag*FX
+    
+                    dP_d_dbeta_real += betas_k1.real*FX_d - eps*betas_k1.imag*FY_d
+                    dP_d_dbeta_imag += eps*betas_k1.real*FY_d + betas_k1.imag*FX_d
+                    
+                #num = D_d*P - D*P_d
+                #num_conj = num.conjugate()
+                #num_sq = num*num_conj
+    
+                real_part = Z[l]*dP_dbeta_real + Z_d[l]*dP_d_dbeta_real
+                imag_part = Z[l]*dP_dbeta_imag + Z_d[l]*dP_d_dbeta_imag
+    
+                l_index = l*2*self.jmax
+                grads[l_index + j1-1] = -np.sum(real_part + real_part.conjugate()) + betas[l, j1-1].real*self.prior_prec[j1-1]
+                grads[l_index + j1-1 + self.jmax] = -np.sum(imag_part + imag_part.conjugate()) + betas[l, j1-1].imag*self.prior_prec[j1-1]
+
+        #eps_indices = np.where(abs(grads) < regularizer_eps)
+        #grads[eps_indices] = np.random.normal()*regularizer_eps
+        #print("likelihood_grad", theta, grads)
+        
+        #######################################################################
+        # Tip-tilt estimation
+        #######################################################################
+        if self.tip_tilt is not None:
+            Ps = np.ones((L, 2, self.nx, self.nx), dtype='complex')
+            self.tip_tilt.set_data(Ds, Ps)#, F)
+            grads = np.concatenate((grads, self.tip_tilt.lik_grad(other)))
+        #print("grads", grads)
+        
+        #grads /= (D.size*(2*len(betas) + 2)+2)
+        print("grads", np.sqrt(np.sum(grads*grads)))
+        return grads
+
 def maybe_invert(image_est, image):
     mse = np.sum((image_est-image)**2)
     mse_neg = np.sum((-image_est-image)**2)

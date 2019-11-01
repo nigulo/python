@@ -740,8 +740,10 @@ class test_psf_basis(unittest.TestCase):
         grads_expected = np.stack(((liks1_real - liks) / delta_betas, (liks1_imag - liks) / delta_betas), axis=1).flatten()
     
         grads = psf.likelihood_grad(theta, data)
+        grads_alt = psf.likelihood_grad_alt(theta, data)
 
         np.testing.assert_array_almost_equal(grads, grads_expected, 1)
+        np.testing.assert_array_almost_equal(grads, grads_alt, 4)
             
     def test_deconvolve(self):
         jmax = 5
