@@ -46,7 +46,13 @@ class plot:
         else:
             ax = self.axes
         return ax
+    
+    def plot(self, x, y, ax_index = [], params="k-"):
+        ax = self.get_ax(ax_index)
+        ax.plot(x, y, params)
+        self.post_processing(ax)
 
+        
     def colormap(self, dat, ax_index = [], vmin=None, vmax=None, colorbar = False, colorbar_prec=None):
         ax = self.get_ax(ax_index)
 
@@ -86,8 +92,18 @@ class plot:
             cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
             self.colorbars[ax] = cbar_ax
             self.fig.colorbar(im, cax=cbar_ax, format=l_f)#, label=r'Label')
-            if self.title is not None:
-                ax.set_title(self.title)
+        self.post_processing(ax)
+
+    def contour(self, x, y, z, ax_index = [], levels=None):
+        ax = self.get_ax(ax_index)
+        ax.contour(x, y, z, levels=levels)
+        self.post_processing(ax)
+        
+    def post_processing(self, ax):
+        if self.title is not None:
+            ax.set_title(self.title)
+        
+        
 
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
         ax = self.get_ax(ax_index)
