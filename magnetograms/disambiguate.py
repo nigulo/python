@@ -415,9 +415,7 @@ def sample(x, y):
             sig_var = pm.HalfNormal('sig_var', sd=1.0)
             noise_var = pm.HalfNormal('noise_var', sd=1.0)
             
-        
-        
-        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad2)
+        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad)
     
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])

@@ -11,6 +11,7 @@ import numpy as np
 #import pylab as plt
 #import pandas as pd
 import cov_div_free as cov_div_free
+import cov_sq_exp as cov_sq_exp
 import scipy.misc
 import numpy.random as random
 import scipy.sparse.linalg as sparse
@@ -381,15 +382,53 @@ print("data_var:", data_var)
 
 def sample(x, y):
 
-    def lik_fn(theta):
+    def lik_fn_div_free(theta):
         sig_var = theta[0]
         ell = theta[1]
         noise_var = theta[2]
         gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
         return gp.calc_loglik_approx(x, y, subsample=subsample)
 
+    def lik_fn_sq_exp(theta):
+        sig_var = theta[0]
+        ell = theta[1]
+        noise_var = theta[2]
+        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var)
+        return gp.calc_loglik_approx(x, y, subsample=subsample)
+
+    def cov_func_div_free(theta, data, u1, u2, data_or_test):
+        np.testing.assert_array_almost_equal(u1, u2)
+        assert(data_or_test)
+        sig_var = theta[0]
+        ell = theta[1]
+        noise_var = theta[2]
+        gp = cov_div_free.cov_div_free(sig_var, ell, noise_var)
+        U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
+        return  U, U_grads
+
+    def cov_func_sq_exp(theta, data, u1, u2, data_or_test):
+        np.testing.assert_array_almost_equal(u1, u2)
+        assert(data_or_test)
+        sig_var = theta[0]
+        ell = theta[1]
+        noise_var = theta[2]
+        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var)
+        U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
+        return  U, U_grads
+
+    if y.shape[1] == 3:
+        #lik_fn = lik_fn_div_free
+        cov_func = cov_func_div_free
+    else:
+        #lik_fn = lik_fn_sq_exp
+        cov_func = cov_func_sq_exp
+
+    kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y)
+
+
     lik_grad = None
 
+        
     if sample_or_optimize:
         s = sampling.Sampling()
         with s.get_model():
@@ -399,14 +438,20 @@ def sample(x, y):
             sig_var = pm.HalfNormal('sig_var', sd=1.0)
             noise_var = pm.HalfNormal('noise_var', sd=1.0)
         
-        trace = s.sample(lik_fn, [sig_var, ell, noise_var], [], num_samples, num_chains, lik_grad)
-    
+        #trace = s.sample(lik_fn, [sig_var, ell, noise_var], [], num_samples, num_chains, lik_grad)
+        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad)
+
         #print(trace['model_logp'])
         m_ell = np.mean(trace['ell'])
         m_sig_var = np.mean(trace['sig_var'])
         m_noise_var = np.mean(trace['noise_var'])
 
     else:
+        def lik_fn(params):
+            return -kgp.likelihood(params, [])
+
+        def grad_fn(params):
+            return -kgp.likelihood_grad(params, [])
 
         min_loglik = None
         min_res = None
@@ -557,7 +602,6 @@ def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, n
     return affected_indices
 '''
 
-
 class disambiguator():
     
     def __init__(self, x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=None):
@@ -621,6 +665,16 @@ class disambiguator():
         else:
             return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
+    def estimate_length_scale(self):
+        
+        y_flat = np.reshape(self.y, (3*self.n, -1))
+        b_sq = np.sum(y_flat.y*y_flat.y, axis=1)
+                
+        length_scale, sig_var, noise_var = sample(self.x, b_sq)
+        self.length_scale = length_scale
+        self.sig_var = sig_var
+        self.noise_var = noise_var
+
 
     def reverse(self, try_no):
         num_positive = np.ones(self.n)
