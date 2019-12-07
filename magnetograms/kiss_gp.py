@@ -31,15 +31,10 @@ class kiss_gp:
         self.data = data
         U, U_grads = self.cov_func(self.theta, self.data, self.us, self.us, data_or_test=True)
         self.U_grads = U_grads
-
         (x, istop, itn, normr) = sparse.lsqr(self.W, self.y)[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
         self.x = x
-        #print x
         L = la.cholesky(U)
         self.L = L
-        #print Lr_hks_a
-        #v = la.solve(L, x)
-        #v = la.solve(L, x)
         self.alpha = la.solve(self.L.T, la.solve(self.L, x))
 
         #return -0.5 * np.dot(v.T, v)

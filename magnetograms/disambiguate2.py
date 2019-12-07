@@ -21,6 +21,7 @@ import utils
 import plot
 import misc
 import pymc3 as pm
+import kiss_gp
 #import os
 #import os.path
 #from scipy.stats import gaussian_kde
@@ -286,8 +287,6 @@ x, y, n1, n2, n3 = convert(b, phi, theta)
 n = n1*n2*n3
 
 y_orig = np.array(y)
-print(y_orig)
-print(y.shape)
 
 m1 = max(10, n1//10)
 m2 = max(10, n2//10)
@@ -363,10 +362,6 @@ def do_plots(y, thetas, title = None, file_name=None):
 
 do_plots(None, None)
 
-print(np.shape(x))
-print(np.shape(y))
-print(n)
-
 # Using KISS-GP
 # https://arxiv.org/pdf/1503.01057.pdf
 
@@ -378,6 +373,11 @@ data_var = (np.var(y[:,0]) + np.var(y[:,1]))
 #data_var -= forced_noise_var
 print("data_var:", data_var)
 
+grid_density = (np.max(x[:,0])-np.min(x[:,0]))/n1 +(np.max(x[:,1])-np.min(x[:,1]))/n2 + (np.max(x[:,2])-np.min(x[:,2]))/n3
+grid_density /= 3
+max_grid_size = max((np.max(x[:,0])-np.min(x[:,0])), (np.max(x[:,1])-np.min(x[:,1])) + (np.max(x[:,2])-np.min(x[:,2])))
+print("grid_density:", grid_density)
+print("max_grid_size:", max_grid_size)
 
 
 def sample(x, y):
@@ -412,18 +412,18 @@ def sample(x, y):
         sig_var = theta[0]
         ell = theta[1]
         noise_var = theta[2]
-        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var)
+        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var, dim_out=1)
         U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
         return  U, U_grads
 
-    if y.shape[1] == 3:
+    if len(y.shape) > 1 and y.shape[1] == 3:
         #lik_fn = lik_fn_div_free
         cov_func = cov_func_div_free
+        kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y, indexing_type=False)
     else:
         #lik_fn = lik_fn_sq_exp
         cov_func = cov_func_sq_exp
-
-    kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y)
+        kgp = kiss_gp.kiss_gp(x, u_mesh, cov_func, y, dim=1, indexing_type=False)
 
 
     lik_grad = None
@@ -456,8 +456,8 @@ def sample(x, y):
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
-            ell_min = 0.5#.05
-            ell_max = 2.#1.
+            ell_min = grid_density#.05
+            ell_max = max_grid_size*2#1.
             sig_var_min = data_var*.1
             sig_var_max = data_var*2.
             noise_var_min = data_var*0.0001#*.001
@@ -496,111 +496,6 @@ def get_probs(thetas, y):
     b = np.sqrt(np.sum(y[:,:2]*y[:,:2], axis=1))
     return b/np.sum(b)
     
-'''
-def align2(x, y, y_sign, indices, n, length_scale, sig_var, noise_var, thetas, num_positive, num_negative):
-    print("len(indices)", len(indices))
-    #inv_ell_sq_two = -1./(2.*length_scale**2)
-    inv_ell_sq_two = 1./(2.*length_scale)
-    #normal_dist = stats.norm(0.0, length_scale)
-    
-    include_idx = set(indices)  #Set is more efficient, but doesn't reorder your elements if that is desireable
-    mask = np.array([(i in include_idx) for i in np.arange(0, len(x))])
-    #used_js = set()
-    mask = np.where(~mask)[0]
-    affected_indices = set()
-    gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-    for i in indices:
-
-        #######################################################################
-        # Determine the points which lie in the vicinity of the point i
-        r = random.uniform()
-        x_diff = x[mask] - np.repeat(np.array([x[i]]), x[mask].shape[0], axis=0)
-        x_diff = np.sum(x_diff**2, axis=1)
-        p = .5*(1+special.erf(np.sqrt(x_diff)*inv_ell_sq_two))
-        i1 = np.where(p > 0.5)[0]
-        p[i1] = 1. - p[i1]
-        p *= 2.
-        inds1 = np.where(p >= r)[0]
-        #######################################################################
-        
-        affected_indices.add(i)
-        affected_indices.update(inds1)
-        
-        p1 = get_probs(thetas[inds1], y[inds1])
-
-        inds_train = np.array([i])
-        
-        if len(p1) > 0:
-            inds_train = np.concatenate((inds_train, np.random.choice(inds1, min(2, len(inds1)), p=p1)))
-        inds1 = np.setdiff1d(inds1, inds_train)
-        
-        #######################################################################
-        # Do aligning of the chosen training vectors
-        # based on most likely direction
-        r = random.uniform()
-        for ri in inds_train:
-            #r = np.log(random.uniform())
-            if num_positive[ri] + num_negative[ri] < 1:
-                theta = 0.5
-            else:
-                theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-            th = theta
-            if th < 0.2:
-                th = 0.2
-            if th > 0.8:
-                th = 0.8
-            if r < th:
-                if y_sign[ri] < 0:
-                    reverse(y, y_sign, ri)
-                    y_sign[ri] = 1 # overwrite sign
-                    #sign_change[ri] = True
-            else:
-                if y_sign[ri] > 0:
-                    reverse(y, y_sign, ri)
-                    y_sign[ri] = -1 # overwrite sign
-                    #sign_change[ri] = True
-            #print(np.exp(thetas[ri]))
-        #######################################################################
-        
-        while len(inds1) > 0:
-            inds_test = inds1[:min(1000, len(inds1))]
-            inds1 = inds1[min(1000, len(inds1)):]
-            #while len(inds) > 1000:
-            #    inds = np.random.choice(inds, 1000) 
-            #inds_train = inds[:int(len(inds)/10)]
-            
-            #inds_test = inds[int(len(inds)/10):]
-            #print(len(inds_train), len(inds_test))
-    
-            x_train = x[inds_train]
-            y_train = y[inds_train]
-    
-            x_test = x[mask][inds_test]
-            y_test_obs = y[mask][inds_test]
-    
-            y_train_flat = np.reshape(y_train, (3*len(y_train), -1))
-            #loglik = gp.init(x, y)
-            #print(x_train.shape, y_train_flat.shape)
-            print("x_train", x_train.shape)
-            gp.init(x_train, y_train_flat)
-            
-            y_test_mean = gp.fit(x_test, calc_var = False)
-            y_test_mean = np.reshape(y_test_mean, y_test_obs.shape)
-
-            sim = np.sum(y_test_obs*y_test_mean, axis=1)
-            #sim = np.sum(y_test_obs*np.reshape(y_test_mean, y_test_obs.shape), axis=1)
-    
-            sim_indices = np.where(sim < 0.)[0]
-            #y_copy=np.array(y)
-            #y_sign_copy=np.array(y_sign)
-            reverse(y, y_sign, mask[inds_test][sim_indices])
-            #y_copy1=np.array(y)
-            #y_sign_copy1=np.array(y_sign)
-            #reverse(y_copy1, y_sign_copy1, mask[inds_test][sim_indices])
-            #np.testing.assert_almost_equal(y_sign_copy, y_sign_copy1)
-            #np.testing.assert_almost_equal(y_copy, y_copy1)
-    return affected_indices
-'''
 
 class disambiguator():
     
@@ -666,9 +561,11 @@ class disambiguator():
             return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
     def estimate_length_scale(self):
-        
-        y_flat = np.reshape(self.y, (3*self.n, -1))
-        b_sq = np.sum(y_flat.y*y_flat.y, axis=1)
+        #print("y.shape", self.y.shape)
+        #y_flat = np.reshape(self.y, (3*self.n, -1))
+        #print("y_flat.shape", y_flat.shape)
+        b_sq = np.sum(self.y*self.y, axis=1)
+        #b_sq = np.sum(y_flat*y_flat, axis=1)
                 
         length_scale, sig_var, noise_var = sample(self.x, b_sq)
         self.length_scale = length_scale
@@ -854,158 +751,8 @@ class disambiguator():
         #print("random_indices", random_indices)
         return random_indices
     
-    '''
-    def algorithm_a(self):
-        print(self.sig_var)
-        loglik = None
-        max_loglik = None
-        
-        iteration = -1
-    
-        #thetas = random.uniform(size=n)
-        num_tries = 0
-        
-        changed = True
-        while max_loglik is None or num_tries % num_tries_without_progress != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
-            iteration += 1
-            print("num_tries", num_tries)
-        
-            num_tries += 1
-        
-            temp = 1.#random.uniform(initial_temp, 2.)
-            if inference and (iteration % inference_after_iter == 0):
-                #if temp <= 1.0:
-                #    temp += temp_delta*temp    
-                
-                length_scale, sig_var, noise_var = sample(self.x, np.reshape(self.y, (3*self.n, -1)))
-                changed = True
-                self.length_scale = length_scale
-                self.sig_var = sig_var
-                self.noise_var = noise_var
-            #else:
-                #if temp <= 1.0:
-                #    temp += temp_delta*temp    
-                
-    
-            if changed:
-                loglik = self.loglik()
-                changed = False
-                
-            print("sig_var=", self.sig_var)
-            print("length_scale", self.length_scale)
-            print("noise_var=", self.noise_var)
-            #print("mean", mean)
-            print("loglik=", loglik, "max_loglik=", max_loglik)
-            
-            if max_loglik is None or loglik > max_loglik:
-                num_tries = 1
-                max_loglik = loglik
-            
-            #y_last = np.array(self.y)
-            #y_sign_last = np.array(self.y_sign)
-            
-            random_indices = self.get_random_indices(length_scale = temp*self.length_scale)
-    
-            
-            #######################################################################
-            # Do aligning of the chosen training vectors
-            # based on most likely direction
-            #r = random.uniform()
-            #for ri in random_indices:
-            #    if num_positive[ri] + num_negative[ri] < 10:
-            #        theta = 0.5
-            #    else:
-            #        theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-            #    th = theta
-            #    if th < 0.2:
-            #        th = 0.2
-            #    if th > 0.8:
-            #        th = 0.8
-            #    if r < th:
-            #        if y_sign[ri] < 0:
-            #            reverse(y, y_sign, ri)
-            #            y_sign[ri] = 1 # overwrite sign
-            #    else:
-            #        if y_sign[ri] > 0:
-            #            reverse(y, y_sign, ri)
-            #            y_sign[ri] = -1 # overwrite sign
-            
-            
-            #gp = cov_div_free.cov_div_free(sig_var, length_scale, noise_var)
-            ##loglik1 = gp.loglik_approx(x, np.reshape(y, (3*n, -1)), subsample=subsample)
-            #loglik1 = gp.loglik(x, np.reshape(y, (3*n, -1)))
-            #print("loglik1=", loglik1, "max_loglik=", max_loglik)
-    
-            #if loglik1 > loglik:
-            #    loglik = loglik1
-            #    changed = True
-                
-            #    for ri in random_indices:
-            #        if y_sign[ri] > 0:
-            #            num_positive[ri] += 1.0
-            #        else:
-            #            num_negative[ri] += 1.0
-            #        if num_positive[ri] + num_negative[ri] >= 10:
-            #            theta = float(num_positive[ri])/(num_positive[ri] + num_negative[ri])
-            #            thetas[ri] = np.log(theta)
-            #        print("num_positive, num_negative:", num_positive[ri], num_negative[ri])
-                
-            y_last = np.array(self.y)
-            y_sign_last = np.array(self.y_sign)
-    
-            start = time.time()
-            affected_indices = self.align2(random_indices, temp*self.length_scale)
-            #align(x, y, y_sign, random_indices, n, temp*length_scale, thetas)
-            end = time.time()
-            print("Align took: " + str(end - start))
-    
-            do_plots(self.y, "Guess")    
-    
-            start = time.time()
-    
-            loglik1 = self.loglik()
-            end = time.time()
-            print("Inference took: " + str(end - start))
-    
-            #do_plots(self.y)
-    
-            print("loglik1=", loglik1)
-            print("loglik1=", loglik1, "max_loglik=", max_loglik)
-    
-            if loglik1 > loglik:
-                loglik = loglik1
-                changed = True
-    
-    
-                for ri in affected_indices:
-                    if self.y_sign[ri] > 0:
-                        self.num_positive[ri] += 1.0
-                    else:
-                        self.num_negative[ri] += 1.0
-                    if self.num_positive[ri] + self.num_negative[ri] >= 10:
-                        theta = float(self.num_positive[ri])/(self.num_positive[ri] + self.num_negative[ri])
-                        self.thetas[ri] = np.log(theta)
-                    print("num_positive, num_negative:", self.num_positive[ri], self.num_negative[ri])
-            else:
-                self.y = y_last
-                self.y_sign = y_sign_last
-            #else:
-            #    y = y_last
-            #    y_sign = y_sign_last
-                
-    
-            do_plots(self.y, "Current best")
-    
-    
-        do_plots(self.y, "Result")
-    
-        exp_thetas = np.exp(self.thetas)
-        bx_dis = self.y[:,0]
-        by_dis = self.y[:,1]
-        return exp_thetas, bx_dis, by_dis
-    '''
 
-    def algorithm_b(self):#, best_loglik = sys.float_info.min):
+    def disambiguate(self):#, best_loglik = sys.float_info.min):
         print(self.sig_var)
         loglik = None
         max_loglik = None
@@ -1016,7 +763,7 @@ class disambiguator():
         num_tries = 0
         tot_num_tries = 0
         
-        changed = True
+        #changed = True
         while max_loglik is None or num_tries % num_tries_without_progress != 0:# or (loglik < max_loglik):# or (loglik > max_loglik + eps):
             iteration += 1
             print("num_tries", num_tries)
@@ -1024,24 +771,24 @@ class disambiguator():
             num_tries += 1
             tot_num_tries += 1 # This counter is not reset
         
-            if inference and (iteration % inference_after_iter == 0):
-                #if temp <= 1.0:
-                #    temp += temp_delta*temp    
-                
-                length_scale, sig_var, noise_var = sample(self.x, np.reshape(self.y, (3*self.n, -1)))
-                changed = True
-                self.length_scale = length_scale
-                self.sig_var = sig_var
-                self.noise_var = noise_var
-            #else:
-                #if temp <= 1.0:
-                #    temp += temp_delta*temp    
+            #if inference and (iteration % inference_after_iter == 0):
+            #    #if temp <= 1.0:
+            #    #    temp += temp_delta*temp    
+            #    
+            #    length_scale, sig_var, noise_var = sample(self.x, np.reshape(self.y, (3*self.n, -1)))
+            #    changed = True
+            #    self.length_scale = length_scale
+            #    self.sig_var = sig_var
+            #    self.noise_var = noise_var
+            ##else:
+            #    #if temp <= 1.0:
+            #    #    temp += temp_delta*temp    
                 
     
-            if changed:
-                loglik = self.loglik()
-                #loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
-                changed = False
+            #if changed:
+            #    loglik = self.loglik()
+            #    #loglik = gp.loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+            #    changed = False
                 
             print("sig_var=", self.sig_var)
             print("length_scale", self.length_scale)
@@ -1130,8 +877,11 @@ for i in np.arange(0, total_num_tries):
                 y[i, :2] *= -1
             #y[i, :2] = np.abs(y[i, :2])
     
+    print("True length_scale", length_scale)
     d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
-    prob_a, field_y, loglik = d.algorithm_b()
+    d.estimate_length_scale()
+    print("Estimated length_scale", d.length_scale)
+    prob_a, field_y, loglik = d.disambiguate()
     if best_loglik is None or loglik > best_loglik:
         best_loglik = loglik
         best_y = field_y

@@ -121,10 +121,10 @@ def calc_W(u_mesh, xs, us=None, dim = None, indexing_type=True):
     indices = []
     for i in np.arange(len(u_mesh)):
         indices.append(0)
-    
     for i in np.arange(len(u_mesh)):
         indices1 = copy.deepcopy(indices)
         if indexing_type:
+            # NB! u_mesh grid must have same number of points in all directions
             indices1[len(u_mesh)-i-1] = np.arange(u_mesh[i].shape[i])
         else:
             indices1[i] = np.arange(u_mesh[i].shape[i])
