@@ -24,7 +24,6 @@ import matplotlib.pyplot as plt
 import tip_tilt
 
 import pickle
-from astropy.io import fits
 
 
 image1 = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.  ],
@@ -100,7 +99,6 @@ image = np.array([[0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 state_file = None#state.pkl"
 wavefront_file = None#state.pkl"
 image_file = None
-is_planet = False
 
 for arg in sys.argv:
     if arg[:6] == "state=":
@@ -143,52 +141,11 @@ noise_std_perc = .01
 #image = misc.sample_image(image,.675)
 
 
-images = []
-images_d = []
 if image_file is None:
     image_file = 'icont'
 
 dir = "images"
-for root, dirs, files in os.walk(dir):
-    for file in files:
-        print(file)
-        if file[:len(image_file)] != image_file:
-            continue
-        if file[-5:] == '.fits':
-            hdul = fits.open(dir + "/" + file)
-            image = hdul[0].data
-            hdul.close()
-        else:
-            image = plt.imread(dir + "/" + file)[:, :, 0]
-            #image = plt.imread(dir + "/" + file)
-        image = misc.sample_image(image, .5)
-        print("Image shape", image.shape)
-
-        nx_orig = 50
-        if is_planet:# Try to detect center
-            row_mean = np.mean(image, axis = 0)
-            col_mean = np.mean(image, axis = 1)
-            
-            max_row = np.argmax(row_mean)
-            max_col = np.argmax(col_mean)
-            
-            #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
-            start_index_x = max_col - nx_orig//2#np.random.randint(0, start_index_max)
-            start_index_y = max_row - nx_orig//2#np.random.randint(0, start_index_max)
-        else:
-            start_index_x = 0#np.random.randint(0, start_index_max)
-            start_index_y = 0#np.random.randint(0, start_index_max)
-        
-        image = image[start_index_x:start_index_x + nx_orig,start_index_y:start_index_y + nx_orig]
-        
-        nx_orig = np.shape(image)[0]
-        image = utils.upsample(image)
-        assert(np.shape(image)[0] == np.shape(image)[1])
-        
-        if '_d.' not in file:
-            images.append(image)
-        else:
-            images_d.append(image)
+images, images_d, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False)
 
 assert(len(images_d) == 0 or len(images_d) == len(images))
 
@@ -226,7 +183,7 @@ if state == None:
     diameter = 50.0
     wavelength = 5250.0
     gamma = 1.0
-    nx = np.shape(images[0])[0]
+    #nx = np.shape(images[0])[0]
 
     arcsec_per_px, defocus1 = get_params(nx_orig)#wavelength/diameter*1e-8*180/np.pi*3600
     (defocus_psf, defocus_psf_b) = defocus1

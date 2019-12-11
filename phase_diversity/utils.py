@@ -3,6 +3,10 @@ import scipy.special as special
 #import scipy.misc
 import scipy.ndimage
 import numpy.fft as fft
+import os
+import matplotlib.pyplot as plt
+from astropy.io import fits
+import misc
 
 def cart_to_polar(xs):
     scalar = False
@@ -190,3 +194,54 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
         return image, F_image, Ps
     else:
         return image
+
+def read_images(dir="images", image_file="icont", is_planet = False):
+    images = []
+    images_d = []
+    nx = 0
+    nx_orig = 0
+    for root, dirs, files in os.walk(dir):
+        for file in files:
+            print(file)
+            if file[:len(image_file)] != image_file:
+                continue
+            if file[-5:] == '.fits':
+                hdul = fits.open(dir + "/" + file)
+                image = hdul[0].data
+                hdul.close()
+            else:
+                image = plt.imread(dir + "/" + file)[:, :, 0]
+                #image = plt.imread(dir + "/" + file)
+            image = misc.sample_image(image, .5)
+            print("Image shape", image.shape)
+    
+            nx_orig = 50
+            if is_planet:# Try to detect center
+                row_mean = np.mean(image, axis = 0)
+                col_mean = np.mean(image, axis = 1)
+                
+                max_row = np.argmax(row_mean)
+                max_col = np.argmax(col_mean)
+                
+                #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+                start_index_x = max_col - nx_orig//2#np.random.randint(0, start_index_max)
+                start_index_y = max_row - nx_orig//2#np.random.randint(0, start_index_max)
+            else:
+                start_index_x = 0#np.random.randint(0, start_index_max)
+                start_index_y = 0#np.random.randint(0, start_index_max)
+            
+            image = image[start_index_x:start_index_x + nx_orig,start_index_y:start_index_y + nx_orig]
+            
+            nx_orig = np.shape(image)[0]
+            image = upsample(image)
+            nx = np.shape(image)[0]
+            assert(nx == np.shape(image)[1])
+            if len(images) > 0:
+                assert(nx == np.shape(images[-1])[0])
+            
+            if '_d.' not in file:
+                images.append(image)
+            else:
+                images_d.append(image)
+    assert(len(images_d) == 0 or len(images_d) == len(images))
+    return images, images_d, nx, nx_orig
