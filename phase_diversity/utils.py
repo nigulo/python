@@ -195,7 +195,7 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     else:
         return image
 
-def read_images(dir="images", image_file="icont", is_planet = False):
+def read_images(dir="images", image_file="icont", is_planet = False, image_size = 50):
     images = []
     images_d = []
     nx = 0
@@ -214,8 +214,8 @@ def read_images(dir="images", image_file="icont", is_planet = False):
                 #image = plt.imread(dir + "/" + file)
             image = misc.sample_image(image, .5)
             print("Image shape", image.shape)
+            image_size = min(image.shape[0], image.shape[1], image_size)
     
-            nx_orig = 50
             if is_planet:# Try to detect center
                 row_mean = np.mean(image, axis = 0)
                 col_mean = np.mean(image, axis = 1)
@@ -224,13 +224,13 @@ def read_images(dir="images", image_file="icont", is_planet = False):
                 max_col = np.argmax(col_mean)
                 
                 #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
-                start_index_x = max_col - nx_orig//2#np.random.randint(0, start_index_max)
-                start_index_y = max_row - nx_orig//2#np.random.randint(0, start_index_max)
+                start_index_x = max_col - image_size//2#np.random.randint(0, start_index_max)
+                start_index_y = max_row - image_size//2#np.random.randint(0, start_index_max)
             else:
                 start_index_x = 0#np.random.randint(0, start_index_max)
                 start_index_y = 0#np.random.randint(0, start_index_max)
             
-            image = image[start_index_x:start_index_x + nx_orig,start_index_y:start_index_y + nx_orig]
+            image = image[start_index_x:start_index_x + image_size,start_index_y:start_index_y + image_size]
             
             nx_orig = np.shape(image)[0]
             image = upsample(image)

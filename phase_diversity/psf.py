@@ -110,8 +110,10 @@ class coh_trans_func():
     '''
         Returns the unnormalized coefficients for given expansion
     '''
-    def multiply(self, pa):
-        return self.phase*pa.terms
+    def dot(self, pa):
+        if not hasattr(self, 'phase'):
+            self.phase = self.phase_aberr()
+        return np.sum(self.phase*pa.terms, axis=(1, 2))
 
 class psf():
 
@@ -205,6 +207,7 @@ class psf():
         if a is not None:
             return self.tip_tilt.multiply(dat_F * self.otf_vals, a)
         else:
+            print("Shapes", dat_F.shape, self.otf_vals.shape)
             return dat_F * self.otf_vals
             
     '''
@@ -406,16 +409,15 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3
     defocus_func = lambda xs: 0.
     pa = phase_aberration([])
     ctf = coh_trans_func(aperture_func, pa, defocus_func)
-    psf_ = psf.psf(ctf, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+    psf_ = psf(ctf, (nx+1)//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
-    psf_ = psf(jmax = 0, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
-    psf_.create_basis()
     psf_.calc()
     
     fimage = fft.fft2(fft.fftshift(image))
-    _, coefs = psf_.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
-    coefs = coefs[0, 0, :, :]
-    coefs = np.abs(coefs)
+    #_, coefs = psf_.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
+    #coefs = coefs[0, 0, :, :]
+    #coefs = np.abs(coefs)
+    coefs = np.abs(psf_.otf_vals[0, 0, :, :])
     
     import sys
     import os

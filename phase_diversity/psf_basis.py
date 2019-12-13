@@ -84,45 +84,6 @@ def Vnmf(radius, f, n, m):
                 
     return Vnm
 
-
-def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3):
-    nx = image.shape[0]
-    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
-    psf_b = psf_basis(jmax = 0, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
-    psf_b.create_basis()
-    #Ds = psf_b.convolve(image, )
-    #D = Ds[0, 0, :, :]
-    
-    fimage = fft.fft2(fft.fftshift(image))
-    _, coefs = psf_b.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
-    coefs = coefs[0, 0, :, :]
-    coefs = np.abs(coefs)
-    
-    import sys
-    import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
-    #sys.path.append('../utils')
-    import plot
-
-
-    my_plot = plot.plot()
-    my_plot.hist(coefs, bins=100)
-    my_plot.save("transfer_func_hist.png")
-    my_plot.close()
-    
-    mask = np.ones_like(coefs)
-    indices = np.where(coefs < threshold)
-    mask[indices] = 0.
-    
-    my_plot = plot.plot(nrows=2)
-    my_plot.colormap(fft.fftshift(coefs), [0])
-    my_plot.colormap(fft.fftshift(mask), [1])
-    my_plot.save("transfer_func.png")
-    my_plot.close()
-    
-    fimage *= mask
-    return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
-
 class psf_basis:
     '''
         diameter is in centimeters
@@ -695,10 +656,41 @@ class psf_basis:
         print("grads", np.sqrt(np.sum(grads*grads)))
         return grads
 
-def maybe_invert(image_est, image):
-    mse = np.sum((image_est-image)**2)
-    mse_neg = np.sum((-image_est-image)**2)
-    if mse_neg < mse:
-        return -image_est
-    else:
-        return image_est
+
+def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3):
+    nx = image.shape[0]
+    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+    psf_b = psf_basis(jmax = 0, nx = nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, defocus = 0.)
+    psf_b.create_basis()
+    #Ds = psf_b.convolve(image, )
+    #D = Ds[0, 0, :, :]
+    
+    fimage = fft.fft2(fft.fftshift(image))
+    _, coefs = psf_b.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
+    coefs = coefs[0, 0, :, :]
+    coefs = np.abs(coefs)
+    
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+    #sys.path.append('../utils')
+    import plot
+
+
+    my_plot = plot.plot()
+    my_plot.hist(coefs, bins=100)
+    my_plot.save("transfer_func_hist.png")
+    my_plot.close()
+    
+    mask = np.ones_like(coefs)
+    indices = np.where(coefs < threshold)
+    mask[indices] = 0.
+    
+    my_plot = plot.plot(nrows=2)
+    my_plot.colormap(fft.fftshift(coefs), [0])
+    my_plot.colormap(fft.fftshift(mask), [1])
+    my_plot.save("transfer_func.png")
+    my_plot.close()
+    
+    fimage *= mask
+    return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
