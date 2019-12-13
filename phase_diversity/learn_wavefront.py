@@ -23,14 +23,14 @@ import numpy.fft as fft
 import time
 import kolmogorov
 
-jmax = 100
+jmax = 200
 diameter = 50.0
 wavelength = 5250.0
 gamma = 1.0
 
 num_frames = 1000
-fried_param=0.3
-noise_std_perc = .01
+fried_param = 0.2
+noise_std_perc = 0.#.01
 
 num_sets = 10000
 n_epochs = 10
@@ -86,7 +86,7 @@ def train(model, Ds_train, coefs_train, Ds_test, coefs_test):
         coefs_test = np.reshape(np.tile(coefs_test, (1, num_objects_test)), (num_objects_test*num_frames_test, jmax))
         history = model.fit(Ds_train, coefs_train,
                     epochs=n_epochs,
-                    batch_size=10,
+                    batch_size=1000,
                     shuffle=True,
                     validation_data=(Ds_test, coefs_test),
                     #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
@@ -98,7 +98,7 @@ def train(model, Ds_train, coefs_train, Ds_test, coefs_test):
     else:
         history = model.fit(Ds_train, coefs_train,
                     epochs=n_epochs,
-                    batch_size=10,
+                    batch_size=1000,
                     shuffle=True,
                     #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                     verbose=1)
@@ -109,6 +109,12 @@ def train(model, Ds_train, coefs_train, Ds_test, coefs_test):
     predicted_coefs = model.predict(Ds_train[0:n_test])
     print("True coefs", coefs_train[0:n_test])
     print("Predicted coefs", predicted_coefs)
+
+    #my_plot = plot.plot()
+    #my_plot.plot(np.arange(jmax), coefs, params="r-")
+    #my_plot.plot(np.arange(jmax), predicted_coefs, params="b-")
+    #my_plot.save("learn_wf_results.png")
+    #my_plot.close()
         
     return model
 
@@ -126,6 +132,12 @@ def test(model):
         
         print("True coefs", coefs)
         print("Predicted coefs", predicted_coefs)
+
+        #my_plot = plot.plot()
+        #my_plot.plot(np.arange(jmax), coefs, params="r-")
+        #my_plot.plot(np.arange(jmax), predicted_coefs, params="b-")
+        #my_plot.save("learn_wf_results.png")
+        #my_plot.close()
         
 
 
@@ -162,10 +174,18 @@ def gen_data(num_frames, num_images = None):
     wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
     for frame_no in np.arange(num_frames):
         ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
+        print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
         true_coefs[frame_no] = ctf_true.dot(pa)
-        true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
-        true_coefs[frame_no] /= np.std(true_coefs[frame_no])
+        #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
+        #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
         psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+
+        #######################################################################
+        # Just checking if true_coefs are calculated correctly
+        pa_check = psf.phase_aberration(jmax, start_index=0)
+        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+        psf_check = psf.psf(ctf_check, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        #######################################################################
         for obj_no in np.arange(num_objects):
             images[obj_no] = psf.critical_sampling(images[obj_no], arcsec_per_px, diameter, wavelength)
             image = images[obj_no]
@@ -173,7 +193,6 @@ def gen_data(num_frames, num_images = None):
             #my_test_plot.colormap(image)
             #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
             #my_test_plot.close()
-    
             fimage = fft.fft2(images[obj_no])
             fimage = fft.fftshift(fimage)
     
@@ -200,7 +219,23 @@ def gen_data(num_frames, num_images = None):
         
             D = fft.ifft2(DF).real
             D_d = fft.ifft2(DF_d).real
-            
+
+            ###################################################################
+            # Just checking if true_coefs are calculated correctly
+            if frame_no < 10:
+                image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([true_coefs[frame_no]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                my_test_plot = plot.plot(nrows=3, ncols=2)
+                my_test_plot.colormap(image, [0, 0])
+                my_test_plot.colormap(fft.ifftshift(image_reconstr[0]), [0, 1])
+                my_test_plot.colormap(D, [1, 0])
+                my_test_plot.colormap(D_d, [1, 1])
+                my_test_plot.colormap(D1[0, 0], [2, 0])
+                my_test_plot.colormap(D1[0, 1], [2, 1])
+                my_test_plot.save("check" + str(frame_no) + ".png")
+                my_test_plot.close()
+            ###################################################################
+
             Ds[frame_no, obj_no, 0] = D
             Ds[frame_no, obj_no, 1] = D_d
 
@@ -231,6 +266,16 @@ if data is None:
     save_data((Ds, DFs, coefs))
 else:
     Ds, DFs, coefs = data
+
+my_test_plot = plot.plot()
+my_test_plot.colormap(Ds[0, 0, 0])
+my_test_plot.save("D0.png")
+my_test_plot.close()
+
+my_test_plot = plot.plot()
+my_test_plot.colormap(Ds[0, 0, 1])
+my_test_plot.save("D0_d.png")
+my_test_plot.close()
 
 num_objs = Ds.shape[1]
 nx = Ds.shape[3]

@@ -110,10 +110,17 @@ class coh_trans_func():
     '''
         Returns the unnormalized coefficients for given expansion
     '''
-    def dot(self, pa):
+    def dot(self, pa, normalize=True):
         if not hasattr(self, 'phase'):
             self.phase = self.phase_aberr()
-        return np.sum(self.phase*pa.terms, axis=(1, 2))
+        ret_val = np.sum(self.phase*pa.terms, axis=(1, 2))
+        if normalize:
+            ret_val /= np.sum(pa.terms*pa.terms, axis=(1, 2))
+        # Check orthogonality
+        #for i in np.arange(len(pa.terms)):
+        #    for j in np.arange(i + 1, len(pa.terms)):
+        #        print(np.sum(pa.terms[i]*pa.terms[j]))
+        return ret_val
 
 class psf():
 
