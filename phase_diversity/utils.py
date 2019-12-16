@@ -195,7 +195,16 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     else:
         return image
 
-def read_images(dir="images", image_file="icont", is_planet = False, image_size = 50):
+'''
+    is_planet specifies whether image contains a disk shaped object.
+    image_size is the number of pixels to sample from the whole image (both in x and y).
+        If the image is smaller than image_size then the whole image is returned.
+    tile specifies if the sampling is repeated in x and y directions or not. If
+        tile is False then only image (0:image_size, 0:image_size) is returned.
+    
+'''
+def read_images(dir="images", image_file="icont", is_planet = False, image_size = 50, tile=False, scale=1.0):
+    assert(not is_planet or (is_planet and not tile))
     images = []
     images_d = []
     nx = 0
@@ -212,36 +221,42 @@ def read_images(dir="images", image_file="icont", is_planet = False, image_size 
             else:
                 image = plt.imread(dir + "/" + file)[:, :, 0]
                 #image = plt.imread(dir + "/" + file)
-            image = misc.sample_image(image, .5)
+            if scale != 1.:
+                image = misc.sample_image(image, scale)
             print("Image shape", image.shape)
+            start_coord = 0
             image_size = min(image.shape[0], image.shape[1], image_size)
-    
-            if is_planet:# Try to detect center
-                row_mean = np.mean(image, axis = 0)
-                col_mean = np.mean(image, axis = 1)
+            while start_coord + image_size <= image.shape[0] and start_coord + image_size <= image.shape[1]:
+                if is_planet:# Try to detect center
+                    row_mean = np.mean(image, axis = 0)
+                    col_mean = np.mean(image, axis = 1)
+                    
+                    max_row = np.argmax(row_mean)
+                    max_col = np.argmax(col_mean)
+                    
+                    #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
+                    start_index_x = max_col - image_size//2#np.random.randint(0, start_index_max)
+                    start_index_y = max_row - image_size//2#np.random.randint(0, start_index_max)
+                    sub_image = image[start_index_x:start_index_x + image_size,start_index_y:start_index_y + image_size]
+                else:
+                    sub_image = image[start_coord:start_coord + image_size, start_coord:start_coord+ image_size]
                 
-                max_row = np.argmax(row_mean)
-                max_col = np.argmax(col_mean)
                 
-                #start_index_max = max(0, min(image.shape[0], image.shape[1]) - nx_orig)
-                start_index_x = max_col - image_size//2#np.random.randint(0, start_index_max)
-                start_index_y = max_row - image_size//2#np.random.randint(0, start_index_max)
-            else:
-                start_index_x = 0#np.random.randint(0, start_index_max)
-                start_index_y = 0#np.random.randint(0, start_index_max)
-            
-            image = image[start_index_x:start_index_x + image_size,start_index_y:start_index_y + image_size]
-            
-            nx_orig = np.shape(image)[0]
-            image = upsample(image)
-            nx = np.shape(image)[0]
-            assert(nx == np.shape(image)[1])
-            if len(images) > 0:
-                assert(nx == np.shape(images[-1])[0])
-            
-            if '_d.' not in file:
-                images.append(image)
-            else:
-                images_d.append(image)
+                nx_orig = np.shape(sub_image)[0]
+                sub_image = upsample(sub_image)
+                nx = np.shape(sub_image)[0]
+                assert(nx == np.shape(sub_image)[1])
+                if len(images) > 0:
+                    assert(nx == np.shape(images[-1])[0])
+                
+                if '_d.' not in file:
+                    images.append(sub_image)
+                else:
+                    images_d.append(sub_image)
+                
+                if not tile:
+                    break
+                start_coord += image_size
     assert(len(images_d) == 0 or len(images_d) == len(images))
+    print("Num images", len(images), images[0].shape, nx, nx_orig)
     return images, images_d, nx, nx_orig
