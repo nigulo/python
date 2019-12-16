@@ -5,7 +5,7 @@ import zernike
 import utils
 import copy
 
-__DEBUG__ = True
+__DEBUG__ = False
 if __DEBUG__:
     import sys
     import os
@@ -426,27 +426,22 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3
     #coefs = np.abs(coefs)
     coefs = np.abs(psf_.otf_vals[0, 0, :, :])
     
-    import sys
-    import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
-    #sys.path.append('../utils')
-    import plot
-
-
-    my_plot = plot.plot()
-    my_plot.hist(coefs, bins=100)
-    my_plot.save("transfer_func_hist.png")
-    my_plot.close()
+    if __DEBUG__:
+        my_plot = plot.plot()
+        my_plot.hist(coefs, bins=100)
+        my_plot.save("transfer_func_hist.png")
+        my_plot.close()
     
     mask = np.ones_like(coefs)
     indices = np.where(coefs < threshold)
     mask[indices] = 0.
     
-    my_plot = plot.plot(nrows=2)
-    my_plot.colormap(fft.fftshift(coefs), [0])
-    my_plot.colormap(fft.fftshift(mask), [1])
-    my_plot.save("transfer_func.png")
-    my_plot.close()
+    if __DEBUG__:
+        my_plot = plot.plot(nrows=2)
+        my_plot.colormap(fft.fftshift(coefs), [0])
+        my_plot.colormap(fft.fftshift(mask), [1])
+        my_plot.save("transfer_func.png")
+        my_plot.close()
     
     fimage *= mask
     return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
