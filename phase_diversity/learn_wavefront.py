@@ -23,17 +23,19 @@ import numpy.fft as fft
 import time
 import kolmogorov
 
-jmax = 20
+jmax = 100
 diameter = 50.0
 wavelength = 5250.0
 gamma = 1.0
 
-num_frames = 10
+num_frames = 10000
 fried_param = 0.2
 noise_std_perc = 0.#.01
 
 num_sets = 10000
-n_epochs = 10
+n_epochs = 100
+
+iterative = True
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -46,7 +48,10 @@ class nn_model:
         
         print("Creating model")
     
-        image_input = keras.layers.Input((2, nx, nx), name='image_input') # Channels first
+        num_channels = 2
+        if iterative:
+            num_channels = 3 # Third channel is the reconstructed image from precious round
+        image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
         #hidden_layer = keras.layers.convolutional.Convolution2D(24, 6, 6, subsample=(2, 2), activation='relu')(image_input)#(normalized)
@@ -71,48 +76,91 @@ class nn_model:
         
         self.model = model
         self.nx_orig = nx_orig
-
-
-    def train(self, Ds_train, coefs_train, Ds_test, coefs_test):
         self.validation_losses = []
+        
+        
+    def add_dummy_reconstrution(self, Ds):
+        if iterative:
+            Ds = np.append(Ds, np.zeros(Ds.shape[0], Ds.shape[2], Ds.shape[3]))
+
+            arcsec_per_px, defocus = get_params(self.nx_orig)
+        
+            aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
+            defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+        
+            pa_check = psf.phase_aberration(jmax, start_index=0)
+            ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+            psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+            for i in np.arange(Ds.shape[0]):
+                DF = fft.fft2(Ds[i, 0])
+                DF_d = fft.fft2(Ds[i, 1])
+                image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([np.zeros(jmax)]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                image_reconstr = fft.ifftshift(image_reconstr[0])
+                Ds[i, 2] = image_reconstr
+        return Ds
+        
+    def set_data(self, Ds, coefs, train_perc=.75):
+        jmax = coefs.shape[1]
+        num_frames = Ds.shape[0]
+        num_objects = Ds.shape[1]
+        self.Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+        self.coefs = np.reshape(np.tile(coefs, (1, num_objects)), (num_objects*num_frames, jmax))
+        
+        self.scale_factor = np.std(coefs)
+        self.coefs /= self.scale_factor
+        
+        self.Ds = self.add_dummy_reconstrution(self.Ds)
+
+      
+        n_train = int(len(Ds)*train_perc)
+        self.Ds_train = Ds[:n_train] 
+        self.Ds_validation = Ds[n_train:]
+        self.coefs_train = coefs[:n_train] 
+        self.coefs_validation = coefs[n_train:]
+
+        #num_frames_train = Ds_train.shape[0]
+        #num_objects_train = Ds_train.shape[1]
+        #self.Ds_train = np.reshape(Ds_train, (num_frames_train*num_objects_train, Ds_train.shape[2], Ds_train.shape[3], Ds_train.shape[4]))
+        #self.coefs_train = np.reshape(np.tile(coefs_train, (1, num_objects_train)), (num_objects_train*num_frames_train, jmax))
+
+        #self.coefs_train /= self.scale_factor
+
+        #num_frames_validation = Ds_validation.shape[0]
+        #num_objects_validation = Ds_validation.shape[1]
+        #self.Ds_validation = np.reshape(Ds_validation, (num_frames_validation*num_objects_validation, Ds_validation.shape[2], Ds_validation.shape[3], Ds_validation.shape[4]))
+        #self.coefs_validation = np.reshape(np.tile(coefs_validation, (1, num_objects_validation)), (num_objects_validation*num_frames_validation, jmax))
+
+        #self.coefs_validation /= self.scale_factor
+        
+
+    def train(self, full=False):
         model = self.model
-        #print("Training")
-        num_frames_train = Ds_train.shape[0]
-        num_objects_train = Ds_train.shape[1]
-        Ds_train = np.reshape(Ds_train, (num_frames_train*num_objects_train, Ds_train.shape[2], Ds_train.shape[3], Ds_train.shape[4]))
-        jmax = coefs_train.shape[1]
-        coefs_train = np.reshape(np.tile(coefs_train, (1, num_objects_train)), (num_objects_train*num_frames_train, jmax))
 
-        self.scale_factor = np.std(coefs_train)
-
-        if np.shape(coefs_test)[0] > 0:
-            num_frames_test = Ds_test.shape[0]
-            num_objects_test = Ds_test.shape[1]
-            Ds_test = np.reshape(Ds_test, (num_frames_test*num_objects_test, Ds_test.shape[2], Ds_test.shape[3], Ds_test.shape[4]))
-            coefs_test = np.reshape(np.tile(coefs_test, (1, num_objects_test)), (num_objects_test*num_frames_test, jmax))
-            history = model.fit(Ds_train, coefs_train/self.scale_factor,
-                        epochs=n_epochs,
-                        batch_size=1000,
-                        shuffle=True,
-                        validation_data=(Ds_test, coefs_test),
-                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1)
-            
-            self.validation_losses.append(history.history['val_loss'])
-            print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
+        #if not full:
+        history = model.fit(self.Ds_train, self.coefs_train,
+                    epochs=n_epochs,
+                    batch_size=1000,
+                    shuffle=True,
+                    validation_data=(self.Ds_validation, self.coefs_validation),
+                    #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                    verbose=1)
+        
+        self.validation_losses.append(history.history['val_loss'])
+        print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
     
-        else:
-            history = model.fit(Ds_train, coefs_train,
-                        epochs=n_epochs,
-                        batch_size=1000,
-                        shuffle=True,
-                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1)
+        #else:
+        #    history = model.fit(self.Ds, self.coefs,
+        #                epochs=n_epochs,
+        #                batch_size=1000,
+        #                shuffle=True,
+        #                #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+        #                verbose=1)
     
         #######################################################################
         # Plot some of the training data results
         n_test = 5
-        predicted_coefs = model.predict(Ds_train[0:n_test])
+        predicted_coefs = model.predict(self.Ds)
+        #predicted_coefs = model.predict(Ds_train[0:n_test])
     
     
         arcsec_per_px, defocus = get_params(self.nx_orig)
@@ -123,23 +171,28 @@ class nn_model:
         pa_check = psf.phase_aberration(jmax, start_index=0)
         ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
         psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        for i in np.arange(n_test):
-            print("True coefs", coefs_train[i])
+        #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
+        for i in np.arange(self.Ds.shape[0]):
+            print("True coefs", self.coefs[i])
             print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
-            DF = fft.fft2(Ds_train[i, 0])
-            DF_d = fft.fft2(Ds_train[i, 1])
+            DF = fft.fft2(self.Ds[i, 0])
+            DF_d = fft.fft2(self.Ds[i, 1])
             image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([predicted_coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-            my_test_plot = plot.plot(nrows=1, ncols=2)
-            my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
-            my_test_plot.colormap(fft.ifftshift(image_reconstr[0]), [1])
-            #my_test_plot.colormap(D, [1, 0])
-            #my_test_plot.colormap(D_d, [1, 1])
-            #my_test_plot.colormap(D1[0, 0], [2, 0])
-            #my_test_plot.colormap(D1[0, 1], [2, 1])
-            my_test_plot.save("train_results" + str(i) + ".png")
-            my_test_plot.close()
+            image_reconstr = fft.ifftshift(image_reconstr[0])
+            if iterative:
+                self.Ds[i, 2] = image_reconstr
+            if i < n_test:
+                image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([self.coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                my_test_plot = plot.plot(nrows=1, ncols=2)
+                my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
+                my_test_plot.colormap(image_reconstr, [1])
+                #my_test_plot.colormap(D, [1, 0])
+                #my_test_plot.colormap(D_d, [1, 1])
+                #my_test_plot.colormap(D1[0, 0], [2, 0])
+                #my_test_plot.colormap(D1[0, 1], [2, 1])
+                my_test_plot.save("train_results" + str(i) + ".png")
+                my_test_plot.close()
     
         #my_plot = plot.plot()
         #my_plot.plot(np.arange(jmax), coefs, params="r-")
@@ -147,7 +200,7 @@ class nn_model:
         #my_plot.save("learn_wf_results.png")
         #my_plot.close()
         #######################################################################
-            
+                    
     
     def test(self):
         
@@ -155,9 +208,12 @@ class nn_model:
         n_test = 5
         
         Ds, DFs, coefs, nx_orig = gen_data(num_frames=n_test)
+        Ds = np.reshape(Ds, (Ds.shape[0]*Ds.shape[1], Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+    
+        Ds = self.add_dummy_reconstrution(Ds)
     
         start = time.time()    
-        predicted_coefs = model.predict(np.reshape(Ds, (Ds.shape[0]*Ds.shape[1], Ds.shape[2], Ds.shape[3], Ds.shape[4])))
+        predicted_coefs = model.predict(Ds)
         end = time.time()
         print("Prediction time" + str(end - start))
 
@@ -171,29 +227,32 @@ class nn_model:
         ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
         psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
-        for i in np.arange(n_test):
-            print("True coefs", coefs_train[i])
-            print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
-            DF = DFs[i, 0]
-            DF_d = DFs[i, 1]
-            image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([predicted_coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-            my_test_plot = plot.plot(nrows=1, ncols=2)
-            my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
-            my_test_plot.colormap(fft.ifftshift(image_reconstr[0]), [1])
-            #my_test_plot.colormap(D, [1, 0])
-            #my_test_plot.colormap(D_d, [1, 1])
-            #my_test_plot.colormap(D1[0, 0], [2, 0])
-            #my_test_plot.colormap(D1[0, 1], [2, 1])
-            my_test_plot.save("train_results" + str(i) + ".png")
-            my_test_plot.close()
+        n_iter = 1
+        if iterative:
+            n_iter = 5
+        for j in np.arange(n_iter):
+            for i in np.arange(n_test):
+                print("True coefs", coefs[i])
+                print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
+                DF = fft.fft2(Ds[i, 0])
+                DF_d = fft.fft2(Ds[i, 1])
+                image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([predicted_coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                image_reconst = fft.ifftshift(image_reconstr[0])
+                image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                my_test_plot = plot.plot(nrows=1, ncols=2)
+                my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
+                my_test_plot.colormap(image_reconst, [1])
+                #my_test_plot.colormap(D, [1, 0])
+                #my_test_plot.colormap(D_d, [1, 1])
+                #my_test_plot.colormap(D1[0, 0], [2, 0])
+                #my_test_plot.colormap(D1[0, 1], [2, 1])
+                my_test_plot.save("test_results" + str(j) + "_" + str(i) + ".png")
+                my_test_plot.close()
+                
+                if iterative:
+                    Ds[i, 2] = image_reconst
     
-            #my_plot = plot.plot()
-            #my_plot.plot(np.arange(jmax), coefs, params="r-")
-            #my_plot.plot(np.arange(jmax), predicted_coefs, params="b-")
-            #my_plot.save("learn_wf_results.png")
-            #my_plot.close()
         
 
 
@@ -208,7 +267,7 @@ def get_params(nx):
 def gen_data(num_frames, num_images = None):
     image_file = 'icont'
     dir = "images"
-    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=True)
+    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=False)
     print("nx, nx_orig", nx, nx_orig)
     if num_images is not None and len(images) > num_images:
         images = images[:num_images]
@@ -230,7 +289,8 @@ def gen_data(num_frames, num_images = None):
     #wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
     #pa = psf.phase_aberration(np.random.normal(size=jmax))
     for frame_no in np.arange(num_frames):
-        pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*50, -50), 50), start_index=0)
+        pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
+        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*25, -25), 25), start_index=0)
         #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
         ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
         #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
@@ -345,23 +405,20 @@ nx = Ds.shape[3]
 
 model = nn_model(nx, jmax, nx_orig)
 
-n_train = int(num_frames*.75)
+model.set_data(Ds, coefs)
 
-num_reps = 3
+num_reps = 20
 for rep in np.arange(0, num_reps):
     print("Rep no: " + str(rep))
 
-    Ds_train = Ds[:n_train] 
-    Ds_test = Ds[n_train:]
-    DFs_train = DFs[:n_train] 
-    DFs_test = DFs[n_train:]
-    coefs_train = coefs[:n_train] 
-    coefs_test = coefs[n_train:]
-    
     if rep == num_reps-1:
         # In the laast iteration train on the full set
-        model.train(Ds, coefs, np.array([]), np.array([]), np.array([]))
+        model.train(full=True)
     else:
-        model.train(Ds_train, coefs_train, Ds_test, coefs_test)
+        model.train()
 
     model.test()
+
+    if np.mean(model.validation_losses[-10:] > model.validation_losses[-20:-10]):
+        break
+    model.validation_losses = model.validation_losses[-20:]
