@@ -32,10 +32,11 @@ num_frames = 10000
 fried_param = 0.2
 noise_std_perc = 0.#.01
 
-num_sets = 10000
-n_epochs = 100
+n_epochs = 10
+num_iters = 10
+num_reps = 20
 
-iterative = True
+iterative = False
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -53,12 +54,23 @@ class nn_model:
             num_channels = 3 # Third channel is the reconstructed image from precious round
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
-        hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
         #hidden_layer = keras.layers.convolutional.Convolution2D(24, 6, 6, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Convolution2D(16, 4, 4, subsample=(2, 2), activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.convolutional.Conv2D(16, (4, 4), subsample=(2, 2), activation='relu')(hidden_layer)
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
+        #hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        output = keras.layers.Dense(jmax, activation='tanh')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='tanh')(hidden_layer)
+        output = keras.layers.Dense(jmax, activation='linear')(hidden_layer)
         #filtered_output = keras.layers.multiply([output, actions_input])#, mode='mul')
     
         model = keras.models.Model(input=[image_input], output=output)
@@ -68,8 +80,8 @@ class nn_model:
     
         #model = keras.models.Model(input=coefs, output=output)
         #optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
-        #optimizer = keras.optimizers.RMSprop(lr=0.0025, rho=0.95, epsilon=0.01)
-        #model.compile(optimizer, loss='mean_absolute_error')
+        #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+        #model.compile(optimizer, loss='mse')
         #model.compile(optimizer='adadelta', loss='binary_crossentropy')
         #model.compile(optimizer=optimizer, loss='binary_crossentropy')
         #model.compile(optimizer='adadelta', loss='mean_absolute_error')
@@ -81,7 +93,9 @@ class nn_model:
         
     def add_dummy_reconstrution(self, Ds):
         if iterative:
-            Ds = np.append(Ds, np.zeros(Ds.shape[0], Ds.shape[2], Ds.shape[3]))
+            print("Ds before", Ds.shape)
+            Ds = np.append(Ds, np.zeros((Ds.shape[0], 1, Ds.shape[2], Ds.shape[3])), axis=1)
+            print("Ds after", Ds.shape)
 
             arcsec_per_px, defocus = get_params(self.nx_orig)
         
@@ -112,11 +126,11 @@ class nn_model:
         self.Ds = self.add_dummy_reconstrution(self.Ds)
 
       
-        n_train = int(len(Ds)*train_perc)
-        self.Ds_train = Ds[:n_train] 
-        self.Ds_validation = Ds[n_train:]
-        self.coefs_train = coefs[:n_train] 
-        self.coefs_validation = coefs[n_train:]
+        n_train = int(len(self.Ds)*train_perc)
+        self.Ds_train = self.Ds[:n_train] 
+        self.Ds_validation = self.Ds[n_train:]
+        self.coefs_train = self.coefs[:n_train] 
+        self.coefs_validation = self.coefs[n_train:]
 
         #num_frames_train = Ds_train.shape[0]
         #num_objects_train = Ds_train.shape[1]
@@ -139,7 +153,7 @@ class nn_model:
         #if not full:
         history = model.fit(self.Ds_train, self.coefs_train,
                     epochs=n_epochs,
-                    batch_size=1000,
+                    batch_size=32,
                     shuffle=True,
                     validation_data=(self.Ds_validation, self.coefs_validation),
                     #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
@@ -173,8 +187,6 @@ class nn_model:
         psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
         for i in np.arange(self.Ds.shape[0]):
-            print("True coefs", self.coefs[i])
-            print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
             DF = fft.fft2(self.Ds[i, 0])
             DF_d = fft.fft2(self.Ds[i, 1])
             image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([predicted_coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
@@ -182,6 +194,8 @@ class nn_model:
             if iterative:
                 self.Ds[i, 2] = image_reconstr
             if i < n_test:
+                print("True coefs", self.coefs[i])
+                print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
                 image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([self.coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
                 my_test_plot = plot.plot(nrows=1, ncols=2)
@@ -229,7 +243,7 @@ class nn_model:
 
         n_iter = 1
         if iterative:
-            n_iter = 5
+            n_iter = num_iters
         for j in np.arange(n_iter):
             for i in np.arange(n_test):
                 print("True coefs", coefs[i])
@@ -407,18 +421,22 @@ model = nn_model(nx, jmax, nx_orig)
 
 model.set_data(Ds, coefs)
 
-num_reps = 20
 for rep in np.arange(0, num_reps):
     print("Rep no: " + str(rep))
 
-    if rep == num_reps-1:
-        # In the laast iteration train on the full set
-        model.train(full=True)
-    else:
-        model.train()
+    n_iter = 1
+    if iterative:
+        n_iter = num_iters
+
+    for i in np.arange(n_iter):
+        if rep == num_reps-1:
+            # In the laast iteration train on the full set
+            model.train(full=True)
+        else:
+            model.train()
 
     model.test()
 
-    if np.mean(model.validation_losses[-10:] > model.validation_losses[-20:-10]):
+    if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         break
     model.validation_losses = model.validation_losses[-20:]
