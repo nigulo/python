@@ -23,12 +23,12 @@ import numpy.fft as fft
 import time
 import kolmogorov
 
-jmax = 100
-diameter = 50.0
+jmax = 200
+diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
-num_frames = 1000
+num_frames = 10000
 fried_param = 0.2
 noise_std_perc = 0.#.01
 
@@ -59,12 +59,12 @@ class nn_model:
         hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
         #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='tanh')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.Dense(256, activation='tanh')(hidden_layer)
         output = keras.layers.Dense(jmax, activation='linear')(hidden_layer)
         #filtered_output = keras.layers.multiply([output, actions_input])#, mode='mul')
     
@@ -216,7 +216,7 @@ class nn_model:
 
 def get_params(nx):
 
-    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 2.*np.pi*100
     #defocus = (0., 0.)
@@ -233,7 +233,9 @@ def gen_data(num_frames, num_images = None):
     true_coefs = np.zeros((num_frames, jmax))
 
     for frame_no in np.arange(num_frames):
-        pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
+        #coefs = np.zeros(jmax)
+        coefs = np.random.normal(size=jmax)#*np.linspace(.1, 10., 100)**2
+        pa_true = psf.phase_aberration(coefs, start_index=0)#size=jmax), start_index=0)
         pa_true.calc_terms(coords)
         Ds[frame_no] = pa_true()
         true_coefs[frame_no] = pa_true.alphas
@@ -290,7 +292,7 @@ for rep in np.arange(0, num_reps):
 
     model.test()
 
-    if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
-        print("Validation loss increasing, stopping training.")
-        break
+    #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
+    #    print("Validation loss increasing, stopping training.")
+    #    break
     model.validation_losses = model.validation_losses[-20:]
