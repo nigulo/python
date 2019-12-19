@@ -28,7 +28,8 @@ diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
-num_frames = 2000
+num_frames_gen = 2000
+num_frames = 200
 fried_param = 0.2
 noise_std_perc = 0.#.01
 
@@ -113,14 +114,17 @@ class nn_model:
                 Ds[i, 2] = image_reconstr
         return Ds
         
-    def set_data(self, Ds, coefs, train_perc=.75):
+    def set_data(self, Ds, coefs, num_frames, train_perc=.75):
         jmax = coefs.shape[1]
-        num_frames = Ds.shape[0]
+        assert(num_frames <= Ds.shape[0])
+        #num_frames = Ds.shape[0]
+        Ds = Ds[:num_frames]
+        coefs = coefs[:num_frames]
         num_objects = Ds.shape[1]
         self.Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
         self.coefs = np.reshape(np.tile(coefs, (1, num_objects)), (num_objects*num_frames, jmax))
         
-        self.scale_factor = np.std(coefs)
+        self.scale_factor = np.std(self.coefs)
         self.coefs /= self.scale_factor
         
         self.Ds = self.add_dummy_reconstrution(self.Ds)
@@ -196,7 +200,7 @@ class nn_model:
             if i < n_test:
                 print("True coefs", self.coefs[i])
                 print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
-                image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([self.coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([self.coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
                 my_test_plot = plot.plot(nrows=1, ncols=2)
                 my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
@@ -222,8 +226,11 @@ class nn_model:
         n_test = 5
         
         Ds, DFs, coefs, nx_orig = gen_data(num_frames=n_test)
-        Ds = np.reshape(Ds, (Ds.shape[0]*Ds.shape[1], Ds.shape[2], Ds.shape[3], Ds.shape[4]))
-    
+        num_frames = Ds.shape[0]
+        num_objects = Ds.shape[1]
+        Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+        coefs = np.reshape(np.tile(coefs, (1, num_objects)), (num_objects*num_frames, jmax))
+
         Ds = self.add_dummy_reconstrution(Ds)
     
         start = time.time()    
@@ -398,7 +405,7 @@ def save_data(data):
 data = load_data()
 if data is None:
     print("Generating training data")
-    Ds, DFs, coefs, nx_orig = gen_data(num_frames)
+    Ds, DFs, coefs, nx_orig = gen_data(num_frames_gen)
     save_data((Ds, DFs, coefs, nx_orig))
 else:
     Ds, DFs, coefs, nx_orig = data
@@ -419,7 +426,7 @@ nx = Ds.shape[3]
 
 model = nn_model(nx, jmax, nx_orig)
 
-model.set_data(Ds, coefs)
+model.set_data(Ds, coefs, num_frames)
 
 for rep in np.arange(0, num_reps):
     print("Rep no: " + str(rep))
