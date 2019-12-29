@@ -32,7 +32,7 @@ num_frames = 10000
 fried_param = 0.2
 noise_std_perc = 0.#.01
 
-n_epochs = 10
+n_epochs = 100
 num_iters = 10
 num_reps = 20
 
@@ -50,17 +50,23 @@ class nn_model:
         image_input = keras.layers.Input((2, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        #hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+        hidden_layer = keras.layers.MaxPooling2D(pool_size=(4, 4), strides=None, padding='valid', data_format=None)(image_input)
         #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
         #hidden_layer = keras.layers.convolutional.Convolution2D(24, 6, 6, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(16, (4, 4), subsample=(2, 2), activation='relu')(hidden_layer)
+        #hidden_layer = keras.layers.convolutional.Conv2D(16, (4, 4), subsample=(2, 2), activation='relu')(hidden_layer)
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
-        #hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
         #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
         #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
         #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
         #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
@@ -294,7 +300,7 @@ assert(nx == Ds.shape[3])
 
 model = nn_model(nx, jmax, nx_orig)
 
-model.set_data(Ds, coefs)
+model.set_data(Ds[:1000], coefs[:1000])
 
 for rep in np.arange(0, num_reps):
     print("Rep no: " + str(rep))
