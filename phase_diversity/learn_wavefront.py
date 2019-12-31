@@ -28,7 +28,7 @@ diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
-num_frames_gen = 2000
+num_frames_gen = 100
 num_frames = 200
 fried_param = 0.2
 noise_std_perc = 0.#.01
@@ -279,7 +279,8 @@ class nn_model:
 
 def get_params(nx):
 
-    arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 2.*np.pi*100
     #defocus = (0., 0.)
@@ -287,8 +288,8 @@ def get_params(nx):
 
 def gen_data(num_frames, num_images = None):
     image_file = 'icont'
-    dir = "images"
-    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=True)
+    dir = "images_in"
+    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=False)
     print("nx, nx_orig", nx, nx_orig)
     if num_images is not None and len(images) > num_images:
         images = images[:num_images]

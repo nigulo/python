@@ -219,7 +219,10 @@ def read_images(dir="images", image_file="icont", is_planet = False, image_size 
                 image = hdul[0].data
                 hdul.close()
             else:
-                image = plt.imread(dir + "/" + file)[:, :, 0]
+                image = plt.imread(dir + "/" + file)
+                if len(image.shape) == 3:
+                    image = image[:, :, 0]
+                    
                 #image = plt.imread(dir + "/" + file)
             if scale != 1.:
                 image = misc.sample_image(image, scale)
