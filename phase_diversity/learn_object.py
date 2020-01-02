@@ -88,7 +88,8 @@ class nn_model:
         self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
         for i in np.arange(num_objects):
             for j in np.arange(self.num_frames):
-                self.Ds[i, 2*j] = Ds[j, i]
+                self.Ds[i, 2*j] = Ds[j, i, 0]
+                self.Ds[i, 2*j+1] = Ds[j, i, 1]
         self.objs = np.asarray(objs)
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
@@ -175,7 +176,8 @@ class nn_model:
         Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
         for i in np.arange(num_objects):
             for j in np.arange(num_frames):
-                Ds[i, 2*j] = Ds_[j, i]
+                Ds[i, 2*j] = Ds_[j, i, 0]
+                Ds[i, 2*j+1] = Ds_[j, i, 1]
         self.objs = np.asarray(objs)
 
         start = time.time()    
