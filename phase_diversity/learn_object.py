@@ -37,7 +37,6 @@ n_epochs = 10
 num_iters = 10
 num_reps = 20
 
-iterative = False
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -46,13 +45,11 @@ my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 class nn_model:
 
-    def __init__(self, nx, jmax, nx_orig):
+    def __init__(self, nx, nx_orig):
         
         print("Creating model")
     
         num_channels = 2
-        if iterative:
-            num_channels = 3 # Third channel is the reconstructed image from precious round
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
@@ -62,8 +59,8 @@ class nn_model:
         hidden_layer = keras.layers.Dense(2*nx*nx+2*jmax, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Dense(2*nx*nx, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Reshape((2, nx, nx, 1))(hidden_layer)
-        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
-        output = keras.layers.add(hidden_layer)(image_input)#(normalized)
+        output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
+        #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
         
     
         model = keras.models.Model(input=[image_input], output=output)
@@ -84,27 +81,20 @@ class nn_model:
         self.validation_losses = []
         
 
-    def set_data(self, Ds, coefs, num_frames, train_perc=.75):
-        jmax = coefs.shape[1]
+    def set_data(self, Ds, objs, num_frames, train_perc=.75):
         assert(num_frames <= Ds.shape[0])
         #num_frames = Ds.shape[0]
         Ds = Ds[:num_frames]
-        coefs = coefs[:num_frames]
         num_objects = Ds.shape[1]
         self.Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
-        self.coefs = np.reshape(np.tile(coefs, (1, num_objects)), (num_objects*num_frames, jmax))
-        
-        self.scale_factor = np.std(self.coefs)
-        self.coefs /= self.scale_factor
-        
-        self.Ds = self.add_dummy_reconstrution(self.Ds)
-
-      
+        self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
+        self.objs = objs[:num_frames]
+                      
         n_train = int(len(self.Ds)*train_perc)
         self.Ds_train = self.Ds[:n_train] 
         self.Ds_validation = self.Ds[n_train:]
-        self.coefs_train = self.coefs[:n_train] 
-        self.coefs_validation = self.coefs[n_train:]
+        self.objs_train = self.objs[:n_train] 
+        self.objs_validation = self.objs[n_train:]
 
         #num_frames_train = Ds_train.shape[0]
         #num_objects_train = Ds_train.shape[1]
@@ -125,11 +115,11 @@ class nn_model:
         model = self.model
 
         #if not full:
-        history = model.fit(self.Ds_train, self.coefs_train,
+        history = model.fit(self.Ds_train, self.objs_train,
                     epochs=n_epochs,
                     batch_size=32,
                     shuffle=True,
-                    validation_data=(self.Ds_validation, self.coefs_validation),
+                    validation_data=(self.Ds_validation, self.objs_validation),
                     #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                     verbose=1)
         
@@ -147,34 +137,16 @@ class nn_model:
         #######################################################################
         # Plot some of the training data results
         n_test = 5
-        predicted_coefs = model.predict(self.Ds)
+        pred_objs = model.predict(self.Ds)
         #predicted_coefs = model.predict(Ds_train[0:n_test])
     
-    
-        arcsec_per_px, defocus = get_params(self.nx_orig)
-    
-        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-    
-        pa_check = psf.phase_aberration(jmax, start_index=0)
-        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
         for i in np.arange(self.Ds.shape[0]):
-            DF = fft.fft2(self.Ds[i, 0])
-            DF_d = fft.fft2(self.Ds[i, 1])
-            image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([predicted_coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            image_reconstr = fft.ifftshift(image_reconstr[0])
-            if iterative:
-                self.Ds[i, 2] = image_reconstr
             if i < n_test:
-                print("True coefs", self.coefs[i])
-                print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
-                image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([self.coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
                 my_test_plot = plot.plot(nrows=1, ncols=2)
-                my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
-                my_test_plot.colormap(image_reconstr, [1])
+                my_test_plot.colormap(self.objs[i], [0])
+                my_test_plot.colormap(pred_objs[i], [1])
                 #my_test_plot.colormap(D, [1, 0])
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
@@ -195,56 +167,31 @@ class nn_model:
         model = self.model
         n_test = 5
         
-        Ds, DFs, coefs, nx_orig = gen_data(num_frames=n_test)
+        Ds, objs, nx_orig = gen_data(num_frames=n_test)
         num_frames = Ds.shape[0]
         num_objects = Ds.shape[1]
         Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
-        coefs = np.reshape(np.tile(coefs, (1, num_objects)), (num_objects*num_frames, jmax))
+        objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
 
-        Ds = self.add_dummy_reconstrution(Ds)
-    
         start = time.time()    
-        predicted_coefs = model.predict(Ds)
+        pred_objs = model.predict(Ds)
         end = time.time()
         print("Prediction time" + str(end - start))
 
         
-        arcsec_per_px, defocus = get_params(self.nx_orig)
-    
-        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-    
-        pa_check = psf.phase_aberration(jmax, start_index=0)
-        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
-        n_iter = 1
-        if iterative:
-            n_iter = num_iters
-        for j in np.arange(n_iter):
-            for i in np.arange(n_test):
-                print("True coefs", coefs[i])
-                print("Predicted coefs", predicted_coefs[i]*self.scale_factor)
-                DF = fft.fft2(Ds[i, 0])
-                DF_d = fft.fft2(Ds[i, 1])
-                image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([predicted_coefs[i]*self.scale_factor]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                image_reconst = fft.ifftshift(image_reconstr[0])
-                image_true = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([coefs[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                my_test_plot = plot.plot(nrows=1, ncols=2)
-                my_test_plot.colormap(fft.ifftshift(image_true[0]), [0])
-                my_test_plot.colormap(image_reconst, [1])
-                #my_test_plot.colormap(D, [1, 0])
-                #my_test_plot.colormap(D_d, [1, 1])
-                #my_test_plot.colormap(D1[0, 0], [2, 0])
-                #my_test_plot.colormap(D1[0, 1], [2, 1])
-                my_test_plot.save("test_results" + str(j) + "_" + str(i) + ".png")
-                my_test_plot.close()
-                
-                if iterative:
-                    Ds[i, 2] = image_reconst
-    
-        
+        for i in np.arange(n_test):
+            #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+            my_test_plot = plot.plot(nrows=1, ncols=2)
+            my_test_plot.colormap(objs[i], [0])
+            my_test_plot.colormap(pred_objs[i], [1])
+            #my_test_plot.colormap(D, [1, 0])
+            #my_test_plot.colormap(D_d, [1, 1])
+            #my_test_plot.colormap(D1[0, 0], [2, 0])
+            #my_test_plot.colormap(D1[0, 1], [2, 1])
+            my_test_plot.save("test_results" + str(i) + ".png")
+            my_test_plot.close()
+
 
 
 def get_params(nx):
@@ -388,7 +335,7 @@ num_objs = Ds.shape[1]
 nx = Ds.shape[3]
 
 
-model = nn_model(nx, jmax, nx_orig)
+model = nn_model(nx, nx_orig)
 
 model.set_data(Ds, objs, num_frames)
 
