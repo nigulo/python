@@ -59,7 +59,7 @@ class nn_model:
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
         hidden_layer = keras.layers.Dense(nx*nx, activation='relu')(hidden_layer)
         hidden_layer = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
-        output = keras.layers.Reshape((nx, nx, 1))(hidden_layer)
+        output = keras.layers.Reshape((nx, nx))(hidden_layer)
         #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
         #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
         
