@@ -83,6 +83,7 @@ class nn_model:
         
 
     def set_data(self, Ds, objs, train_perc=.75):
+        assert(self.num_frames <= Ds.shape[0])
         num_objects = Ds.shape[1]
         assert(Ds.shape[2] == 2)
         self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
@@ -184,8 +185,6 @@ class nn_model:
         pred_objs = model.predict(Ds)
         end = time.time()
         print("Prediction time" + str(end - start))
-
-        
 
         for i in np.arange(n_test):
             #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
