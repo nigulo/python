@@ -45,11 +45,12 @@ my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 class nn_model:
 
-    def __init__(self, nx, nx_orig):
+    def __init__(self, nx, nx_orig, num_frames):
         
         print("Creating model")
     
-        num_channels = 2
+        self.num_frames = num_frames
+        num_channels = self.num_frames*2
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
@@ -81,14 +82,15 @@ class nn_model:
         self.validation_losses = []
         
 
-    def set_data(self, Ds, objs, num_frames, train_perc=.75):
-        assert(num_frames <= Ds.shape[0])
-        #num_frames = Ds.shape[0]
-        Ds = Ds[:num_frames]
+    def set_data(self, Ds, objs, train_perc=.75):
         num_objects = Ds.shape[1]
-        self.Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
-        self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
-        self.objs = objs[:num_frames]
+        assert(Ds.shape[2] == 2)
+        self.Ds = np.array((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
+        for i in np.arange(num_objects):
+            for j in np.arange(self.num_frames):
+                self.Ds[i, 2*j] = Ds[j, i]
+        self.objs = np.asarray(objs)
+        #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
         n_train = int(len(self.Ds)*train_perc)
         self.Ds_train = self.Ds[:n_train] 
@@ -170,8 +172,11 @@ class nn_model:
         Ds, objs, nx_orig = gen_data(num_frames=n_test)
         num_frames = Ds.shape[0]
         num_objects = Ds.shape[1]
-        Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
-        objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
+        self.Ds = np.array((num_objects, 2*num_frames, Ds.shape[3], Ds.shape[4]))
+        for i in np.arange(num_objects):
+            for j in np.arange(num_frames):
+                self.Ds[i, 2*j] = Ds[j, i]
+        self.objs = np.asarray(objs)
 
         start = time.time()    
         pred_objs = model.predict(Ds)
@@ -335,23 +340,18 @@ num_objs = Ds.shape[1]
 nx = Ds.shape[3]
 
 
-model = nn_model(nx, nx_orig)
+model = nn_model(nx, nx_orig, num_frames)
 
-model.set_data(Ds, objs, num_frames)
+model.set_data(Ds, objs)
 
 for rep in np.arange(0, num_reps):
     print("Rep no: " + str(rep))
 
-    n_iter = 1
-    if iterative:
-        n_iter = num_iters
-
-    for i in np.arange(n_iter):
-        if rep == num_reps-1:
-            # In the laast iteration train on the full set
-            model.train(full=True)
-        else:
-            model.train()
+    if rep == num_reps-1:
+        # In the laast iteration train on the full set
+        model.train(full=True)
+    else:
+        model.train()
 
     model.test()
 
