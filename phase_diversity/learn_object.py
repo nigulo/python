@@ -54,7 +54,8 @@ class nn_model:
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
+        hidden_layer = keras.layers.add()(hidden_layer)#(normalized)
         #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
         hidden_layer = keras.layers.Dense(nx*nx, activation='relu')(hidden_layer)
