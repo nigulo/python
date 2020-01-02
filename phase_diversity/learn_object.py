@@ -118,6 +118,7 @@ class nn_model:
     def train(self, full=False):
         model = self.model
 
+        print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         #if not full:
         history = model.fit(self.Ds_train, self.objs_train,
                     epochs=n_epochs,
