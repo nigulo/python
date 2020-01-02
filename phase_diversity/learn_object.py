@@ -169,13 +169,13 @@ class nn_model:
         model = self.model
         n_test = 5
         
-        Ds, objs, nx_orig = gen_data(num_frames=n_test)
-        num_frames = Ds.shape[0]
-        num_objects = Ds.shape[1]
-        self.Ds = np.array((num_objects, 2*num_frames, Ds.shape[3], Ds.shape[4]))
+        Ds_, objs, nx_orig = gen_data(num_frames=n_test)
+        num_frames = Ds_.shape[0]
+        num_objects = Ds_.shape[1]
+        Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
         for i in np.arange(num_objects):
             for j in np.arange(num_frames):
-                self.Ds[i, 2*j] = Ds[j, i]
+                Ds[i, 2*j] = Ds_[j, i]
         self.objs = np.asarray(objs)
 
         start = time.time()    
