@@ -28,7 +28,7 @@ diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
-num_frames_gen = 100
+num_frames_gen = 2000
 num_frames = 200
 fried_param = 0.2
 noise_std_perc = 0.#.01
@@ -56,23 +56,15 @@ class nn_model:
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), subsample=(2, 2), activation='relu')(image_input)#(normalized)
+        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
         #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
-        #hidden_layer = keras.layers.convolutional.Convolution2D(24, 6, 6, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(16, (4, 4), subsample=(2, 2), activation='relu')(hidden_layer)
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
-        #hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(512, activation='relu')(hidden_layer)
-        #hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(256, activation='tanh')(hidden_layer)
-        output = keras.layers.Dense(jmax, activation='linear')(hidden_layer)
-        #filtered_output = keras.layers.multiply([output, actions_input])#, mode='mul')
+        hidden_layer = keras.layers.Dense(2*nx*nx+2*jmax, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Dense(2*nx*nx, activation='relu')(hidden_layer)
+        hidden_layer = keras.layers.Reshape((2, nx, nx, 1))(hidden_layer)
+        hidden_layer = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
+        output = keras.layers.add(hidden_layer)(image_input)#(normalized)
+        
     
         model = keras.models.Model(input=[image_input], output=output)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
@@ -91,29 +83,7 @@ class nn_model:
         self.nx_orig = nx_orig
         self.validation_losses = []
         
-        
-    def add_dummy_reconstrution(self, Ds):
-        if iterative:
-            print("Ds before", Ds.shape)
-            Ds = np.append(Ds, np.zeros((Ds.shape[0], 1, Ds.shape[2], Ds.shape[3])), axis=1)
-            print("Ds after", Ds.shape)
 
-            arcsec_per_px, defocus = get_params(self.nx_orig)
-        
-            aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-            defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-        
-            pa_check = psf.phase_aberration(jmax, start_index=0)
-            ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-            psf_check = psf.psf(ctf_check, self.nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-            for i in np.arange(Ds.shape[0]):
-                DF = fft.fft2(Ds[i, 0])
-                DF_d = fft.fft2(Ds[i, 1])
-                image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([np.zeros(jmax)]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                image_reconstr = fft.ifftshift(image_reconstr[0])
-                Ds[i, 2] = image_reconstr
-        return Ds
-        
     def set_data(self, Ds, coefs, num_frames, train_perc=.75):
         jmax = coefs.shape[1]
         assert(num_frames <= Ds.shape[0])
@@ -279,8 +249,7 @@ class nn_model:
 
 def get_params(nx):
 
-    #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
-    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 2.*np.pi*100
     #defocus = (0., 0.)
@@ -288,8 +257,8 @@ def get_params(nx):
 
 def gen_data(num_frames, num_images = None):
     image_file = 'icont'
-    dir = "images_in"
-    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=False)
+    dir = "images"
+    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=True)
     print("nx, nx_orig", nx, nx_orig)
     if num_images is not None and len(images) > num_images:
         images = images[:num_images]
@@ -304,7 +273,6 @@ def gen_data(num_frames, num_images = None):
     num_objects = len(images)
 
     Ds = np.zeros((num_frames, num_objects, 2, nx, nx)) # in real space
-    DFs = np.zeros((num_frames, num_objects, 2, nx, nx), dtype='complex') # in Fourier space
     true_coefs = np.zeros((num_frames, jmax))
     pa = psf.phase_aberration(jmax, start_index=0)
     pa.calc_terms(coords)
@@ -383,33 +351,28 @@ def gen_data(num_frames, num_images = None):
             Ds[frame_no, obj_no, 0] = D
             Ds[frame_no, obj_no, 1] = D_d
 
-            DFs[frame_no, obj_no, 0] = DF
-            DFs[frame_no, obj_no, 1] = DF_d
 
-
-    return Ds, DFs, true_coefs, nx_orig
+    return Ds, images, nx_orig
 
 
 def load_data():
-    data_file = 'learn_wavefront_data.pkl'
+    data_file = 'learn_object_data.pkl'
     if load_data and os.path.isfile(data_file):
         return pickle.load(open(data_file, 'rb'))
     else:
         return None
 
 def save_data(data):
-    with open('learn_wavefront_data.pkl', 'wb') as f:
+    with open('learn_object_data.pkl', 'wb') as f:
         pickle.dump(data, f)
-
 
 
 data = load_data()
 if data is None:
-    print("Generating training data")
-    Ds, DFs, coefs, nx_orig = gen_data(num_frames_gen)
-    save_data((Ds, DFs, coefs, nx_orig))
+    Ds, objs, nx_orig = gen_data(num_frames_gen)
+    save_data((Ds, objs, nx_orig))
 else:
-    Ds, DFs, coefs, nx_orig = data
+    Ds, objs, nx_orig = data
 
 my_test_plot = plot.plot()
 my_test_plot.colormap(Ds[0, 0, 0])
@@ -427,7 +390,7 @@ nx = Ds.shape[3]
 
 model = nn_model(nx, jmax, nx_orig)
 
-model.set_data(Ds, coefs, num_frames)
+model.set_data(Ds, objs, num_frames)
 
 for rep in np.arange(0, num_reps):
     print("Rep no: " + str(rep))
