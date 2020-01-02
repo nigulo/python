@@ -204,7 +204,7 @@ def get_params(nx):
 
 def gen_data(num_frames, num_images = None):
     image_file = 'icont'
-    dir = "images"
+    dir = "images_in"
     images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=True)
     print("nx, nx_orig", nx, nx_orig)
     if num_images is not None and len(images) > num_images:
