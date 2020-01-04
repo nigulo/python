@@ -69,14 +69,14 @@ class nn_model:
     
         model = keras.models.Model(input=[image_input], output=output)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
-        model.compile(optimizer='adadelta', loss='mse')
+        #model.compile(optimizer='adadelta', loss='mse')
         
     
         #model = keras.models.Model(input=coefs, output=output)
         #optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
         #model.compile(optimizer, loss='mse')
-        #model.compile(optimizer='adadelta', loss='binary_crossentropy')
+        model.compile(optimizer='adadelta', loss='binary_crossentropy')
         #model.compile(optimizer=optimizer, loss='binary_crossentropy')
         #model.compile(optimizer='adadelta', loss='mean_absolute_error')
         
