@@ -29,7 +29,7 @@ wavelength = 5250.0
 gamma = 1.0
 
 num_frames_gen = 100
-num_frames = 10
+num_frames = 100
 fried_param = 0.2
 noise_std_perc = 0.#.01
 
