@@ -61,22 +61,22 @@ class nn_model:
         #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
         hidden_layer = keras.layers.Dense(nx*nx, activation='relu')(hidden_layer)
-        hidden_layer = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
-        output = keras.layers.Reshape((nx, nx))(hidden_layer)
+        output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
+        #output = keras.layers.Reshape((nx, nx))(hidden_layer)
         #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
         #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
         
     
         model = keras.models.Model(input=[image_input], output=output)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
-        #model.compile(optimizer='adadelta', loss='mse')
+        model.compile(optimizer='adadelta', loss='mse')
         
     
         #model = keras.models.Model(input=coefs, output=output)
         #optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
         #model.compile(optimizer, loss='mse')
-        model.compile(optimizer='adadelta', loss='binary_crossentropy')
+        #model.compile(optimizer='adadelta', loss='binary_crossentropy')
         #model.compile(optimizer=optimizer, loss='binary_crossentropy')
         #model.compile(optimizer='adadelta', loss='mean_absolute_error')
         
@@ -95,6 +95,7 @@ class nn_model:
                 self.Ds[i, 2*j] = Ds[j, i, 0]
                 self.Ds[i, 2*j+1] = Ds[j, i, 1]
         self.objs = np.asarray(objs)
+        self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
         n_train = int(math.ceil(len(self.Ds)*train_perc))
