@@ -67,7 +67,7 @@ class nn_model:
         #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
         
     
-        model = keras.models.Model(input=image_input, output=output)
+        model = keras.models.Model(inputs=image_input, outputs=output)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
         model.compile(optimizer='adadelta', loss='mse')
         
