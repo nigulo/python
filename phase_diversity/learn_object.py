@@ -52,7 +52,7 @@ class nn_model:
         print("Creating model")
     
         self.num_frames = num_frames
-        num_channels = self.num_frames*2
+        num_channels = 2#self.num_frames*2
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
@@ -89,12 +89,14 @@ class nn_model:
         assert(self.num_frames <= Ds.shape[0])
         num_objects = Ds.shape[1]
         assert(Ds.shape[2] == 2)
-        self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
-        for i in np.arange(num_objects):
-            for j in np.arange(self.num_frames):
-                self.Ds[i, 2*j] = Ds[j, i, 0]
-                self.Ds[i, 2*j+1] = Ds[j, i, 1]
+        self.Ds = np.reshape(Ds, (num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+        #self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
+        #for i in np.arange(num_objects):
+        #    for j in np.arange(self.num_frames):
+        #        self.Ds[i, 2*j] = Ds[j, i, 0]
+        #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
         self.objs = np.asarray(objs)
+        self.objs = np.tile(self.objs, (num_frames, 1))
         self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
@@ -179,12 +181,12 @@ class nn_model:
         Ds_, objs, nx_orig = gen_data(num_frames=n_test)
         num_frames = Ds_.shape[0]
         num_objects = Ds_.shape[1]
-        Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
-        for i in np.arange(num_objects):
-            for j in np.arange(num_frames):
-                Ds[i, 2*j] = Ds_[j, i, 0]
-                Ds[i, 2*j+1] = Ds_[j, i, 1]
-        self.objs = np.asarray(objs)
+        Ds = np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4]))
+        #Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
+        #for i in np.arange(num_objects):
+        #    for j in np.arange(num_frames):
+        #        Ds[i, 2*j] = Ds_[j, i, 0]
+        #        Ds[i, 2*j+1] = Ds_[j, i, 1]
 
         start = time.time()    
         pred_objs = model.predict(Ds)
