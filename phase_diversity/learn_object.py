@@ -89,6 +89,7 @@ class nn_model:
         assert(self.num_frames <= Ds.shape[0])
         num_objects = Ds.shape[1]
         assert(Ds.shape[2] == 2)
+        Ds = Ds[:self.num_frames]
         self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
         #self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
         #for i in np.arange(num_objects):
