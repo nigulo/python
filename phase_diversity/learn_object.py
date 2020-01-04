@@ -125,7 +125,7 @@ class nn_model:
         #if not full:
         history = model.fit(self.Ds_train, self.objs_train,
                     epochs=n_epochs,
-                    batch_size=10,
+                    batch_size=None,
                     shuffle=True,
                     validation_data=(self.Ds_validation, self.objs_validation),
                     #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
