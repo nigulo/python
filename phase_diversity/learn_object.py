@@ -11,6 +11,7 @@ from keras import backend as K
 
 import psf
 import utils
+import math
 
 import plot
 
@@ -96,7 +97,7 @@ class nn_model:
         self.objs = np.asarray(objs)
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
-        n_train = int(ceil(len(self.Ds)*train_perc))
+        n_train = int(math.ceil(len(self.Ds)*train_perc))
         self.Ds_train = self.Ds[:n_train] 
         self.Ds_validation = self.Ds[n_train:]
         self.objs_train = self.objs[:n_train] 
