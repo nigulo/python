@@ -97,7 +97,7 @@ class nn_model:
         #        self.Ds[i, 2*j] = Ds[j, i, 0]
         #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
         self.objs = np.asarray(objs)
-        self.objs = np.tile(self.objs, (self.num_frames, 1))
+        self.objs = np.tile(self.objs, (self.num_frames, 1, 1))
         self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
