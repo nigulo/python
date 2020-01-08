@@ -19,27 +19,29 @@ import misc
 
 in_dir = "images"
 out_dir = "images_out"
-image_file="icont"
-image_size = 50
+image_file = None#"icont"
+image_size = 100
 tile=False
 scale=1.0
 
 num_subimages = 100
-num_angles = 12
+num_angles = 10
 
 assert(in_dir != out_dir)
 for root, dirs, files in os.walk(in_dir):
     for file in files:
         print(file)
-        if file[:len(image_file)] != image_file:
+        if image_file is not None and file[:len(image_file)] != image_file:
             continue
         if file[-5:] == '.fits':
             hdul = fits.open(in_dir + "/" + file)
             image = hdul[0].data
             hdul.close()
         else:
-            image = plt.imread(in_dir + "/" + file)[:, :, 0]
+            image = plt.imread(in_dir + "/" + file)
             #image = plt.imread(dir + "/" + file)
+            if len(image.shape) == 3:
+                image = image[:, :, 0]
         if scale != 1.:
             image = misc.sample_image(image, scale)
 
@@ -59,7 +61,8 @@ for root, dirs, files in os.walk(in_dir):
             image = Image.fromarray(image)
             image = image.convert("L")
             
-            for angle in np.linspace(0, 360, num_angles):
+            angles = random.random(size=num_angles)*360.0
+            for angle in angles:
                 rotated = image.rotate(angle)
                 rotated = rotated.crop(((nx-image_size)//2, (ny-image_size)//2,(nx+image_size)//2, (ny+image_size)//2))
                 rotated.save(out_dir + "/" + file + "_" + str(i) + "_" + str(int(angle)) + ".png")

@@ -203,7 +203,7 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
         tile is False then only image (0:image_size, 0:image_size) is returned.
     
 '''
-def read_images(dir="images", image_file="icont", is_planet = False, image_size = 50, tile=False, scale=1.0):
+def read_images(dir="images", image_file=None, is_planet = False, image_size = None, tile=False, scale=1.0):
     assert(not is_planet or (is_planet and not tile))
     images = []
     images_d = []
@@ -212,7 +212,7 @@ def read_images(dir="images", image_file="icont", is_planet = False, image_size 
     for root, dirs, files in os.walk(dir):
         for file in files:
             print(file)
-            if file[:len(image_file)] != image_file:
+            if image_file is not None and file[:len(image_file)] != image_file:
                 continue
             if file[-5:] == '.fits':
                 hdul = fits.open(dir + "/" + file)
@@ -228,7 +228,10 @@ def read_images(dir="images", image_file="icont", is_planet = False, image_size 
                 image = misc.sample_image(image, scale)
             print("Image shape", image.shape)
             start_coord = 0
-            image_size = min(image.shape[0], image.shape[1], image_size)
+            if image_size is None:
+                image_size = min(image.shape[0], image.shape[1])
+            else:
+                image_size = min(image.shape[0], image.shape[1], image_size)
             while start_coord + image_size <= image.shape[0] and start_coord + image_size <= image.shape[1]:
                 if is_planet:# Try to detect center
                     row_mean = np.mean(image, axis = 0)
@@ -246,7 +249,7 @@ def read_images(dir="images", image_file="icont", is_planet = False, image_size 
                 
                 
                 nx_orig = np.shape(sub_image)[0]
-                sub_image = upsample(sub_image)
+                #sub_image = upsample(sub_image)
                 nx = np.shape(sub_image)[0]
                 assert(nx == np.shape(sub_image)[1])
                 if len(images) > 0:

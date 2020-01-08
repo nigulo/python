@@ -12,6 +12,7 @@ from keras import backend as K
 import psf
 import utils
 import math
+import misc
 
 import plot
 
@@ -30,9 +31,9 @@ diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
-num_frames_gen = 100
+num_frames_gen = 10
 num_frames = 10
-fried_param = 0.2
+fried_param = 0.1
 noise_std_perc = 0.#.01
 
 n_epochs = 10
@@ -47,7 +48,7 @@ my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 class nn_model:
 
-    def __init__(self, nx, nx_orig, num_frames):
+    def __init__(self, nx, num_frames):
         
         print("Creating model")
     
@@ -56,12 +57,14 @@ class nn_model:
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
         #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(16, (8, 8), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
+        hidden_layer = keras.layers.convolutional.Conv2D(16, (64, 64), activation='relu', padding='same', subsample=(4, 4))(image_input)#(normalized)
+        #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
+        #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
         #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
         hidden_layer = keras.layers.core.Flatten()(hidden_layer)
-        hidden_layer = keras.layers.Dense(nx*nx, activation='relu')(hidden_layer)
+        #output = keras.layers.core.Flatten()(hidden_layer)
         output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
+        #output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
         #output = keras.layers.Reshape((nx, nx))(hidden_layer)
         #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
         #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
@@ -81,7 +84,7 @@ class nn_model:
         #model.compile(optimizer='adadelta', loss='mean_absolute_error')
         
         self.model = model
-        self.nx_orig = nx_orig
+        self.nx = nx
         self.validation_losses = []
         
 
@@ -97,7 +100,12 @@ class nn_model:
         #        self.Ds[i, 2*j] = Ds[j, i, 0]
         #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
         self.objs = np.asarray(objs)
+        #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
+        #for i in np.arange(len(objs)):
+        #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
+        print("objs", self.objs.shape)
         self.objs = np.tile(self.objs, (self.num_frames, 1, 1))
+
         self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                       
@@ -157,8 +165,10 @@ class nn_model:
             if i < n_test:
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
                 my_test_plot = plot.plot(nrows=1, ncols=2)
-                my_test_plot.colormap(self.objs[i], [0])
-                my_test_plot.colormap(pred_objs[i], [1])
+                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
+                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                my_test_plot.colormap(np.reshape(self.objs[i], (self.nx, self.nx)), [0])
+                my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx, self.nx)), [1])
                 #my_test_plot.colormap(D, [1, 0])
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
@@ -197,8 +207,9 @@ class nn_model:
         for i in np.arange(n_test):
             #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
             my_test_plot = plot.plot(nrows=1, ncols=2)
-            my_test_plot.colormap(objs[i], [0])
-            my_test_plot.colormap(pred_objs[i], [1])
+            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+            my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx, self.nx)), [1])
+            #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
             #my_test_plot.colormap(D, [1, 0])
             #my_test_plot.colormap(D_d, [1, 1])
             #my_test_plot.colormap(D1[0, 0], [2, 0])
@@ -210,16 +221,17 @@ class nn_model:
 
 def get_params(nx):
 
-    arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
     defocus = 2.*np.pi*100
     #defocus = (0., 0.)
     return (arcsec_per_px, defocus)
 
 def gen_data(num_frames, num_images = None):
-    image_file = 'icont'
+    image_file = None
     dir = "images_in"
-    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=50, tile=True)
+    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=None, tile=True)
     print("nx, nx_orig", nx, nx_orig)
     if num_images is not None and len(images) > num_images:
         images = images[:num_images]
@@ -229,36 +241,38 @@ def gen_data(num_frames, num_images = None):
     aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
     defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 
-    coords, _, _ = utils.get_coords(nx_orig, arcsec_per_px, diameter, wavelength)
+    coords, _, _ = utils.get_coords(nx//2, arcsec_per_px, diameter, wavelength)
 
     num_objects = len(images)
 
     Ds = np.zeros((num_frames, num_objects, 2, nx, nx)) # in real space
-    true_coefs = np.zeros((num_frames, jmax))
+    #true_coefs = np.zeros((num_frames, jmax))
     pa = psf.phase_aberration(jmax, start_index=0)
     pa.calc_terms(coords)
-    #wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx_orig, sampling=1.)
+    wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx//2, sampling=1.)
     #pa = psf.phase_aberration(np.random.normal(size=jmax))
     for frame_no in np.arange(num_frames):
-        pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
+        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
         #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*25, -25), 25), start_index=0)
-        #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
-        ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+        ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
+        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
         #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
         #true_coefs[frame_no] = ctf_true.dot(pa)
-        true_coefs[frame_no] = pa_true.alphas
+        
+        #true_coefs[frame_no] = pa_true.alphas
         #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
         #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
-        psf_true = psf.psf(ctf_true, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        psf_true = psf.psf(ctf_true, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
         #######################################################################
         # Just checking if true_coefs are calculated correctly
         pa_check = psf.phase_aberration(jmax, start_index=0)
         ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, nx_orig, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         #######################################################################
         for obj_no in np.arange(num_objects):
-            images[obj_no] = psf.critical_sampling(images[obj_no], arcsec_per_px, diameter, wavelength)
+            # Omit for now (just technical issues)
+            #images[obj_no] = psf.critical_sampling(images[obj_no], arcsec_per_px, diameter, wavelength)
             image = images[obj_no]
             image -= np.mean(image)
             image /= np.std(image)
@@ -266,7 +280,7 @@ def gen_data(num_frames, num_images = None):
             #my_test_plot.colormap(image)
             #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
             #my_test_plot.close()
-            fimage = fft.fft2(image)
+            fimage = fft.fft2(misc.sample_image(image, .99))
             fimage = fft.fftshift(fimage)
     
         
@@ -295,27 +309,23 @@ def gen_data(num_frames, num_images = None):
 
             ###################################################################
             # Just checking if true_coefs are calculated correctly
-            if frame_no < 1:
-                image_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([true_coefs[frame_no]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                my_test_plot = plot.plot(nrows=3, ncols=2)
-                my_test_plot.colormap(image, [0, 0])
-                my_test_plot.colormap(fft.ifftshift(image_reconstr[0]), [0, 1])
-                my_test_plot.colormap(D, [1, 0])
-                my_test_plot.colormap(D_d, [1, 1])
-                my_test_plot.colormap(D1[0, 0], [2, 0])
-                my_test_plot.colormap(D1[0, 1], [2, 1])
-                my_test_plot.save("check" + str(frame_no) + ".png")
+            if frame_no < 1 and obj_no < 5:
+                my_test_plot = plot.plot(nrows=1, ncols=3)
+                my_test_plot.colormap(image, [0])
+                my_test_plot.colormap(D, [1])
+                my_test_plot.colormap(D_d, [2])
+                my_test_plot.save("check" + str(frame_no) + "_" + str(obj_no) + ".png")
                 my_test_plot.close()
             ###################################################################
 
-            Ds[frame_no, obj_no, 0] = D
-            Ds[frame_no, obj_no, 1] = D_d
+            Ds[frame_no, obj_no, 0] = misc.sample_image(D, 1.01010101)
+            Ds[frame_no, obj_no, 1] = misc.sample_image(D_d, 1.01010101)
 
 
     return Ds, images, nx_orig
 
 
+'''
 def load_data():
     data_file = 'learn_object_data.pkl'
     if load_data and os.path.isfile(data_file):
@@ -325,15 +335,31 @@ def load_data():
 
 def save_data(data):
     with open('learn_object_data.pkl', 'wb') as f:
-        pickle.dump(data, f)
+        pickle.dump(data, f, protocol=4)
+'''
+
+def load_data():
+    data_file = 'learn_object_Ds.dat'
+    if os.path.isfile(data_file):
+        Ds = np.load(data_file)
+        data_file = 'learn_object_objs.dat'
+        if os.path.isfile(data_file):
+            objs = np.load(data_file)
+        return Ds, objs
+    else:
+        return None, None
+
+def save_data(Ds, objects):
+    with open('learn_object_Ds.dat', 'wb') as f:
+        np.save(f, Ds)
+    with open('learn_object_objs.dat', 'wb') as f:
+        np.save(f, objs)
 
 
-data = load_data()
-if data is None:
+Ds, objs = load_data()
+if Ds is None:
     Ds, objs, nx_orig = gen_data(num_frames_gen)
-    save_data((Ds, objs, nx_orig))
-else:
-    Ds, objs, nx_orig = data
+    save_data(Ds, objs)
 
 my_test_plot = plot.plot()
 my_test_plot.colormap(Ds[0, 0, 0])
@@ -349,7 +375,7 @@ num_objs = Ds.shape[1]
 nx = Ds.shape[3]
 
 
-model = nn_model(nx, nx_orig, num_frames)
+model = nn_model(nx, num_frames)
 
 model.set_data(Ds, objs)
 
@@ -364,6 +390,6 @@ for rep in np.arange(0, num_reps):
 
     model.test()
 
-    if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
-        break
+    #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
+    #    break
     model.validation_losses = model.validation_losses[-20:]
