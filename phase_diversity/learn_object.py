@@ -8,6 +8,7 @@ sys.path.append('../utils')
 import keras
 keras.backend.set_image_data_format('channels_first')
 from keras import backend as K
+import TensorFlow as tf
 
 import psf
 import utils
@@ -25,6 +26,7 @@ import numpy.fft as fft
 
 import time
 import kolmogorov
+import zernike
 
 jmax = 200
 diameter = 100.0
@@ -40,11 +42,153 @@ n_epochs = 10
 num_iters = 10
 num_reps = 20
 
+MODE_1 = 1
+MODE_2 = 2
+nn_mode = MODE_1
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
+
+
+class phase_aberration():
+    
+    def __init__(self, alphas, start_index = 3):
+        self.start_index= start_index
+        if len(tf.shape(alphas)) == 0:
+            # alphas is an integer, representing jmax
+            self.create_pols(alphas)
+            self.jmax = alphas
+        else:
+            self.create_pols(tf.shape(alphas)[0])
+            self.set_alphas(alphas)
+            self.jmax = tf.shape(alphas)[0]
+    
+    def create_pols(self, num):
+        pols = np.zeros(num)
+        for i in np.arange(self.start_index+1, self.start_index+num+1):
+            n, m = zernike.get_nm(i)
+            z = zernike.zernike(n, m)
+            pols[i-self.start_index-1] = z
+        self.pols = tf.constant(pols)
+
+    def calc_terms(self, xs):
+        self.terms = np.zeros(np.concatenate(([len(self.pols)], np.shape(xs)[:-1])))
+        i = 0
+        rhos_phis = utils.cart_to_polar(xs)
+        for z in self.pols:
+            self.terms[i] = z.get_value(rhos_phis)
+            i += 1
+
+    def set_alphas(self, alphas):
+        if len(self.pols) != tf.shape(alphas)[0]:
+            self.create_pols(tf.shape(alphas)[0])
+        self.alphas = alphas
+        self.jmax = tf.shape(self.alphas)[0]
+    
+            
+    def __call__(self):
+        vals = np.zeros(np.shape(self.terms)[1:])
+        for i in np.arange(0, len(self.terms)):
+            vals += self.terms[i] * self.alphas[i]
+        return vals
+    
+
+'''
+Coherent transfer function, also called as generalized pupil function
+'''
+class coh_trans_func():
+
+    def __init__(self, pupil_func, phase_aberr, defocus_func = None):
+        self.pupil_func = pupil_func
+        self.phase_aberr = phase_aberr
+        self.defocus_func = defocus_func
+        
+    def calc(self, xs):
+        self.phase_aberr.calc_terms(xs)
+        self.pupil = self.pupil_func(xs)
+        if self.defocus_func is not None:
+            self.defocus = self.defocus_func(xs)
+        else:
+            self.defocus = 0.
+        
+    def __call__(self):
+        self.phase = self.phase_aberr()
+
+        return np.array([self.pupil*np.exp(1.j * self.phase), self.pupil*np.exp(1.j * (self.phase + self.defocus))])
+
+
+class psf():
+
+    '''
+        diameter in centimeters
+        wavelength in Angstroms
+    '''
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True):
+        self.nx= nx
+        coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+        self.coords = coords
+        x_min = np.min(self.coords, axis=(0,1))
+        x_max = np.max(self.coords, axis=(0,1))
+        print("psf_coords", x_min, x_max, np.shape(self.coords))
+        np.testing.assert_array_almost_equal(x_min, -x_max)
+        self.incoh_vals = dict()
+        self.otf_vals = dict()
+        self.corr = dict() # only for testing purposes
+        self.coh_trans_func = coh_trans_func
+        self.coh_trans_func.calc(self.coords)
+        
+        # Repeat the same for bigger grid
+        xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
+        coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
+        self.coords1 = coords1
+
+        self.nx1 = self.nx * 2 - 1
+
+        self.corr_or_fft = corr_or_fft
+        
+        
+    def calc(self, alphas=None, normalize = True):
+        l = tf.shape(alphas)[0]
+        self.incoh_vals = tf.zeros((l, 2, self.nx1, self.nx1))
+        self.otf_vals = tf.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
+        
+        for i in np.arange(0, l):
+            if alphas is not None:
+                self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
+            coh_vals = self.coh_trans_func()
+        
+            if self.corr_or_fft:
+                #corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
+                corr = signal.fftconvolve(coh_vals, coh_vals[:, ::-1, ::-1].conj(), mode='full', axes=(-2, -1))/(self.nx*self.nx)
+                vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr, axes=(-2, -1))), axes=(-2, -1)).real
+            else:
+                vals = fft.ifft2(coh_vals, axes=(-2, -1))
+                vals = (vals*vals.conjugate()).real
+                vals = fft.ifftshift(vals, axes=(-2, -1))
+                vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+                # In principle there shouldn't be negative values, but ...
+                vals[vals < 0] = 0. # Set negative values to zero
+                corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
+    
+            if normalize:
+                norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
+                vals /= norm
+            self.incoh_vals[i] = vals
+            self.otf_vals[i] = corr
+        return self.incoh_vals
+
+    '''
+    dat_F.shape = [l, 2, nx, nx]
+    alphas.shape = [l, jmax]
+    '''
+    def multiply(self, dat_F, alphas):
+
+        if len(self.otf_vals) == 0:
+            self.calc(alphas=alphas)
+        return tf.multiply(dat_F, self.otf_vals)
+
 
 class nn_model:
 
@@ -56,19 +200,42 @@ class nn_model:
         num_channels = 2#self.num_frames*2
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
-        #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-        hidden_layer = keras.layers.convolutional.Conv2D(16, (64, 64), activation='relu', padding='same', subsample=(4, 4))(image_input)#(normalized)
-        #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
-        #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
-        #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
-        hidden_layer = keras.layers.core.Flatten()(hidden_layer)
-        #output = keras.layers.core.Flatten()(hidden_layer)
-        output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
-        #output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
-        #output = keras.layers.Reshape((nx, nx))(hidden_layer)
-        #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
-        #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
-        
+        if nn_mode == MODE_1:
+            ###################################################################
+            # Representation in a higher dim space
+            ###################################################################
+            #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
+            hidden_layer = keras.layers.convolutional.Conv2D(16, (64, 64), activation='relu', padding='same', subsample=(4, 4))(image_input)#(normalized)
+            #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
+            #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
+            #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+            hidden_layer = keras.layers.core.Flatten()(hidden_layer)
+            #output = keras.layers.core.Flatten()(hidden_layer)
+            output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
+            #output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
+            #output = keras.layers.Reshape((nx, nx))(hidden_layer)
+            #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
+            #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
+        else:
+            
+            def aberrate(x):
+                return x
+                
+            object_input = keras.layers.Input((1, nx, nx), name='object_input') # Channels first
+            ###################################################################
+            # Autoencoder
+            ###################################################################
+            hidden_layer = keras.layers.convolutional.Conv2D(16, (64, 64), activation='relu', padding='same', subsample=(2, 2))(image_input)#(normalized)
+            hidden_layer = keras.layers.convolutional.Conv2D(16, (32, 32), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
+            hidden_layer = keras.layers.convolutional.Conv2D(16, (16, 16), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
+            hidden_layer = keras.layers.convolutional.Conv2D(16, (8, 8), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
+            hidden_layer = keras.layers.convolutional.Conv2D(16, (4, 4), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
+            hidden_layer = keras.layers.core.Flatten()(hidden_layer)
+            hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
+            hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
+            output = keras.layers.Lambda(aberrate)(hidden_layer)
+           
+            
     
         model = keras.models.Model(inputs=image_input, outputs=output)
         #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
@@ -374,6 +541,10 @@ my_test_plot.close()
 num_objs = Ds.shape[1]
 nx = Ds.shape[3]
 
+# Shuffle the data
+random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
+Ds = Ds[random_indices]
+objs = objs[random_indices]
 
 model = nn_model(nx, num_frames)
 

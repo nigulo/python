@@ -214,7 +214,6 @@ class psf():
         if a is not None:
             return self.tip_tilt.multiply(dat_F * self.otf_vals, a)
         else:
-            print("Shapes", dat_F.shape, self.otf_vals.shape)
             return dat_F * self.otf_vals
             
     '''
