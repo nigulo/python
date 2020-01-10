@@ -52,6 +52,18 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 
+
+def get_params(nx):
+
+    #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
+    print("arcsec_per_px=", arcsec_per_px)
+    defocus = 2.*np.pi*100
+    #defocus = (0., 0.)
+    return (arcsec_per_px, defocus)
+
+
+
 class phase_aberration():
     
     def __init__(self, alphas, start_index = 3):
@@ -66,20 +78,21 @@ class phase_aberration():
             self.jmax = tf.shape(alphas)[0]
     
     def create_pols(self, num):
-        pols = np.zeros(num)
+        self.pols = np.zeros(num)
         for i in np.arange(self.start_index+1, self.start_index+num+1):
             n, m = zernike.get_nm(i)
             z = zernike.zernike(n, m)
-            pols[i-self.start_index-1] = z
-        self.pols = tf.constant(pols)
+            self.pols[i-self.start_index-1] = z
+        #self.pols = tf.constant(pols)
 
     def calc_terms(self, xs):
-        self.terms = np.zeros(np.concatenate(([len(self.pols)], np.shape(xs)[:-1])))
+        terms = np.zeros(np.concatenate(([len(self.pols)], np.shape(xs)[:-1])))
         i = 0
         rhos_phis = utils.cart_to_polar(xs)
         for z in self.pols:
-            self.terms[i] = z.get_value(rhos_phis)
+            terms[i] = z.get_value(rhos_phis)
             i += 1
+        self.terms = tf.constant(terms)
 
     def set_alphas(self, alphas):
         if len(self.pols) != tf.shape(alphas)[0]:
@@ -89,9 +102,10 @@ class phase_aberration():
     
             
     def __call__(self):
-        vals = np.zeros(np.shape(self.terms)[1:])
-        for i in np.arange(0, len(self.terms)):
-            vals += self.terms[i] * self.alphas[i]
+        #vals = np.zeros(tf.shape(self.terms)[1:])
+        #for i in np.arange(0, len(self.terms)):
+        #    vals += self.terms[i] * self.alphas[i]
+        vals = tf.math.reduce_sum(tf.math.multiply(self.terms, self.alphas), 0)
         return vals
     
 
@@ -107,16 +121,23 @@ class coh_trans_func():
         
     def calc(self, xs):
         self.phase_aberr.calc_terms(xs)
-        self.pupil = self.pupil_func(xs)
+        pupil = self.pupil_func(xs)
         if self.defocus_func is not None:
-            self.defocus = self.defocus_func(xs)
+            defocus = self.defocus_func(xs)
         else:
-            self.defocus = 0.
+            defocus = 0.
+        self.defocus = tf.constant(defocus)
+        
+        self.i = tf.constant(1.j)
+        self.pupil = tf.constant(pupil)
         
     def __call__(self):
         self.phase = self.phase_aberr()
 
-        return np.array([self.pupil*np.exp(1.j * self.phase), self.pupil*np.exp(1.j * (self.phase + self.defocus))])
+        focus_val = tf.math.multiply(self.pupi, *np.exp(tf.math.scalar_mul(self.i, self.phase)))
+        defocus_val = tf.math.multiply(self.pupi, *np.exp(tf.math.scalar_mul(self.i, (tf.math.add(self.phase, self.defocus)))))
+
+        return tf.concat(tf.expand_dims(focus_val, 0), tf.expand_dims(defocus_val, 0))
 
 
 class psf():
@@ -125,7 +146,7 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength):
         self.nx= nx
         coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
@@ -133,50 +154,39 @@ class psf():
         x_max = np.max(self.coords, axis=(0,1))
         print("psf_coords", x_min, x_max, np.shape(self.coords))
         np.testing.assert_array_almost_equal(x_min, -x_max)
-        self.incoh_vals = dict()
-        self.otf_vals = dict()
-        self.corr = dict() # only for testing purposes
+        self.incoh_vals = None
+        self.otf_vals = None
+        self.corr = None # only for testing purposes
         self.coh_trans_func = coh_trans_func
         self.coh_trans_func.calc(self.coords)
         
-        # Repeat the same for bigger grid
-        xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
-        coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
-        self.coords1 = coords1
 
-        self.nx1 = self.nx * 2 - 1
-
-        self.corr_or_fft = corr_or_fft
         
         
-    def calc(self, alphas=None, normalize = True):
-        l = tf.shape(alphas)[0]
-        self.incoh_vals = tf.zeros((l, 2, self.nx1, self.nx1))
-        self.otf_vals = tf.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
+    def calc(self, alphas=None):
+        #self.incoh_vals = tf.zeros((2, self.nx1, self.nx1))
+        #self.otf_vals = tf.zeros((2, self.nx1, self.nx1), dtype='complex')
         
-        for i in np.arange(0, l):
-            if alphas is not None:
-                self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
-            coh_vals = self.coh_trans_func()
-        
-            if self.corr_or_fft:
-                #corr = signal.correlate2d(coh_vals, coh_vals, mode='full')/(self.nx*self.nx)
-                corr = signal.fftconvolve(coh_vals, coh_vals[:, ::-1, ::-1].conj(), mode='full', axes=(-2, -1))/(self.nx*self.nx)
-                vals = fft.fftshift(fft.ifft2(fft.ifftshift(corr, axes=(-2, -1))), axes=(-2, -1)).real
-            else:
-                vals = fft.ifft2(coh_vals, axes=(-2, -1))
-                vals = (vals*vals.conjugate()).real
-                vals = fft.ifftshift(vals, axes=(-2, -1))
-                vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
-                # In principle there shouldn't be negative values, but ...
-                vals[vals < 0] = 0. # Set negative values to zero
-                corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
+        if alphas is not None:
+            self.coh_trans_func.phase_aberr.set_alphas(alphas)
+        coh_vals = self.coh_trans_func()
     
-            if normalize:
-                norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
-                vals /= norm
-            self.incoh_vals[i] = vals
-            self.otf_vals[i] = corr
+        vals = tf.signal.ifft2(coh_vals)
+        vals = tf.real(tf.multiply(vals, tf.conj(vals)))
+        vals = tf.signal.ifftshift(vals, axes=(-2, -1))
+        
+        vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+        # Maybe have to add channels axis first
+        vals = tf.image.resize(vals, tf.shape(vals)[1]*2, tf.shape(vals)[2]*2)
+        # In principle there shouldn't be negative values, but ...
+        #vals[vals < 0] = 0. # Set negative values to zero
+        corr = tf.signal.fftshift(tf.signal.fft2(tf.signal.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
+
+        #if normalize:
+        #    norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
+        #    vals /= norm
+        self.incoh_vals = vals
+        self.otf_vals = corr
         return self.incoh_vals
 
     '''
@@ -185,9 +195,9 @@ class psf():
     '''
     def multiply(self, dat_F, alphas):
 
-        if len(self.otf_vals) == 0:
+        if self.otf_vals is None:
             self.calc(alphas=alphas)
-        return tf.multiply(dat_F, self.otf_vals)
+        return tf.math.multiply(dat_F, self.otf_vals)
 
 
 class nn_model:
@@ -217,11 +227,31 @@ class nn_model:
             #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
             #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
         else:
+            arcsec_per_px, defocus = get_params(nx)
+            aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
+            defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+
+            pa = psf.phase_aberration(jmax, start_index=0)
+            ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
+            self.psf = psf.psf(ctf, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+            
             
             def aberrate(x):
-                return x
+                alphas = tf.slice(x, 0, jmax)
+                obj = tf.reshape(tf.slice(x, jmax, tf.shape(x)[0]), (nx, nx))
                 
-            object_input = keras.layers.Input((1, nx, nx), name='object_input') # Channels first
+                fobj = tf.signal.fft2(obj)
+                fobj = tf.signal.fftshift(fobj)
+        
+            
+                DF = self.psf.multiply(fobj, alphas)
+                DF = tf.signal.ifftshift(DF, axis =(-2, -1))
+                D = tf.real(tf.signal.ifft2(DF))
+                
+                return D
+                
+            object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
+            #object_input  = keras.layers.Reshape((nx*nx))(object_input)
             ###################################################################
             # Autoencoder
             ###################################################################
@@ -302,13 +332,23 @@ class nn_model:
 
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         #if not full:
-        history = model.fit(self.Ds_train, self.objs_train,
-                    epochs=n_epochs,
-                    batch_size=1,
-                    shuffle=True,
-                    validation_data=(self.Ds_validation, self.objs_validation),
-                    #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                    verbose=1)
+        if nn_mode == MODE_1:
+            history = model.fit(self.Ds_train, self.objs_train,
+                        epochs=n_epochs,
+                        batch_size=1,
+                        shuffle=True,
+                        validation_data=(self.Ds_validation, self.objs_validation),
+                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                        verbose=1)
+        else:
+            history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
+                        epochs=n_epochs,
+                        batch_size=1,
+                        shuffle=True,
+                        validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
+                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                        verbose=1)
+            
         
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
@@ -385,16 +425,6 @@ class nn_model:
             my_test_plot.close()
 
 
-
-def get_params(nx):
-
-    #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
-    arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
-    print("arcsec_per_px=", arcsec_per_px)
-    defocus = 2.*np.pi*100
-    #defocus = (0., 0.)
-    return (arcsec_per_px, defocus)
-
 def gen_data(num_frames, num_images = None):
     image_file = None
     dir = "images_in"
@@ -404,7 +434,6 @@ def gen_data(num_frames, num_images = None):
         images = images[:num_images]
 
     arcsec_per_px, defocus = get_params(nx_orig)
-
     aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
     defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 
