@@ -5,10 +5,11 @@ import numpy.random as random
 import sys
 sys.setrecursionlimit(10000)
 sys.path.append('../utils')
-import keras
+import tensorflow.keras as keras
 keras.backend.set_image_data_format('channels_first')
-from keras import backend as K
-import TensorFlow as tf
+#from keras import backend as K
+import tensorflow as tf
+import tensorflow.signal as tf_signal
 
 import psf
 import utils
@@ -33,8 +34,14 @@ diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
+# How many frames to generate per object
 num_frames_gen = 10
+
+# How many frames to use in training
 num_frames = 10
+# How many objects to use in training
+num_objs = 10
+
 fried_param = 0.1
 noise_std_perc = 0.#.01
 
@@ -51,6 +58,33 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
+def load_data():
+    data_file = 'learn_object_Ds.dat'
+    if os.path.isfile(data_file):
+        Ds = np.load(data_file)
+        data_file = 'learn_object_objs.dat'
+        if os.path.isfile(data_file):
+            objs = np.load(data_file)
+        return Ds, objs
+    else:
+        return None, None
+
+def save_data(Ds, objects):
+    with open('learn_object_Ds.dat', 'wb') as f:
+        np.save(f, Ds)
+    with open('learn_object_objs.dat', 'wb') as f:
+        np.save(f, objs)
+
+
+def load_model():
+    model_file = 'learn_object_model.dat'
+    if os.path.isfile(model_file):
+        return pickle.load(open(model_file, 'rb'))
+    return None, None
+
+def save_model(model):
+    with open('learn_object_model.dat', 'wb') as f:
+        pickle.dump((model, nn_mode), f, protocol=4)
 
 
 def get_params(nx):
@@ -64,26 +98,25 @@ def get_params(nx):
 
 
 
-class phase_aberration():
+class phase_aberration_tf():
     
     def __init__(self, alphas, start_index = 3):
         self.start_index= start_index
-        if len(tf.shape(alphas)) == 0:
+        if len(np.shape(alphas)) == 0:
             # alphas is an integer, representing jmax
             self.create_pols(alphas)
             self.jmax = alphas
         else:
-            self.create_pols(tf.shape(alphas)[0])
-            self.set_alphas(alphas)
-            self.jmax = tf.shape(alphas)[0]
+            self.create_pols(len(alphas))
+            self.set_alphas(tf.constant(alphas))
+            self.jmax = len(alphas)
     
     def create_pols(self, num):
-        self.pols = np.zeros(num)
+        self.pols = []
         for i in np.arange(self.start_index+1, self.start_index+num+1):
             n, m = zernike.get_nm(i)
             z = zernike.zernike(n, m)
-            self.pols[i-self.start_index-1] = z
-        #self.pols = tf.constant(pols)
+            self.pols.append(z)
 
     def calc_terms(self, xs):
         terms = np.zeros(np.concatenate(([len(self.pols)], np.shape(xs)[:-1])))
@@ -95,10 +128,10 @@ class phase_aberration():
         self.terms = tf.constant(terms)
 
     def set_alphas(self, alphas):
-        if len(self.pols) != tf.shape(alphas)[0]:
-            self.create_pols(tf.shape(alphas)[0])
+        if len(self.pols) != tf.shape(alphas).eval()[0]:
+            self.create_pols(tf.shape(alphas).eval()[0])
         self.alphas = alphas
-        self.jmax = tf.shape(self.alphas)[0]
+        self.jmax = tf.shape(self.alphas).eval()[0]
     
             
     def __call__(self):
@@ -112,7 +145,7 @@ class phase_aberration():
 '''
 Coherent transfer function, also called as generalized pupil function
 '''
-class coh_trans_func():
+class coh_trans_func_tf():
 
     def __init__(self, pupil_func, phase_aberr, defocus_func = None):
         self.pupil_func = pupil_func
@@ -140,7 +173,7 @@ class coh_trans_func():
         return tf.concat(tf.expand_dims(focus_val, 0), tf.expand_dims(defocus_val, 0))
 
 
-class psf():
+class psf_tf():
 
     '''
         diameter in centimeters
@@ -171,16 +204,16 @@ class psf():
             self.coh_trans_func.phase_aberr.set_alphas(alphas)
         coh_vals = self.coh_trans_func()
     
-        vals = tf.signal.ifft2(coh_vals)
+        vals = tf_signal.ifft2d(coh_vals)
         vals = tf.real(tf.multiply(vals, tf.conj(vals)))
-        vals = tf.signal.ifftshift(vals, axes=(-2, -1))
+        vals = tf_signal.ifftshift(vals, axes=(-2, -1))
         
-        vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+        #vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
         # Maybe have to add channels axis first
         vals = tf.image.resize(vals, tf.shape(vals)[1]*2, tf.shape(vals)[2]*2)
         # In principle there shouldn't be negative values, but ...
         #vals[vals < 0] = 0. # Set negative values to zero
-        corr = tf.signal.fftshift(tf.signal.fft2(tf.signal.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
+        corr = tf_signal.fftshift(tf_signal.fft2d(tf_signal.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
 
         #if normalize:
         #    norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
@@ -202,101 +235,117 @@ class psf():
 
 class nn_model:
 
-    def __init__(self, nx, num_frames):
+    def __init__(self, nx, num_frames, num_objs):
         
         print("Creating model")
     
         self.num_frames = num_frames
+        self.num_objs = num_objs
         num_channels = 2#self.num_frames*2
         image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
     
-        if nn_mode == MODE_1:
-            ###################################################################
-            # Representation in a higher dim space
-            ###################################################################
-            #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
-            hidden_layer = keras.layers.convolutional.Conv2D(16, (64, 64), activation='relu', padding='same', subsample=(4, 4))(image_input)#(normalized)
-            #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
-            #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
-            #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
-            hidden_layer = keras.layers.core.Flatten()(hidden_layer)
-            #output = keras.layers.core.Flatten()(hidden_layer)
-            output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
-            #output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
-            #output = keras.layers.Reshape((nx, nx))(hidden_layer)
-            #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
-            #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
-        else:
-            arcsec_per_px, defocus = get_params(nx)
-            aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-            defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+        model, nn_mode_ = load_model()
+        if model is None:
+            nn_mode_ = nn_mode
+            if nn_mode == MODE_1:
+                ###################################################################
+                # Representation in a higher dim space
+                ###################################################################
+                #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
+                hidden_layer = keras.layers.Conv2D(16, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D(pool_size=(4,4))(hidden_layer)
+                #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
+                #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
+                #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+                hidden_layer = keras.layers.Flatten()(hidden_layer)
+                #output = keras.layers.core.Flatten()(hidden_layer)
+                output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
+                #output = keras.layers.Dense(nx*nx, activation='linear')(hidden_layer)
+                #output = keras.layers.Reshape((nx, nx))(hidden_layer)
+                #output = keras.layers.convolutional.Conv2D(64, (8, 8), activation='relu')(image_input)#(normalized)
+                #output = keras.layers.add(hidden_layer)(image_input)#(normalized)
+    
+                model = keras.models.Model(inputs=image_input, outputs=output)
+            else:
+                arcsec_per_px, defocus = get_params(nx)
+                aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
+                defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+    
+                pa = phase_aberration_tf(jmax, start_index=0)
+                ctf = coh_trans_func_tf(aperture_func, pa, defocus_func)
+                self.psf = psf_tf(ctf, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+                
+                
+                def aberrate(x):
+                    x = tf.reshape(x, [jmax + nx*nx])
+                    alphas = tf.slice(x, [0], [jmax])
+                    obj = tf.reshape(tf.slice(x, [jmax], [nx*nx]), [nx, nx])
+                    
+                    fobj = tf_signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
+                    fobj = tf_signal.fftshift(fobj)
+            
+                
+                    DF = self.psf.multiply(fobj, alphas)
+                    DF = tf_signal.ifftshift(DF, axis =(-2, -1))
+                    D = tf.real(tf_signal.ifft2d(DF))
+                    
+                    return D
+                    
+                object_input = keras.layers.Input((1, nx*nx), name='object_input') # Channels first
+                #object_input  = keras.layers.Reshape((nx*nx))(object_input)
+                ###################################################################
+                # Autoencoder
+                ###################################################################
+                hidden_layer = keras.layers.Conv2D(16, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(16, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(16, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(16, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(16, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Flatten()(hidden_layer)
+                hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
+                hidden_layer = keras.layers.Reshape((1, jmax))(hidden_layer)
+                hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
+                output = keras.layers.Lambda(aberrate)(hidden_layer)
+               
+                model = keras.models.Model(inputs=[image_input, object_input], outputs=image_input)
+            #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+            model.compile(optimizer='adadelta', loss='mse')
+            
+        
+            #model = keras.models.Model(input=coefs, output=output)
+            #optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
+            #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+            #model.compile(optimizer, loss='mse')
+            #model.compile(optimizer='adadelta', loss='binary_crossentropy')
+            #model.compile(optimizer=optimizer, loss='binary_crossentropy')
+            #model.compile(optimizer='adadelta', loss='mean_absolute_error')
 
-            pa = psf.phase_aberration(jmax, start_index=0)
-            ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-            self.psf = psf.psf(ctf, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-            
-            
-            def aberrate(x):
-                alphas = tf.slice(x, 0, jmax)
-                obj = tf.reshape(tf.slice(x, jmax, tf.shape(x)[0]), (nx, nx))
-                
-                fobj = tf.signal.fft2(obj)
-                fobj = tf.signal.fftshift(fobj)
-        
-            
-                DF = self.psf.multiply(fobj, alphas)
-                DF = tf.signal.ifftshift(DF, axis =(-2, -1))
-                D = tf.real(tf.signal.ifft2(DF))
-                
-                return D
-                
-            object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
-            #object_input  = keras.layers.Reshape((nx*nx))(object_input)
-            ###################################################################
-            # Autoencoder
-            ###################################################################
-            hidden_layer = keras.layers.convolutional.Conv2D(16, (64, 64), activation='relu', padding='same', subsample=(2, 2))(image_input)#(normalized)
-            hidden_layer = keras.layers.convolutional.Conv2D(16, (32, 32), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
-            hidden_layer = keras.layers.convolutional.Conv2D(16, (16, 16), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
-            hidden_layer = keras.layers.convolutional.Conv2D(16, (8, 8), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
-            hidden_layer = keras.layers.convolutional.Conv2D(16, (4, 4), activation='relu', padding='same', subsample=(2, 2))(hidden_layer)#(normalized)
-            hidden_layer = keras.layers.core.Flatten()(hidden_layer)
-            hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-            hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
-            output = keras.layers.Lambda(aberrate)(hidden_layer)
-           
-            
-    
-        model = keras.models.Model(inputs=image_input, outputs=output)
-        #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
-        model.compile(optimizer='adadelta', loss='mse')
-        
-    
-        #model = keras.models.Model(input=coefs, output=output)
-        #optimizer = keras.optimizers.SGD(lr=0.1, momentum=0.0, decay=0.0, nesterov=False)
-        #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
-        #model.compile(optimizer, loss='mse')
-        #model.compile(optimizer='adadelta', loss='binary_crossentropy')
-        #model.compile(optimizer=optimizer, loss='binary_crossentropy')
-        #model.compile(optimizer='adadelta', loss='mean_absolute_error')
-        
         self.model = model
         self.nx = nx
         self.validation_losses = []
-        
+        self.nn_mode = nn_mode_
+            
 
     def set_data(self, Ds, objs, train_perc=.75):
         assert(self.num_frames <= Ds.shape[0])
-        num_objects = Ds.shape[1]
+        if self.num_objs is None:
+            self.num_objs = Ds.shape[1]
+        assert(self.num_objs <= Ds.shape[1])
         assert(Ds.shape[2] == 2)
-        Ds = Ds[:self.num_frames]
+        Ds = Ds[:self.num_frames, :self.num_objs]
+        num_objects = Ds.shape[1]
         self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
         #self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
         #for i in np.arange(num_objects):
         #    for j in np.arange(self.num_frames):
         #        self.Ds[i, 2*j] = Ds[j, i, 0]
         #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
-        self.objs = np.asarray(objs)
+        self.objs = np.asarray(objs)[:self.num_objs]
         #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
         #for i in np.arange(len(objs)):
         #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
@@ -332,23 +381,25 @@ class nn_model:
 
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         #if not full:
-        if nn_mode == MODE_1:
-            history = model.fit(self.Ds_train, self.objs_train,
-                        epochs=n_epochs,
-                        batch_size=1,
-                        shuffle=True,
-                        validation_data=(self.Ds_validation, self.objs_validation),
-                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1)
-        else:
-            history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
-                        epochs=n_epochs,
-                        batch_size=1,
-                        shuffle=True,
-                        validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
-                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1)
-            
+        
+        for epoch in np.arange(n_epochs):
+            if self.nn_mode == MODE_1:
+                history = model.fit(self.Ds_train, self.objs_train,
+                            epochs=1,
+                            batch_size=1,
+                            shuffle=True,
+                            validation_data=(self.Ds_validation, self.objs_validation),
+                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                            verbose=1)
+            else:
+                history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
+                            epochs=1,
+                            batch_size=1,
+                            shuffle=True,
+                            validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
+                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                            verbose=1)
+            save_model(model)
         
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
@@ -380,7 +431,7 @@ class nn_model:
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
                 #my_test_plot.colormap(D1[0, 1], [2, 1])
-                my_test_plot.save("train_results" + str(i) + ".png")
+                my_test_plot.save("train_results" + "mode" + str(nn_mode) + "_" + str(i) + ".png")
                 my_test_plot.close()
     
         #my_plot = plot.plot()
@@ -421,7 +472,7 @@ class nn_model:
             #my_test_plot.colormap(D_d, [1, 1])
             #my_test_plot.colormap(D1[0, 0], [2, 0])
             #my_test_plot.colormap(D1[0, 1], [2, 1])
-            my_test_plot.save("test_results" + str(i) + ".png")
+            my_test_plot.save("test_results" + "mode" + str(nn_mode) + "_" + str(i) + ".png")
             my_test_plot.close()
 
 
@@ -534,22 +585,6 @@ def save_data(data):
         pickle.dump(data, f, protocol=4)
 '''
 
-def load_data():
-    data_file = 'learn_object_Ds.dat'
-    if os.path.isfile(data_file):
-        Ds = np.load(data_file)
-        data_file = 'learn_object_objs.dat'
-        if os.path.isfile(data_file):
-            objs = np.load(data_file)
-        return Ds, objs
-    else:
-        return None, None
-
-def save_data(Ds, objects):
-    with open('learn_object_Ds.dat', 'wb') as f:
-        np.save(f, Ds)
-    with open('learn_object_objs.dat', 'wb') as f:
-        np.save(f, objs)
 
 
 Ds, objs = load_data()
@@ -567,7 +602,6 @@ my_test_plot.colormap(Ds[0, 0, 1])
 my_test_plot.save("D0_d.png")
 my_test_plot.close()
 
-num_objs = Ds.shape[1]
 nx = Ds.shape[3]
 
 # Shuffle the data
@@ -575,7 +609,7 @@ random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
 Ds = Ds[random_indices]
 objs = objs[random_indices]
 
-model = nn_model(nx, num_frames)
+model = nn_model(nx, num_frames, num_objs)
 
 model.set_data(Ds, objs)
 
