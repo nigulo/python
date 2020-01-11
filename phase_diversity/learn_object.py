@@ -358,7 +358,12 @@ class nn_model:
 
         self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
-                      
+                    
+        # Shuffle the data
+        random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
+        self.Ds = self.Ds[random_indices]
+        self.objs = self.objs[random_indices]
+        
         n_train = int(math.ceil(len(self.Ds)*train_perc))
         self.Ds_train = self.Ds[:n_train] 
         self.Ds_validation = self.Ds[n_train:]
@@ -607,11 +612,6 @@ my_test_plot.save("D0_d.png")
 my_test_plot.close()
 
 nx = Ds.shape[3]
-
-# Shuffle the data
-random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
-Ds = Ds[random_indices]
-objs = objs[random_indices]
 
 model = nn_model(nx, num_frames, num_objs)
 
