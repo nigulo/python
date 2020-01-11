@@ -353,7 +353,7 @@ class nn_model:
         #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
         #for i in np.arange(len(objs)):
         #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
-        print("objs", self.objs.shape)
+        print("objs", self.objs.shape, self.num_objs, num_objects)
         self.objs = np.tile(self.objs, (self.num_frames, 1, 1))
 
         self.objs = np.reshape(self.objs, (len(self.objs), -1))
