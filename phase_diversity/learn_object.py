@@ -6,7 +6,7 @@ import sys
 sys.setrecursionlimit(10000)
 sys.path.append('../utils')
 import tensorflow.keras as keras
-keras.backend.set_image_data_format('channels_first')
+keras.backend.set_image_data_format('channels_last')
 #from keras import backend as K
 import tensorflow as tf
 import tensorflow.signal as tf_signal
@@ -242,7 +242,7 @@ class nn_model:
         self.num_frames = num_frames
         self.num_objs = num_objs
         num_channels = 2#self.num_frames*2
-        image_input = keras.layers.Input((num_channels, nx, nx), name='image_input') # Channels first
+        image_input = keras.layers.Input((nx, nx, num_channels), name='image_input') # Channels first
     
         model, nn_mode_ = load_model()
         if model is None:
@@ -253,7 +253,7 @@ class nn_model:
                 ###################################################################
                 #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
                 hidden_layer = keras.layers.Conv2D(16, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D(pool_size=(4,4), data_format="channels_first")(hidden_layer)
+                hidden_layer = keras.layers.MaxPooling2D(pool_size=(4,4))(hidden_layer)
                 #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
                 #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
                 #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
@@ -339,8 +339,8 @@ class nn_model:
         assert(Ds.shape[2] == 2)
         Ds = Ds[:self.num_frames, :self.num_objs]
         num_objects = Ds.shape[1]
-        #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
-        self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+        self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
+        #self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
         #self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
         #for i in np.arange(num_objects):
         #    for j in np.arange(self.num_frames):
