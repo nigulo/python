@@ -253,7 +253,7 @@ class nn_model:
                 ###################################################################
                 #hidden_layer = keras.layers.convolutional.Convolution2D(32, 8, 8, subsample=(2, 2), activation='relu')(image_input)#(normalized)
                 hidden_layer = keras.layers.Conv2D(16, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D(pool_size=(4,4))(hidden_layer)
+                hidden_layer = keras.layers.MaxPooling2D(pool_size=(4,4), data_format="channels_first")(hidden_layer)
                 #hidden_layer = keras.layers.convolutional.Conv2D(16, (nx//4, nx//4), padding='same', activation='linear')(hidden_layer)#(normalized)
                 #hidden_layer = keras.layers.Lambda(lambda x:K.mean(x, axis=0))(hidden_layer)
                 #hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
@@ -339,6 +339,7 @@ class nn_model:
         assert(Ds.shape[2] == 2)
         Ds = Ds[:self.num_frames, :self.num_objs]
         num_objects = Ds.shape[1]
+        #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
         #self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
         #for i in np.arange(num_objects):
