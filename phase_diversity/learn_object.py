@@ -79,12 +79,15 @@ def save_data(Ds, objects):
 def load_model():
     model_file = 'learn_object_model.dat'
     if os.path.isfile(model_file):
-        return pickle.load(open(model_file, 'rb'))
+        model = tf.keras.models.load_model(model_file)
+        nn_mode = pickle.load(open('learn_object_params.dat', 'rb'))
+        return model, nn_mode
     return None, None
 
 def save_model(model):
-    with open('learn_object_model.dat', 'wb') as f:
-        pickle.dump((model, nn_mode), f, protocol=4)
+    tf.keras.models.save_model(model, 'learn_object_model.dat')
+    with open('learn_object_params.dat', 'wb') as f:
+        pickle.dump(nn_mode, f, protocol=4)
 
 
 def get_params(nx):
