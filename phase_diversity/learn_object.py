@@ -40,7 +40,7 @@ num_frames_gen = 10
 # How many frames to use in training
 num_frames = 10
 # How many objects to use in training
-num_objs = 10
+num_objs = None
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
@@ -336,7 +336,7 @@ class nn_model:
 
     def set_data(self, Ds, objs, train_perc=.75):
         assert(self.num_frames <= Ds.shape[0])
-        if self.num_objs is None:
+        if self.num_objs is None or self.num_objs <= 0:
             self.num_objs = Ds.shape[1]
         assert(self.num_objs <= Ds.shape[1])
         assert(Ds.shape[2] == 2)
