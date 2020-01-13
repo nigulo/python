@@ -139,7 +139,7 @@ x_range = max(x) - min(x)
 x_left = min(x)
 #waics = []
 min_bic = sys.float_info.max
-for num_components in np.arange(3, 4):
+for num_components in np.arange(3, 3):
     scale =  np.sum(y)*x_range/len(y)/num_components
     print("scale", scale)
     with Model() as model: # model specifications in PyMC3 are wrapped in a with-statement

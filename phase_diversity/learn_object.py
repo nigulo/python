@@ -9,7 +9,7 @@ import tensorflow.keras as keras
 keras.backend.set_image_data_format('channels_last')
 #from keras import backend as K
 import tensorflow as tf
-import tensorflow.signal as tf_signal
+#import tensorflow.signal as tf_signal
 
 import psf
 import utils
@@ -40,7 +40,7 @@ num_frames_gen = 10
 # How many frames to use in training
 num_frames = 10
 # How many objects to use in training
-num_objs = None
+num_objs = 10#None
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
@@ -51,7 +51,7 @@ num_reps = 20
 
 MODE_1 = 1
 MODE_2 = 2
-nn_mode = MODE_1
+nn_mode = MODE_2
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
@@ -128,20 +128,24 @@ class phase_aberration_tf():
         for z in self.pols:
             terms[i] = z.get_value(rhos_phis)
             i += 1
-        self.terms = tf.constant(terms)
+        self.terms = tf.constant(terms, dtype='float32')
 
     def set_alphas(self, alphas):
-        if len(self.pols) != tf.shape(alphas).eval()[0]:
-            self.create_pols(tf.shape(alphas).eval()[0])
+        if len(self.pols) != self.jmax:
+            self.create_pols(self.jmax)
         self.alphas = alphas
-        self.jmax = tf.shape(self.alphas).eval()[0]
+        #self.jmax = tf.shape(self.alphas).eval()[0]
     
             
     def __call__(self):
         #vals = np.zeros(tf.shape(self.terms)[1:])
         #for i in np.arange(0, len(self.terms)):
         #    vals += self.terms[i] * self.alphas[i]
-        vals = tf.math.reduce_sum(tf.math.multiply(self.terms, self.alphas), 0)
+        nx = self.terms.shape[1]
+        alphas = tf.tile(tf.reshape(self.alphas, [self.jmax, 1, 1]), multiples=[1, nx, nx])
+        #alphas1 = tf.complex(alphas1, tf.zeros((self.jmax, nx, nx)))
+        vals = tf.math.reduce_sum(tf.math.multiply(self.terms, alphas), 0)
+        #vals = tf.math.reduce_sum(tf.math.multiply(self.terms, tf.reshape(self.alphas, [self.jmax, 1, 1])), 0)
         return vals
     
 
@@ -161,19 +165,22 @@ class coh_trans_func_tf():
         if self.defocus_func is not None:
             defocus = self.defocus_func(xs)
         else:
-            defocus = 0.
-        self.defocus = tf.constant(defocus)
+            assert(False)
+        self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
         
-        self.i = tf.constant(1.j)
-        self.pupil = tf.constant(pupil)
+        self.i = tf.constant(1.j, dtype='complex64')
+        self.pupil = tf.constant(pupil, dtype='float32')
+        self.pupil = tf.complex(self.pupil, tf.zeros((pupil.shape[0], pupil.shape[1]), dtype='float32'))
         
     def __call__(self):
         self.phase = self.phase_aberr()
+        self.phase = tf.complex(self.phase, tf.zeros((self.phase.shape[0], self.phase.shape[1]), dtype='float32'))
 
-        focus_val = tf.math.multiply(self.pupi, *np.exp(tf.math.scalar_mul(self.i, self.phase)))
-        defocus_val = tf.math.multiply(self.pupi, *np.exp(tf.math.scalar_mul(self.i, (tf.math.add(self.phase, self.defocus)))))
+        focus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, self.phase)))
+        defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, (tf.math.add(self.phase, self.defocus)))))
 
-        return tf.concat(tf.expand_dims(focus_val, 0), tf.expand_dims(defocus_val, 0))
+        #return tf.concat(tf.reshape(focus_val, [1, focus_val.shape[0], focus_val.shape[1]]), tf.reshape(defocus_val, [1, defocus_val.shape[0], defocus_val.shape[1]]), 0)
+        return tf.stack([focus_val, defocus_val])
 
 
 class psf_tf():
@@ -207,16 +214,19 @@ class psf_tf():
             self.coh_trans_func.phase_aberr.set_alphas(alphas)
         coh_vals = self.coh_trans_func()
     
-        vals = tf_signal.ifft2d(coh_vals)
-        vals = tf.real(tf.multiply(vals, tf.conj(vals)))
-        vals = tf_signal.ifftshift(vals, axes=(-2, -1))
+        vals = tf.signal.ifft2d(coh_vals)
+        vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
+        vals = tf.signal.ifftshift(vals, axes=(1, 2))
         
+        vals = tf.transpose(vals, (1, 2, 0))
         #vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
         # Maybe have to add channels axis first
-        vals = tf.image.resize(vals, tf.shape(vals)[1]*2, tf.shape(vals)[2]*2)
+        vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
+        vals = tf.transpose(vals, (2, 0, 1))
         # In principle there shouldn't be negative values, but ...
         #vals[vals < 0] = 0. # Set negative values to zero
-        corr = tf_signal.fftshift(tf_signal.fft2d(tf_signal.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
+        vals = tf.cast(vals, dtype='complex64')
+        corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
 
         #if normalize:
         #    norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
@@ -284,17 +294,17 @@ class nn_model:
                     alphas = tf.slice(x, [0], [jmax])
                     obj = tf.reshape(tf.slice(x, [jmax], [nx*nx]), [nx, nx])
                     
-                    fobj = tf_signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
-                    fobj = tf_signal.fftshift(fobj)
+                    fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
+                    fobj = tf.signal.fftshift(fobj)
             
                 
                     DF = self.psf.multiply(fobj, alphas)
-                    DF = tf_signal.ifftshift(DF, axis =(-2, -1))
-                    D = tf.real(tf_signal.ifft2d(DF))
+                    DF = tf.signal.ifftshift(DF, axes =(1, 2))
+                    D = tf.math.real(tf.signal.ifft2d(DF))
                     
                     return D
                     
-                object_input = keras.layers.Input((1, nx*nx), name='object_input') # Channels first
+                object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
                 #object_input  = keras.layers.Reshape((nx*nx))(object_input)
                 ###################################################################
                 # Autoencoder
@@ -311,7 +321,7 @@ class nn_model:
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                hidden_layer = keras.layers.Reshape((1, jmax))(hidden_layer)
+                #hidden_layer = keras.layers.Reshape((jmax))(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
                 output = keras.layers.Lambda(aberrate)(hidden_layer)
                
@@ -424,24 +434,46 @@ class nn_model:
         #######################################################################
         # Plot some of the training data results
         n_test = 5
-        pred_objs = model.predict(self.Ds)
-        #predicted_coefs = model.predict(Ds_train[0:n_test])
-    
-        #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
-        for i in np.arange(self.Ds.shape[0]):
-            if i < n_test:
-                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                my_test_plot = plot.plot(nrows=1, ncols=2)
-                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
-                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-                my_test_plot.colormap(np.reshape(self.objs[i], (self.nx, self.nx)), [0])
-                my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx, self.nx)), [1])
-                #my_test_plot.colormap(D, [1, 0])
-                #my_test_plot.colormap(D_d, [1, 1])
-                #my_test_plot.colormap(D1[0, 0], [2, 0])
-                #my_test_plot.colormap(D1[0, 1], [2, 1])
-                my_test_plot.save("train_results" + "mode" + str(nn_mode) + "_" + str(i) + ".png")
-                my_test_plot.close()
+        if self.nn_mode == MODE_1:
+            pred_objs = model.predict(self.Ds)
+            #predicted_coefs = model.predict(Ds_train[0:n_test])
+        
+            #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
+            for i in np.arange(self.Ds.shape[0]):
+                if i < n_test:
+                    #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                    my_test_plot = plot.plot(nrows=1, ncols=2)
+                    #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
+                    #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                    my_test_plot.colormap(np.reshape(self.objs[i], (self.nx, self.nx)), [0])
+                    my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx, self.nx)), [1])
+                    #my_test_plot.colormap(D, [1, 0])
+                    #my_test_plot.colormap(D_d, [1, 1])
+                    #my_test_plot.colormap(D1[0, 0], [2, 0])
+                    #my_test_plot.colormap(D1[0, 1], [2, 1])
+                    my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                    my_test_plot.close()
+        else:
+            pred_Ds = model.predict([self.Ds, self.objs])
+            #predicted_coefs = model.predict(Ds_train[0:n_test])
+        
+            #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
+            for i in np.arange(self.Ds.shape[0]):
+                if i < n_test:
+                    #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                    my_test_plot = plot.plot(nrows=2, ncols=2)
+                    #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
+                    #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                    my_test_plot.colormap(self.Ds[i, :, :, 0], [0, 0])
+                    my_test_plot.colormap(pred_Ds[i, :, :, 0], [0, 1])
+                    my_test_plot.colormap(self.Ds[i, :, :, 1], [1, 0])
+                    my_test_plot.colormap(pred_Ds[i, :, :, 1], [1, 1])
+                    #my_test_plot.colormap(D, [1, 0])
+                    #my_test_plot.colormap(D_d, [1, 1])
+                    #my_test_plot.colormap(D1[0, 0], [2, 0])
+                    #my_test_plot.colormap(D1[0, 1], [2, 1])
+                    my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                    my_test_plot.close()
     
         #my_plot = plot.plot()
         #my_plot.plot(np.arange(jmax), coefs, params="r-")
@@ -466,24 +498,45 @@ class nn_model:
         #        Ds[i, 2*j] = Ds_[j, i, 0]
         #        Ds[i, 2*j+1] = Ds_[j, i, 1]
 
-        start = time.time()    
-        pred_objs = model.predict(Ds)
-        end = time.time()
-        print("Prediction time" + str(end - start))
-
-        for i in np.arange(n_test):
-            #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-            my_test_plot = plot.plot(nrows=1, ncols=2)
-            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-            my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx, self.nx)), [1])
-            #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-            #my_test_plot.colormap(D, [1, 0])
-            #my_test_plot.colormap(D_d, [1, 1])
-            #my_test_plot.colormap(D1[0, 0], [2, 0])
-            #my_test_plot.colormap(D1[0, 1], [2, 1])
-            my_test_plot.save("test_results" + "mode" + str(nn_mode) + "_" + str(i) + ".png")
-            my_test_plot.close()
-
+        if self.nn_mode == MODE_1:
+            start = time.time()    
+            pred_objs = model.predict(Ds)
+            end = time.time()
+            print("Prediction time" + str(end - start))
+    
+            for i in np.arange(n_test):
+                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                my_test_plot = plot.plot(nrows=1, ncols=2)
+                my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+                my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx, self.nx)), [1])
+                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                #my_test_plot.colormap(D, [1, 0])
+                #my_test_plot.colormap(D_d, [1, 1])
+                #my_test_plot.colormap(D1[0, 0], [2, 0])
+                #my_test_plot.colormap(D1[0, 1], [2, 1])
+                my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.close()
+        else:
+            start = time.time()    
+            pred_Ds = model.predict([self.Ds, self.objs])
+            end = time.time()
+            print("Prediction time" + str(end - start))
+    
+            for i in np.arange(n_test):
+                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
+                my_test_plot = plot.plot(nrows=2, ncols=2)
+                my_test_plot.colormap(self.Ds[i, :, :, 0], [0, 0])
+                my_test_plot.colormap(pred_Ds[i, :, :, 0], [0, 1])
+                my_test_plot.colormap(self.Ds[i, :, :, 1], [1, 0])
+                my_test_plot.colormap(pred_Ds[i, :, :, 1], [1, 1])
+                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                #my_test_plot.colormap(D, [1, 0])
+                #my_test_plot.colormap(D_d, [1, 1])
+                #my_test_plot.colormap(D1[0, 0], [2, 0])
+                #my_test_plot.colormap(D1[0, 1], [2, 1])
+                my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.close()
+            
 
 def gen_data(num_frames, num_images = None):
     image_file = None
