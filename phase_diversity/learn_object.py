@@ -11,6 +11,8 @@ keras.backend.set_image_data_format('channels_last')
 import tensorflow as tf
 #import tensorflow.signal as tf_signal
 
+tf.compat.v1.disable_eager_execution()
+
 import psf
 import utils
 import math
@@ -299,8 +301,10 @@ class nn_model:
             
                 
                     DF = self.psf.multiply(fobj, alphas)
-                    DF = tf.signal.ifftshift(DF, axes =(1, 2))
+                    DF = tf.signal.ifftshift(DF, axes = (1, 2))
                     D = tf.math.real(tf.signal.ifft2d(DF))
+                    D = tf.transpose(D, (1, 2, 0))
+                    D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
                     
                     return D
                     
@@ -325,7 +329,7 @@ class nn_model:
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
                 output = keras.layers.Lambda(aberrate)(hidden_layer)
                
-                model = keras.models.Model(inputs=[image_input, object_input], outputs=image_input)
+                model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
             #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
             model.compile(optimizer='adadelta', loss='mse')
             
