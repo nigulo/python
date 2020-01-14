@@ -211,7 +211,6 @@ def read_images(dir="images", image_file=None, is_planet = False, image_size = N
     nx_orig = 0
     for root, dirs, files in os.walk(dir):
         for file in files:
-            print(file)
             if image_file is not None and file[:len(image_file)] != image_file:
                 continue
             if file[-5:] == '.fits':
@@ -226,7 +225,6 @@ def read_images(dir="images", image_file=None, is_planet = False, image_size = N
                 #image = plt.imread(dir + "/" + file)
             if scale != 1.:
                 image = misc.sample_image(image, scale)
-            print("Image shape", image.shape)
             start_coord = 0
             if image_size is None:
                 image_size = min(image.shape[0], image.shape[1])

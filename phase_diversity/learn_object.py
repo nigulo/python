@@ -10,6 +10,7 @@ keras.backend.set_image_data_format('channels_last')
 #from keras import backend as K
 import tensorflow as tf
 #import tensorflow.signal as tf_signal
+from tensorflow.keras.models import Model
 
 tf.compat.v1.disable_eager_execution()
 
@@ -324,7 +325,7 @@ class nn_model:
                 hidden_layer = keras.layers.Conv2D(16, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
-                hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
+                hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
                 #hidden_layer = keras.layers.Reshape((jmax))(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
                 output = keras.layers.Lambda(aberrate)(hidden_layer)
@@ -363,7 +364,7 @@ class nn_model:
         #    for j in np.arange(self.num_frames):
         #        self.Ds[i, 2*j] = Ds[j, i, 0]
         #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
-        self.objs = np.asarray(objs)[:self.num_objs]
+        self.objs = objs[:self.num_objs]
         #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
         #for i in np.arange(len(objs)):
         #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
@@ -379,9 +380,11 @@ class nn_model:
         self.objs = self.objs[random_indices]
         
         n_train = int(math.ceil(len(self.Ds)*train_perc))
+
         self.Ds_train = self.Ds[:n_train] 
-        self.Ds_validation = self.Ds[n_train:]
         self.objs_train = self.objs[:n_train] 
+
+        self.Ds_validation = self.Ds[n_train:]
         self.objs_validation = self.objs[n_train:]
 
         #num_frames_train = Ds_train.shape[0]
@@ -414,6 +417,7 @@ class nn_model:
                             validation_data=(self.Ds_validation, self.objs_validation),
                             #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                             verbose=1)
+                save_model(model)
             else:
                 history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
                             epochs=1,
@@ -422,7 +426,6 @@ class nn_model:
                             validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
                             #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                             verbose=1)
-            save_model(model)
         
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
@@ -458,20 +461,38 @@ class nn_model:
                     my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                     my_test_plot.close()
         else:
-            pred_Ds = model.predict([self.Ds, self.objs])
+            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs], batch_size=1)
+            #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
             #predicted_coefs = model.predict(Ds_train[0:n_test])
+        
+            arcsec_per_px, defocus = get_params(self.nx)
+        
+            aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
+            defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+        
+            pa_check = psf.phase_aberration(jmax, start_index=0)
+            ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+            psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+            #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
         
             #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
             for i in np.arange(self.Ds.shape[0]):
                 if i < n_test:
+                    D = misc.sample_image(self.Ds[i, :, :, 0], .99)
+                    D_d = misc.sample_image(self.Ds[i, :, :, 1], .99)
+                    DF = fft.fft2(D)
+                    DF_d = fft.fft2(D_d)
+                    obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                    obj_reconstr = fft.ifftshift(obj_reconstr[0])
+
+
                     #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                    my_test_plot = plot.plot(nrows=2, ncols=2)
+                    my_test_plot = plot.plot(nrows=1, ncols=2)
                     #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
                     #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-                    my_test_plot.colormap(self.Ds[i, :, :, 0], [0, 0])
-                    my_test_plot.colormap(pred_Ds[i, :, :, 0], [0, 1])
-                    my_test_plot.colormap(self.Ds[i, :, :, 1], [1, 0])
-                    my_test_plot.colormap(pred_Ds[i, :, :, 1], [1, 1])
+                    my_test_plot.colormap(np.reshape(self.objs[i], (self.nx, self.nx)), [0])
+                    my_test_plot.colormap(obj_reconstr, [1])
                     #my_test_plot.colormap(D, [1, 0])
                     #my_test_plot.colormap(D_d, [1, 1])
                     #my_test_plot.colormap(D1[0, 0], [2, 0])
@@ -492,10 +513,21 @@ class nn_model:
         model = self.model
         n_test = 5
         
-        Ds_, objs, nx_orig = gen_data(num_frames=n_test)
+        Ds_, objs, nx_orig = gen_data(num_frames=n_test, num_images=5)
+        
         num_frames = Ds_.shape[0]
         num_objects = Ds_.shape[1]
-        Ds = np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4]))
+
+        Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
+        objs = objs[:num_objects]
+        objs = np.tile(objs, (num_frames, 1, 1))
+        objs = np.reshape(objs, (len(objs), -1))
+
+        # Shuffle the data
+        random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
+        Ds = Ds[random_indices]
+        objs = objs[random_indices]
+
         #Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
         #for i in np.arange(num_objects):
         #    for j in np.arange(num_frames):
@@ -522,30 +554,47 @@ class nn_model:
                 my_test_plot.close()
         else:
             start = time.time()    
-            pred_Ds = model.predict([self.Ds, self.objs])
+            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            pred_alphas = intermediate_layer_model.predict([Ds, objs], batch_size=1)
             end = time.time()
             print("Prediction time" + str(end - start))
     
+            arcsec_per_px, defocus = get_params(self.nx)
+        
+            aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
+            defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+        
+            pa_check = psf.phase_aberration(jmax, start_index=0)
+            ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+            psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+    
             for i in np.arange(n_test):
+                D = misc.sample_image(self.Ds[i, :, :, 0], .99)
+                D_d = misc.sample_image(self.Ds[i, :, :, 1], .99)
+                DF = fft.fft2(D)
+                DF_d = fft.fft2(D_d)
+                obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = fft.ifftshift(obj_reconstr[0])
+
+
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                my_test_plot = plot.plot(nrows=2, ncols=2)
-                my_test_plot.colormap(self.Ds[i, :, :, 0], [0, 0])
-                my_test_plot.colormap(pred_Ds[i, :, :, 0], [0, 1])
-                my_test_plot.colormap(self.Ds[i, :, :, 1], [1, 0])
-                my_test_plot.colormap(pred_Ds[i, :, :, 1], [1, 1])
+                my_test_plot = plot.plot(nrows=1, ncols=2)
+                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
                 #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-                #my_test_plot.colormap(D, [1, 0])
-                #my_test_plot.colormap(D_d, [1, 1])
-                #my_test_plot.colormap(D1[0, 0], [2, 0])
-                #my_test_plot.colormap(D1[0, 1], [2, 1])
+                my_test_plot.colormap(np.reshape(self.objs[i], (self.nx, self.nx)), [0])
+                my_test_plot.colormap(obj_reconstr, [1])
                 my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                 my_test_plot.close()
             
 
-def gen_data(num_frames, num_images = None):
+def gen_data(num_frames, num_images = None, shuffle = True):
     image_file = None
     dir = "images_in"
     images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=None, tile=True)
+    images = np.asarray(images)
+    if shuffle:
+        random_indices = random.choice(len(images), size=len(images), replace=False)
+        images = images[random_indices]
     print("nx, nx_orig", nx, nx_orig)
     if num_images is not None and len(images) > num_images:
         images = images[:num_images]
