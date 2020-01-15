@@ -65,10 +65,10 @@ my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 def load_data():
     data_file = 'learn_object_Ds.dat'
-    if os.path.isfile(data_file):
+    if os.path.exists(data_file):
         Ds = np.load(data_file)
         data_file = 'learn_object_objs.dat'
-        if os.path.isfile(data_file):
+        if os.path.exists(data_file):
             objs = np.load(data_file)
         return Ds, objs
     else:
@@ -83,7 +83,7 @@ def save_data(Ds, objects):
 
 def load_model():
     model_file = 'learn_object_model.dat'
-    if os.path.isfile(model_file):
+    if os.path.exists(model_file):
         model = tf.keras.models.load_model(model_file)
         nn_mode = pickle.load(open('learn_object_params.dat', 'rb'))
         return model, nn_mode
@@ -253,17 +253,44 @@ class psf_tf():
 
 class nn_model:
 
+    def aberrate(self, x):
+        x = tf.reshape(x, [jmax + nx*nx])
+        alphas = tf.slice(x, [0], [jmax])
+        obj = tf.reshape(tf.slice(x, [jmax], [nx*nx]), [nx, nx])
+        
+        fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
+        fobj = tf.signal.fftshift(fobj)
+
+    
+        DF = self.psf.multiply(fobj, alphas)
+        DF = tf.signal.ifftshift(DF, axes = (1, 2))
+        D = tf.math.real(tf.signal.ifft2d(DF))
+        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.transpose(D, (1, 2, 0))
+        D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
+                    
+        return D
+    
+    def create_psf(self):
+        arcsec_per_px, defocus = get_params(nx)
+        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
+        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
+
+        pa = phase_aberration_tf(jmax, start_index=0)
+        ctf = coh_trans_func_tf(aperture_func, pa, defocus_func)
+        self.psf = psf_tf(ctf, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        
+    
     def __init__(self, nx, num_frames, num_objs):
         
-        print("Creating model")
-    
         self.num_frames = num_frames
         self.num_objs = num_objs
         num_channels = 2#self.num_frames*2
         image_input = keras.layers.Input((nx, nx, num_channels), name='image_input') # Channels first
-    
+
         model, nn_mode_ = load_model()
         if model is None:
+            print("Creating model")
             nn_mode_ = nn_mode
             if nn_mode == MODE_1:
                 ###################################################################
@@ -285,33 +312,7 @@ class nn_model:
     
                 model = keras.models.Model(inputs=image_input, outputs=output)
             elif nn_mode == MODE_2:
-                arcsec_per_px, defocus = get_params(nx)
-                aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-                defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-    
-                pa = phase_aberration_tf(jmax, start_index=0)
-                ctf = coh_trans_func_tf(aperture_func, pa, defocus_func)
-                self.psf = psf_tf(ctf, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-                
-                
-                def aberrate(x):
-                    x = tf.reshape(x, [jmax + nx*nx])
-                    alphas = tf.slice(x, [0], [jmax])
-                    obj = tf.reshape(tf.slice(x, [jmax], [nx*nx]), [nx, nx])
-                    
-                    fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
-                    fobj = tf.signal.fftshift(fobj)
-            
-                
-                    DF = self.psf.multiply(fobj, alphas)
-                    DF = tf.signal.ifftshift(DF, axes = (1, 2))
-                    D = tf.math.real(tf.signal.ifft2d(DF))
-                    #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
-                    D = tf.transpose(D, (1, 2, 0))
-                    D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
-                    
-                    return D
-                    
+                self.create_psf()
                 object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
                 #object_input  = keras.layers.Reshape((nx*nx))(object_input)
                 ###################################################################
@@ -335,11 +336,10 @@ class nn_model:
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
                 #hidden_layer = keras.layers.Reshape((jmax))(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
-                output = keras.layers.Lambda(aberrate)(hidden_layer)
+                output = keras.layers.Lambda(self.aberrate)(hidden_layer)
                
                 model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
             #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
-            model.compile(optimizer='adadelta', loss='mse')
             
         
             #model = keras.models.Model(input=coefs, output=output)
@@ -349,8 +349,19 @@ class nn_model:
             #model.compile(optimizer='adadelta', loss='binary_crossentropy')
             #model.compile(optimizer=optimizer, loss='binary_crossentropy')
             #model.compile(optimizer='adadelta', loss='mean_absolute_error')
+        else:
+            print("Loading model")
+            if nn_mode_ == MODE_2:
+                self.create_psf()
+                print("Mode 2")
+                object_input = model.input[1]
+                hidden_layer = keras.layers.concatenate([model.output, object_input])
+                output = keras.layers.Lambda(self.aberrate)(hidden_layer)
+                full_model = Model(inputs=model.input, outputs=output)
+                model = full_model
 
         self.model = model
+        self.model.compile(optimizer='adadelta', loss='mse')
         self.nx = nx
         self.validation_losses = []
         self.nn_mode = nn_mode_
@@ -433,7 +444,8 @@ class nn_model:
                             validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
                             #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                             verbose=1)
-        
+                intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+                save_model(intermediate_layer_model)
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
     
@@ -481,7 +493,7 @@ class nn_model:
         
             pa_check = psf.phase_aberration(jmax, start_index=0)
             ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-            psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength, corr_or_fft=False)
+            psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
             #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
         
             #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])

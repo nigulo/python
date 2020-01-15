@@ -115,7 +115,7 @@ def kolmogorov(fried, num_realizations, size, sampling):
     parallelize = Pool(pool_size)
     return_wave_parallel = partial(return_wave, size=size, wfsize=wfsize, pupsize=pupsize, iterations=num_realizations)
     return_wavefront = np.asarray(parallelize.map(return_wave_parallel, fried))
-
+    parallelize.close()
     print('Returned array size: ', return_wavefront.shape)
 
     return return_wavefront
