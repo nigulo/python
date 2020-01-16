@@ -33,8 +33,9 @@ import numpy.fft as fft
 import time
 import kolmogorov
 import zernike
+import scipy.signal as signal
 
-jmax = 200
+jmax = 400
 diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
@@ -54,8 +55,9 @@ n_epochs = 10
 num_iters = 10
 num_reps = 1000
 
-MODE_1 = 1
-MODE_2 = 2
+MODE_1 = 1 # aberrated images --> object
+MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> aberrated images
+MODE_3 = 3 # aberrated images --> psf (+object as second input) --> aberrated images
 nn_mode = MODE_2
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
@@ -187,6 +189,8 @@ class coh_trans_func_tf():
         #return tf.concat(tf.reshape(focus_val, [1, focus_val.shape[0], focus_val.shape[1]]), tf.reshape(defocus_val, [1, defocus_val.shape[0], defocus_val.shape[1]]), 0)
         return tf.stack([focus_val, defocus_val])
 
+    def get_defocus_val(self, focus_val):
+        return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
 
 class psf_tf():
 
@@ -240,6 +244,7 @@ class psf_tf():
         self.otf_vals = corr
         return self.incoh_vals
 
+
     '''
     dat_F.shape = [l, 2, nx, nx]
     alphas.shape = [l, jmax]
@@ -253,6 +258,9 @@ class psf_tf():
 
 class nn_model:
 
+    '''
+        Aberrates object with wavefront coefs
+    '''
     def aberrate(self, x):
         x = tf.reshape(x, [jmax + nx*nx])
         alphas = tf.slice(x, [0], [jmax])
@@ -266,6 +274,29 @@ class nn_model:
         DF = tf.signal.ifftshift(DF, axes = (1, 2))
         D = tf.math.real(tf.signal.ifft2d(DF))
         #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.transpose(D, (1, 2, 0))
+        D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
+                    
+        return D
+
+    '''
+        Aberrates object with psf
+    '''
+    def aberrate_psf(self, x):
+        x = tf.reshape(x, [3*nx*nx])
+        psf = tf.reshape(tf.slice(x, [0], [2*nx*nx]), [2, nx, nx])
+        obj = tf.reshape(tf.slice(x, [2*nx*nx], [nx*nx]), [nx, nx])
+        
+        fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
+        fobj = tf.signal.fftshift(fobj, axes = (1, 2))
+
+        fpsf = tf.signal.fft2d(tf.complex(psf, tf.zeros((nx, nx))))
+        fpsf = tf.signal.fftshift(fpsf, axes = (1, 2))
+        
+        DF = tf.math.multiply(fobj, fpsf)
+        DF = tf.signal.ifftshift(DF, axes = (1, 2))#, axes = (1, 2))
+        D = tf.math.real(tf.signal.ifft2d(DF))
+
         D = tf.transpose(D, (1, 2, 0))
         D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
                     
@@ -339,6 +370,39 @@ class nn_model:
                 output = keras.layers.Lambda(self.aberrate)(hidden_layer)
                
                 model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
+
+            elif nn_mode == MODE_3:
+                self.create_psf()
+                object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
+                #object_input  = keras.layers.Reshape((nx*nx))(object_input)
+                ###################################################################
+                # Autoencoder
+                ###################################################################
+                hidden_layer = keras.layers.Conv2D(4, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(8, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(16, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(64, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(32, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(16, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(8, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(4, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.UpSampling2D((2, 2))(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(2, (64, 64), activation='relu', padding='same', name='psf_layer')(image_input)#(normalized)
+                hidden_layer = keras.layers.Flatten()(hidden_layer)
+                hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
+                output = keras.layers.Lambda(self.aberrate_psf)(hidden_layer)
+               
+                model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
             #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
             
         
@@ -357,6 +421,13 @@ class nn_model:
                 object_input = model.input[1]
                 hidden_layer = keras.layers.concatenate([model.output, object_input])
                 output = keras.layers.Lambda(self.aberrate)(hidden_layer)
+                full_model = Model(inputs=model.input, outputs=output)
+                model = full_model
+            if nn_mode_ == MODE_2:
+                print("Mode 3")
+                object_input = model.input[1]
+                hidden_layer = keras.layers.concatenate([model.output, object_input])
+                output = keras.layers.Lambda(self.aberrate_psf)(hidden_layer)
                 full_model = Model(inputs=model.input, outputs=output)
                 model = full_model
 
@@ -446,6 +517,16 @@ class nn_model:
                             verbose=1)
                 intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
                 save_model(intermediate_layer_model)
+            elif self.nn_mode == MODE_3:
+                history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
+                            epochs=1,
+                            batch_size=1,
+                            shuffle=True,
+                            validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
+                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                            verbose=1)
+                intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("psf_layer").output)
+                save_model(intermediate_layer_model)
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
     
@@ -527,12 +608,35 @@ class nn_model:
                     #my_test_plot.colormap(D1[0, 1], [2, 1])
                     my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                     my_test_plot.close()
+
+        elif self.nn_mode == MODE_3:
+            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("psf_layer").output)
+            pred_psf = intermediate_layer_model.predict([self.Ds, self.objs], batch_size=1)
+            pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
+            for i in np.arange(self.Ds.shape[0]):
+                if i < n_test:
+                    D = self.Ds[i, :, :, 0]
+                    D_d = self.Ds[i, :, :, 1]
+                    DF = fft.fft2(D)
+                    DF_d = fft.fft2(D_d)
+                    
+                    psfF = fft.fft2(pred_psf)
+                    
+                    obj_reconstr_1 = fft.ifft2(DF/psfF[0])
+                    obj_reconstr_2 = fft.ifft2(DF_d/psfF[1])
+
+                    my_test_plot = plot.plot(nrows=4, ncols=2)
+                    my_test_plot.colormap(obj, [0, 0])
+                    my_test_plot.colormap(obj_reconstr_1, [0, 1])
+                    my_test_plot.colormap(obj, [1, 0])
+                    my_test_plot.colormap(obj_reconstr_2, [1, 1])
+                    my_test_plot.colormap(self.Ds[i, :, :, 0], [2, 0])
+                    my_test_plot.colormap(pred_Ds[i, :, :, 0], [2, 1])
+                    my_test_plot.colormap(self.Ds[i, :, :, 1], [3, 0])
+                    my_test_plot.colormap(pred_Ds[i, :, :, 1], [3, 1])
+                    my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                    my_test_plot.close()
     
-        #my_plot = plot.plot()
-        #my_plot.plot(np.arange(jmax), coefs, params="r-")
-        #my_plot.plot(np.arange(jmax), predicted_coefs, params="b-")
-        #my_plot.save("learn_wf_results.png")
-        #my_plot.close()
         #######################################################################
                     
     
@@ -583,7 +687,7 @@ class nn_model:
         elif self.nn_mode == MODE_2:
             start = time.time()    
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-            pred_alphas = intermediate_layer_model.predict([Ds, objs], batch_size=1)
+            pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
             end = time.time()
             print("Prediction time" + str(end - start))
     
@@ -597,20 +701,39 @@ class nn_model:
             psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
             for i in np.arange(n_test):
-                D = misc.sample_image(self.Ds[i, :, :, 0], .99)
-                D_d = misc.sample_image(self.Ds[i, :, :, 1], .99)
+                D = misc.sample_image(Ds[i, :, :, 0], .99)
+                D_d = misc.sample_image(Ds[i, :, :, 1], .99)
                 DF = fft.fft2(D)
                 DF_d = fft.fft2(D_d)
                 obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr[0])
 
-
-                #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
                 my_test_plot = plot.plot(nrows=1, ncols=2)
-                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
-                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-                my_test_plot.colormap(np.reshape(self.objs[i], (self.nx, self.nx)), [0])
+                my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
                 my_test_plot.colormap(obj_reconstr, [1])
+                my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.close()
+        elif self.nn_mode == MODE_3:
+            start = time.time()    
+            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("psf_layer").output)
+            pred_psf = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
+            end = time.time()
+            print("Prediction time" + str(end - start))
+            for i in np.arange(n_test):
+                D = Ds[i, :, :, 0]
+                D_d = Ds[i, :, :, 1]
+                DF = fft.fft2(D)
+                DF_d = fft.fft2(D_d)
+                
+                psfF = fft.fft2(pred_psf)
+                
+                obj_reconstr_1 = fft.ifft2(DF/psfF[0])
+                obj_reconstr_2 = fft.ifft2(DF_d/psfF[1])
+
+                my_test_plot = plot.plot(nrows=1, ncols=3)
+                my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+                my_test_plot.colormap(obj_reconstr_1, [1])
+                my_test_plot.colormap(obj_reconstr_2, [2])
                 my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                 my_test_plot.close()
             
