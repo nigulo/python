@@ -35,7 +35,7 @@ import kolmogorov
 import zernike
 import scipy.signal as signal
 
-jmax = 400
+jmax = 100
 diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
@@ -357,13 +357,17 @@ class nn_model:
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(64, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(64, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
+                hidden_layer = keras.layers.Dense(4000, activation='relu')(hidden_layer)
+                hidden_layer = keras.layers.Dense(2000, activation='relu')(hidden_layer)
+                hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
+                hidden_layer = keras.layers.Dense(500, activation='relu')(hidden_layer)
                 #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
                 #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
                 #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                hidden_layer = keras.layers.Dense(2*jmax, activation='relu')(hidden_layer)
+                #hidden_layer = keras.layers.Dense(2*jmax, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
                 #hidden_layer = keras.layers.Reshape((jmax))(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
