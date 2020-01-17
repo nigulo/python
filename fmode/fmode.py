@@ -20,6 +20,19 @@ num_samples = 1000
 num_cores = 6
 colors = ['blue', 'red', 'green', 'peru', 'purple']
 
+
+# F-mode = 0
+# P modes = 1 ... 
+def get_alpha_prior(i, k_y):
+    assert(i >= 0 and i <= 3)
+    g_sun=274.*1e-6 # Mm s^(-2)
+    R_sun=696. # Mm
+    A=g_sun/R_sun
+    if i == 0:
+        return (1000./(2*np.pi))*np.sqrt(A*k_y) #units=mHz
+    else:
+        return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y)
+
 def calc_y(x, alphas, betas, ws, scale):
     y = 0.
     for i in np.arange(len(ws)):
@@ -152,7 +165,10 @@ for num_components in np.arange(3, 4):
         # Define priors
         for i in np.arange(num_components):
             sigma = x_range/3/num_components
-            alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
+            alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+            print("alpha_prior", alpha_prior, i)
+            #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
+            alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
             betas.append(HalfNormal('beta' + str(i), sigma=1./num_components))
         for i in np.arange(num_w):
             ws.append(Normal('w' + str(i), 0., sigma=1.))
