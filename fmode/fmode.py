@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use('Agg')
 from pymc3 import *
 import sys
 sys.path.append('../kalman')
@@ -100,6 +102,7 @@ levels = np.linspace(np.min(np.log(dat.p_kyom_kx0))+2, np.max(np.log(dat.p_kyom_
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
+fig.savefig("spectrum.png")
 
 x = np.asarray(dat.nu, dtype='float')
 k_index = np.min(np.where(dat.k_y >= 1000)[0])
@@ -139,7 +142,7 @@ x_range = max(x) - min(x)
 x_left = min(x)
 #waics = []
 min_bic = sys.float_info.max
-for num_components in np.arange(3, 3):
+for num_components in np.arange(3, 4):
     scale =  np.sum(y)*x_range/len(y)/num_components
     print("scale", scale)
     with Model() as model: # model specifications in PyMC3 are wrapped in a with-statement
@@ -171,13 +174,9 @@ for num_components in np.arange(3, 3):
     #    glm.GLM.from_formula('y ~ x', data)
     #    trace = sample(3000, cores=2) # draw 3000 posterior samples using NUTS sampling
     
-    plt.figure(figsize=(7, 7))
-    traceplot(trace[100:])
-    plt.tight_layout()
-    
-    
-    plt.figure(figsize=(7, 7))
-    plt.plot(x, y, 'x', label='data')
+    #plt.figure(figsize=(7, 7))
+    #traceplot(trace[100:])
+    #plt.tight_layout()
     
     alphas_est = []
     betas_est = []
@@ -233,13 +232,16 @@ for num_components in np.arange(3, 3):
     y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scale)
     b = bic(loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
     print("BIC", b)
-    plt.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
     
-    plt.title('Num. clusters ' + str(num_components))
-    plt.legend(loc=0)
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.show()
+    fig, ax = plt.subplots(nrows=1, ncols=1)
+    
+    ax.plot(x, y, 'x', label='data')
+    ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
+    ax.set_title('Num. clusters ' + str(num_components))
+    ax.legend(loc=0)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    fig.savefig("fit.png")
     
     if b < min_bic:
         min_bic = b
@@ -248,23 +250,24 @@ for num_components in np.arange(3, 3):
         opt_ws = ws_est
         opt_num_components = num_components
 
+fig, ax = plt.subplots(nrows=1, ncols=1)
 plt.figure(figsize=(7, 7))
-plt.plot(x, y, 'x', label='data')
+ax.plot(x, y, 'x', label='data')
 #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
 y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, scale)
 areas = find_areas(x, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
 print("Lowest BIC", min_bic)
 print("Num components", opt_num_components)
 print("Areas", areas)
-plt.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
+ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
 for i in np.arange(len(areas)):
     area, x_left, x_right = areas[i]
-    plt.axvspan(x_left, x_right, alpha=0.5, color=colors[i])
+    ax.axvspan(x_left, x_right, alpha=0.5, color=colors[i])
 
 
-plt.title("Spectrum at k=" + str(dat.k_y[k_index]))
-plt.legend(loc=0)
-plt.xlabel(r'$\nu$')
-plt.ylabel('Amplitude')
-plt.show()
+ax.set_title("Spectrum at k=" + str(dat.k_y[k_index]))
+ax.legend(loc=0)
+ax.set_xlabel(r'$\nu$')
+ax.set_ylabel('Amplitude')
+fig.savefig("areas.png")
 

@@ -134,7 +134,7 @@ class psf():
         self.coords = coords
         x_min = np.min(self.coords, axis=(0,1))
         x_max = np.max(self.coords, axis=(0,1))
-        print("psf_coords", x_min, x_max, np.shape(self.coords))
+        #print("psf_coords", x_min, x_max, np.shape(self.coords))
         np.testing.assert_array_almost_equal(x_min, -x_max)
         self.incoh_vals = dict()
         self.otf_vals = dict()

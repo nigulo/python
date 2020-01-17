@@ -86,14 +86,14 @@ def get_coords(nx, arcsec_per_px, diameter, wavelength):
     diff_limit = wavelength*1.e-8/diameter
     q_number=diff_limit/(scale_angle2CCD)
     rc=1./q_number # telescope_d in pupil space
-    print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
+    #print("diff_limit, scale_angle2CCD, rc", diff_limit, scale_angle2CCD, rc)
      
     #x_limit = nx*rc
     x_limit = 1./nx/rc
     
     #coh_vals = np.zeros((nx, ny))
     xs = np.linspace(-x_limit, x_limit, nx)
-    print("PSF x_limit", xs[0], xs[-1])
+    #print("PSF x_limit", xs[0], xs[-1])
     return np.dstack(np.meshgrid(xs, xs)[::-1]), rc, x_limit
 
 
