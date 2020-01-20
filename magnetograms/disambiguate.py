@@ -1,3 +1,6 @@
+'''
+    Disambiguation based on single layer of data
+'''
 import sys
 sys.path.append('../utils')
 sys.path.append('..')
@@ -73,12 +76,12 @@ if mode == 0:
 elif mode == 1:
     if state_file is None:
         state_file = 'pi-ambiguity-test/amb_turb.fits'
-    hdul = fits.open(state_file)
-    #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
-    dat = hdul[0].data[:,::4,::4]
-    b = dat[0]
-    theta = dat[1]
-    phi = dat[2]
+        hdul = fits.open(state_file)
+        dat = hdul[0].data[:,::4,::4]
+        b = dat[0]
+        theta = dat[1]
+        phi = dat[2]
+        hdul.close()
 else:
     
     if state_file is None:

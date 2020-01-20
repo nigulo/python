@@ -1,3 +1,7 @@
+'''
+    Disambiguation based on multiple layers of data
+'''
+
 import sys
 sys.path.append('../utils')
 sys.path.append('..')
@@ -81,6 +85,8 @@ num_tries_without_progress = 100
 def load(file_name):
     
     if file_name[-4:] == '.sav':
+        print("Use disambiguate.py for single layer data")
+        sys.exit(0)
         idl_dict = readsav(file_name)
         #idl_dict = readsav('data/fan_simu_ts56.sav')
         
@@ -106,11 +112,26 @@ def load(file_name):
     
     elif file_name[-5:] == '.fits':
         hdul = fits.open(file_name)
-        #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
-        dat = hdul[0].data[:,::4,::4]
-        b = dat[0]
-        theta = dat[1]
-        phi = dat[2]
+        if state_file == 'hinode_data/inverted_atmos.fits':
+            #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
+            # Actually x and y axis are swapped because of how the grid is defined later
+            # Also swap y-axis to plot identically to XFITS Analyzer
+            b = hdul[0].data[9:12, ::-1, :]
+            theta = hdul[0].data[12:15, ::-1, :]*np.pi/180
+            phi = hdul[0].data[15:18, ::-1, :]*np.pi/180
+            
+            b = np.transpose(b, (1, 2, 0))
+            theta = np.transpose(theta, (1, 2, 0))
+            phi = np.transpose(phi, (1, 2, 0))
+            
+        else:
+            print("Use disambiguate.py for single layer data")
+            sys.exit(0)
+            dat = hdul[0].data[:,::4,::4]
+            b = dat[0]
+            theta = dat[1]
+            phi = dat[2]
+        hdul.close()
     elif file_name[-4:] == '.pkl':
         if os.path.isfile(file_name):
             y = pickle.load(open(file_name, 'rb'))
@@ -260,11 +281,14 @@ def convert(b, phi, theta):
 
     if mode == 2:
         
-        truth_plot = plot.plot(nrows=n3, ncols=1)
+        truth_plot = plot.plot(nrows=n3, ncols=4)
         truth_plot.set_color_map('bwr')
         for layer in np.arange(0, n3):
-            truth_plot.colormap(bz[:, :, layer], ax_index = [layer])
-            truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
+            truth_plot.colormap(bx[:, :, layer], ax_index = [layer, 0])
+            truth_plot.colormap(by[:, :, layer], ax_index = [layer, 1])
+            truth_plot.colormap(bz[:, :, layer], ax_index = [layer, 2])
+            truth_plot.colormap(np.sqrt(bx[:, :, layer]**2 + by[:, :, layer]**2 + bz[:, :, layer]**2), ax_index = [layer, 3])
+            #truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
         truth_plot.save("truth_field_" + str(x_no) + "_" + str(y_no) + ".png")
         truth_plot.close()
 
