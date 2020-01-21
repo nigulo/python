@@ -8,7 +8,6 @@ import scipy.special as special
 import sys
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
-from scipy import stats
 
 '''
 Some notations used in documentation:
@@ -28,6 +27,10 @@ class stmm:
         self.X = X
         if num_clusters is not None:
             self.set_num_clusters(num_clusters)
+            
+        D = self.X.shape[0] # number of dimensions
+        self.const_fact = -.5*np.log(np.pi*self.nu)*D + special.gammaln(.5*(self.nu+D)) - special.gammaln(.5*self.nu)
+            
         
     '''
         num_clusters: number of clusters
@@ -73,18 +76,11 @@ class stmm:
         G x N matrix of cluster responsibilities for each data point 
     '''
     def calc_responsibilities(self, log_probs):
-        G = log_probs.shape[1]
         log_probs = log_probs.T
-        pmax = np.max(log_probs, axis=0)
-        
-        p = np.exp(log_probs - np.tile(pmax, (G, 1)))
+    
+        p = np.exp(log_probs)
         p = self.normalize(p)
     
-        p1 = np.exp(log_probs)
-        p1 = self.normalize(p1)
-    
-        np.testing.assert_array_almost_equal(p, p1)
-        
         return p
 
     '''
@@ -102,16 +98,16 @@ class stmm:
         # weights for normal-gamma compound parametrization for t-distribution
         u = np.zeros((N, self.G))
         logliks = np.zeros(N)
-        const_fact = -.5*np.log(np.pi*self.nu)*D + special.gammaln(.5*(self.nu+D)) - special.gammaln(.5*self.nu)
         for i in np.arange(0, self.G):
             inv_Si = la.inv(self.S[:, :, i])
             sign, logdet_Si=la.slogdet(self.S[:, :, i])
             assert(sign > 0) # We must be dealing with positive definite matrix
             logdet_Si = sign*logdet_Si
+            mi = self.m[:, i]
             for n in np.arange(0, N):
-                v = self.X[:, n] - self.m[:, i]
+                v = self.X[:, n] - mi
                 vSv = np.dot(v.T, np.dot(inv_Si, v))
-                log_probs[n, i] = -.5*(self.nu + D)*np.log(1.+ vSv/self.nu) - .5*logdet_Si + np.log(self.w[i]) + const_fact
+                log_probs[n, i] = -.5*(self.nu + D)*np.log(1.+ vSv/self.nu) - .5*logdet_Si + np.log(self.w[i]) + self.const_fact
                 u[n, i] = (self.nu + D)/(self.nu + vSv)
         for n in np.arange(0, N):
             logliks[n] = special.logsumexp(log_probs[n, :], b = np.ones(self.G))
@@ -144,18 +140,24 @@ class stmm:
             loglik[i] = np.sum(logliks)
             
             z = self.calc_responsibilities(log_probs) # responsibilities
+            #print(u)
             zu = z.T*u
             zu_norm = self.normalize(zu)
             
             # M-step:
+            Ng = np.sum(z, axis=1)
             for j in np.arange(self.G): # now get the new parameters for each component
                 tmp = (self.X - np.tile(self.m[:, j][:, np.newaxis], (1, N)))*np.tile(np.sqrt(zu[:, j].T), (D, 1))
-                S_new = np.dot(tmp, tmp.T)
-                if la.det(S_new) > 0.0001: # don't accept too low determinant
+                S_new = np.dot(tmp, tmp.T)/Ng[j]
+                det = la.det(S_new)
+                #print("det", det)
+                if det > 1e-5: # don't accept too low determinant
                     self.S[:, :, j] = S_new
+                else:
+                    print("Discarding change in S due to too low determinant")
             self.m = np.dot(self.X, zu_norm)
-            self.w = np.sum(z, axis=1) / N
-            print(logliks)
+            self.w = Ng / N
+            #print(self.m)
         return self.w, self.m, self.S, loglik[-1], z
 
 
@@ -164,7 +166,7 @@ def main():
     if len(sys.argv) > 1:
         file_name = sys.argv[1]
 
-    max_num_clusters = 2
+    max_num_clusters = 5
     if len(sys.argv) > 2:
         max_num_clusters = int(sys.argv[2])
         
@@ -181,7 +183,7 @@ def main():
     Ss = []
     zs = []
     stmm_ = stmm(nu=1, X=X)
-    for G in np.arange(max_num_clusters-1, max_num_clusters):
+    for G in np.arange(0, max_num_clusters):
         stmm_.set_params(G+1)        
         w, m, S, loglik, z = stmm_.calc()
         logliks[G] = loglik
@@ -210,6 +212,7 @@ def main():
     opt_S = Ss[min_G]
     opt_z = zs[min_G]
     
+    print(bics)
     print('Data likelihood and BIC: %f %f\n' % (max_loglik, min_bic))
        
     ###########################################################################
@@ -229,35 +232,47 @@ def main():
     opt_S = opt_S.T
     X = X.T
 
-    print(opt_z)
+    #print(opt_z)
     point_clusters = np.argmax(opt_z, axis=0)
     #cluster_points = get_cluster_points(m, S, X)
     #print("cluster_points", cluster_points.keys())
     
-    for cluster_no in np.arange(m.shape[0]):
+    for cluster_no in np.arange(opt_m.shape[0]):
         m = opt_m[cluster_no]
         s = opt_S[cluster_no]
+        print("Cluster " + str(cluster_no) + "mean: " + str(m))
+        print("Cluster " + str(cluster_no) + "covariance: " + str(s))
+        if m.shape > 2:
+            continue
 
-        w, v = la.eig(s)
-        
-        cos = v[0,0]
-        sin = v[1,0]
-        angle = np.arccos(cos)
-        if sin < 0.0:
-            angle = -angle
-        
-        # Plot cluster ellipses
-        #e = Ellipse(xy=m, width=2*np.sqrt(w[0]), height=2*np.sqrt(w[1]), angle=angle*180/np.pi, linestyle=None, linewidth=0)
-        #ax.add_artist(e)
-        #e.set_alpha(0.25)
-        #e.set_facecolor(cluster_colors[cluster_no])
+        # Plot cluster centers
+        if m.shape == 1:
+            #ax.plot(m, m[1], cluster_colors[cluster_no][0]+'+', markersize=20, markeredgewidth=2)
+            # Plot 2-sigma ranges representing Gaussians approximation
+            ax.axvspan(m - 2.* np.sqrt(s), m + 2.* np.sqrt(s), alpha=0.5, color=cluster_colors[cluster_no])
+        elif m.shape == 2:
+            ax.plot(m[0], m[1], cluster_colors[cluster_no][0]+'+', markersize=20, markeredgewidth=2)
+            w, v = la.eig(s)
+            
+            cos = v[0,0]
+            sin = v[1,0]
+            angle = np.arccos(cos)
+            if sin < 0.0:
+                angle = -angle
+            
+            
+            # Plot cluster ellipses representing Gaussian approximation
+            e = Ellipse(xy=m, width=2*np.sqrt(w[0]), height=2*np.sqrt(w[1]), angle=angle*180/np.pi, linestyle=None, linewidth=0)
+            ax.add_artist(e)
+            e.set_alpha(0.25)
+            e.set_facecolor(cluster_colors[cluster_no])
 
         # Regression coefficients computed directly using the covariance of the cluster
-        slope = s[0,1]/s[0,0]
-        intercept = m[1] - slope*m[0]
+        #slope = s[0,1]/s[0,0]
+        #intercept = m[1] - slope*m[0]
 
-        print(point_clusters)
-        print(point_clusters == cluster_no)
+        #print(point_clusters)
+        #print(point_clusters == cluster_no)
         points = X[point_clusters == cluster_no, :]
         if len(points > 0): # Due to hard selection some clusters might be empty
 
@@ -265,14 +280,14 @@ def main():
             ax.plot(points[:,0], points[:,1], cluster_colors[cluster_no][0]+'.')
             
             # Regression coefficients calculated independently (not used anywhere)
-            slope2, intercept2, r_value, p_value, std_err = stats.linregress(points[:,0], points[:,1])
+            #slope2, intercept2, r_value, p_value, std_err = stats.linregress(points[:,0], points[:,1])
             
             # Double-check that both lead to the same results
-            np.testing.assert_almost_equal(slope, slope2, 1)
-            np.testing.assert_almost_equal(intercept, intercept2, 1)
+            #np.testing.assert_almost_equal(slope, slope2, 1)
+            #np.testing.assert_almost_equal(intercept, intercept2, 1)
             
             # Plot regression lines
-            x_test = np.linspace(np.min(points[:,0]), np.max(points[:,0]))
+            #x_test = np.linspace(np.min(points[:,0]), np.max(points[:,0]))
             #ax.plot(x_test, x_test * slope + intercept, color=cluster_colors[cluster_no][0], linestyle='-', linewidth=1)
             #ax.plot(x_test, x_test * slope2 + intercept2, color=cluster_colors[cluster_no][0], linestyle='--', linewidth=1)
         
