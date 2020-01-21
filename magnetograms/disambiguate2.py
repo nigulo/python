@@ -68,11 +68,11 @@ if len(sys.argv) > 6:
 
 mode = 2
 
-subsample = 1000000
+subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
-num_layers = 3
 
-inference = False
+num_layers = 3
+inference = True
 sample_or_optimize = False
 num_samples = 1
 num_chains = 4
@@ -584,7 +584,7 @@ class disambiguator():
         else:
             return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         
-    def estimate_length_scale(self):
+    def estimate_params(self):
         #print("y.shape", self.y.shape)
         #y_flat = np.reshape(self.y, (3*self.n, -1))
         #print("y_flat.shape", y_flat.shape)
@@ -903,7 +903,8 @@ for i in np.arange(0, total_num_tries):
     
     print("True length_scale", length_scale)
     d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
-    d.estimate_length_scale()
+    if inference:
+        d.estimate_params()
     print("Estimated length_scale", d.length_scale)
     prob_a, field_y, loglik = d.disambiguate()
     if best_loglik is None or loglik > best_loglik:

@@ -46,7 +46,7 @@ num_frames_gen = 10
 # How many frames to use in training
 num_frames = 10
 # How many objects to use in training
-num_objs = 10#None
+num_objs = 100#None
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
