@@ -101,7 +101,7 @@ def mode_samples(samples, mode):
     #inds[inds >= len(samples)] = len(samples) - 1
     return samples_, inds
 
-def find_areas(x, alphas, betas, ws, scale, noise_std):
+def find_areas_analytical(x, alphas, betas, ws, scale, noise_std):
     y_base = calc_y(x, [], [], ws, scale)
     areas = []
     for i in np.arange(len(alphas)):
@@ -115,6 +115,46 @@ def find_areas(x, alphas, betas, ws, scale, noise_std):
         areas.append((np.sum(y_gt_noise)*(x_right-x_left)/len(y_gt_noise), x_left, x_right))
     return areas
 
+def find_areas(x, y, alphas, betas, ws, scale, noise_std):
+    y_base = calc_y(x, [], [], ws, scale)
+    ys_fit = []
+    num_components = len(alphas)
+    for i in np.arange(num_components):
+        y_fit = calc_y(x, alphas[i:i+1], betas[i:i+1], ws, scale)
+        y_fit -= y_base
+        ys_fit.append(y_fit)
+    ys_fit = np.asarray(ys_fit)
+    components_inds = np.argmax(ys_fit, axis=0)
+    
+    print("components_inds", components_inds)
+    areas = np.zeros(num_components)
+    counts = np.zeros(num_components)
+    ranges = np.zeros((num_components, 2))
+    ranges[:, 0] = sys.float_info.max
+    ranges[:, 1] = sys.float_info.min
+
+    for i in np.arange(len(y)):
+        areas[components_inds[i]] += y[i]
+        counts[components_inds[i]] += 1.
+        if x[i] < ranges[components_inds[i], 0]:
+            ranges[components_inds[i], 0] = x[i]
+        if x[i] > ranges[components_inds[i], 1]:
+            ranges[components_inds[i], 1] = x[i]
+        
+    for i in np.arange(num_components):
+        areas[i] *= (ranges[i, 1]-ranges[i, 0])/counts[i]
+    
+    return areas, ranges
+
+def get_noise_var(dat):
+    k_indices = np.where(np.logical_and(dat.k_y >= 1000, dat.k_y <= 4500))[0]
+    nu_indices = np.where(np.logical_and(dat.nu >= 1, dat.nu <= 2))[0]
+    y = dat.p_kyom_kx0[nu_indices]
+    y = y[:, k_indices]
+
+    return np.var(y)
+    
+    
 dat = readsav("FT_kyo_kx0_00_12732.pow", idict=None, python_dict=False, uncompressed_file_name=None, verbose=False)
 levels = np.linspace(np.min(np.log(dat.p_kyom_kx0))+2, np.max(np.log(dat.p_kyom_kx0))-2, 42)
 
@@ -143,17 +183,20 @@ plt.figure(figsize=(7, 7))
 plt.plot(x, y, 'x', label='data')
 plt.show()
 
-noise_var = 0.
+#noise_var = 0.
+#num_segments = 10
+#for i in np.arange(num_segments):
+#    start_index = int(i * len(y) / num_segments)
+#    end_index = int((i+1) * len(y) / num_segments)
+#    noise_var += np.var(y[start_index:end_index])
+#noise_var /= num_segments
 
-num_segments = 10
-for i in np.arange(num_segments):
-    start_index = int(i * len(y) / num_segments)
-    end_index = int((i+1) * len(y) / num_segments)
-    noise_var += np.var(y[start_index:end_index])
-noise_var /= num_segments
+noise_var = get_noise_var(dat)
+
 noise_var /= 2
 sig_var = np.var(y) - noise_var
 true_sigma = np.sqrt(noise_var)
+print("noise_std", true_sigma)
 num_w = 1
 
 x_range = max(x) - min(x)
@@ -308,21 +351,22 @@ for num_components in np.arange(3, 4):
 print("alphas", opt_alphas)
 print("betas", opt_betas)
 print("ws", opt_ws)
-print("num_components", opt_num_components)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 plt.figure(figsize=(7, 7))
 ax.plot(x, y, 'x', label='data')
 #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
 y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, scale)
-areas = find_areas(x, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
-print("Lowest BIC", min_bic)
-print("Num components", opt_num_components)
-print("Areas", areas)
 ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
+
+#areas = find_areas_analytical(x, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
+#for i in np.arange(len(areas)):
+#    area, x_left, x_right = areas[i]
+#    ax.axvspan(x_left, x_right, alpha=0.5, color=colors[i])
+
+areas, ranges = find_areas(x, y, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
 for i in np.arange(len(areas)):
-    area, x_left, x_right = areas[i]
-    ax.axvspan(x_left, x_right, alpha=0.5, color=colors[i])
+    ax.axvspan(ranges[i, 0], ranges[i, 1], alpha=0.5, color=colors[i])
 
 
 ax.set_title("Spectrum at k=" + str(dat.k_y[k_index]))
@@ -331,3 +375,6 @@ ax.set_xlabel(r'$\nu$')
 ax.set_ylabel('Amplitude')
 fig.savefig("areas.png")
 
+print("Lowest BIC", min_bic)
+print("Num components", opt_num_components)
+print("Areas", areas)
