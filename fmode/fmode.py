@@ -116,6 +116,14 @@ def find_areas_analytical(x, alphas, betas, ws, scale, noise_std):
     return areas
 
 def find_areas(x, y, alphas, betas, ws, scale, noise_std):
+    ###########################################################################
+    # Remove noise 
+    #y_base = calc_y(x, [], [], ws, scale)
+    #y -= y_base
+    #inds = np.where(y > noise_std)[0]
+    #y = y[inds]
+    #x = x[inds]
+    ###########################################################################
     y_base = calc_y(x, [], [], ws, scale)
     ys_fit = []
     num_components = len(alphas)
