@@ -24,6 +24,8 @@ colors = ['blue', 'red', 'green', 'peru', 'purple']
 
 sample_or_optimize = False
 
+num_optimizations = 1
+
 # F-mode = 0
 # P modes = 1 ... 
 def get_alpha_prior(i, k_y):
@@ -248,24 +250,23 @@ for num_components in np.arange(3, 4):
             ws = params[2*num_components:2*num_components+num_w]
             
             y_mean_est=calc_y(x, alphas, betas, ws, scale)
-            return calc_loglik(y_mean_est, y, true_sigma)
+            return -calc_loglik(y_mean_est, y, true_sigma)
 
         #def grad_fn(params):
         #    return self.psf.likelihood_grad(params, [Ds, self.gamma])
         
         min_loglik = None
         min_res = None
-        for trial_no in np.arange(0, num_samples):
+        for trial_no in np.arange(0, num_optimizations):
             params = []
             for i in np.arange(num_components):
-                alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
-                params.append(alpha_prior)
+                params.append(get_alpha_prior(i, dat.k_y[k_index]))
             for i in np.arange(num_components):
-                beta_prior = 0.
-                params.append(beta_prior)
+                params.append(1./num_components)
             for i in np.arange(num_w):
-                w_prior = 0.
-                params.append(w_prior)
+                params.append(0.)
+                
+            print("params", params)
                 
             initial_lik = lik_fn(params)
             res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':initial_lik*1e-7})#, 'eps':.1})
@@ -303,6 +304,11 @@ for num_components in np.arange(3, 4):
         opt_betas = betas_est
         opt_ws = ws_est
         opt_num_components = num_components
+
+print("alphas", opt_alphas)
+print("betas", opt_betas)
+print("ws", opt_ws)
+print("num_components", opt_num_components)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 plt.figure(figsize=(7, 7))
