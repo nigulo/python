@@ -16,10 +16,13 @@ from scipy.stats import gaussian_kde
 from scipy.signal import argrelextrema
 from sklearn.cluster import KMeans
 
+import scipy.optimize
+
 num_samples = 1000
 num_cores = 6
 colors = ['blue', 'red', 'green', 'peru', 'purple']
 
+sample_or_optimize = False
 
 # F-mode = 0
 # P modes = 1 ... 
@@ -43,7 +46,7 @@ def calc_y(x, alphas, betas, ws, scale):
         y += 1./(np.pi*beta*(1+((x-alpha)/beta)**2))
     return y*scale
 
-def loglik(y, y_true, sigma):
+def calc_loglik(y, y_true, sigma):
     loglik = -0.5 * np.sum((y - y_true)**2/sigma) - 0.5*np.log(sigma) - 0.5*np.log(2.0*np.pi)
     return loglik        
     
@@ -158,95 +161,130 @@ min_bic = sys.float_info.max
 for num_components in np.arange(3, 4):
     scale =  np.sum(y)*x_range/len(y)/num_components
     print("scale", scale)
-    with Model() as model: # model specifications in PyMC3 are wrapped in a with-statement
-        alphas = []
-        betas = []
-        ws = []
-        # Define priors
-        for i in np.arange(num_components):
-            sigma = x_range/3/num_components
-            alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
-            print("alpha_prior", alpha_prior, i)
-            #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
-            alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
-            betas.append(HalfNormal('beta' + str(i), sigma=1./num_components))
-        for i in np.arange(num_w):
-            ws.append(Normal('w' + str(i), 0., sigma=1.))
-        sigma = HalfNormal('sigma', sigma=true_sigma)
-    
-        # Define likelihood
-        likelihood = Normal('y', mu=calc_y(x, alphas, betas, ws, scale), sigma=sigma, observed=y)
-    
-        # Inference!
-        trace = sample(num_samples, cores=num_cores) # draw 3000 posterior samples using NUTS sampling
-    
-        #w = waic(trace, model).WAIC
-        #waics.append(w)
-        #print("WAIC(", num_components, ")", w)
-    
-    #with Model() as model:
-    #    # specify glm and pass in data. The resulting linear model, its likelihood and
-    #    # and all its parameters are automatically added to our model.
-    #    glm.GLM.from_formula('y ~ x', data)
-    #    trace = sample(3000, cores=2) # draw 3000 posterior samples using NUTS sampling
-    
-    #plt.figure(figsize=(7, 7))
-    #traceplot(trace[100:])
-    #plt.tight_layout()
     
     alphas_est = []
     betas_est = []
     ws_est = []
-    for i in np.arange(num_components):
-        print("--------------------------------------------------------------")
-        print("Component", i)
-        alpha_samples = trace["alpha" + str(i), :]#num_samples//2:]
     
-        #print("len(alpha_samples)", len(alpha_samples))
-        #print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
-        # Just in case we happen to have multimodal posteriors
-        # Remove all samples belonging to the previously detected mode
-        for j in np.arange(len(alphas_est)):
-            alpha = alphas_est[j]
-            if alpha >= np.min(alpha_samples) and alpha <= np.max(alpha_samples):
-                mode_alphas, inds = mode_samples(alpha_samples, alpha)
-                #print("mode_alphas", len(mode_alphas))
-                #print("mode_alphas range", np.min(mode_alphas), "-", np.max(mode_alphas))
-                mask = np.zeros(alpha_samples.shape,dtype=bool)
-                mask[inds] = True
-                #print(len(mask[mask > 0]))
-                #print(len(inds))
-                alpha_samples = alpha_samples[~mask]
-        print("len(alpha_samples)", len(alpha_samples))
-        print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
-        (alpha, alpha_se) = mode_with_se(alpha_samples)
-        alphas_est.append(alpha)
-    
-        beta_samples = trace["beta" + str(i), :]#num_samples//2:]
-        #print("len(beta_samples)", len(beta_samples))
-        #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
-        ## Remove all samples belonginh to the previously detected mode
-        #for j in np.arange(len(betas_est)):
-        #    beta = betas_est[j]
-        #    if beta >= np.min(beta_samples) and beta <= np.max(beta_samples):
-        #        mode_betas, inds = mode_samples(beta_samples, beta)
-        #        #print("mode_betas", len(mode_betas))
-        #        #print("mode_betas range", np.min(mode_betas), "-", np.max(mode_betas))
-        #        mask = np.zeros(beta_samples.shape,dtype=bool)
-        #        mask[inds] = True
-        #        beta_samples = beta_samples[~mask]
-        #print("len(beta_samples)", len(beta_samples))
-        #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
-        (beta, beta_se) = mode_with_se(beta_samples)
-        betas_est.append(beta)
-    
-    for i in np.arange(num_w):
-        w_samples = trace["w" + str(i), num_samples//2:]
-        ws_est.append(np.mean(w_samples))
+    ###########################################################################
+    # Sampling
+    ###########################################################################
+    if sample_or_optimize:
+        with Model() as model: # model specifications in PyMC3 are wrapped in a with-statement
+            alphas = []
+            betas = []
+            ws = []
+            # Define priors
+            for i in np.arange(num_components):
+                sigma = x_range/3/num_components
+                alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+                print("alpha_prior", alpha_prior, i)
+                #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
+                alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
+                betas.append(HalfNormal('beta' + str(i), sigma=1./num_components))
+            for i in np.arange(num_w):
+                ws.append(Normal('w' + str(i), 0., sigma=1.))
+            sigma = HalfNormal('sigma', sigma=true_sigma)
+        
+            # Define likelihood
+            likelihood = Normal('y', mu=calc_y(x, alphas, betas, ws, scale), sigma=sigma, observed=y)
+        
+            # Inference!
+            trace = sample(num_samples, cores=num_cores) # draw 3000 posterior samples using NUTS sampling
+        
+        for i in np.arange(num_components):
+            print("--------------------------------------------------------------")
+            print("Component", i)
+            alpha_samples = trace["alpha" + str(i), :]#num_samples//2:]
+        
+            #print("len(alpha_samples)", len(alpha_samples))
+            #print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
+            # Just in case we happen to have multimodal posteriors
+            # Remove all samples belonging to the previously detected mode
+            for j in np.arange(len(alphas_est)):
+                alpha = alphas_est[j]
+                if alpha >= np.min(alpha_samples) and alpha <= np.max(alpha_samples):
+                    mode_alphas, inds = mode_samples(alpha_samples, alpha)
+                    #print("mode_alphas", len(mode_alphas))
+                    #print("mode_alphas range", np.min(mode_alphas), "-", np.max(mode_alphas))
+                    mask = np.zeros(alpha_samples.shape,dtype=bool)
+                    mask[inds] = True
+                    #print(len(mask[mask > 0]))
+                    #print(len(inds))
+                    alpha_samples = alpha_samples[~mask]
+            print("len(alpha_samples)", len(alpha_samples))
+            print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
+            (alpha, alpha_se) = mode_with_se(alpha_samples)
+            alphas_est.append(alpha)
+        
+            beta_samples = trace["beta" + str(i), :]#num_samples//2:]
+            #print("len(beta_samples)", len(beta_samples))
+            #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
+            ## Remove all samples belonginh to the previously detected mode
+            #for j in np.arange(len(betas_est)):
+            #    beta = betas_est[j]
+            #    if beta >= np.min(beta_samples) and beta <= np.max(beta_samples):
+            #        mode_betas, inds = mode_samples(beta_samples, beta)
+            #        #print("mode_betas", len(mode_betas))
+            #        #print("mode_betas range", np.min(mode_betas), "-", np.max(mode_betas))
+            #        mask = np.zeros(beta_samples.shape,dtype=bool)
+            #        mask[inds] = True
+            #        beta_samples = beta_samples[~mask]
+            #print("len(beta_samples)", len(beta_samples))
+            #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
+            (beta, beta_se) = mode_with_se(beta_samples)
+            betas_est.append(beta)
+        
+        for i in np.arange(num_w):
+            w_samples = trace["w" + str(i), num_samples//2:]
+            ws_est.append(np.mean(w_samples))
+    ###########################################################################
+    # Optimization
+    ###########################################################################
+    else:
+        def lik_fn(params):
+            alphas = params[:num_components]
+            betas = params[num_components:2*num_components]
+            ws = params[2*num_components:2*num_components+num_w]
+            
+            y_mean_est=calc_y(x, alphas, betas, ws, scale)
+            return calc_loglik(y_mean_est, y, true_sigma)
+
+        #def grad_fn(params):
+        #    return self.psf.likelihood_grad(params, [Ds, self.gamma])
+        
+        min_loglik = None
+        min_res = None
+        for trial_no in np.arange(0, num_samples):
+            params = []
+            for i in np.arange(num_components):
+                alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+                params.append(alpha_prior)
+            for i in np.arange(num_components):
+                beta_prior = 0.
+                params.append(beta_prior)
+            for i in np.arange(num_w):
+                w_prior = 0.
+                params.append(w_prior)
+                
+            initial_lik = lik_fn(params)
+            res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':initial_lik*1e-7})#, 'eps':.1})
+            loglik = res['fun']
+            if min_loglik is None or loglik < min_loglik:
+                min_loglik = loglik
+                min_res = res['x']
+
+        for i in np.arange(num_components):
+            alphas_est.append(min_res[i])
+            betas_est.append(min_res[i+num_components])
+        for i in np.arange(num_w):
+            ws_est.append(min_res[i+2*num_components])
+    ###########################################################################
+        
     
     #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
     y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scale)
-    b = bic(loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
+    b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
     print("BIC", b)
     
     fig, ax = plt.subplots(nrows=1, ncols=1)
