@@ -73,6 +73,7 @@ num_subsample_reps = 1
 
 num_layers = 3
 inference = True
+infer_z_scale = True
 sample_or_optimize = False
 num_samples = 1
 num_chains = 4
@@ -404,8 +405,38 @@ print("grid_density:", grid_density)
 print("max_grid_size:", max_grid_size)
 
 
-def sample(x, y):
+def sample(x, y, infer_z_scale=False, known_params=dict()):
 
+    
+    def decode_params(theta):
+        i = 0
+        if "sig_var" in known_params:
+            sig_var = known_params["sig_var"]
+        else:
+            sig_var = theta[i]
+            i += 1
+        if "ell" in known_params:
+            ell = known_params["ell"]
+        else:
+            ell = theta[i]
+            i += 1
+        if "noise_var" in known_params:
+            noise_var = known_params["noise_var"]
+        else:
+            noise_var = theta[i]
+            i += 1
+            
+        if "z_scale" in known_params:
+            z_scale = known_params["z_scale"]
+        else:
+            z_scale = None
+            if len(theta) > i:
+                z_scale = theta[i]
+                i += 1
+                
+        return sig_var, ell, noise_var, z_scale
+        
+    
     def lik_fn_div_free(theta):
         sig_var = theta[0]
         ell = theta[1]
@@ -433,10 +464,12 @@ def sample(x, y):
     def cov_func_sq_exp(theta, data, u1, u2, data_or_test):
         np.testing.assert_array_almost_equal(u1, u2)
         assert(data_or_test)
-        sig_var = theta[0]
-        ell = theta[1]
-        noise_var = theta[2]
-        gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var, dim_out=1)
+            
+        sig_var, ell, noise_var, z_scale = decode_params(theta)
+        if z_scale is None:
+            gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var, dim_out=1)
+        else:
+            gp = cov_sq_exp.cov_sq_exp(sig_var, ell, noise_var, dim_out=1, scales=[None, None, z_scale])
         U, U_grads = gp.calc_cov(u1, u2, data_or_test=data_or_test, calc_grad = True)
         return  U, U_grads
 
@@ -452,23 +485,38 @@ def sample(x, y):
 
     lik_grad = None
 
-        
+    sampling_result = dict()
     if sample_or_optimize:
         s = sampling.Sampling()
         with s.get_model():
-            #ell = pm.Uniform('ell', 0.0, 1.0)
-            #sig_var = pm.Uniform('sig_var', 0.0, 1.0)
-            ell = pm.HalfNormal('ell', sd=1.0)
-            sig_var = pm.HalfNormal('sig_var', sd=1.0)
-            noise_var = pm.HalfNormal('noise_var', sd=1.0)
+            params = []
+            if "sig_var" not in known_params:
+                sig_var = pm.HalfNormal('sig_var', sd=1.0)
+                params.append(sig_var)
+            if "ell" not in known_params:
+                ell = pm.HalfNormal('ell', sd=1.0)
+                params.append(ell)
+            if "noise_var" not in known_params:
+                noise_var = pm.HalfNormal('noise_var', sd=1.0)
+                params.append(noise_var)
+            
+            if infer_z_scale:
+                if "z_scale" not in known_params:
+                    z_scale = pm.Gamma('z_scale', mu = 1.0, sigma = 10.)
+                    params.append(z_scale)
         
         #trace = s.sample(lik_fn, [sig_var, ell, noise_var], [], num_samples, num_chains, lik_grad)
-        trace = s.sample(kgp.likelihood, [sig_var, ell, noise_var], [], num_samples, num_chains, kgp.likelihood_grad)
+        trace = s.sample(kgp.likelihood, params, [], num_samples, num_chains, kgp.likelihood_grad)
 
         #print(trace['model_logp'])
-        m_ell = np.mean(trace['ell'])
-        m_sig_var = np.mean(trace['sig_var'])
-        m_noise_var = np.mean(trace['noise_var'])
+        if "ell" in trace:
+            sampling_result["ell"] = np.mean(trace['ell'])
+        if "sig_var" in trace:
+            sampling_result["sig_var"] = np.mean(trace['sig_var'])
+        if "noise_var" in trace:
+            sampling_result["noise_var"] = np.mean(trace['noise_var'])
+        if "z_scale" in trace:
+            sampling_result["z_scale"] = np.mean(trace['z_scale'])
 
     else:
         def lik_fn(params):
@@ -480,29 +528,60 @@ def sample(x, y):
         min_loglik = None
         min_res = None
         for trial_no in np.arange(0, num_samples):
-            ell_min = grid_density#.05
-            ell_max = max_grid_size*2#1.
-            sig_var_min = data_var*.1
-            sig_var_max = data_var*2.
-            noise_var_min = data_var*0.0001#*.001
-            noise_var_max = data_var*0.01#*.5
-
-
-            ell_init = random.uniform(ell_min, ell_max)
-            sig_var_init = random.uniform(sig_var_min, sig_var_max)
-            noise_var_init = random.uniform(noise_var_min, noise_var_max)
+            params = []
+            bounds = []
+            if "sig_var" not in known_params:
+                sig_var_min = data_var*.1
+                sig_var_max = data_var*2.
+                sig_var_init = random.uniform(sig_var_min, sig_var_max)
+                params.append(sig_var_init)
+                bounds.append((sig_var_min, sig_var_max))
+            if "ell" not in known_params:
+                ell_min = grid_density#.05
+                ell_max = max_grid_size*2#1.
+                ell_init = random.uniform(ell_min, ell_max)
+                params.append(ell_init)
+                bounds.append((ell_min, ell_max))
+            if "noise_var" not in known_params:
+                noise_var_min = data_var*0.0001#*.001
+                noise_var_max = data_var*0.01#*.5
+                noise_var_init = random.uniform(noise_var_min, noise_var_max)
+                params.append(noise_var_init)
+                bounds.append((noise_var_min, noise_var_max))
+            
+            if infer_z_scale:
+                if "z_scale" not in known_params:
+                    z_scale_min = 0.1
+                    z_scale_max = 10
+                    z_scale_init = 1.#random.uniform(z_scale_min, z_scale_max)
+                    params.append(z_scale_init)
+                    bounds.append((z_scale_min, z_scale_max))
+            
 
             #res = scipy.optimize.minimize(lik_fn, [.5, data_var, data_var*.015], method='L-BFGS-B', jac=grad_fn, bounds = [(.1, 1.), (data_var*.1, data_var*2.), (data_var*.01, data_var*.02)], options={'disp': True, 'gtol':1e-7})
-            res = scipy.optimize.minimize(lik_fn, [sig_var_init, ell_init, noise_var_init], method='L-BFGS-B', jac=lik_grad, bounds = [(sig_var_min, sig_var_max), (ell_min, ell_max), (noise_var_min, noise_var_max)], options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=lik_grad, bounds=bounds, options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
                 min_loglik = loglik
                 min_res = res
-        m_sig_var = min_res['x'][0]
-        m_ell = min_res['x'][1]
-        m_noise_var = min_res['x'][2]
-    return m_ell, m_sig_var, m_noise_var
+
+        i = 0
+        if "sig_var" not in known_params:
+            sampling_result["sig_var"] = min_res['x'][i]
+            i += 1
+        if "ell" not in known_params:
+            sampling_result["ell"] = min_res['x'][i]
+            i += 1
+        if "noise_var" not in known_params:
+            sampling_result["noise_var"] = min_res['x'][i]
+            i += 1
+        
+        if infer_z_scale:
+            if "z_scale" not in known_params:
+                sampling_result["z_scale"] = min_res['x'][i]
+                i += 1
+    return sampling_result
         
 
 
@@ -523,12 +602,9 @@ def get_probs(thetas, y):
 
 class disambiguator():
     
-    def __init__(self, x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=None):
+    def __init__(self, x, y, sig_var=None, length_scale=None, noise_var=None, approx_type='kiss-gp', u_mesh=None):
         self.x = x
         self.y = y
-        self.sig_var = sig_var
-        self.length_scale = length_scale
-        self.noise_var = noise_var
         self.n = len(x)
         assert(self.n == n1*n2*n3)
         
@@ -546,6 +622,13 @@ class disambiguator():
             self.u_mesh = u_mesh
             self.u = np.stack(u_mesh, axis=3).reshape(-1, 3)
         
+        if sig_var is not None and length_scale is not None and noise_var is not None:
+            self.sig_var = sig_var
+            self.length_scale = length_scale
+            self.noise_var = noise_var
+            self.init()
+        
+    def init(self):    
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         if self.approx_type == 'd2':
             self.true_loglik = 0.
@@ -590,11 +673,44 @@ class disambiguator():
         #print("y_flat.shape", y_flat.shape)
         b_sq = np.sum(self.y*self.y, axis=1)
         #b_sq = np.sum(y_flat*y_flat, axis=1)
-                
-        length_scale, sig_var, noise_var = sample(self.x, b_sq)
-        self.length_scale = length_scale
-        self.sig_var = sig_var
-        self.noise_var = noise_var
+        
+        if infer_z_scale:
+            ###################################################################
+            # First infer the length-scale, sig_var and noise_var from different layers separately
+            avg_length_scale = 0.
+            avg_sig_var = 0.
+            avg_noise_var = 0.
+            for i in np.arange(n3):
+                x1 = self.x[i::n3]
+                b_sq1 = b_sq[i::n3]
+                res = sample(x1, b_sq1)
+                length_scale = res["ell"]
+                sig_var = res["sig_var"]
+                noise_var = res["noise_var"]
+                print("Layer ", i, ": length_scale, sig_var, noise_var", length_scale, sig_var, noise_var)
+                avg_length_scale += length_scale
+                avg_sig_var += sig_var
+                avg_noise_var += noise_var
+            avg_length_scale /= n3
+            avg_sig_var /= n3
+            avg_noise_var /= n3
+            
+            ###################################################################
+            # Now infer the z_scale
+            known_params={"ell": avg_length_scale, "sig_var": avg_sig_var, "noise_var": avg_noise_var}
+            res = sample(self.x, b_sq, infer_z_scale=infer_z_scale, known_params=known_params)
+            z_scale = res["z_scale"]
+            print("z_scale", z_scale)
+            self.x[:, 2] *= z_scale
+
+        ###################################################################
+        # Infer the length-scale, sig_var and noise_var from full data again
+        res = sample(self.x, b_sq)
+        self.length_scale = res["ell"]
+        self.sig_var = res["sig_var"]
+        self.noise_var = res["noise_var"]
+            
+        self.init()
 
 
     def reverse(self, try_no):
@@ -847,7 +963,7 @@ class disambiguator():
                 print("loglik1=", loglik1)
                 print("loglik1=", loglik1, "max_loglik=", max_loglik)
         
-                if loglik1 > loglik:
+                if loglik is None or loglik1 > loglik:
                     loglik = loglik1
                     changed = True
         
