@@ -46,7 +46,7 @@ num_frames_gen = 10
 # How many frames to use in training
 num_frames = 10
 # How many objects to use in training
-num_objs = 100#None
+num_objs = 10#None
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
@@ -349,22 +349,17 @@ class nn_model:
                 ###################################################################
                 # Autoencoder
                 ###################################################################
-                hidden_layer = keras.layers.Conv2D(4, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(8, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(16, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 #hidden_layer = keras.layers.Conv2D(64, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
                 #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
-                hidden_layer = keras.layers.Dense(4000, activation='relu')(hidden_layer)
-                hidden_layer = keras.layers.Dense(4000, activation='relu')(hidden_layer)
-                hidden_layer = keras.layers.Dense(2000, activation='relu')(hidden_layer)
-                hidden_layer = keras.layers.Dense(2000, activation='relu')(hidden_layer)
-                hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
                 #hidden_layer = keras.layers.Dense(500, activation='relu')(hidden_layer)
                 #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
