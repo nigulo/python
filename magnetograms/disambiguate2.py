@@ -671,7 +671,7 @@ class disambiguator():
         #print("y.shape", self.y.shape)
         #y_flat = np.reshape(self.y, (3*self.n, -1))
         #print("y_flat.shape", y_flat.shape)
-        b_sq = np.sum(self.y*self.y, axis=1)
+        b_abs = np.sqrt(np.sum(self.y*self.y, axis=1))
         #b_sq = np.sum(y_flat*y_flat, axis=1)
         
         if infer_z_scale:
@@ -681,9 +681,9 @@ class disambiguator():
             avg_sig_var = 0.
             avg_noise_var = 0.
             for i in np.arange(n3):
-                x1 = self.x[i::n3]
-                b_sq1 = b_sq[i::n3]
-                res = sample(x1, b_sq1)
+                x1 = self.x[i::n3, :2]
+                b_abs1 = b_abs[i::n3]
+                res = sample(x1, b_abs1)
                 length_scale = res["ell"]
                 sig_var = res["sig_var"]
                 noise_var = res["noise_var"]
@@ -698,14 +698,14 @@ class disambiguator():
             ###################################################################
             # Now infer the z_scale
             known_params={"ell": avg_length_scale, "sig_var": avg_sig_var, "noise_var": avg_noise_var}
-            res = sample(self.x, b_sq, infer_z_scale=infer_z_scale, known_params=known_params)
+            res = sample(self.x, b_abs, infer_z_scale=infer_z_scale, known_params=known_params)
             z_scale = res["z_scale"]
             print("z_scale", z_scale)
             self.x[:, 2] *= z_scale
 
         ###################################################################
         # Infer the length-scale, sig_var and noise_var from full data again
-        res = sample(self.x, b_sq)
+        res = sample(self.x, b_abs)
         self.length_scale = res["ell"]
         self.sig_var = res["sig_var"]
         self.noise_var = res["noise_var"]
