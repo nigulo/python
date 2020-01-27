@@ -18,6 +18,10 @@ from sklearn.cluster import KMeans
 
 import scipy.optimize
 
+k = 1000
+if len(sys.argv) > 1:
+    k = int(sys.argv[1])
+
 num_samples = 1000
 num_cores = 6
 colors = ['blue', 'red', 'green', 'peru', 'purple']
@@ -53,7 +57,7 @@ def calc_loglik(y, y_true, sigma):
     return loglik        
     
 def bic(loglik, n, k):
-    return np.log(n)*k-2*loglik
+    return np.log(n)*k - 2.*loglik
     
 def mode_with_se(samples, num_bootstrap=100):
     x_freqs = gaussian_kde(samples)
@@ -155,8 +159,8 @@ def find_areas(x, y, alphas, betas, ws, scale, noise_std):
     return areas, ranges
 
 def get_noise_var(dat):
-    k_indices = np.where(np.logical_and(dat.k_y >= 1000, dat.k_y <= 4500))[0]
-    nu_indices = np.where(np.logical_and(dat.nu >= 1, dat.nu <= 2))[0]
+    k_indices = np.where(np.logical_and(dat.k_y >= 3500, dat.k_y <= 4500))[0]
+    nu_indices = np.where(np.logical_and(dat.nu >= 2, dat.nu <= 4))[0]
     y = dat.p_kyom_kx0[nu_indices]
     y = y[:, k_indices]
 
@@ -171,7 +175,7 @@ ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
 fig.savefig("spectrum.png")
 
 x = np.asarray(dat.nu, dtype='float')
-k_index = np.min(np.where(dat.k_y >= 1000)[0])
+k_index = np.min(np.where(dat.k_y >= k)[0])
 
 y = dat.p_kyom_kx0[:, k_index]
 #y = dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]
@@ -198,20 +202,20 @@ plt.show()
 #    end_index = int((i+1) * len(y) / num_segments)
 #    noise_var += np.var(y[start_index:end_index])
 #noise_var /= num_segments
+#noise_var /= 2
 
 noise_var = get_noise_var(dat)
 
-noise_var /= 2
 sig_var = np.var(y) - noise_var
 true_sigma = np.sqrt(noise_var)
 print("noise_std", true_sigma)
-num_w = 1
+num_w = 2
 
 x_range = max(x) - min(x)
 x_left = min(x)
 #waics = []
 min_bic = sys.float_info.max
-for num_components in np.arange(3, 4):
+for num_components in np.arange(1, 5):
     scale =  np.sum(y)*x_range/len(y)/num_components
     print("scale", scale)
     
@@ -347,7 +351,7 @@ for num_components in np.arange(3, 4):
     ax.legend(loc=0)
     ax.set_xlabel('x')
     ax.set_ylabel('y')
-    fig.savefig("fit.png")
+    fig.savefig("fit" + str(num_components) + ".png")
     
     if b < min_bic:
         min_bic = b
@@ -355,6 +359,8 @@ for num_components in np.arange(3, 4):
         opt_betas = betas_est
         opt_ws = ws_est
         opt_num_components = num_components
+
+scale =  np.sum(y)*x_range/len(y)/opt_num_components
 
 print("alphas", opt_alphas)
 print("betas", opt_betas)
