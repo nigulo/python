@@ -18,9 +18,13 @@ from sklearn.cluster import KMeans
 
 import scipy.optimize
 
-k = 1000
+k_min = 1000
+k_max = 1000
 if len(sys.argv) > 1:
-    k = int(sys.argv[1])
+    k_min = float(sys.argv[1])
+
+if len(sys.argv) > 2:
+    k_max = float(sys.argv[2])
 
 num_samples = 1000
 num_cores = 6
@@ -174,221 +178,232 @@ fig, ax = plt.subplots(nrows=1, ncols=1)
 ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
 fig.savefig("spectrum.png")
 
-x = np.asarray(dat.nu, dtype='float')
-k_index = np.min(np.where(dat.k_y >= k)[0])
 
-y = dat.p_kyom_kx0[:, k_index]
-#y = dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]
-# Average over 3 neigbouring slices to reduce noise
-#y = np.log(dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]) - np.log(3)
-#y = y - np.mean(y)
-
-inds = np.where(x > 2.)[0]
-x = x[inds]
-y = y[inds]
-inds = np.where(x < 6.)[0]
-x = x[inds]
-y = y[inds]
-
-
-plt.figure(figsize=(7, 7))
-plt.plot(x, y, 'x', label='data')
-plt.show()
-
-#noise_var = 0.
-#num_segments = 10
-#for i in np.arange(num_segments):
-#    start_index = int(i * len(y) / num_segments)
-#    end_index = int((i+1) * len(y) / num_segments)
-#    noise_var += np.var(y[start_index:end_index])
-#noise_var /= num_segments
-#noise_var /= 2
-
-noise_var = get_noise_var(dat)
-
-sig_var = np.var(y) - noise_var
-true_sigma = np.sqrt(noise_var)
-print("noise_std", true_sigma)
-num_w = 2
-
-x_range = max(x) - min(x)
-x_left = min(x)
-#waics = []
-min_bic = sys.float_info.max
-for num_components in np.arange(1, 5):
-    scale =  np.sum(y)*x_range/len(y)/num_components
-    print("scale", scale)
+k_index = np.min(np.where(dat.k_y >= k_min)[0])
+k_max = dat.k_y[dat.k_y > k_max][0]
+while k_index < dat.p_kyom_kx0.shape[1]:
+    y = dat.p_kyom_kx0[:, k_index]
     
-    alphas_est = []
-    betas_est = []
-    ws_est = []
+    if np.min(dat.k_y[k_index:]) > k_max:
+        break
     
-    ###########################################################################
-    # Sampling
-    ###########################################################################
-    if sample_or_optimize:
-        with Model() as model: # model specifications in PyMC3 are wrapped in a with-statement
-            alphas = []
-            betas = []
-            ws = []
-            # Define priors
-            for i in np.arange(num_components):
-                sigma = x_range/3/num_components
-                alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
-                print("alpha_prior", alpha_prior, i)
-                #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
-                alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
-                betas.append(HalfNormal('beta' + str(i), sigma=1./num_components))
-            for i in np.arange(num_w):
-                ws.append(Normal('w' + str(i), 0., sigma=1.))
-            sigma = HalfNormal('sigma', sigma=true_sigma)
+    k_index += 1
+    #y = dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]
+    # Average over 3 neigbouring slices to reduce noise
+    #y = np.log(dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]) - np.log(3)
+    #y = y - np.mean(y)
+    
+    x = np.asarray(dat.nu, dtype='float')
+    inds = np.where(x > 2.)[0]
+    x = x[inds]
+    y = y[inds]
+    inds = np.where(x < 10.)[0]
+    x = x[inds]
+    y = y[inds]
+    
+    #noise_var = 0.
+    #num_segments = 10
+    #for i in np.arange(num_segments):
+    #    start_index = int(i * len(y) / num_segments)
+    #    end_index = int((i+1) * len(y) / num_segments)
+    #    noise_var += np.var(y[start_index:end_index])
+    #noise_var /= num_segments
+    #noise_var /= 2
+    
+    noise_var = get_noise_var(dat)
+    
+    sig_var = np.var(y) - noise_var
+    true_sigma = np.sqrt(noise_var)
+    print("noise_std", true_sigma)
+    num_w = 2
+    
+    x_range = max(x) - min(x)
+    x_left = min(x)
+    #waics = []
+    min_bic = sys.float_info.max
+    for num_components in np.arange(1, 4):
+        scale =  np.sum(y)*x_range/len(y)/num_components
+        print("scale", scale)
         
-            # Define likelihood
-            likelihood = Normal('y', mu=calc_y(x, alphas, betas, ws, scale), sigma=sigma, observed=y)
+        alphas_est = []
+        betas_est = []
+        ws_est = []
         
-            # Inference!
-            trace = sample(num_samples, cores=num_cores) # draw 3000 posterior samples using NUTS sampling
-        
-        for i in np.arange(num_components):
-            print("--------------------------------------------------------------")
-            print("Component", i)
-            alpha_samples = trace["alpha" + str(i), :]#num_samples//2:]
-        
-            #print("len(alpha_samples)", len(alpha_samples))
-            #print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
-            # Just in case we happen to have multimodal posteriors
-            # Remove all samples belonging to the previously detected mode
-            for j in np.arange(len(alphas_est)):
-                alpha = alphas_est[j]
-                if alpha >= np.min(alpha_samples) and alpha <= np.max(alpha_samples):
-                    mode_alphas, inds = mode_samples(alpha_samples, alpha)
-                    #print("mode_alphas", len(mode_alphas))
-                    #print("mode_alphas range", np.min(mode_alphas), "-", np.max(mode_alphas))
-                    mask = np.zeros(alpha_samples.shape,dtype=bool)
-                    mask[inds] = True
-                    #print(len(mask[mask > 0]))
-                    #print(len(inds))
-                    alpha_samples = alpha_samples[~mask]
-            print("len(alpha_samples)", len(alpha_samples))
-            print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
-            (alpha, alpha_se) = mode_with_se(alpha_samples)
-            alphas_est.append(alpha)
-        
-            beta_samples = trace["beta" + str(i), :]#num_samples//2:]
-            #print("len(beta_samples)", len(beta_samples))
-            #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
-            ## Remove all samples belonginh to the previously detected mode
-            #for j in np.arange(len(betas_est)):
-            #    beta = betas_est[j]
-            #    if beta >= np.min(beta_samples) and beta <= np.max(beta_samples):
-            #        mode_betas, inds = mode_samples(beta_samples, beta)
-            #        #print("mode_betas", len(mode_betas))
-            #        #print("mode_betas range", np.min(mode_betas), "-", np.max(mode_betas))
-            #        mask = np.zeros(beta_samples.shape,dtype=bool)
-            #        mask[inds] = True
-            #        beta_samples = beta_samples[~mask]
-            #print("len(beta_samples)", len(beta_samples))
-            #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
-            (beta, beta_se) = mode_with_se(beta_samples)
-            betas_est.append(beta)
-        
-        for i in np.arange(num_w):
-            w_samples = trace["w" + str(i), num_samples//2:]
-            ws_est.append(np.mean(w_samples))
-    ###########################################################################
-    # Optimization
-    ###########################################################################
-    else:
-        def lik_fn(params):
-            alphas = params[:num_components]
-            betas = params[num_components:2*num_components]
-            ws = params[2*num_components:2*num_components+num_w]
+        ###########################################################################
+        # Sampling
+        ###########################################################################
+        if sample_or_optimize:
+            with Model() as model: # model specifications in PyMC3 are wrapped in a with-statement
+                alphas = []
+                betas = []
+                ws = []
+                # Define priors
+                for i in np.arange(num_components):
+                    sigma = x_range/3/num_components
+                    alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+                    print("alpha_prior", alpha_prior, i)
+                    #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
+                    alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
+                    betas.append(HalfNormal('beta' + str(i), sigma=1./num_components))
+                for i in np.arange(num_w):
+                    ws.append(Normal('w' + str(i), 0., sigma=1.))
+                sigma = HalfNormal('sigma', sigma=true_sigma)
             
-            y_mean_est=calc_y(x, alphas, betas, ws, scale)
-            return -calc_loglik(y_mean_est, y, true_sigma)
-
-        #def grad_fn(params):
-        #    return self.psf.likelihood_grad(params, [Ds, self.gamma])
-        
-        min_loglik = None
-        min_res = None
-        for trial_no in np.arange(0, num_optimizations):
-            params = []
+                # Define likelihood
+                likelihood = Normal('y', mu=calc_y(x, alphas, betas, ws, scale), sigma=sigma, observed=y)
+            
+                # Inference!
+                trace = sample(num_samples, cores=num_cores) # draw 3000 posterior samples using NUTS sampling
+            
             for i in np.arange(num_components):
-                params.append(get_alpha_prior(i, dat.k_y[k_index]))
-            for i in np.arange(num_components):
-                params.append(1./num_components)
+                print("--------------------------------------------------------------")
+                print("Component", i)
+                alpha_samples = trace["alpha" + str(i), :]#num_samples//2:]
+            
+                #print("len(alpha_samples)", len(alpha_samples))
+                #print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
+                # Just in case we happen to have multimodal posteriors
+                # Remove all samples belonging to the previously detected mode
+                for j in np.arange(len(alphas_est)):
+                    alpha = alphas_est[j]
+                    if alpha >= np.min(alpha_samples) and alpha <= np.max(alpha_samples):
+                        mode_alphas, inds = mode_samples(alpha_samples, alpha)
+                        #print("mode_alphas", len(mode_alphas))
+                        #print("mode_alphas range", np.min(mode_alphas), "-", np.max(mode_alphas))
+                        mask = np.zeros(alpha_samples.shape,dtype=bool)
+                        mask[inds] = True
+                        #print(len(mask[mask > 0]))
+                        #print(len(inds))
+                        alpha_samples = alpha_samples[~mask]
+                print("len(alpha_samples)", len(alpha_samples))
+                print("alpha_samples range", np.min(alpha_samples), "-", np.max(alpha_samples))
+                (alpha, alpha_se) = mode_with_se(alpha_samples)
+                alphas_est.append(alpha)
+            
+                beta_samples = trace["beta" + str(i), :]#num_samples//2:]
+                #print("len(beta_samples)", len(beta_samples))
+                #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
+                ## Remove all samples belonginh to the previously detected mode
+                #for j in np.arange(len(betas_est)):
+                #    beta = betas_est[j]
+                #    if beta >= np.min(beta_samples) and beta <= np.max(beta_samples):
+                #        mode_betas, inds = mode_samples(beta_samples, beta)
+                #        #print("mode_betas", len(mode_betas))
+                #        #print("mode_betas range", np.min(mode_betas), "-", np.max(mode_betas))
+                #        mask = np.zeros(beta_samples.shape,dtype=bool)
+                #        mask[inds] = True
+                #        beta_samples = beta_samples[~mask]
+                #print("len(beta_samples)", len(beta_samples))
+                #print("beta_samples range", np.min(beta_samples), "-", np.max(beta_samples))
+                (beta, beta_se) = mode_with_se(beta_samples)
+                betas_est.append(beta)
+            
             for i in np.arange(num_w):
-                params.append(0.)
+                w_samples = trace["w" + str(i), num_samples//2:]
+                ws_est.append(np.mean(w_samples))
+        ###########################################################################
+        # Optimization
+        ###########################################################################
+        else:
+            def lik_fn(params):
+                alphas = params[:num_components]
+                betas = params[num_components:2*num_components]
+                ws = params[2*num_components:2*num_components+num_w]
                 
-            print("params", params)
-                
-            initial_lik = lik_fn(params)
-            res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':initial_lik*1e-7})#, 'eps':.1})
-            loglik = res['fun']
-            if min_loglik is None or loglik < min_loglik:
-                min_loglik = loglik
-                min_res = res['x']
-
-        for i in np.arange(num_components):
-            alphas_est.append(min_res[i])
-            betas_est.append(min_res[i+num_components])
-        for i in np.arange(num_w):
-            ws_est.append(min_res[i+2*num_components])
-    ###########################################################################
-        
+                y_mean_est=calc_y(x, alphas, betas, ws, scale)
+                return -calc_loglik(y_mean_est, y, true_sigma)
     
-    #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
-    y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scale)
-    b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
-    print("BIC", b)
+            #def grad_fn(params):
+            #    return self.psf.likelihood_grad(params, [Ds, self.gamma])
+            
+            min_loglik = None
+            min_res = None
+            for trial_no in np.arange(0, num_optimizations):
+                params = []
+                bounds = []
+                for i in np.arange(num_components):
+                    alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+                    params.append(alpha_prior)
+                    print("alpha_prior", alpha_prior, i)
+                    bounds.append((alpha_prior-1. , alpha_prior+1.))
+                for i in np.arange(num_components):
+                    beta_prior = .05
+                    params.append(beta_prior)
+                    #params.append(1./100)
+                    bounds.append((.0001 , 2*beta_prior))
+                for i in np.arange(num_w):
+                    params.append(0.)
+                    bounds.append((-100 , 100))
+                    
+                print("params", params)
+                    
+                initial_lik = lik_fn(params)
+                #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':initial_lik*1e-7})#, 'eps':.1})
+                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=None, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+                loglik = res['fun']
+                if min_loglik is None or loglik < min_loglik:
+                    min_loglik = loglik
+                    min_res = res['x']
+    
+            for i in np.arange(num_components):
+                alphas_est.append(min_res[i])
+                betas_est.append(min_res[i+num_components])
+            for i in np.arange(num_w):
+                ws_est.append(min_res[i+2*num_components])
+        ###########################################################################
+            
+        
+        #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
+        y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scale)
+        b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
+        print("BIC", b)
+        
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        
+        ax.plot(x, y, 'x', label='data')
+        ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
+        ax.set_title('Num. clusters ' + str(num_components))
+        ax.legend(loc=0)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        fig.savefig("fit" + str(k_index) + "_" + str(num_components) + ".png")
+        
+        if b < min_bic:
+            min_bic = b
+            opt_alphas = alphas_est
+            opt_betas = betas_est
+            opt_ws = ws_est
+            opt_num_components = num_components
+    
+    scale =  np.sum(y)*x_range/len(y)/opt_num_components
+    
+    print("alphas", opt_alphas)
+    print("betas", opt_betas)
+    print("ws", opt_ws)
     
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    
+    plt.figure(figsize=(7, 7))
     ax.plot(x, y, 'x', label='data')
+    #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
+    y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, scale)
     ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
-    ax.set_title('Num. clusters ' + str(num_components))
-    ax.legend(loc=0)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    fig.savefig("fit" + str(num_components) + ".png")
     
-    if b < min_bic:
-        min_bic = b
-        opt_alphas = alphas_est
-        opt_betas = betas_est
-        opt_ws = ws_est
-        opt_num_components = num_components
-
-scale =  np.sum(y)*x_range/len(y)/opt_num_components
-
-print("alphas", opt_alphas)
-print("betas", opt_betas)
-print("ws", opt_ws)
-
-fig, ax = plt.subplots(nrows=1, ncols=1)
-plt.figure(figsize=(7, 7))
-ax.plot(x, y, 'x', label='data')
-#plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
-y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, scale)
-ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
-
-#areas = find_areas_analytical(x, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
-#for i in np.arange(len(areas)):
-#    area, x_left, x_right = areas[i]
-#    ax.axvspan(x_left, x_right, alpha=0.5, color=colors[i])
-
-areas, ranges = find_areas(x, y, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
-for i in np.arange(len(areas)):
-    ax.axvspan(ranges[i, 0], ranges[i, 1], alpha=0.5, color=colors[i])
-
-
-ax.set_title("Spectrum at k=" + str(dat.k_y[k_index]))
-ax.legend(loc=0)
-ax.set_xlabel(r'$\nu$')
-ax.set_ylabel('Amplitude')
-fig.savefig("areas.png")
-
-print("Lowest BIC", min_bic)
-print("Num components", opt_num_components)
-print("Areas", areas)
+    #areas = find_areas_analytical(x, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
+    #for i in np.arange(len(areas)):
+    #    area, x_left, x_right = areas[i]
+    #    ax.axvspan(x_left, x_right, alpha=0.5, color=colors[i])
+    
+    areas, ranges = find_areas(x, y, opt_alphas, opt_betas, opt_ws, scale, true_sigma)
+    for i in np.arange(len(areas)):
+        ax.axvspan(ranges[i, 0], ranges[i, 1], alpha=0.5, color=colors[i])
+    
+    
+    ax.set_title("Spectrum at k=" + str(dat.k_y[k_index]) + ", num. components=" + str(opt_num_components))
+    ax.legend(loc=0)
+    ax.set_xlabel(r'$\nu$')
+    ax.set_ylabel('Amplitude')
+    fig.savefig("areas" + str(k_index) + ".png")
+    
+    print("Lowest BIC", min_bic)
+    print("Num components", opt_num_components)
+    print("Areas", areas)
