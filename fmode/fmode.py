@@ -109,19 +109,19 @@ def mode_samples(samples, mode):
     #inds[inds >= len(samples)] = len(samples) - 1
     return samples_, inds
 
-def find_areas_analytical(x, alphas, betas, ws, scale, noise_std):
-    y_base = calc_y(x, [], [], ws, scale)
-    areas = []
-    for i in np.arange(len(alphas)):
-        y = calc_y(x, alphas[i:i+1], betas[i:i+1], ws, scale)
-        y -= y_base
-        inds = np.where(y > noise_std)[0]
-        y_gt_noise = y[inds]
-        x_gt_noise = x[inds]
-        x_left = np.min(x_gt_noise)
-        x_right = np.max(x_gt_noise)
-        areas.append((np.sum(y_gt_noise)*(x_right-x_left)/len(y_gt_noise), x_left, x_right))
-    return areas
+#def find_areas_analytical(x, alphas, betas, ws, scale, noise_std):
+#    y_base = calc_y(x, [], [], ws, scale)
+#    areas = []
+#    for i in np.arange(len(alphas)):
+#        y = calc_y(x, alphas[i:i+1], betas[i:i+1], ws, scale)
+#        y -= y_base
+#        inds = np.where(y > noise_std)[0]
+#        y_gt_noise = y[inds]
+#        x_gt_noise = x[inds]
+#        x_left = np.min(x_gt_noise)
+#        x_right = np.max(x_gt_noise)
+#        areas.append((np.sum(y_gt_noise)*(x_right-x_left)/len(y_gt_noise), x_left, x_right))
+#    return areas
 
 def find_areas(x, y, alphas, betas, ws, scale, noise_std):
     ###########################################################################
@@ -142,7 +142,7 @@ def find_areas(x, y, alphas, betas, ws, scale, noise_std):
     ys_fit = np.asarray(ys_fit)
     components_inds = np.argmax(ys_fit, axis=0)
     
-    print("components_inds", components_inds)
+    #print("components_inds", components_inds)
     areas = np.zeros(num_components)
     counts = np.zeros(num_components)
     ranges = np.zeros((num_components, 2))
@@ -150,12 +150,21 @@ def find_areas(x, y, alphas, betas, ws, scale, noise_std):
     ranges[:, 1] = sys.float_info.min
 
     for i in np.arange(len(y)):
-        areas[components_inds[i]] += y[i]
-        counts[components_inds[i]] += 1.
-        if x[i] < ranges[components_inds[i], 0]:
-            ranges[components_inds[i], 0] = x[i]
-        if x[i] > ranges[components_inds[i], 1]:
-            ranges[components_inds[i], 1] = x[i]
+        component_ind = components_inds[i]
+        areas[component_ind] += y[i]
+        #######################################################################
+        # Subtract contribution from polynomial base and other components
+        areas[component_ind] -= y_base[i]
+        for j in np.arange(num_components):
+            if j != component_ind:
+                areas[component_ind] -= ys_fit[j][i]
+        #######################################################################
+        counts[component_ind] += 1.
+        # Update component ranges
+        if x[i] < ranges[component_ind, 0]:
+            ranges[component_ind, 0] = x[i]
+        if x[i] > ranges[component_ind, 1]:
+            ranges[component_ind, 1] = x[i]
         
     for i in np.arange(num_components):
         areas[i] *= (ranges[i, 1]-ranges[i, 0])/counts[i]
@@ -178,7 +187,10 @@ fig, ax = plt.subplots(nrows=1, ncols=1)
 ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
 fig.savefig("spectrum.png")
 
+f1 = open('areas.txt', 'w')
+f1.write('k num_components f_mode_area\n')
 
+results = []
 k_index = np.min(np.where(dat.k_y >= k_min)[0])
 k_max = dat.k_y[dat.k_y > k_max][0]
 while k_index < dat.p_kyom_kx0.shape[1]:
@@ -187,7 +199,9 @@ while k_index < dat.p_kyom_kx0.shape[1]:
     if np.min(dat.k_y[k_index:]) > k_max:
         break
     
-    k_index += 1
+    print("------------------------------------------------------------------")
+    print("Fitting for k = " + str(dat.k_y[k_index]))
+    print("------------------------------------------------------------------")
     #y = dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]
     # Average over 3 neigbouring slices to reduce noise
     #y = np.log(dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]) - np.log(3)
@@ -397,13 +411,28 @@ while k_index < dat.p_kyom_kx0.shape[1]:
     for i in np.arange(len(areas)):
         ax.axvspan(ranges[i, 0], ranges[i, 1], alpha=0.5, color=colors[i])
     
-    
-    ax.set_title("Spectrum at k=" + str(dat.k_y[k_index]) + ", num. components=" + str(opt_num_components))
+    k_value = dat.k_y[k_index]
+    ax.set_title("Spectrum at k=" + str(k_value) + ", num. components=" + str(opt_num_components))
     ax.legend(loc=0)
     ax.set_xlabel(r'$\nu$')
     ax.set_ylabel('Amplitude')
     fig.savefig("areas" + str(k_index) + ".png")
     
+    f1.write('%s %s %s' % (str(k_value), opt_num_components, areas[0]) + "\n")
     print("Lowest BIC", min_bic)
     print("Num components", opt_num_components)
     print("Areas", areas)
+    f1.flush()
+    results.append([k_value, opt_num_components, areas[0]])
+
+    k_index += 1
+
+f1.close()
+
+results = np.asarray(results)
+fig, ax = plt.subplots(nrows=1, ncols=1)
+plt.figure(figsize=(7, 7))
+ax.plot(results[:, 0], results[:, 2], 'k-')
+ax.set_xlabel(r'$k$')
+ax.set_ylabel('F-mode area')
+fig.savefig("areas.png")
