@@ -526,11 +526,26 @@ def sample(x, y, infer_z_scale=False, known_params=dict(), num_samples=1):
             sampling_result["z_scale"] = np.mean(trace['z_scale'])
 
     else:
+        
+        def prior(params):
+            sig_var, ell, noise_var, z_scale = decode_params(params)
+            ret_val = sig_var**2/data_var + ell**2/(max_grid_size**2) + noise_var**2/data_var
+            if z_scale is not None:
+                ret_val  += z_scale**2
+            return ret_val
+
+        def prior_grad(params):
+            sig_var, ell, noise_var, z_scale = decode_params(params)
+            ret_val = [2*sig_var/data_var + 2*ell/(max_grid_size**2) + 2*noise_var/data_var]
+            if z_scale is not None:
+                ret_val.append(2*z_scale)
+            return np.asarray(ret_val)
+            
         def lik_fn(params):
-            return -kgp.likelihood(params, [])
+            return -kgp.likelihood(params, [])# + prior(params)
 
         def grad_fn(params):
-            return -kgp.likelihood_grad(params, [])
+            return -kgp.likelihood_grad(params, [])# + prior_grad(params)
 
         min_loglik = None
         min_res = None
@@ -539,7 +554,7 @@ def sample(x, y, infer_z_scale=False, known_params=dict(), num_samples=1):
             bounds = []
             if "sig_var" not in known_params:
                 sig_var_min = data_var*.1
-                sig_var_max = data_var*10
+                sig_var_max = data_var*2
                 sig_var_init = random.uniform(sig_var_min, sig_var_max)
                 params.append(sig_var_init)
                 bounds.append((sig_var_min, sig_var_max))
@@ -558,8 +573,8 @@ def sample(x, y, infer_z_scale=False, known_params=dict(), num_samples=1):
             
             if infer_z_scale:
                 if "z_scale" not in known_params:
-                    z_scale_min = 1e-5
-                    z_scale_max = 1e5
+                    z_scale_min = .1
+                    z_scale_max = 10
                     if num_samples == 1:
                         z_scale_init = 1.
                     else:
@@ -568,9 +583,9 @@ def sample(x, y, infer_z_scale=False, known_params=dict(), num_samples=1):
                     bounds.append((z_scale_min, z_scale_max))
             
 
-            #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':1e-7})#, 'eps':.1})
-            res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=lik_grad, bounds=bounds, options={'disp': True, 'gtol':1e-7})
-            #res = scipy.optimize.minimize(lik_fn, params, method='TNC', jac=lik_grad, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+            #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=lik_grad, options={'disp': True, 'gtol':1e-7})#, 'eps':.1})
+            #res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=lik_grad, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, params, method='TNC', jac=lik_grad, bounds=bounds, options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             #assert(loglik == lik_fn(res['x']))
             if min_loglik is None or loglik < min_loglik:
