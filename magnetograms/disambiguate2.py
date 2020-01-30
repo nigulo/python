@@ -561,7 +561,7 @@ def sample(x, y, infer_z_scale=False, known_params=dict(), num_samples=1):
                     z_scale_min = 1e-5
                     z_scale_max = 1e5
                     if num_samples == 1:
-                        z_scale_init = 1e5
+                        z_scale_init = 1.
                     else:
                         z_scale_init = (z_scale_max - z_scale_min)/(num_samples**2)*(trial_no**2) + z_scale_min#random.uniform(z_scale_min, z_scale_max)
                     params.append(z_scale_init)

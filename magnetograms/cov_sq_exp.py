@@ -45,13 +45,11 @@ class cov_sq_exp(cov_func):
                 K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] = I * exp_fact
                 if calc_grad:
                     K_grads[0, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2]
-                    K_grads[1, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * x_diff_sq_sum * self.inv_length_scale_qb
-                    K_grads[1, i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
+                    K_grads[1, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = self.sig_var * K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * x_diff_sq_sum * self.inv_length_scale_qb
                     if self.scales is not None:
                         for k in np.arange(len(self.scales)):
                             if self.scales[k] is not None:
-                                K_grads[3:3+k, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = -K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * x_diff_sq[k] * scales[k]
-                                K_grads[3:3+k, i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
+                                K_grads[3+k, i_abs_1:i_abs_2, j_abs_1:j_abs_2] = -self.sig_var * K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] * self.inv_length_scale_sq * x_diff_sq[k] / scales[k]
                                 
                 K[i_abs_1:i_abs_2, j_abs_1:j_abs_2] *= self.sig_var
                 
