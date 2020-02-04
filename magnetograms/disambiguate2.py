@@ -73,16 +73,16 @@ subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
 num_layers = 3
-inference = True
+inference = False
 infer_z_scale = True
-sample_or_optimize = True
+sample_or_optimize = False
 num_chains = 4
 inference_after_iter = 20
 
 total_num_tries = 1000
 num_tries_without_progress = 20
 
-m_kiss = 5
+m_kiss = 10
 
 def load(file_name):
     
@@ -194,9 +194,8 @@ def load(file_name):
         if true_input is None:
             for i in np.arange(0, y.shape[2]):
                 test_plot = plot.plot(nrows=1, ncols=1)
-                test_plot.set_color_map('bwr')
                 
-                test_plot.colormap(y[:, :, i, 2])
+                test_plot.colormap(y[:, :, i, 2], cmap_name="bwr")
                 test_plot.vectors(x_mesh[0], x_mesh[1], y[:, :, i, 0], y[:, :, i, 1], [], units='width', color = 'k')
                 test_plot.save("test_field" + str(i) +".png")
                 test_plot.close()
@@ -224,9 +223,7 @@ def load(file_name):
     
             truth_plot = plot.plot(nrows=num_layers, ncols=3)
             for layer in np.arange(0, num_layers):
-                truth_plot.set_color_map('bwr')
-                
-                truth_plot.colormap(bx[:, :, layer], [layer, 0])
+                truth_plot.colormap(bx[:, :, layer], [layer, 0], cmap_name="bwr")
                 truth_plot.colormap(by[:, :, layer], [layer, 1])
                 truth_plot.colormap(phi[:, :, layer], [layer, 2])
             
@@ -285,12 +282,11 @@ def convert(b, phi, theta):
     if mode == 2:
         
         truth_plot = plot.plot(nrows=n3, ncols=4)
-        truth_plot.set_color_map('bwr')
         for layer in np.arange(0, n3):
-            truth_plot.colormap(bx[:, :, layer], ax_index = [layer, 0], colorbar=True)
-            truth_plot.colormap(by[:, :, layer], ax_index = [layer, 1], colorbar=True)
-            truth_plot.colormap(bz[:, :, layer], ax_index = [layer, 2], colorbar=True)
-            truth_plot.colormap(np.sqrt(bx[:, :, layer]**2 + by[:, :, layer]**2 + bz[:, :, layer]**2), ax_index = [layer, 3], colorbar=True)
+            truth_plot.colormap(bx[:, :, layer], ax_index = [layer, 0], show_colorbar=True, cmap_name="bwr")
+            truth_plot.colormap(by[:, :, layer], ax_index = [layer, 1])
+            truth_plot.colormap(bz[:, :, layer], ax_index = [layer, 2])
+            truth_plot.colormap(np.sqrt(bx[:, :, layer]**2 + by[:, :, layer]**2 + bz[:, :, layer]**2), ax_index = [layer, 3])
             #truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
         truth_plot.save("truth_field_" + str(x_no) + "_" + str(y_no) + ".png")
         truth_plot.close()
@@ -358,28 +354,32 @@ def do_plots(y, thetas, title = None, file_name=None):
 
     for layer in np.arange(0, n3):
         components_plot = plot.plot(nrows=3, ncols=3, title = title)
-        components_plot.set_color_map('bwr')
         
-        components_plot.colormap(bx_true[:, :, layer], [0, 0])
+        components_plot.colormap(bx_true[:, :, layer], [0, 0], show_colorbar=True, cmap_name="bwr")
         components_plot.colormap(by_true[:, :, layer], [0, 1])
-        components_plot.colormap(np.reshape(np.arctan2(by_true[:, :, layer], bx_true[:, :, layer]), (n1, n2)), [0, 2])
+        
+        phi_true = np.reshape(np.arctan2(by_true[:, :, layer], bx_true[:, :, layer]), (n1, n2))
+        components_plot.colormap(phi_true, [0, 2])
         
         
         if y is not None:    
             components_plot.colormap(bx_dis[:, :, layer], [1, 0])
             components_plot.colormap(by_dis[:, :, layer], [1, 1])
-            components_plot.colormap(np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2)), [1, 2])
-
-            components_plot.set_color_map('Greys')
             
+            phi_dis = np.reshape(np.arctan2(by_dis[:, :, layer], bx_dis[:, :, layer]), (n1, n2))
+            components_plot.colormap(phi_dis, [1, 2])
+
             bx_diff = bx_true[:, :, layer] - bx_dis[:, :, layer]
             by_diff = by_true[:, :, layer] - by_dis[:, :, layer]
-            components_plot.colormap(np.array(bx_diff == 0., dtype='float'), [2, 0])
+            phi_diff = phi_true[:, :] - phi_dis[:, :]
+            components_plot.colormap(np.array(bx_diff == 0., dtype='float'), [2, 0], cmap_name="Greys")
             components_plot.colormap(np.array(by_diff == 0., dtype='float'), [2, 1])
+            components_plot.colormap(np.array(phi_diff == 0., dtype='float'), [2, 2])
 
-        if thetas is not None:
-            components_plot.set_color_map('Greys')
-            components_plot.colormap(thetas[:, :, layer], [2, 2], vmin=0., vmax=1.)
+        #if thetas is not None:
+        #    components_plot.set_colormap('Greys')
+        #    components_plot.colormap(thetas[:, :, layer], [2, 2], vmin=0., vmax=1., colorbar=True)
+
         
         if file_name is None:
             file_name = "components"
@@ -747,37 +747,44 @@ class disambiguator():
         #print("y_flat.shape", y_flat.shape)
         b_abs = np.sqrt(np.sum(self.y*self.y, axis=1))
         #b_sq = np.sum(y_flat*y_flat, axis=1)
-        
-        if False:
-            ###################################################################
-            # First infer the length-scale, sig_var and noise_var from different layers separately
 
-            avg_length_scale = 0.
-            avg_sig_var = 0.
-            avg_noise_var = 0.
-            for i in np.arange(n3):
-                x1 = self.x[i::n3, :2]
-                b_abs1 = b_abs[i::n3]
-                res = sample(x1, b_abs1)
-                length_scale = res["ell"]
-                sig_var = res["sig_var"]
-                noise_var = res["noise_var"]
-                print("Layer ", i, ": length_scale, sig_var, noise_var", length_scale, sig_var, noise_var)
-                avg_length_scale += length_scale
-                avg_sig_var += sig_var
-                avg_noise_var += noise_var
-            avg_length_scale /= n3
-            avg_sig_var /= n3
-            avg_noise_var /= n3
-            self.length_scale = avg_length_scale
-            self.sig_var = avg_sig_var
-            self.noise_var = avg_noise_var
+
+        ###################################################################
+        # First infer the length-scale, sig_var and noise_var from different layers separately
+        # Estimate length_scale as an average over the layers
+
+        avg_length_scale = 0.
+        avg_sig_var = 0.
+        avg_noise_var = 0.
+        for i in np.arange(n3):
+            x1 = self.x[i::n3, :2]
+            b_abs1 = b_abs[i::n3]
+            res = sample(x1, b_abs1)
+            length_scale = res["ell"]
+            sig_var = res["sig_var"]
+            noise_var = res["noise_var"]
+            print("Layer ", i, ": length_scale, sig_var, noise_var", length_scale, sig_var, noise_var)
+            avg_length_scale += length_scale
+            avg_sig_var += sig_var
+            avg_noise_var += noise_var
+        avg_length_scale /= n3
+        avg_sig_var /= n3
+        avg_noise_var /= n3
+        self.length_scale = avg_length_scale
+        self.sig_var = avg_sig_var
+        self.noise_var = avg_noise_var
+        
+        if infer_z_scale:
 
             ###################################################################
             # Now infer the z_scale
             self.estimate_z_scale()
-            
-
+        
+        '''
+        # Commented out for now. It seems that the disproportionate
+        # number of datapoints in z-direction makes lentgh_scale estimation
+        # over the full data unreliable. Maybe we have to fix sib_var
+        # and noise_var estimated per layer too and repeat many iterations
         ###################################################################
         # Infer the length-scale, sig_var and noise_var from full data again
         res = sample(self.x, b_abs)
@@ -797,8 +804,8 @@ class disambiguator():
             self.sig_var = res["sig_var"]
             self.noise_var = res["noise_var"]
             print("length_scale, sig_var, noise_var", self.length_scale, self.sig_var, self.noise_var)
+        '''
         
-            
         self.init()
 
 
