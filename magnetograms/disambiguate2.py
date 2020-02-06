@@ -68,12 +68,11 @@ if len(sys.argv) > 6:
     true_input = sys.argv[6]
 
 mode = 2
-
 subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
 num_layers = 3
-inference = False
+inference = True
 infer_z_scale = True
 sample_or_optimize = False
 num_chains = 4
@@ -82,7 +81,7 @@ inference_after_iter = 20
 total_num_tries = 1000
 num_tries_without_progress = 20
 
-m_kiss = 10
+m_kiss = 13
 
 def load(file_name):
     
@@ -738,6 +737,7 @@ class disambiguator():
                 best_z_scale = z_scale
         self.x = np.array(x_copy)
         self.x[:, 2] *= best_z_scale
+        self.z_scale = best_z_scale
         print("best_z_scale", best_z_scale)
         
     
@@ -783,7 +783,7 @@ class disambiguator():
         '''
         # Commented out for now. It seems that the disproportionate
         # number of datapoints in z-direction makes lentgh_scale estimation
-        # over the full data unreliable. Maybe we have to fix sib_var
+        # over the full data unreliable. Maybe we have to fix sig_var
         # and noise_var estimated per layer too and repeat many iterations
         ###################################################################
         # Infer the length-scale, sig_var and noise_var from full data again
@@ -805,6 +805,12 @@ class disambiguator():
             self.noise_var = res["noise_var"]
             print("length_scale, sig_var, noise_var", self.length_scale, self.sig_var, self.noise_var)
         '''
+        
+        f = open('estimated_params.txt', 'w')
+        f.write('ell sig_var noise_var z_scale\n')
+        f.write('%f %f %f %f' % (self.length_scale, self.sig_var, self.noise_var, self.z_scale) + "\n")
+        f.flush()
+        f.close()
         
         self.init()
 
@@ -1102,7 +1108,7 @@ if not inference:
     noise_var=0.01
     z_scale = 1.
     
-best_loglik = None
+best_loglik = float("-inf")
 
 if inference:
     d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
@@ -1113,23 +1119,29 @@ if inference:
     x = d.x # For z_scale
     print("Estimated length_scale", d.length_scale)
 
+
+y = np.array(y_orig)
+if true_input is None:
+    # Align all the transverse components either randomly or identically
+    for i in np.arange(0, n):
+        if np.random.uniform() < 0.5:
+            y[i, :2] *= -1
+        #y[i, :2] = np.abs(y[i, :2])
+
 for i in np.arange(0, total_num_tries):
-    
-    y = np.array(y_orig)
-    if true_input is None:
-        # Align all the transverse components either randomly or identically
-        for i in np.arange(0, n):
-            if np.random.uniform() < 0.5:
-                y[i, :2] *= -1
-            #y[i, :2] = np.abs(y[i, :2])
     
     d = disambiguator(x, y, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
     prob_a, field_y, loglik = d.disambiguate()
-    if best_loglik is None or loglik > best_loglik:
+    if loglik > best_loglik:
         best_loglik = loglik
         best_y = field_y
         do_plots(best_y, d.thetas, title="Current best", file_name="best_result")
 
         misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1_orig, n2_orig, n3_orig, num_x, num_y, x_no, y_no, best_y))
 
-
+    y = np.array(best_y)
+        
+    # Swap half of the pixels
+    indices = np.random.choice(len(y), len(y)//2, replace = False)
+    y[indices, :2] *= -1
+        
