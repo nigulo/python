@@ -89,7 +89,7 @@ def return_wave(fried, size, wfsize, pupsize, iterations=400):
     else:
          old_size = size
 
-    print('Simulating for fried parameter...%0.4f' %(fried))
+    print('Simulating for fried parameter...%f' %(fried))
     amp, phase = init_amplitude(fried, size, pupsize), init_phase_odd_symm(iterations, size) + 1j*init_phase_odd_conj(iterations, size)
     amp = amp.reshape(1, size, size).repeat(iterations, 0)
     print(amp.shape, phase.shape)

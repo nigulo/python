@@ -60,6 +60,19 @@ MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> 
 MODE_3 = 3 # aberrated images --> psf (+object as second input) --> aberrated images
 nn_mode = MODE_2
 
+train = True
+if len(sys.argv) > 1:
+    if sys.argv[1].upper() == "TEST":
+        train = False
+        
+n_test_frames = 10
+if len(sys.argv) > 2:
+    n_test_frames = int(sys.argv[2])
+
+n_test_objects = 1
+if len(sys.argv) > 3:
+    n_test_objects = int(sys.argv[3])
+
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
      return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
@@ -692,9 +705,8 @@ class nn_model:
     def test(self):
         
         model = self.model
-        n_test = 10
         
-        Ds_, objs, nx_orig = gen_data(num_frames=n_test, num_images=1)
+        Ds_, objs, nx_orig = gen_data(num_frames=n_test_frames, num_images=n_test_objects)
         print("test_1")
         num_frames = Ds_.shape[0]
         num_objects = Ds_.shape[1]
@@ -723,7 +735,7 @@ class nn_model:
             end = time.time()
             print("Prediction time" + str(end - start))
     
-            for i in np.arange(n_test):
+            for i in np.arange(num_frames):
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
                 my_test_plot = plot.plot(nrows=1, ncols=2)
                 my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
@@ -753,7 +765,7 @@ class nn_model:
             psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
             obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
-            for i in np.arange(n_test):
+            for i in np.arange(len(objs)):
                 D = misc.sample_image(Ds[i, :, :, 0], .99)
                 D_d = misc.sample_image(Ds[i, :, :, 1], .99)
                 DF = fft.fft2(D)
@@ -762,16 +774,16 @@ class nn_model:
                 obj_reconstr = fft.ifftshift(obj_reconstr[0])
                 obj_reconstr_mean += obj_reconstr
 
-                my_test_plot = plot.plot(nrows=1, ncols=2)
-                my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-                my_test_plot.colormap(obj_reconstr, [1])
-                my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
-                my_test_plot.close()
+                #my_test_plot = plot.plot(nrows=1, ncols=2)
+                #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+                #my_test_plot.colormap(obj_reconstr, [1])
+                #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                #my_test_plot.close()
                 
             my_test_plot = plot.plot(nrows=1, ncols=2)
             my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
             my_test_plot.colormap(obj_reconstr_mean, [1])
-            my_test_plot.save("test_results_mean_mode" + str(nn_mode) + "_" + str(i) + ".png")
+            my_test_plot.save("test_results_mean_mode" + str(nn_mode) + ".png")
             my_test_plot.close()
             
         elif self.nn_mode == MODE_3:
@@ -780,7 +792,7 @@ class nn_model:
             pred_psf = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
             end = time.time()
             print("Prediction time" + str(end - start))
-            for i in np.arange(n_test):
+            for i in np.arange(len(objs)):
                 D = Ds[i, :, :, 0]
                 D_d = Ds[i, :, :, 1]
                 DF = fft.fft2(D)
@@ -935,17 +947,21 @@ model = nn_model(nx, num_frames, num_objs)
 
 model.set_data(Ds, objs)
 
-for rep in np.arange(0, num_reps):
-    print("Rep no: " + str(rep))
-
-    if rep == num_reps-1:
-        # In the laast iteration train on the full set
-        model.train(full=True)
-    else:
-        model.train()
-
+if train:
+    for rep in np.arange(0, num_reps):
+        print("Rep no: " + str(rep))
+    
+        if rep == num_reps-1:
+            # In the laast iteration train on the full set
+            model.train(full=True)
+        else:
+            model.train()
+    
+        model.test()
+    
+        #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
+        #    break
+        model.validation_losses = model.validation_losses[-20:]
+else:
     model.test()
-
-    #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
-    #    break
-    model.validation_losses = model.validation_losses[-20:]
+    
