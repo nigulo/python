@@ -326,13 +326,13 @@ def daily_averages(t, y, noise):
             t_res.append(np.mean(t[start:i]))
             y_res.append(np.mean(y[start:i]))
             if not all(noise[start:i] == noise[start]):
-                print "Something wrong!!!"
+                print("Something wrong!!!")
             noise_res.append(noise[start])
             start = i
     t_res.append(np.mean(t[start:]))
     y_res.append(np.mean(y[start:]))
     if not all(noise[start:] == noise[start]):
-        print "Something wrong!!!"
+        print("Something wrong!!!")
     noise_res.append(noise[start])
     return (np.asarray(t_res), np.asarray(y_res), np.asarray(noise_res))
 

@@ -21,11 +21,10 @@ import mw_utils
 
 star = sys.argv[1]
 
-data_dir = "./"
-if data_dir == "../cleaned":
-    skiprows = 1
-else:
-    skiprows = 0
+data_dir = "data"
+skiprows = 1
+
+matern_p = 1
 
 files = []
 
@@ -112,14 +111,14 @@ for i in np.arange(0, len(cov_types)):
         kalman_utils.add_component(cov_type, [slopes, intercepts])
     elif cov_type == "periodic":
         ells = np.array([10.0])
-        kalman_utils.add_component(cov_type, [sig_var, omegas, ells])
+        kalman_utils.add_component(cov_type, [sig_var, omegas, ells], {"j_max":2})
     elif cov_type == "quasiperiodic":
         ellps = np.array([10.0])
-        kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs])
+        kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs], {"j_max":2})
     elif cov_type == "exp_quad":
         kalman_utils.add_component(cov_type, [sig_var, ellqs])
     elif cov_type == "matern":
-        kalman_utils.add_component(cov_type, [sig_var, ellqs])
+        kalman_utils.add_component(cov_type, [sig_var, ellqs], {"p":matern_p})
     else:           
         assert(True==False)
 
