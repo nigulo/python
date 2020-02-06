@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.misc as misc
+import scipy.special as special
 
 class cov_exp_quad():
 
@@ -16,7 +16,7 @@ class cov_exp_quad():
             if (n % 2 != 0):
                 self.coefs[n2] = -self.coefs[n2]
         
-        self.N_fact = misc.factorial(N)
+        self.N_fact = special.factorial(N)
 
     def get_F_q(self, sigma, ell, return_P = False):
         kappa = 1.0/(2.0*ell*ell)

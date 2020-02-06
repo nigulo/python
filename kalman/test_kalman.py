@@ -323,7 +323,7 @@ j_max = 2
 ell = 10
 
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
-print "slope_hat, intercept_hat", slope_hat, intercept_hat
+print("slope_hat, intercept_hat", slope_hat, intercept_hat)
 
 params = []
 param_index = 0
@@ -381,7 +381,7 @@ else:
 iteration = 0
 for _ in iterations:
     done = False
-    print iteration, free_index
+    print(iteration, free_index)
     while not done:
         prms, done, new_indices = get_next_params(params, indices, free_index)
     
@@ -487,7 +487,7 @@ for _ in iterations:
         if has_A:
             kf = kalman.kalman(t=t, y=y, F=As, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=None, noise_int_prec=100, F_is_A=has_A, Q=Qs)
         else:
-            print "A"
+            print("A")
             kf = kalman.kalman(t=t, y=y, F=Fs, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=None, noise_int_prec=100, F_is_A=has_A, Q=Qs)
         y_means, loglik = kf.filter()
         #print prms
@@ -507,8 +507,8 @@ for _ in iterations:
             iteration += 1
         indices = best_indices
 
-print params_max
-print "true values", 2.0*np.pi*freq, length_scale, slope_hat, mean
+print(params_max)
+print("true values", 2.0*np.pi*freq, length_scale, slope_hat, mean)
 ax1.plot(t[1:], y_means_max, 'r--')
 
 #y_means = kf_max.smooth()

@@ -70,7 +70,7 @@ fig.set_size_inches(6, 3)
 ax1.plot(t, y, 'b+')
 
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
-print "slope_hat, intercept_hat", slope_hat, intercept_hat
+print("slope_hat, intercept_hat", slope_hat, intercept_hat)
 
 kalman_utils = ku.kalman_utils(t, y, num_iterations=3)
 for i in np.arange(0, len(cov_types)):
@@ -104,10 +104,10 @@ kalman_utils.add_component("white_noise", [np.array([noise_var])])
 param_modes, param_means, param_sigmas, y_means, logliks = kalman_utils.do_inference()
 
 
-print "Estimated mode:", param_modes
-print "Estimated mean:", param_means
-print "Estimated sigma:", param_sigmas
-print "True:", sig_vars[0], 2.0*np.pi*freq, 10.0, ellq, slope_hat, mean, noise_var
+print("Estimated mode:", param_modes)
+print("Estimated mean:", param_means)
+print("Estimated sigma:", param_sigmas)
+print("True:", sig_vars[0], 2.0*np.pi*freq, 10.0, ellq, slope_hat, mean, noise_var)
 ax1.plot(t[1:], y_means, 'r--')
 
 #y_means = kf_max.smooth()

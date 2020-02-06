@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.misc as misc
+import scipy.special as special
 
 class sampler():
     
@@ -92,13 +92,13 @@ class sampler():
         for i in np.arange(0, len(self.params_values)):
             if len(self.params_values[i]) > 1:
                 if self.best_indices[i] == 0 :
-                    print "WARNING, optimal value for parameter " + str(i) + " at the lower boundary of the grid"
+                    print("WARNING, optimal value for parameter " + str(i) + " at the lower boundary of the grid")
                 elif self.best_indices[i] == len(self.params_values[i]) - 1:
-                    print "WARNING, optimal value for parameter " + str(i) + " at the upper boundary of the grid"
+                    print("WARNING, optimal value for parameter " + str(i) + " at the upper boundary of the grid")
             param_value = self.params_values[i][self.best_indices[i]]
             params_mode.append(param_value)
             log_probs = np.array(self.logliks[i])
-            log_probs -= misc.logsumexp(log_probs)
+            log_probs -= special.logsumexp(log_probs)
             probs = np.exp(log_probs)
             probs /= sum(probs)
             #mean = np.exp(scipy.misc.logsumexp(np.log(freqs_m)+probs_m))
@@ -109,5 +109,5 @@ class sampler():
             params_sigma.append(sigma)
             if len(self.params_values[i]) > 1:
                 if sigma < max(self.params_values[i][1:] - self.params_values[i][:-1]):
-                    print "WARNING, grid for parameter " + str(i) + " too sparse"
+                    print("WARNING, grid for parameter " + str(i) + " too sparse")
         return params_mode, params_mean, params_sigma, self.best_y_mean, self.max_loglik

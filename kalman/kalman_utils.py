@@ -236,11 +236,11 @@ class kalman_utils():
         last_iteration = -1
         while self.sampler.get_iteration() < self.num_iterations:
             if self.sampler.get_iteration() != last_iteration:
-                print "Iteration", self.sampler.get_iteration()
+                print("Iteration", self.sampler.get_iteration())
                 last_iteration = self.sampler.get_iteration()
                 if last_iteration > 0:
                     param_modes, param_means, param_sigmas, y_means, logliks = self.sampler.get_results()
-                    print param_modes
+                    print(param_modes)
             params_sample, loglik = self.sampler.sample()
             #print "Sample", params_sample, loglik
         return self.sampler.get_results()

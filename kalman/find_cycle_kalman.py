@@ -47,7 +47,7 @@ for root, dirs, dir_files in os.walk(data_dir):
                 break
 
 if not data_found:
-    print "Cannot find data for " + star
+    print("Cannot find data for " + star)
     sys.exit(1)
 
 offset = 1979.3452
@@ -81,11 +81,11 @@ ax1.plot(t, np.mean(y)+np.sqrt(noise_var[:,0,0]), 'k-')
 fig.savefig(star + '.png')
 plt.close(fig)
 
-print np.sqrt([orig_var, np.min(noise_var), np.max(noise_var), np.mean(noise_var), np.median(noise_var)])
+print(np.sqrt([orig_var, np.min(noise_var), np.max(noise_var), np.mean(noise_var), np.median(noise_var)]))
 noise_var = np.mean(noise_var)#np.max(noise_var)
 
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
-print "slope_hat, intercept_hat", slope_hat, intercept_hat
+print("slope_hat, intercept_hat", slope_hat, intercept_hat)
 
 sig_vars = [orig_var, slope_hat**2]
 freqs = np.linspace(0.0, 0.5, 100)
@@ -127,9 +127,9 @@ kalman_utils.add_component("white_noise", [np.array([noise_var])])
 
 param_modes, param_means, param_sigmas, y_means, logliks = kalman_utils.do_inference()
 
-print "Estimated mode:", param_modes[:-1]
-print "Estimated mean:", param_means[:-1]
-print "Estimated sigma:", param_sigmas[:-1]
+print("Estimated mode:", param_modes[:-1])
+print("Estimated mean:", param_means[:-1])
+print("Estimated sigma:", param_sigmas[:-1])
 ax1.plot(t[1:], y_means, 'r--')
 
 #y_means = kf_max.smooth()
