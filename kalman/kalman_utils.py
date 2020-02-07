@@ -1,14 +1,6 @@
 
 import numpy as np
-from scipy import stats
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import matplotlib.colorbar as cb
-from matplotlib import cm
-from matplotlib.colors import LogNorm, SymLogNorm
-from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
-import matplotlib.colors as colors
-import matplotlib.ticker as ticker
+import utils.plot as plot
 import scipy.special as special
 import numpy.linalg as la
 from scipy.special import gamma
@@ -232,7 +224,7 @@ class kalman_utils():
     '''        
     def do_inference(self):
         self.sampler.init()
-    
+        self.results = []
         last_iteration = -1
         while self.sampler.get_iteration() < self.num_iterations:
             if self.sampler.get_iteration() != last_iteration:
@@ -242,6 +234,7 @@ class kalman_utils():
                     param_modes, param_means, param_sigmas, y_means, logliks = self.sampler.get_results()
                     print(param_modes)
             params_sample, loglik = self.sampler.sample()
+            self.results.append([params_sample, loglik])
             #print "Sample", params_sample, loglik
         return self.sampler.get_results()
 
@@ -252,3 +245,19 @@ class kalman_utils():
         y_means, loglik = self.loglik_fn(params)
         return y_means, loglik
 
+
+    def plot(self, file_name_prefix=""):
+        plots = []
+        num_params = len(self.results[0][0])
+        for i in np.arange(num_params):
+            plots.append(plot.plot())
+        for result in self.results:
+            params = result[0]
+            loglik = result[1]
+            for i in np.arange(num_params):
+                plots[i].plot(params[i], loglik, params="k+")
+                
+        for i in np.arange(num_params):
+            plots[i].save(file_name_prefix + "param" + str(i) + ".png")
+            plots[i].close()
+        

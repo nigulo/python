@@ -7,6 +7,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
 import matplotlib.colors as colors
 import matplotlib.ticker as ticker
+import pyhdust.triangle as triangle
 import numpy as np
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
@@ -300,6 +301,17 @@ class plot:
     def fill(self, x, y_lower, y_upper, ax_index = [], color="lightsalmon", alpha=0.8):
         ax = self.get_ax(ax_index)
         ax.fill_between(x, y_lower, y_upper, alpha=alpha, facecolor=color, interpolate=True)
+        
+
+    '''
+        Plot pair-wise 2d marginal distributions for the given set of parameter samples
+        samples - KxN matrix, where K is the number of parameters and N is the number of samples
+        labels - array of size K defining the labels for the parameters
+    '''
+    def plot_marginals(self, samples, labels):
+        fig, ax = plt.subplots(nrows=samples.shape[1], ncols=samples.shape[1])
+        fig.set_size_inches(6, 6)
+        triangle.corner(samples[:,:], labels=labels, fig=self.fig)
         
 
     def save(self, file_name):
