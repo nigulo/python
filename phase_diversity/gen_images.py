@@ -61,7 +61,7 @@ for root, dirs, files in os.walk(in_dir):
             image = Image.fromarray(image)
             image = image.convert("L")
             
-            angles = random.random(size=num_angles)*360.0
+            angles = np.linspace(0, 360, num_angles)#random.random(size=num_angles)*360.0
             for angle in angles:
                 rotated = image.rotate(angle)
                 rotated = rotated.crop(((nx-image_size)//2, (ny-image_size)//2,(nx+image_size)//2, (ny+image_size)//2))

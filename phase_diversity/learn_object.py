@@ -41,14 +41,14 @@ wavelength = 5250.0
 gamma = 1.0
 
 # How many frames to generate per object
-num_frames_gen = 10
+num_frames_gen = 100
 
 # How many frames to use in training
 num_frames = 10
 # How many objects to use in training
 num_objs = 100#None
 
-fried_param = 0.1
+fried_param = 0.2
 noise_std_perc = 0.#.01
 
 n_epochs = 10
@@ -60,6 +60,24 @@ MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> 
 MODE_3 = 3 # aberrated images --> psf (+object as second input) --> aberrated images
 nn_mode = MODE_2
 
+dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
+os.mkdir(dir_name)
+sys.stdout = open(dir_name + '/log.txt', 'w')
+
+f = open(dir_name + '/params.txt', 'w')
+f.write('fried num_frames_gen num_frames num_objs nn_mode\n')
+f.write('%f %f %f %f %f' % (fried_param, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
+f.flush()
+f.close()
+
+
+#logfile = open(dir_name + '/log.txt', 'w')
+#def print(*xs):
+#    for x in xs:
+#        logfile.write('%s' % x)
+#    logfile.write("\n")
+#    logfile.flush()
+    
 train = True
 if len(sys.argv) > 1:
     if sys.argv[1].upper() == "TEST":
@@ -79,10 +97,10 @@ def reverse_colourmap(cmap, name = 'my_cmap_r'):
 my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
 
 def load_data():
-    data_file = 'learn_object_Ds.dat'
+    data_file = dir_name + '/learn_object_Ds.dat'
     if os.path.exists(data_file):
         Ds = np.load(data_file)
-        data_file = 'learn_object_objs.dat'
+        data_file = dir_name + '/learn_object_objs.dat'
         if os.path.exists(data_file):
             objs = np.load(data_file)
         return Ds, objs
@@ -90,23 +108,23 @@ def load_data():
         return None, None
 
 def save_data(Ds, objects):
-    with open('learn_object_Ds.dat', 'wb') as f:
+    with open(dir_name + '/learn_object_Ds.dat', 'wb') as f:
         np.save(f, Ds)
-    with open('learn_object_objs.dat', 'wb') as f:
+    with open(dir_name + '/learn_object_objs.dat', 'wb') as f:
         np.save(f, objs)
 
 
 def load_model():
-    model_file = 'learn_object_model.dat'
+    model_file = dir_name + '/learn_object_model.dat'
     if os.path.exists(model_file):
         model = tf.keras.models.load_model(model_file)
-        nn_mode = pickle.load(open('learn_object_params.dat', 'rb'))
+        nn_mode = pickle.load(open(dir_name + '/learn_object_params.dat', 'rb'))
         return model, nn_mode
     return None, None
 
 def save_model(model):
-    tf.keras.models.save_model(model, 'learn_object_model.dat')
-    with open('learn_object_params.dat', 'wb') as f:
+    tf.keras.models.save_model(model, dir_name + '/learn_object_model.dat')
+    with open(dir_name + '/learn_object_params.dat', 'wb') as f:
         pickle.dump(nn_mode, f, protocol=4)
 
 
@@ -573,7 +591,7 @@ class nn_model:
                     #my_test_plot.colormap(D_d, [1, 1])
                     #my_test_plot.colormap(D1[0, 0], [2, 0])
                     #my_test_plot.colormap(D1[0, 1], [2, 1])
-                    my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                    my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
                     my_test_plot.close()
         elif self.nn_mode == MODE_2:
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
@@ -632,7 +650,7 @@ class nn_model:
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
                 #my_test_plot.colormap(D1[0, 1], [2, 1])
-                my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
                 my_test_plot.close()
                 
                 i += 1
@@ -668,7 +686,7 @@ class nn_model:
                 #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
                 my_test_plot.colormap(obj, [0])
                 my_test_plot.colormap(obj_reconstr, [1])
-                my_test_plot.save("train_results_mean_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.save(dir_name + "/train_results_mean" + str(i) + ".png")
                 my_test_plot.close()
 
         elif self.nn_mode == MODE_3:
@@ -696,7 +714,7 @@ class nn_model:
                     my_test_plot.colormap(pred_Ds[i, :, :, 0], [2, 1])
                     my_test_plot.colormap(self.Ds[i, :, :, 1], [3, 0])
                     my_test_plot.colormap(pred_Ds[i, :, :, 1], [3, 1])
-                    my_test_plot.save("train_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                    my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
                     my_test_plot.close()
     
         #######################################################################
@@ -745,7 +763,7 @@ class nn_model:
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
                 #my_test_plot.colormap(D1[0, 1], [2, 1])
-                my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.save(dir_name + "/test_results" + str(i) + ".png")
                 my_test_plot.close()
         elif self.nn_mode == MODE_2:
             print("test_4_2")
@@ -783,7 +801,7 @@ class nn_model:
             my_test_plot = plot.plot(nrows=1, ncols=2)
             my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
             my_test_plot.colormap(obj_reconstr_mean, [1])
-            my_test_plot.save("test_results_mean_mode" + str(nn_mode) + ".png")
+            my_test_plot.save(dir_name + "/test_results_mean.png")
             my_test_plot.close()
             
         elif self.nn_mode == MODE_3:
@@ -807,7 +825,7 @@ class nn_model:
                 my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
                 my_test_plot.colormap(obj_reconstr_1, [1])
                 my_test_plot.colormap(obj_reconstr_2, [2])
-                my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                my_test_plot.save(dir_name + "/test_results" + str(i) + ".png")
                 my_test_plot.close()
             
 
@@ -900,7 +918,7 @@ def gen_data(num_frames, num_images = None, shuffle = True):
                 my_test_plot.colormap(image, [0])
                 my_test_plot.colormap(D, [1])
                 my_test_plot.colormap(D_d, [2])
-                my_test_plot.save("check" + str(frame_no) + "_" + str(obj_no) + ".png")
+                my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
                 my_test_plot.close()
             ###################################################################
 
@@ -933,12 +951,12 @@ if Ds is None:
 
 my_test_plot = plot.plot()
 my_test_plot.colormap(Ds[0, 0, 0])
-my_test_plot.save("D0.png")
+my_test_plot.save(dir_name + "/D0.png")
 my_test_plot.close()
 
 my_test_plot = plot.plot()
 my_test_plot.colormap(Ds[0, 0, 1])
-my_test_plot.save("D0_d.png")
+my_test_plot.save(dir_name + "/D0_d.png")
 my_test_plot.close()
 
 nx = Ds.shape[3]
@@ -964,4 +982,5 @@ if train:
         model.validation_losses = model.validation_losses[-20:]
 else:
     model.test()
-    
+
+#logfile.close()
