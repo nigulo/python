@@ -88,7 +88,7 @@ for (star, dat) in ds:
     
     sig_vars = [orig_var]#, slope_hat**2]
     
-    freqs = np.linspace(1./365, 0.5, 100)
+    freqs = np.linspace(1./365, 0.5, 1000)
     omegas = freqs*2.0*np.pi
     ellqs = np.linspace(500, 1000, 1)
     
@@ -104,8 +104,8 @@ for (star, dat) in ds:
     kalman_utils = ku.kalman_utils(t, y, num_iterations=3, condition_fn=condition_fn, initial_indices = initial_indices)
     for i in np.arange(0, len(cov_types)):
         cov_type = cov_types[i]
-        #sig_var = np.array([sig_vars[i], 1.0])
-        sig_var = np.linspace(sig_vars[i]*0.01, sig_vars[i]*5.0, 10)
+        sig_var = np.array([sig_vars[i]])
+        #sig_var = np.linspace(sig_vars[i]*0.01, sig_vars[i]*5.0, 10)
         if cov_type == "linear_trend":
             slopes = np.linspace(slope_hat*0.5, slope_hat*1.5, 10)
             intercepts = np.linspace(intercept_hat*0.5, intercept_hat*1.5, 10)

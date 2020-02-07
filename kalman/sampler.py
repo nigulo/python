@@ -91,7 +91,7 @@ class sampler():
         params_sigma = []
         for i in np.arange(0, len(self.params_values)):
             if len(self.params_values[i]) > 1:
-                if self.best_indices[i] == 0 :
+                if self.best_indices[i] == 0:
                     print("WARNING, optimal value for parameter " + str(i) + " at the lower boundary of the grid")
                 elif self.best_indices[i] == len(self.params_values[i]) - 1:
                     print("WARNING, optimal value for parameter " + str(i) + " at the upper boundary of the grid")
