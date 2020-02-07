@@ -146,14 +146,14 @@ def load_spec_types(path=""):
 #for [star, rot_period] in rot_period_data:
 #    rot_periods[star] = rot_period
 
-def get_seasons(dat, num_days, seasonal):
+def get_seasons(dat, num_years, seasonal):
     seasons = list()
     #res = list()
     last_t = float('-inf')
     season_start = float('-inf')
     season = list()
     for t, y in dat:
-        if (seasonal and t - last_t > num_days/3) or t - season_start >= num_days:
+        if (seasonal and t - last_t > num_years/3) or t - season_start >= num_years:
             if np.shape(season)[0] > 0:
                 #res.append([(last_t + season_start)/2, season_mean/np.shape(season)[0]])
                 seasons.append(np.asarray(season))
@@ -183,11 +183,11 @@ def resample_seasons(seasons):
         resampled_seasons.append(resampled_season)
     return resampled_seasons
 
-def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=0, num_days=1.0, t_out=None):
+def get_seasonal_noise_var(t, y, per_point=True, remove_trend=False, mode=0, num_years=1.0, t_out=None):
     if t_out is None:
         t_out = t
     total_var = np.var(y)
-    seasons = get_seasons(zip(t, y), num_days, num_days==1.0)
+    seasons = get_seasons(zip(t, y), num_years, num_years==1.0)
     if per_point:
         noise_var = np.zeros(len(t_out))
     else: 

@@ -63,15 +63,20 @@ fig, (ax1) = plt.subplots(nrows=1, ncols=1)
 fig.set_size_inches(6, 3)
 
 orig_var = np.var(y)
-noise_var = mw_utils.get_seasonal_noise_var(t, y, per_point=True, num_days=1.0)
-noise_var = np.reshape(noise_var, (len(noise_var), 1, 1))
+noise_var = mw_utils.get_seasonal_noise_var(t/365.25, y, per_point=True, num_years=1.0)
+
+means = mw_utils.get_seasonal_means(t/365.25, y)
+print(means)
+print(noise_var)
+
+#noise_var = np.reshape(noise_var, (len(noise_var), 1, 1))
 
 # just for removing the duplicates
-t, y, noise_var = mw_utils.downsample(t, y, noise_var, min_time_diff=30.0/365.25, average=True)
+#t, y, noise_var = mw_utils.downsample(t, y, noise_var, min_time_diff=30.0/365.25, average=True)
 ax1.plot(t, y, 'b+')
 ax1.plot([min(t), max(t)], [np.mean(y), np.mean(y)], 'k:')
 ax1.plot([min(t), max(t)], np.mean(y)+[np.sqrt(orig_var), np.sqrt(orig_var)], 'k--')
-ax1.plot(t, np.mean(y)+np.sqrt(noise_var[:,0,0]), 'k-')
+ax1.plot(t, np.mean(y)+np.sqrt(noise_var), 'k-')
 fig.savefig(star + '.png')
 plt.close(fig)
 
