@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../utils')
+sys.path.append('..')
 
 import numpy as np
 from scipy import stats
@@ -16,7 +19,7 @@ import kalman_utils as ku
 import sys
 import os
 import os.path
-import mw_utils
+import MountWilson.mw_utils as mw_utils
 
 
 star = sys.argv[1]

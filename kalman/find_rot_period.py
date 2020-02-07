@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../utils')
+sys.path.append('..')
 
 import numpy as np
 from scipy import stats
@@ -13,10 +16,10 @@ import scipy.special as special
 import numpy.linalg as la
 
 import kalman_utils as ku
-import sys
 import os
 import os.path
-import mw_utils
+import MountWilson.mw_utils as mw_utils
+import utils.plot as plot
 
 
 star = sys.argv[1]
@@ -59,26 +62,29 @@ cov_types = ["quasiperiodic", "linear_trend"]
 
 matern_p = 1
 
-fig, (ax1) = plt.subplots(nrows=1, ncols=1)
-fig.set_size_inches(6, 3)
+#fig, (ax1) = plt.subplots(nrows=1, ncols=1)
+#fig.set_size_inches(6, 3)
 
 orig_var = np.var(y)
 noise_var = mw_utils.get_seasonal_noise_var(t/365.25, y, per_point=True, num_years=1.0)
+means = mw_utils.get_seasonal_means_per_point(t/365.25, y)
+y -= means
 
-means = mw_utils.get_seasonal_means(t/365.25, y)
-print(means)
-print(noise_var)
+#print(means)
+#print(noise_var)
 
 #noise_var = np.reshape(noise_var, (len(noise_var), 1, 1))
 
 # just for removing the duplicates
 #t, y, noise_var = mw_utils.downsample(t, y, noise_var, min_time_diff=30.0/365.25, average=True)
-ax1.plot(t, y, 'b+')
-ax1.plot([min(t), max(t)], [np.mean(y), np.mean(y)], 'k:')
-ax1.plot([min(t), max(t)], np.mean(y)+[np.sqrt(orig_var), np.sqrt(orig_var)], 'k--')
-ax1.plot(t, np.mean(y)+np.sqrt(noise_var), 'k-')
-fig.savefig(star + '.png')
-plt.close(fig)
+myplot = plot.plot(width=6, height=3)
+myplot.plot(t, y, params='b+')
+myplot.plot([min(t), max(t)], [np.mean(y), np.mean(y)], params='k:')
+myplot.plot([min(t), max(t)], np.mean(y)+[np.sqrt(orig_var), np.sqrt(orig_var)], params='k--')
+myplot.plot([min(t), max(t)], np.mean(y)-[np.sqrt(orig_var), np.sqrt(orig_var)], params='k--')
+myplot.fill(t, np.mean(y)-np.sqrt(noise_var), np.mean(y)+np.sqrt(noise_var))
+myplot.save(star + '.png')
+myplot.close()
 
 print(np.sqrt([orig_var, np.min(noise_var), np.max(noise_var), np.mean(noise_var), np.median(noise_var)]))
 noise_var = np.mean(noise_var)#np.max(noise_var)

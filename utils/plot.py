@@ -108,7 +108,7 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, ax_index = [], params="k-"):
+    def plot(self, x, y, ax_index=None, params="k-"):
         ax = self.get_ax(ax_index)
         ax.plot(x, y, params)
         self.post_processing(ax)
@@ -164,7 +164,7 @@ class plot:
     '''
         Plot colormap
     '''          
-    def colormap(self, dat, ax_index = [], vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True):
+    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True):
         ax = self.get_ax(ax_index)
         if self.get_defaut_colorbar() is None:
             z_min = np.min(dat)
@@ -296,6 +296,11 @@ class plot:
         hist, bin_edges = np.histogram(data, bins = bins)
         ax.bar(bin_edges[:-1], hist, width=(bin_edges[-1]-bin_edges[0])/bins)
 
+
+    def fill(self, x, y_lower, y_upper, ax_index = [], color="lightsalmon", alpha=0.8):
+        ax = self.get_ax(ax_index)
+        ax.fill_between(x, y_lower, y_upper, alpha=alpha, facecolor=color, interpolate=True)
+        
 
     def save(self, file_name):
         self.fig.savefig(file_name)
