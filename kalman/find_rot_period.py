@@ -88,9 +88,9 @@ for (star, dat) in ds:
     
     sig_vars = [orig_var]#, slope_hat**2]
     
-    freqs = np.linspace(1./365, 0.5, 1000)
+    freqs = np.linspace(1./365, 2, 1000)
     omegas = freqs*2.0*np.pi
-    ellqs = np.linspace(500, 1000, 1)
+    ellqs = np.array([.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000])
     
     def condition_fn(params):
         omega = params[1]
