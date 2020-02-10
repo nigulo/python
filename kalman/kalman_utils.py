@@ -76,13 +76,13 @@ def calc_cov_p(t, f, sig_var):
 
 class kalman_utils():
     
-    def __init__(self, t, y, num_iterations = 3, condition_fn = None, initial_indices = None):
+    def __init__(self, t, y, num_iterations = 3, condition_fn = None, initial_indices = None, param_fn = None):
         self.t = t
         self.y = y
         self.cov_types = []
         self.cov_settings = dict()
         self.param_counts = dict()
-        self.sampler = sampler(self.loglik_fn, condition_fn = condition_fn, initial_indices = initial_indices)
+        self.sampler = sampler(self.loglik_fn, condition_fn = condition_fn, initial_indices = initial_indices, param_fn = param_fn)
         self.num_iterations = num_iterations
         self.has_A = False
         self.delta_t = t[1:] - t[:-1]
@@ -198,7 +198,7 @@ class kalman_utils():
         y_means, loglik = kf.filter()
         return y_means, loglik
 
-    def add_component(self, cov_type, param_values, settings = dict(), param_funcs = None):
+    def add_component(self, cov_type, param_values, settings = dict()):
         if cov_type == "linear_trend":
             assert(len(param_values) == 2)
             self.has_A = True
@@ -216,7 +216,7 @@ class kalman_utils():
             assert(True==False)
         self.cov_types.append(cov_type)
         self.param_counts[cov_type] = len(param_values)
-        self.sampler.add_parameter_values(param_values, param_funcs)
+        self.sampler.add_parameter_values(param_values)
         self.cov_settings[cov_type] = settings
 
     '''

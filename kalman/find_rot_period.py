@@ -100,16 +100,15 @@ for (star, dat) in ds:
         else:
             return 2.0*np.pi/omega <= ellq
         
-    def ellq_param_func(params):
+    def param_fn(params):
         omega = params[1]
         ellq = params[3]
-        return 2.0*np.pi/omega * ellq
+        ret_val = params
+        ret_val[3] = 2.0*np.pi/omega * ellq
+        return ret_val
         
-    qp_param_funcs = [None, None, None, ellq_param_func]
-        
-    
     initial_indices = [None, None, None, len(ellqs)-1, None, None, None]
-    kalman_utils = ku.kalman_utils(t, y, num_iterations=3, condition_fn=condition_fn, initial_indices = initial_indices)
+    kalman_utils = ku.kalman_utils(t, y, num_iterations=3, condition_fn=condition_fn, initial_indices=initial_indices, param_fn=param_fn)
     for i in np.arange(0, len(cov_types)):
         cov_type = cov_types[i]
         sig_var = np.array([sig_vars[i]])
@@ -123,7 +122,7 @@ for (star, dat) in ds:
             kalman_utils.add_component(cov_type, [sig_var, omegas, ells], {"j_max":2})
         elif cov_type == "quasiperiodic":
             ellps = np.array([10.0])
-            kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs], {"j_max":2}, param_funcs=qp_param_funcs)
+            kalman_utils.add_component(cov_type, [sig_var, omegas, ellps, ellqs], {"j_max":2})
         elif cov_type == "exp_quad":
             kalman_utils.add_component(cov_type, [sig_var, ellqs])
         elif cov_type == "matern":

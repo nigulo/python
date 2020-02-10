@@ -4,9 +4,6 @@ import numpy as np
 import numpy.random as random
 import sys
 sys.setrecursionlimit(10000)
-sys.path.append('../utils')
-sys.path.append('..')
-import config
 import tensorflow.keras as keras
 keras.backend.set_image_data_format('channels_last')
 #from keras import backend as K
@@ -16,24 +13,14 @@ from tensorflow.keras.models import Model
 
 tf.compat.v1.disable_eager_execution()
 
-import psf
-import utils
 import math
-import misc
 
-import plot
-
-import matplotlib.pyplot as plt
-import matplotlib.colorbar as cb
-from matplotlib import cm
 import pickle
 import os.path
 import numpy.fft as fft
 
 import time
-import kolmogorov
-import zernike
-import scipy.signal as signal
+#import scipy.signal as signal
 
 jmax = 200
 diameter = 100.0
@@ -41,7 +28,7 @@ wavelength = 5250.0
 gamma = 1.0
 
 # How many frames to generate per object
-num_frames_gen = 100
+num_frames_gen = 10
 
 # How many frames to use in training
 num_frames = 10
@@ -59,17 +46,6 @@ MODE_1 = 1 # aberrated images --> object
 MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> aberrated images
 MODE_3 = 3 # aberrated images --> psf (+object as second input) --> aberrated images
 nn_mode = MODE_2
-
-dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
-os.mkdir(dir_name)
-sys.stdout = open(dir_name + '/log.txt', 'w')
-
-f = open(dir_name + '/params.txt', 'w')
-f.write('fried num_frames_gen num_frames num_objs nn_mode\n')
-f.write('%f %f %f %f %f' % (fried_param, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
-f.flush()
-f.close()
-
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -91,10 +67,36 @@ n_test_objects = 1
 if len(sys.argv) > 3:
     n_test_objects = int(sys.argv[3])
 
-def reverse_colourmap(cmap, name = 'my_cmap_r'):
-     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
-my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
+if train:
+    dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
+    os.mkdir(dir_name)
+    sys.stdout = open(dir_name + '/log.txt', 'w')
+    
+    f = open(dir_name + '/params.txt', 'w')
+    f.write('fried num_frames_gen num_frames num_objs nn_mode\n')
+    f.write('%f %f %f %f %f' % (fried_param, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
+    f.flush()
+    f.close()
+    images_dir = "images_in"
+    sys.path.append('../utils')
+    sys.path.append('..')
+    
+else:
+    dir_name = "."
+    images_dir = "../images_in_old"
+
+    sys.path.append('../../utils')
+    sys.path.append('../..')
+
+import config
+import misc
+import plot
+import psf
+import utils
+import kolmogorov
+import zernike
+
 
 def load_data():
     data_file = dir_name + '/learn_object_Ds.dat'
@@ -782,15 +784,23 @@ class nn_model:
             ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
             psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
-            obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
+            #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
+            DFs = np.zeros((len(objs), 2, self.nx-1, self.nx-1), dtype='complex') # in Fourier space
             for i in np.arange(len(objs)):
                 D = misc.sample_image(Ds[i, :, :, 0], .99)
                 D_d = misc.sample_image(Ds[i, :, :, 1], .99)
                 DF = fft.fft2(D)
                 DF_d = fft.fft2(D_d)
-                obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                obj_reconstr = fft.ifftshift(obj_reconstr[0])
-                obj_reconstr_mean += obj_reconstr
+                DFs[i, 0] = DF
+                DFs[i, 1] = DF_d
+                
+                #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                #obj_reconstr = fft.ifftshift(obj_reconstr[0])
+                #obj_reconstr_mean += obj_reconstr
+
+            obj_reconstr = psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+            obj_reconstr = fft.ifftshift(obj_reconstr[0])
+            #obj_reconstr_mean += obj_reconstr
 
                 #my_test_plot = plot.plot(nrows=1, ncols=2)
                 #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
@@ -798,9 +808,11 @@ class nn_model:
                 #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                 #my_test_plot.close()
                 
-            my_test_plot = plot.plot(nrows=1, ncols=2)
-            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-            my_test_plot.colormap(obj_reconstr_mean, [1])
+            my_test_plot = plot.plot(nrows=2, ncols=2)
+            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0, 0])
+            my_test_plot.colormap(obj_reconstr, [0, 1])
+            my_test_plot.colormap(Ds[i, :, :, 0], [1, 0])
+            my_test_plot.colormap(Ds[i, :, :, 1], [1, 1])
             my_test_plot.save(dir_name + "/test_results_mean.png")
             my_test_plot.close()
             
@@ -831,8 +843,7 @@ class nn_model:
 
 def gen_data(num_frames, num_images = None, shuffle = True):
     image_file = None
-    dir = "images_in"
-    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=None, tile=True)
+    images, _, nx, nx_orig = utils.read_images(images_dir, image_file, is_planet = False, image_size=None, tile=True)
     images = np.asarray(images)
     if shuffle:
         random_indices = random.choice(len(images), size=len(images), replace=False)

@@ -45,20 +45,22 @@ class sampler():
         params_sample = []
         for i in np.arange(0, len(self.params_values)):
             params_sample.append(self.params_values[i][self.indices[i]])
-        if self.param_funcs[self.current_param] is not None:
+        if self.param_funcs[self.params_order[self.current_param]] is not None:
             print("Recalculating param ", self.current_param, params_sample)
             # Recalculate the current parameter value based on given function
-            params_sample[self.current_param] = self.param_funcs[self.current_param](params_sample)
+            params_sample[self.params_order[self.current_param]] = self.param_funcs[self.params_order[self.current_param]](params_sample)
             print("New params ", params_sample)
 
         loglik = None
         if self.max_loglik is None or self.condition_fn is None or self.condition_fn(params_sample):
+            print("Sampling", params_sample)
             y_means, loglik = self.loglik_fn(params_sample)
             self.logliks[self.params_order[self.current_param]][self.indices[self.params_order[self.current_param]]] = loglik
             if (self.max_loglik is None or loglik > self.max_loglik):
                 self.max_loglik = loglik
                 self.best_indices = np.array(self.indices)
                 self.best_y_mean = y_means
+                print("New best likelihood", self.max_loglik)
         #else:
         #    print "Skipping ", params_sample
 
