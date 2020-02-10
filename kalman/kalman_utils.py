@@ -198,7 +198,7 @@ class kalman_utils():
         y_means, loglik = kf.filter()
         return y_means, loglik
 
-    def add_component(self, cov_type, param_values, settings = dict()):
+    def add_component(self, cov_type, param_values, settings = dict(), param_funcs = None):
         if cov_type == "linear_trend":
             assert(len(param_values) == 2)
             self.has_A = True
@@ -216,7 +216,7 @@ class kalman_utils():
             assert(True==False)
         self.cov_types.append(cov_type)
         self.param_counts[cov_type] = len(param_values)
-        self.sampler.add_parameter_values(param_values)
+        self.sampler.add_parameter_values(param_values, param_funcs)
         self.cov_settings[cov_type] = settings
 
     '''
@@ -234,7 +234,8 @@ class kalman_utils():
                     param_modes, param_means, param_sigmas, y_means, logliks = self.sampler.get_results()
                     print(param_modes)
             params_sample, loglik = self.sampler.sample()
-            self.results.append([params_sample, loglik])
+            if loglik is not None:
+                self.results.append([params_sample, loglik])
             #print "Sample", params_sample, loglik
         return self.sampler.get_results()
 

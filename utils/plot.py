@@ -115,7 +115,6 @@ class plot:
         self.post_processing(ax)
     
     
-    
     def set_default_colorbar(self, z_min=0., z_max=1., colorbar_prec=None):
         if colorbar_prec is None:
             if z_max > z_min:
