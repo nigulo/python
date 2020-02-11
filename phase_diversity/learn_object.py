@@ -28,12 +28,12 @@ wavelength = 5250.0
 gamma = 1.0
 
 # How many frames to generate per object
-num_frames_gen = 10
+num_frames_gen = 100
 
 # How many frames to use in training
-num_frames = 10
+num_frames = 100
 # How many objects to use in training
-num_objs = 100#None
+num_objs = 10#None
 
 fried_param = 0.2
 noise_std_perc = 0.#.01
