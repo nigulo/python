@@ -22,7 +22,7 @@ import numpy.fft as fft
 import time
 #import scipy.signal as signal
 
-jmax = 200
+jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
@@ -35,8 +35,8 @@ num_frames = 100
 # How many objects to use in training
 num_objs = 10#None
 
-fried_param = 0.2
-noise_std_perc = 0.#.01
+fried_param = 0.1
+noise_std_perc = .01
 
 n_epochs = 10
 num_iters = 10
@@ -74,8 +74,8 @@ if train:
     sys.stdout = open(dir_name + '/log.txt', 'w')
     
     f = open(dir_name + '/params.txt', 'w')
-    f.write('fried num_frames_gen num_frames num_objs nn_mode\n')
-    f.write('%f %f %f %f %f' % (fried_param, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
+    f.write('fried jmax num_frames_gen num_frames num_objs nn_mode\n')
+    f.write('%f %d %d %d %d %d' % (fried_param, jmax, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
     f.flush()
     f.close()
     images_dir = "images_in"
@@ -390,17 +390,22 @@ class nn_model:
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
                 hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                #hidden_layer = keras.layers.Conv2D(64, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
-                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+
+                hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
                 hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(500, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(2*jmax, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
-                #hidden_layer = keras.layers.Reshape((jmax))(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
                 output = keras.layers.Lambda(self.aberrate)(hidden_layer)
                
@@ -886,11 +891,13 @@ def gen_data(num_frames, num_images = None, shuffle = True):
         #psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         #######################################################################
         for obj_no in np.arange(num_objects):
-            # Omit for now (just technical issues)
-            #images[obj_no] = psf.critical_sampling(images[obj_no], arcsec_per_px, diameter, wavelength)
             image = images[obj_no]
-            image -= np.mean(image)
-            image /= np.std(image)
+            # Omit for now (just technical issues)
+            images[obj_no] = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
+            image = images[obj_no]
+            #image -= np.mean(image)
+            #image /= np.std(image)
+            
             #my_test_plot = plot.plot()
             #my_test_plot.colormap(image)
             #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
@@ -903,24 +910,18 @@ def gen_data(num_frames, num_images = None, shuffle = True):
             DF = DFs1[0, 0]
             DF_d = DFs1[0, 1]
             
-            if noise_std_perc > 0.:
-                print("np.mean(image)", np.mean(image), np.min(image), np.max(image))
-                noise = np.random.poisson(lam=noise_std_perc*np.std(image), size=(nx, nx))
-                fnoise = fft.fft2(noise)
-                fnoise = fft.fftshift(fnoise)
-        
-                noise_d = np.random.poisson(lam=noise_std_perc*np.std(image), size=(nx, nx))
-                fnoise_d = fft.fft2(noise_d)
-                fnoise_d = fft.fftshift(fnoise_d)
-        
-                DF += fnoise
-                DF_d += fnoise_d
-        
             DF = fft.ifftshift(DF)
             DF_d = fft.ifftshift(DF_d)
         
             D = fft.ifft2(DF).real
             D_d = fft.ifft2(DF_d).real
+
+            if noise_std_perc > 0.:
+                noise = np.random.poisson(lam=noise_std_perc*np.std(D), size=(nx-1, nx-1))
+                noise_d = np.random.poisson(lam=noise_std_perc*np.std(D_d), size=(nx-1, nx-1))
+
+                D += noise
+                D_d += noise_d
 
             ###################################################################
             # Just checking if true_coefs are calculated correctly
