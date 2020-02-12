@@ -33,10 +33,10 @@ num_frames_gen = 100
 # How many frames to use in training
 num_frames = 100
 # How many objects to use in training
-num_objs = 10#None
+num_objs = 100#None
 
 fried_param = 0.1
-noise_std_perc = .01
+noise_std_perc = 0.#.01
 
 n_epochs = 10
 num_iters = 10
@@ -54,40 +54,49 @@ nn_mode = MODE_2
 #    logfile.write("\n")
 #    logfile.flush()
     
-train = True
+
+dir_name = None
 if len(sys.argv) > 1:
-    if sys.argv[1].upper() == "TEST":
+    dir_name = sys.argv[1]
+
+train = True
+if len(sys.argv) > 2:
+    if sys.argv[2].upper() == "TEST":
         train = False
         
 n_test_frames = 10
-if len(sys.argv) > 2:
-    n_test_frames = int(sys.argv[2])
+if len(sys.argv) > 3:
+    n_test_frames = int(sys.argv[3])
 
 n_test_objects = 1
-if len(sys.argv) > 3:
-    n_test_objects = int(sys.argv[3])
+if len(sys.argv) > 4:
+    n_test_objects = int(sys.argv[4])
 
 
-if train:
+if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
     os.mkdir(dir_name)
-    sys.stdout = open(dir_name + '/log.txt', 'w')
     
     f = open(dir_name + '/params.txt', 'w')
     f.write('fried jmax num_frames_gen num_frames num_objs nn_mode\n')
     f.write('%f %d %d %d %d %d' % (fried_param, jmax, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
     f.flush()
     f.close()
-    images_dir = "images_in"
-    sys.path.append('../utils')
-    sys.path.append('..')
-    
-else:
-    dir_name = "."
-    images_dir = "../images_in_old"
 
-    sys.path.append('../../utils')
-    sys.path.append('../..')
+images_dir = "images_in"
+sys.path.append('../utils')
+sys.path.append('..')
+
+if train:
+    sys.stdout = open(dir_name + '/log.txt', 'a')
+    
+#else:
+#    dir_name = "."
+#    images_dir = "../images_in_old"
+
+#    sys.path.append('../../utils')
+#    sys.path.append('../..')
+
 
 import config
 import misc
@@ -99,21 +108,25 @@ import zernike
 
 
 def load_data():
-    data_file = dir_name + '/learn_object_Ds.dat'
+    data_file = dir_name + '/learn_object_Ds.dat.npz'
     if os.path.exists(data_file):
-        Ds = np.load(data_file)
-        data_file = dir_name + '/learn_object_objs.dat'
-        if os.path.exists(data_file):
-            objs = np.load(data_file)
+        loaded = np.load(data_file)
+        Ds = loaded['a']
+        objs = loaded['b']
+        #Ds = np.load(data_file)
+        #data_file = dir_name + '/learn_object_objs.dat'
+        #if os.path.exists(data_file):
+        #    objs = np.load(data_file)
         return Ds, objs
     else:
         return None, None
 
 def save_data(Ds, objects):
-    with open(dir_name + '/learn_object_Ds.dat', 'wb') as f:
-        np.save(f, Ds)
-    with open(dir_name + '/learn_object_objs.dat', 'wb') as f:
-        np.save(f, objs)
+    np.savez_compressed(dir_name + '/learn_object_Ds.dat', a=Ds, b=objects)
+    #with open(dir_name + '/learn_object_Ds.dat', 'wb') as f:
+    #    np.save(f, Ds)
+    #with open(dir_name + '/learn_object_objs.dat', 'wb') as f:
+    #    np.save(f, objs)
 
 
 def load_model():
@@ -382,28 +395,40 @@ class nn_model:
                 ###################################################################
                 # Autoencoder
                 ###################################################################
-                hidden_layer = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
+                #hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
+                hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer1)#(normalized)
+                hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
+                hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1])
+                #hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1])
+                hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
+                hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer3)#(normalized)
+                hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
+                hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3])
+                #hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3])
+                hidden_layer5 = keras.layers.MaxPooling2D()(hidden_layer4)
+                hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer5)#(normalized)
+                hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
+                hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5])
+                #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5])
+                hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
 
-                hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Flatten()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                
+                hidden_layer = keras.layers.Flatten()(hidden_layer7)
                 hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
@@ -580,7 +605,7 @@ class nn_model:
     
         #######################################################################
         # Plot some of the training data results
-        n_test = 5
+        n_test = min(num_objs, 5)
         if self.nn_mode == MODE_1:
             pred_objs = model.predict(self.Ds)
             #predicted_coefs = model.predict(Ds_train[0:n_test])
