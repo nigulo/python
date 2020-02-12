@@ -113,13 +113,17 @@ def load_data():
         loaded = np.load(data_file)
         Ds = loaded['a']
         objs = loaded['b']
-        #Ds = np.load(data_file)
-        #data_file = dir_name + '/learn_object_objs.dat'
-        #if os.path.exists(data_file):
-        #    objs = np.load(data_file)
         return Ds, objs
-    else:
-        return None, None
+
+    data_file = dir_name + '/learn_object_Ds.dat'
+    if os.path.exists(data_file):
+        Ds = np.load(data_file)
+        data_file = dir_name + '/learn_object_objs.dat'
+        if os.path.exists(data_file):
+            objs = np.load(data_file)
+        return Ds, objs
+
+    return None, None
 
 def save_data(Ds, objects):
     np.savez_compressed(dir_name + '/learn_object_Ds.dat', a=Ds, b=objects)
