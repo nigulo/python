@@ -33,7 +33,7 @@ num_frames_gen = 100
 # How many frames to use in training
 num_frames = 100
 # How many objects to use in training
-num_objs = 100#None
+num_objs = 10#None
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
@@ -41,6 +41,7 @@ noise_std_perc = 0.#.01
 n_epochs = 10
 num_iters = 10
 num_reps = 1000
+suffle = True
 
 MODE_1 = 1 # aberrated images --> object
 MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> aberrated images
@@ -513,7 +514,10 @@ class nn_model:
             self.num_objs = Ds.shape[1]
         assert(self.num_objs <= Ds.shape[1])
         assert(Ds.shape[2] == 2)
-        Ds = Ds[:self.num_frames, :self.num_objs]
+        i1 = random.randint(0, Ds.shape[0] - self.num_frames)
+        i2 = random.randint(0, Ds.shape[1] - self.num_objs)
+        Ds = Ds[i1:i1+self.num_frames, i2:i2+self.num_objs]
+        self.objs = objs[i2:i2+self.num_objs]
         num_objects = Ds.shape[1]
         self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
@@ -522,7 +526,6 @@ class nn_model:
         #    for j in np.arange(self.num_frames):
         #        self.Ds[i, 2*j] = Ds[j, i, 0]
         #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
-        self.objs = objs[:self.num_objs]
         #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
         #for i in np.arange(len(objs)):
         #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
@@ -560,11 +563,10 @@ class nn_model:
         #self.coefs_validation /= self.scale_factor
         
 
-    def train(self, full=False):
+    def train(self):
         model = self.model
 
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
-        #if not full:
         
         for epoch in np.arange(n_epochs):
             if self.nn_mode == MODE_1:
@@ -1010,13 +1012,13 @@ if train:
     for rep in np.arange(0, num_reps):
         print("Rep no: " + str(rep))
     
-        if rep == num_reps-1:
-            # In the laast iteration train on the full set
-            model.train(full=True)
-        else:
-            model.train()
-    
+        model.train()
+
         model.test()
+        
+        if shuffle:
+            model.set_data(Ds, objs)
+            
     
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
