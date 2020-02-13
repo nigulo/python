@@ -84,7 +84,9 @@ if dir_name is None:
     f.flush()
     f.close()
 
-images_dir = "images_in"
+images_dir_train = "images_in"
+images_dir_test = "images_in"#images_in_test"
+
 sys.path.append('../utils')
 sys.path.append('..')
 
@@ -514,8 +516,8 @@ class nn_model:
             self.num_objs = Ds.shape[1]
         assert(self.num_objs <= Ds.shape[1])
         assert(Ds.shape[2] == 2)
-        i1 = random.randint(0, Ds.shape[0] - self.num_frames)
-        i2 = random.randint(0, Ds.shape[1] - self.num_objs)
+        i1 = random.randint(0, Ds.shape[0] + 1 - self.num_frames)
+        i2 = random.randint(0, Ds.shape[1] + 1 - self.num_objs)
         Ds = Ds[i1:i1+self.num_frames, i2:i2+self.num_objs]
         self.objs = objs[i2:i2+self.num_objs]
         num_objects = Ds.shape[1]
@@ -762,7 +764,7 @@ class nn_model:
         
         model = self.model
         
-        Ds_, objs, nx_orig = gen_data(num_frames=n_test_frames, num_images=n_test_objects)
+        Ds_, objs, nx_orig = gen_data(num_frames=n_test_frames, images_dir = images_dir_test, num_images=n_test_objects)
         print("test_1")
         num_frames = Ds_.shape[0]
         num_objects = Ds_.shape[1]
@@ -877,7 +879,7 @@ class nn_model:
                 my_test_plot.close()
             
 
-def gen_data(num_frames, num_images = None, shuffle = True):
+def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuffle = True):
     image_file = None
     images, _, nx, nx_orig = utils.read_images(images_dir, image_file, is_planet = False, image_size=None, tile=True)
     images = np.asarray(images)
