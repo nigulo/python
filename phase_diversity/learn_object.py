@@ -405,24 +405,24 @@ class nn_model:
                 hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
                 #hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
                 #hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
-                hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input])
+                hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
                 hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
                 hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer1)#(normalized)
                 #hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
                 #hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1])
-                hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1])
+                hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1], name='h2')
                 
                 hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
                 hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer3)#(normalized)
                 #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
                 #hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3])
-                hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3])
+                hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3], name='h4')
                 
                 hidden_layer5 = keras.layers.MaxPooling2D()(hidden_layer4)
                 hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer5)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
                 #hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5])
-                hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5])
+                hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
                 hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
 
                 #hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
@@ -1021,8 +1021,7 @@ if train:
 
         model.test()
         
-        if shuffle:
-            model.set_data(Ds, objs)
+        model.set_data(Ds, objs)
             
     
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
