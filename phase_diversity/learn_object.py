@@ -403,23 +403,26 @@ class nn_model:
                 # Autoencoder
                 ###################################################################
                 hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
+                #hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
                 #hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input])
                 hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
                 hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer1)#(normalized)
-                hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
-                hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1])
-                #hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1])
+                #hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
+                #hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1])
+                hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1])
+                
                 hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
                 hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer3)#(normalized)
-                hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
-                hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3])
-                #hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3])
+                #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
+                #hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3])
+                hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3])
+                
                 hidden_layer5 = keras.layers.MaxPooling2D()(hidden_layer4)
                 hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer5)#(normalized)
-                hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
-                hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5])
-                #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5])
+                #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
+                #hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5])
+                hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5])
                 hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
 
                 #hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
@@ -926,10 +929,10 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
         for obj_no in np.arange(num_objects):
             image = images[obj_no]
             # Omit for now (just technical issues)
-            images[obj_no] = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
-            image = images[obj_no]
-            #image -= np.mean(image)
-            #image /= np.std(image)
+            image = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
+            image -= np.mean(image)
+            image /= np.std(image)
+            images[obj_no] = image
             
             #my_test_plot = plot.plot()
             #my_test_plot.colormap(image)
