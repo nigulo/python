@@ -1,28 +1,19 @@
 import matplotlib as mpl
 mpl.use('Agg')
 from pymc3 import *
+from sklearn.cluster import KMeans
 import sys
 import os
 from scipy.io import readsav
 import numpy as np
 import matplotlib.pyplot as plt
 
-try:
-    from scipy.linalg import solve_lyapunov as solve_continuous_lyapunov
-except ImportError:  # pragma: no cover; github.com/scipy/scipy/pull/8082
-    from scipy.linalg import solve_continuous_lyapunov
-
 from scipy.stats import gaussian_kde
 from scipy.signal import argrelextrema
-#from sklearn.cluster import KMeans
 
 import scipy.optimize
 
-<<<<<<< HEAD
 k_min = 700
-=======
-k_min = 1000
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
 k_max = sys.maxsize
 if len(sys.argv) > 1:
     k_min = float(sys.argv[1])
@@ -175,12 +166,25 @@ def find_areas(x, y, alphas, betas, ws, scale, noise_std):
     
     return areas, ranges
 
+def smooth(x=None, y=None):
+    if x is not None:
+        x = x[:-2]+x[1:-1]+x[2:]
+        x /= 3
+    
+    if y is not None:
+        y = y[:-2]+y[1:-1]+y[2:]
+        y /= 3
+    
+    return x, y
+
+    
 def get_noise_var(dat):
     k_indices = np.where(np.logical_and(dat.k_y >= 3500, dat.k_y <= 4500))[0]
     nu_indices = np.where(np.logical_and(dat.nu >= 2, dat.nu <= 4))[0]
     y = dat.p_kyom_kx0[nu_indices]
     y = y[:, k_indices]
 
+    _, y = smooth(None, y)
     return np.var(y)
     
 for root, dirs, files in os.walk("data"):
@@ -204,11 +208,7 @@ for root, dirs, files in os.walk("data"):
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
         fig.savefig(output_dir + "/spectrum.png")
-<<<<<<< HEAD
-        #fig.close()
-=======
-        fig.close()
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
+        plt.close(fig)
         
         f1 = open(output_dir + '/areas.txt', 'w')
         f1.write('k num_components f_mode_area\n')
@@ -237,13 +237,8 @@ for root, dirs, files in os.walk("data"):
             inds = np.where(x < 10.)[0]
             x = x[inds]
             y = y[inds]
-<<<<<<< HEAD
-            x = x[:-2]+x[1:-1]+x[2:]
-            y = y[:-2]+y[1:-1]+y[2:]
-            x/=3
-            y/=3
-=======
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
+
+            x, y = smooth(x, y)
             
             #noise_var = 0.
             #num_segments = 10
@@ -254,30 +249,19 @@ for root, dirs, files in os.walk("data"):
             #noise_var /= num_segments
             #noise_var /= 2
             
-<<<<<<< HEAD
-            noise_var = get_noise_var(dat)/np.sqrt(3)
-=======
             noise_var = get_noise_var(dat)
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
             
             sig_var = np.var(y) - noise_var
             true_sigma = np.sqrt(noise_var)
             print("noise_std", true_sigma)
-<<<<<<< HEAD
             num_w = 1
-=======
-            num_w = 2
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
             
             x_range = max(x) - min(x)
             x_left = min(x)
             #waics = []
             min_bic = sys.float_info.max
-<<<<<<< HEAD
+
             for num_components in np.arange(1, 5):
-=======
-            for num_components in np.arange(1, 4):
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
                 scale =  np.sum(y)*x_range/len(y)/num_components
                 print("scale", scale)
                 
@@ -381,9 +365,9 @@ for root, dirs, files in os.walk("data"):
                             alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
                             params.append(alpha_prior)
                             print("alpha_prior", alpha_prior, i)
-                            bounds.append((alpha_prior-1. , alpha_prior+1.))
+                            bounds.append((alpha_prior-.5 , alpha_prior+.5))
                         for i in np.arange(num_components):
-                            beta_prior = .05
+                            beta_prior = .2/num_components
                             params.append(beta_prior)
                             #params.append(1./100)
                             bounds.append((.0001 , 2*beta_prior))
@@ -414,15 +398,15 @@ for root, dirs, files in os.walk("data"):
                 b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
                 print("BIC", b)
                 
-                fig, ax = plt.subplots(nrows=1, ncols=1)
-                
-                ax.plot(x, y, 'x', label='data')
-                ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
-                ax.set_title('Num. clusters ' + str(num_components))
-                ax.legend(loc=0)
-                ax.set_xlabel('x')
-                ax.set_ylabel('y')
-                fig.savefig(output_dir + "/fit" + str(k_index) + "_" + str(num_components) + ".png")
+                #fig, ax = plt.subplots(nrows=1, ncols=1)
+                #ax.plot(x, y, 'x', label='data')
+                #ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
+                #ax.set_title('Num. clusters ' + str(num_components))
+                #ax.legend(loc=0)
+                #ax.set_xlabel('x')
+                #ax.set_ylabel('y')
+                #fig.savefig(output_dir + "/fit" + str(k_index) + "_" + str(num_components) + ".png")
+                #plt.close(fig)
                 
                 if b < min_bic:
                     min_bic = b
@@ -459,11 +443,8 @@ for root, dirs, files in os.walk("data"):
             ax.set_xlabel(r'$\nu$')
             ax.set_ylabel('Amplitude')
             fig.savefig(output_dir + "/areas" + str(k_index) + ".png")
-<<<<<<< HEAD
-            #fig.close()
-=======
-            fig.close()
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
+
+            plt.close(fig)
             
             f1.write('%s %s %s' % (str(k_value), opt_num_components, areas[0]) + "\n")
             print("Lowest BIC", min_bic)
@@ -483,8 +464,5 @@ for root, dirs, files in os.walk("data"):
         ax.set_xlabel(r'$k$')
         ax.set_ylabel('F-mode area')
         fig.savefig(output_dir + "/areas.png")
-<<<<<<< HEAD
-        #fig.close()
-=======
-        fig.close()
->>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
+
+        plt.close(fig)
