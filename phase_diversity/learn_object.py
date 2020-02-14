@@ -675,7 +675,7 @@ class nn_model:
                 objs_test.append(obj)
                 
                 obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                obj_reconstr = fft.ifftshift(obj_reconstr[0])
+                obj_reconstr = fft.ifftshift(obj_reconstr)
                 objs_reconstr.append(obj_reconstr)
 
 
@@ -840,7 +840,7 @@ class nn_model:
                 #obj_reconstr_mean += obj_reconstr
 
             obj_reconstr = psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            obj_reconstr = fft.ifftshift(obj_reconstr[0])
+            obj_reconstr = fft.ifftshift(obj_reconstr)
             #obj_reconstr_mean += obj_reconstr
 
                 #my_test_plot = plot.plot(nrows=1, ncols=2)

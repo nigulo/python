@@ -27,16 +27,11 @@ diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
 
-# How many frames to generate per object
-num_frames_gen = 100
 
 # How many frames to use in training
 num_frames = 100
 # How many objects to use in training
 num_objs = 10#None
-
-fried_param = 0.2
-noise_std_perc = 0.#.01
 
 n_epochs = 10
 num_iters = 10
@@ -71,7 +66,7 @@ if train:
     
     f = open(dir_name + '/params.txt', 'w')
     f.write('fried num_frames_gen num_frames num_objs\n')
-    f.write('%f %d %d %d' % (fried_param, num_frames_gen, num_frames, num_objs) + "\n")
+    f.write('%f %d %d %d' % (num_frames, num_objs) + "\n")
     f.flush()
     f.close()
     images_dir = "images_in"
@@ -90,21 +85,20 @@ import misc
 import plot
 import psf
 import utils
-import kolmogorov
 import zernike
 
 
 def load_data():
-    data_file = dir_name + '/learn_mfbd_Ds.dat'
+    data_file = dir_name + '/learn_mfbd_Ds.dat.npz'
     if os.path.exists(data_file):
-        Ds = np.load(data_file)
+        loaded = np.load(data_file)
+        Ds = loaded['a']
         return Ds
-    else:
-        return None
+
+    return None
 
 def save_data(Ds):
-    with open(dir_name + '/learn_mfbd_Ds.dat', 'wb') as f:
-        np.save(f, Ds)
+    np.savez_compressed(dir_name + '/learn_mfbd_Ds.dat', a=Ds)
 
 
 def load_model():
@@ -650,8 +644,8 @@ class nn_model:
         my_test_plot.close()
             
             
-
-def gen_data(num_frames, num_images = None, shuffle = True):
+#TODO: this is just a dummy method at the moment
+def read_data_from_images(num_frames, num_images = None, shuffle = True):
     image_file = None
     images, _, nx, nx_orig = utils.read_images(images_dir, image_file, is_planet = False, image_size=None, tile=True)
     images = np.asarray(images)
@@ -662,99 +656,18 @@ def gen_data(num_frames, num_images = None, shuffle = True):
     if num_images is not None and len(images) > num_images:
         images = images[:num_images]
 
-    arcsec_per_px, defocus = get_params(nx_orig)
-    aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-    defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-
-    coords, _, _ = utils.get_coords(nx//2, arcsec_per_px, diameter, wavelength)
-
     num_objects = len(images)
 
     Ds = np.zeros((num_frames, num_objects, 2, nx, nx)) # in real space
-    #true_coefs = np.zeros((num_frames, jmax))
-    pa = psf.phase_aberration(jmax, start_index=0)
-    pa.calc_terms(coords)
-    wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx//2, sampling=1.)
-    #pa = psf.phase_aberration(np.random.normal(size=jmax))
-    for frame_no in np.arange(num_frames):
-        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
-        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*25, -25), 25), start_index=0)
-        ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
-        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-        #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
-        #true_coefs[frame_no] = ctf_true.dot(pa)
-        
-        #true_coefs[frame_no] = pa_true.alphas
-        #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
-        #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
-        psf_true = psf.psf(ctf_true, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
-        #######################################################################
-        # Just checking if true_coefs are calculated correctly
-        #pa_check = psf.phase_aberration(jmax, start_index=0)
-        #ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        #psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        #######################################################################
-        for obj_no in np.arange(num_objects):
-            # Omit for now (just technical issues)
-            #images[obj_no] = psf.critical_sampling(images[obj_no], arcsec_per_px, diameter, wavelength)
-            image = images[obj_no]
-            image -= np.mean(image)
-            image /= np.std(image)
-            #my_test_plot = plot.plot()
-            #my_test_plot.colormap(image)
-            #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
-            #my_test_plot.close()
-            fimage = fft.fft2(misc.sample_image(image, .99))
-            fimage = fft.fftshift(fimage)
-    
-        
-            DFs1 = psf_true.multiply(fimage)
-            DF = DFs1[0, 0]
-            DF_d = DFs1[0, 1]
-            
-            if noise_std_perc > 0.:
-                print("np.mean(image)", np.mean(image), np.min(image), np.max(image))
-                noise = np.random.poisson(lam=noise_std_perc*np.std(image), size=(nx, nx))
-                fnoise = fft.fft2(noise)
-                fnoise = fft.fftshift(fnoise)
-        
-                noise_d = np.random.poisson(lam=noise_std_perc*np.std(image), size=(nx, nx))
-                fnoise_d = fft.fft2(noise_d)
-                fnoise_d = fft.fftshift(fnoise_d)
-        
-                DF += fnoise
-                DF_d += fnoise_d
-        
-            DF = fft.ifftshift(DF)
-            DF_d = fft.ifftshift(DF_d)
-        
-            D = fft.ifft2(DF).real
-            D_d = fft.ifft2(DF_d).real
-
-            ###################################################################
-            # Just checking if true_coefs are calculated correctly
-            if frame_no < 1 and obj_no < 5:
-                my_test_plot = plot.plot(nrows=1, ncols=3)
-                my_test_plot.colormap(image, [0])
-                my_test_plot.colormap(D, [1])
-                my_test_plot.colormap(D_d, [2])
-                my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
-                my_test_plot.close()
-            ###################################################################
-
-            Ds[frame_no, obj_no, 0] = misc.sample_image(D, 1.01010101)
-            Ds[frame_no, obj_no, 1] = misc.sample_image(D_d, 1.01010101)
-        print("Finished aberrating with wavefront", frame_no)
-
-    return Ds, images, nx_orig
+    return Ds
 
 
 
-Ds, objs = load_data()
+Ds = load_data()
 if Ds is None:
-    Ds, objs, nx_orig = gen_data(num_frames_gen)
-    save_data(Ds, objs)
+    Ds = read_data_from_images()
+    save_data(Ds)
 
 my_test_plot = plot.plot()
 my_test_plot.colormap(Ds[0, 0, 0])
