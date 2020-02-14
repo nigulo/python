@@ -84,8 +84,11 @@ class plot:
                     if isinstance(self.axes[ax_index[0]], (list, tuple, np.ndarray)):
                         return self.axes[ax_index[0]][ax_index[1]]
                     else:
-                        assert(ax_index[1] == 0)
-                        return self.axes[ax_index[0]]
+                        if (ax_index[0] == 0):
+                            return self.axes[ax_index[1]]
+                        else:
+                            assert(ax_index[1] == 0)
+                            return self.axes[ax_index[0]]
                 else:
                     assert(ax_index[0] == 0 and ax_index[1] == 0)
                     return self.axes
@@ -113,7 +116,6 @@ class plot:
         ax = self.get_ax(ax_index)
         ax.plot(x, y, params)
         self.post_processing(ax)
-    
     
     
     def set_default_colorbar(self, z_min=0., z_max=1., colorbar_prec=None):

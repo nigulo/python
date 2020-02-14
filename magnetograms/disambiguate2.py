@@ -79,7 +79,7 @@ num_chains = 4
 inference_after_iter = 20
 
 total_num_tries = 1000
-num_tries_without_progress = 20
+num_tries_without_progress = 100
 
 m_kiss = 13
 

@@ -14,8 +14,9 @@ class sampler():
         self.logliks = []
         self.condition_fn = condition_fn
         self.initial_indices = initial_indices
+        self.param_funcs = []
 
-    def add_parameter_values(self, param_values):
+    def add_parameter_values(self, param_values, param_funcs = None):
         self.params_values += param_values
         for i in np.arange(0, len(param_values)):
             self.logliks.append(np.zeros(len(param_values[i])))
@@ -26,6 +27,11 @@ class sampler():
                     self.indices.append(np.random.randint(len(param_values[i])))
             else:
                 self.indices.append(0)
+        if param_funcs is not None:
+            self.param_funcs += param_funcs
+        else:
+            self.param_funcs += [None]*len(param_values)
+
                 
     def init(self):
         self.indices = np.asarray(self.indices)
@@ -39,15 +45,22 @@ class sampler():
         params_sample = []
         for i in np.arange(0, len(self.params_values)):
             params_sample.append(self.params_values[i][self.indices[i]])
+        if self.param_funcs[self.params_order[self.current_param]] is not None:
+            print("Recalculating param ", self.current_param, params_sample)
+            # Recalculate the current parameter value based on given function
+            params_sample[self.params_order[self.current_param]] = self.param_funcs[self.params_order[self.current_param]](params_sample)
+            print("New params ", params_sample)
 
         loglik = None
         if self.max_loglik is None or self.condition_fn is None or self.condition_fn(params_sample):
+            print("Sampling", params_sample)
             y_means, loglik = self.loglik_fn(params_sample)
             self.logliks[self.params_order[self.current_param]][self.indices[self.params_order[self.current_param]]] = loglik
             if (self.max_loglik is None or loglik > self.max_loglik):
                 self.max_loglik = loglik
                 self.best_indices = np.array(self.indices)
                 self.best_y_mean = y_means
+                print("New best likelihood", self.max_loglik)
         #else:
         #    print "Skipping ", params_sample
 

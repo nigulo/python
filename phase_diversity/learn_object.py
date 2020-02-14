@@ -4,9 +4,6 @@ import numpy as np
 import numpy.random as random
 import sys
 sys.setrecursionlimit(10000)
-sys.path.append('../utils')
-sys.path.append('..')
-import config
 import tensorflow.keras as keras
 keras.backend.set_image_data_format('channels_last')
 #from keras import backend as K
@@ -16,26 +13,16 @@ from tensorflow.keras.models import Model
 
 tf.compat.v1.disable_eager_execution()
 
-import psf
-import utils
 import math
-import misc
 
-import plot
-
-import matplotlib.pyplot as plt
-import matplotlib.colorbar as cb
-from matplotlib import cm
 import pickle
 import os.path
 import numpy.fft as fft
 
 import time
-import kolmogorov
-import zernike
-import scipy.signal as signal
+#import scipy.signal as signal
 
-jmax = 200
+jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
@@ -44,32 +31,22 @@ gamma = 1.0
 num_frames_gen = 100
 
 # How many frames to use in training
-num_frames = 10
+num_frames = 100
 # How many objects to use in training
-num_objs = 100#None
+num_objs = 10#None
 
-fried_param = 0.2
+fried_param = 0.1
 noise_std_perc = 0.#.01
 
 n_epochs = 10
 num_iters = 10
 num_reps = 1000
+suffle = True
 
 MODE_1 = 1 # aberrated images --> object
 MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> aberrated images
 MODE_3 = 3 # aberrated images --> psf (+object as second input) --> aberrated images
 nn_mode = MODE_2
-
-dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
-os.mkdir(dir_name)
-sys.stdout = open(dir_name + '/log.txt', 'w')
-
-f = open(dir_name + '/params.txt', 'w')
-f.write('fried num_frames_gen num_frames num_objs nn_mode\n')
-f.write('%f %f %f %f %f' % (fried_param, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
-f.flush()
-f.close()
-
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -78,25 +55,69 @@ f.close()
 #    logfile.write("\n")
 #    logfile.flush()
     
-train = True
+
+dir_name = None
 if len(sys.argv) > 1:
-    if sys.argv[1].upper() == "TEST":
+    dir_name = sys.argv[1]
+
+train = True
+if len(sys.argv) > 2:
+    if sys.argv[2].upper() == "TEST":
         train = False
         
 n_test_frames = 10
-if len(sys.argv) > 2:
-    n_test_frames = int(sys.argv[2])
+if len(sys.argv) > 3:
+    n_test_frames = int(sys.argv[3])
 
 n_test_objects = 1
-if len(sys.argv) > 3:
-    n_test_objects = int(sys.argv[3])
+if len(sys.argv) > 4:
+    n_test_objects = int(sys.argv[4])
 
-def reverse_colourmap(cmap, name = 'my_cmap_r'):
-     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
-my_cmap = reverse_colourmap(plt.get_cmap('binary'))#plt.get_cmap('winter')
+if dir_name is None:
+    dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
+    os.mkdir(dir_name)
+    
+    f = open(dir_name + '/params.txt', 'w')
+    f.write('fried jmax num_frames_gen num_frames num_objs nn_mode\n')
+    f.write('%f %d %d %d %d %d' % (fried_param, jmax, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
+    f.flush()
+    f.close()
+
+images_dir_train = "images_in"
+images_dir_test = "images_in"#images_in_test"
+
+sys.path.append('../utils')
+sys.path.append('..')
+
+if train:
+    sys.stdout = open(dir_name + '/log.txt', 'a')
+    
+#else:
+#    dir_name = "."
+#    images_dir = "../images_in_old"
+
+#    sys.path.append('../../utils')
+#    sys.path.append('../..')
+
+
+import config
+import misc
+import plot
+import psf
+import utils
+import kolmogorov
+import zernike
+
 
 def load_data():
+    data_file = dir_name + '/learn_object_Ds.dat.npz'
+    if os.path.exists(data_file):
+        loaded = np.load(data_file)
+        Ds = loaded['a']
+        objs = loaded['b']
+        return Ds, objs
+
     data_file = dir_name + '/learn_object_Ds.dat'
     if os.path.exists(data_file):
         Ds = np.load(data_file)
@@ -104,14 +125,15 @@ def load_data():
         if os.path.exists(data_file):
             objs = np.load(data_file)
         return Ds, objs
-    else:
-        return None, None
+
+    return None, None
 
 def save_data(Ds, objects):
-    with open(dir_name + '/learn_object_Ds.dat', 'wb') as f:
-        np.save(f, Ds)
-    with open(dir_name + '/learn_object_objs.dat', 'wb') as f:
-        np.save(f, objs)
+    np.savez_compressed(dir_name + '/learn_object_Ds.dat', a=Ds, b=objects)
+    #with open(dir_name + '/learn_object_Ds.dat', 'wb') as f:
+    #    np.save(f, Ds)
+    #with open(dir_name + '/learn_object_objs.dat', 'wb') as f:
+    #    np.save(f, objs)
 
 
 def load_model():
@@ -380,25 +402,45 @@ class nn_model:
                 ###################################################################
                 # Autoencoder
                 ###################################################################
-                hidden_layer = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer)#(normalized)
-                hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                #hidden_layer = keras.layers.Conv2D(64, (4, 4), activation='relu', padding='same')(hidden_layer)#(normalized)
+                hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
+                #hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input])
+                hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
+                hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer1)#(normalized)
+                #hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
+                #hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1])
+                hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1])
+                
+                hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
+                hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer3)#(normalized)
+                #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
+                #hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3])
+                hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3])
+                
+                hidden_layer5 = keras.layers.MaxPooling2D()(hidden_layer4)
+                hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer5)#(normalized)
+                #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
+                #hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5])
+                hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5])
+                hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
+
+                #hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
                 #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
-                hidden_layer = keras.layers.Flatten()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
+                #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
+                
+                hidden_layer = keras.layers.Flatten()(hidden_layer7)
                 hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(500, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(jmax, activation='relu')(hidden_layer)
-                #hidden_layer = keras.layers.Dense(2*jmax, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
-                #hidden_layer = keras.layers.Reshape((jmax))(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
                 output = keras.layers.Lambda(self.aberrate)(hidden_layer)
                
@@ -477,7 +519,10 @@ class nn_model:
             self.num_objs = Ds.shape[1]
         assert(self.num_objs <= Ds.shape[1])
         assert(Ds.shape[2] == 2)
-        Ds = Ds[:self.num_frames, :self.num_objs]
+        i1 = random.randint(0, Ds.shape[0] + 1 - self.num_frames)
+        i2 = random.randint(0, Ds.shape[1] + 1 - self.num_objs)
+        Ds = Ds[i1:i1+self.num_frames, i2:i2+self.num_objs]
+        self.objs = objs[i2:i2+self.num_objs]
         num_objects = Ds.shape[1]
         self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
@@ -486,7 +531,6 @@ class nn_model:
         #    for j in np.arange(self.num_frames):
         #        self.Ds[i, 2*j] = Ds[j, i, 0]
         #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
-        self.objs = objs[:self.num_objs]
         #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
         #for i in np.arange(len(objs)):
         #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
@@ -524,11 +568,10 @@ class nn_model:
         #self.coefs_validation /= self.scale_factor
         
 
-    def train(self, full=False):
+    def train(self):
         model = self.model
 
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
-        #if not full:
         
         for epoch in np.arange(n_epochs):
             if self.nn_mode == MODE_1:
@@ -573,7 +616,7 @@ class nn_model:
     
         #######################################################################
         # Plot some of the training data results
-        n_test = 5
+        n_test = min(num_objs, 5)
         if self.nn_mode == MODE_1:
             pred_objs = model.predict(self.Ds)
             #predicted_coefs = model.predict(Ds_train[0:n_test])
@@ -724,7 +767,7 @@ class nn_model:
         
         model = self.model
         
-        Ds_, objs, nx_orig = gen_data(num_frames=n_test_frames, num_images=n_test_objects)
+        Ds_, objs, nx_orig = gen_data(num_frames=n_test_frames, images_dir = images_dir_test, num_images=n_test_objects)
         print("test_1")
         num_frames = Ds_.shape[0]
         num_objects = Ds_.shape[1]
@@ -782,15 +825,23 @@ class nn_model:
             ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
             psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
     
-            obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
+            #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
+            DFs = np.zeros((len(objs), 2, self.nx-1, self.nx-1), dtype='complex') # in Fourier space
             for i in np.arange(len(objs)):
                 D = misc.sample_image(Ds[i, :, :, 0], .99)
                 D_d = misc.sample_image(Ds[i, :, :, 1], .99)
                 DF = fft.fft2(D)
                 DF_d = fft.fft2(D_d)
-                obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-                obj_reconstr = fft.ifftshift(obj_reconstr[0])
-                obj_reconstr_mean += obj_reconstr
+                DFs[i, 0] = DF
+                DFs[i, 1] = DF_d
+                
+                #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                #obj_reconstr = fft.ifftshift(obj_reconstr[0])
+                #obj_reconstr_mean += obj_reconstr
+
+            obj_reconstr = psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+            obj_reconstr = fft.ifftshift(obj_reconstr[0])
+            #obj_reconstr_mean += obj_reconstr
 
                 #my_test_plot = plot.plot(nrows=1, ncols=2)
                 #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
@@ -798,9 +849,11 @@ class nn_model:
                 #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                 #my_test_plot.close()
                 
-            my_test_plot = plot.plot(nrows=1, ncols=2)
-            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-            my_test_plot.colormap(obj_reconstr_mean, [1])
+            my_test_plot = plot.plot(nrows=2, ncols=2)
+            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0, 0])
+            my_test_plot.colormap(obj_reconstr, [0, 1])
+            my_test_plot.colormap(Ds[i, :, :, 0], [1, 0])
+            my_test_plot.colormap(Ds[i, :, :, 1], [1, 1])
             my_test_plot.save(dir_name + "/test_results_mean.png")
             my_test_plot.close()
             
@@ -829,10 +882,9 @@ class nn_model:
                 my_test_plot.close()
             
 
-def gen_data(num_frames, num_images = None, shuffle = True):
+def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuffle = True):
     image_file = None
-    dir = "images_in"
-    images, _, nx, nx_orig = utils.read_images(dir, image_file, is_planet = False, image_size=None, tile=True)
+    images, _, nx, nx_orig = utils.read_images(images_dir, image_file, is_planet = False, image_size=None, tile=True)
     images = np.asarray(images)
     if shuffle:
         random_indices = random.choice(len(images), size=len(images), replace=False)
@@ -875,11 +927,13 @@ def gen_data(num_frames, num_images = None, shuffle = True):
         #psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         #######################################################################
         for obj_no in np.arange(num_objects):
-            # Omit for now (just technical issues)
-            #images[obj_no] = psf.critical_sampling(images[obj_no], arcsec_per_px, diameter, wavelength)
             image = images[obj_no]
+            # Omit for now (just technical issues)
+            image = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
             image -= np.mean(image)
             image /= np.std(image)
+            images[obj_no] = image
+            
             #my_test_plot = plot.plot()
             #my_test_plot.colormap(image)
             #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
@@ -892,24 +946,18 @@ def gen_data(num_frames, num_images = None, shuffle = True):
             DF = DFs1[0, 0]
             DF_d = DFs1[0, 1]
             
-            if noise_std_perc > 0.:
-                print("np.mean(image)", np.mean(image), np.min(image), np.max(image))
-                noise = np.random.poisson(lam=noise_std_perc*np.std(image), size=(nx, nx))
-                fnoise = fft.fft2(noise)
-                fnoise = fft.fftshift(fnoise)
-        
-                noise_d = np.random.poisson(lam=noise_std_perc*np.std(image), size=(nx, nx))
-                fnoise_d = fft.fft2(noise_d)
-                fnoise_d = fft.fftshift(fnoise_d)
-        
-                DF += fnoise
-                DF_d += fnoise_d
-        
             DF = fft.ifftshift(DF)
             DF_d = fft.ifftshift(DF_d)
         
             D = fft.ifft2(DF).real
             D_d = fft.ifft2(DF_d).real
+
+            if noise_std_perc > 0.:
+                noise = np.random.poisson(lam=noise_std_perc*np.std(D), size=(nx-1, nx-1))
+                noise_d = np.random.poisson(lam=noise_std_perc*np.std(D_d), size=(nx-1, nx-1))
+
+                D += noise
+                D_d += noise_d
 
             ###################################################################
             # Just checking if true_coefs are calculated correctly
@@ -969,13 +1017,13 @@ if train:
     for rep in np.arange(0, num_reps):
         print("Rep no: " + str(rep))
     
-        if rep == num_reps-1:
-            # In the laast iteration train on the full set
-            model.train(full=True)
-        else:
-            model.train()
-    
+        model.train()
+
         model.test()
+        
+        if shuffle:
+            model.set_data(Ds, objs)
+            
     
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break

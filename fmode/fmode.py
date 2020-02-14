@@ -18,7 +18,11 @@ from scipy.signal import argrelextrema
 
 import scipy.optimize
 
+<<<<<<< HEAD
 k_min = 700
+=======
+k_min = 1000
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
 k_max = sys.maxsize
 if len(sys.argv) > 1:
     k_min = float(sys.argv[1])
@@ -200,7 +204,11 @@ for root, dirs, files in os.walk("data"):
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
         fig.savefig(output_dir + "/spectrum.png")
+<<<<<<< HEAD
         #fig.close()
+=======
+        fig.close()
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
         
         f1 = open(output_dir + '/areas.txt', 'w')
         f1.write('k num_components f_mode_area\n')
@@ -229,10 +237,13 @@ for root, dirs, files in os.walk("data"):
             inds = np.where(x < 10.)[0]
             x = x[inds]
             y = y[inds]
+<<<<<<< HEAD
             x = x[:-2]+x[1:-1]+x[2:]
             y = y[:-2]+y[1:-1]+y[2:]
             x/=3
             y/=3
+=======
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
             
             #noise_var = 0.
             #num_segments = 10
@@ -243,18 +254,30 @@ for root, dirs, files in os.walk("data"):
             #noise_var /= num_segments
             #noise_var /= 2
             
+<<<<<<< HEAD
             noise_var = get_noise_var(dat)/np.sqrt(3)
+=======
+            noise_var = get_noise_var(dat)
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
             
             sig_var = np.var(y) - noise_var
             true_sigma = np.sqrt(noise_var)
             print("noise_std", true_sigma)
+<<<<<<< HEAD
             num_w = 1
+=======
+            num_w = 2
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
             
             x_range = max(x) - min(x)
             x_left = min(x)
             #waics = []
             min_bic = sys.float_info.max
+<<<<<<< HEAD
             for num_components in np.arange(1, 5):
+=======
+            for num_components in np.arange(1, 4):
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
                 scale =  np.sum(y)*x_range/len(y)/num_components
                 print("scale", scale)
                 
@@ -436,7 +459,11 @@ for root, dirs, files in os.walk("data"):
             ax.set_xlabel(r'$\nu$')
             ax.set_ylabel('Amplitude')
             fig.savefig(output_dir + "/areas" + str(k_index) + ".png")
+<<<<<<< HEAD
             #fig.close()
+=======
+            fig.close()
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace
             
             f1.write('%s %s %s' % (str(k_value), opt_num_components, areas[0]) + "\n")
             print("Lowest BIC", min_bic)
@@ -456,4 +483,8 @@ for root, dirs, files in os.walk("data"):
         ax.set_xlabel(r'$k$')
         ax.set_ylabel('F-mode area')
         fig.savefig(output_dir + "/areas.png")
+<<<<<<< HEAD
         #fig.close()
+=======
+        fig.close()
+>>>>>>> 9b2c427774e58b8dd6655090266ac4893b437ace

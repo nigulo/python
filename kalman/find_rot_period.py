@@ -90,7 +90,7 @@ for (star, dat) in ds:
     
     freqs = np.linspace(1./365, 2, 1000)
     omegas = freqs*2.0*np.pi
-    ellqs = np.array([.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000])
+    ellqs = np.array([2])
     
     def condition_fn(params):
         omega = params[1]
@@ -99,9 +99,16 @@ for (star, dat) in ds:
             return False
         else:
             return 2.0*np.pi/omega <= ellq
-    
+        
+    def param_fn(params):
+        omega = params[1]
+        ellq = params[3]
+        ret_val = params
+        ret_val[3] = 2.0*np.pi/omega * ellq
+        return ret_val
+        
     initial_indices = [None, None, None, len(ellqs)-1, None, None, None]
-    kalman_utils = ku.kalman_utils(t, y, num_iterations=3, condition_fn=condition_fn, initial_indices = initial_indices)
+    kalman_utils = ku.kalman_utils(t, y, num_iterations=3, condition_fn=condition_fn, initial_indices=initial_indices, param_fn=param_fn)
     for i in np.arange(0, len(cov_types)):
         cov_type = cov_types[i]
         sig_var = np.array([sig_vars[i]])
