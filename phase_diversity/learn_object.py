@@ -398,36 +398,44 @@ class nn_model:
             elif nn_mode == MODE_2:
                 self.create_psf()
                 object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
+                #image_input_tiled = keras.layers.Input((nx, nx, 32), name='image_input_tiled')
                 #object_input  = keras.layers.Reshape((nx*nx))(object_input)
                 ###################################################################
                 # Autoencoder
                 ###################################################################
-                hidden_layer0 = keras.layers.Conv2D(64, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(image_input)#(normalized)
                 #hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(hidden_layer0)#(normalized)
                 #hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
-                #hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
-                hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
+                hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])], name='h0')#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                #hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
                 hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
-                hidden_layer2 = keras.layers.Conv2D(64, (32, 32), activation='relu', padding='same')(hidden_layer1)#(normalized)
+                hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer1)#(normalized)
                 #hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer2)#(normalized)
                 #hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
-                #hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1])
-                hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1], name='h2')
+                hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1], name='h2')
+                #hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1], name='h2')
                 
                 hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
-                hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer3)#(normalized)
+                hidden_layer4 = keras.layers.Conv2D(64, (16, 16), activation='relu', padding='same')(hidden_layer3)#(normalized)
                 #hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer4)#(normalized)
                 #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
-                #hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3])
-                hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3], name='h4')
+                hidden_layer4 = keras.layers.add([hidden_layer4, tf.keras.backend.tile(hidden_layer3, [1, 1, 1, 2])], name='h4')
+                #hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3], name='h4')
                 
                 hidden_layer5 = keras.layers.MaxPooling2D()(hidden_layer4)
-                hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer5)#(normalized)
+                hidden_layer6 = keras.layers.Conv2D(128, (8, 8), activation='relu', padding='same')(hidden_layer5)#(normalized)
                 #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
-                #hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5])
-                hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
+                hidden_layer6 = keras.layers.add([hidden_layer6, tf.keras.backend.tile(hidden_layer5, [1, 1, 1, 2])], name='h6')
+                #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
                 hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
+
+                hidden_layer8 = keras.layers.Conv2D(256, (4,4), activation='relu', padding='same')(hidden_layer7)#(normalized)
+                #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
+                #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
+                hidden_layer8 = keras.layers.add([hidden_layer8, tf.keras.backend.tile(hidden_layer7, [1, 1, 1, 2])], name='h8')
+                #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
+                hidden_layer9 = keras.layers.MaxPooling2D()(hidden_layer8)
 
                 #hidden_layer = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
                 #hidden_layer = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
@@ -442,7 +450,7 @@ class nn_model:
                 #hidden_layer = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(image_input)#(normalized)
                 #hidden_layer = keras.layers.MaxPooling2D()(hidden_layer)
                 
-                hidden_layer = keras.layers.Flatten()(hidden_layer7)
+                hidden_layer = keras.layers.Flatten()(hidden_layer9)
                 hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
                 hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
@@ -595,6 +603,15 @@ class nn_model:
                             validation_data=([self.Ds_validation, self.objs_validation], self.Ds_validation),
                             #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                             verbose=1)
+                #history = model.fit([self.Ds_train, self.objs_train, np.tile(self.Ds_train, [1, 1, 1, 16])], self.Ds_train,
+                #            epochs=1,
+                #            batch_size=1,
+                #            shuffle=True,
+                #            validation_data=([self.Ds_validation, self.objs_validation, np.tile(self.Ds_validation, [1, 1, 1, 32])], self.Ds_validation),
+                #            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                #            verbose=1)
+                
+                
                 intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
                 save_model(intermediate_layer_model)
             elif self.nn_mode == MODE_3:
@@ -643,6 +660,7 @@ class nn_model:
         elif self.nn_mode == MODE_2:
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs], batch_size=1)
+            #pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs, np.tile(self.Ds, [1, 1, 1, 16])], batch_size=1)
             pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
             #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
             #predicted_coefs = model.predict(Ds_train[0:n_test])
@@ -816,6 +834,7 @@ class nn_model:
             print("test_4_2")
             start = time.time()    
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
             pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
             end = time.time()
             print("Prediction time" + str(end - start))
