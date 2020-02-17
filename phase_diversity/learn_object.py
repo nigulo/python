@@ -273,11 +273,11 @@ class nn_model:
                 
                 def get_alphas_part(x):
                     x = tf.reshape(x, [8432 + nx*nx])
-                    return tf.slice(x, [0], [8432])
+                    return tf.reshape(tf.slice(x, [0], [8432]), [1, 8432])
                 
                 def get_obj_part(x):
                     x = tf.reshape(x, [8432 + nx*nx])
-                    return tf.reshape(tf.slice(x, [8432], [nx*nx]), [nx, nx])
+                    return tf.slice(x, [8432], [nx*nx])
                     
 
                 self.create_psf()
@@ -320,10 +320,6 @@ class nn_model:
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
                 hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5], name='h6')
                 
-                #alphas_part_layer = keras.layers.Lambda(lambda x : get_alphas_part(x))(hidden_layer6)
-                #obj_layer = keras.layers.Lambda(lambda x : get_obj_part(x))(hidden_layer6)
-                
-                
                 #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
                 hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
 
@@ -331,13 +327,17 @@ class nn_model:
                 #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
                 hidden_layer8 = keras.layers.add([hidden_layer8, hidden_layer7], name='h8')
+                
+                alphas_part_layer = keras.layers.Lambda(lambda x : get_alphas_part(x))(hidden_layer8)
+                obj_layer = keras.layers.Lambda(lambda x : get_obj_part(x))(hidden_layer8)
+                
                 #hidden_layer8 = keras.layers.concatenate([hidden_layer8, hidden_layer7], name='h8')
-                hidden_layer9 = keras.layers.MaxPooling2D()(hidden_layer8)
+                hidden_layer9 = keras.layers.MaxPooling1D()(alphas_part_layer)
 
                 hidden_layer = keras.layers.Flatten()(hidden_layer9)
                 hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
                 hidden_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(hidden_layer)
-                hidden_layer = keras.layers.concatenate([hidden_layer, object_input])
+                hidden_layer = keras.layers.concatenate([hidden_layer, obj_layer])#object_input])
                 output = keras.layers.Lambda(self.psf.aberrate)(hidden_layer)
                
                 model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
