@@ -153,6 +153,20 @@ def save_model(model):
         pickle.dump(nn_mode, f, protocol=4)
 
 
+def load_weights(model):
+    model_file = dir_name + '/learn_object_weights.h5'
+    if os.path.exists(model_file):
+        model.load_weights(model_file)
+        nn_mode = pickle.load(open(dir_name + '/learn_object_params.dat', 'rb'))
+        return nn_mode
+    return None
+
+def save_weights(model):
+    model.save_weights(dir_name + '/learn_object_weights.h5')
+    with open(dir_name + '/learn_object_params.dat', 'wb') as f:
+        pickle.dump(nn_mode, f, protocol=4)
+
+
 def get_params(nx):
 
     #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
@@ -221,6 +235,7 @@ class nn_model:
         self.psf = psf_tf.psf_tf(ctf, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         
     
+    
     def __init__(self, nx, num_frames, num_objs):
         
         self.num_frames = num_frames
@@ -252,45 +267,71 @@ class nn_model:
     
                 model = keras.models.Model(inputs=image_input, outputs=output)
             elif nn_mode == MODE_2:
+                
+                def my_fun(a, num):
+                    return tf.tile(a, [1, 1, 1, num])
+                
+                def get_alphas_part(x):
+                    x = tf.reshape(x, [8432 + nx*nx])
+                    return tf.slice(x, [0], [8432])
+                
+                def get_obj_part(x):
+                    x = tf.reshape(x, [8432 + nx*nx])
+                    return tf.reshape(tf.slice(x, [8432], [nx*nx]), [nx, nx])
+                    
+
                 self.create_psf()
                 object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
+                image_input_tiled = keras.layers.Lambda(lambda x : my_fun(x, 32))(image_input)
+                #image_input = tf.keras.backend.tile(image_input, [1, 1, 1, 32])#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
                 #image_input_tiled = keras.layers.Input((nx, nx, 32), name='image_input_tiled')
                 #object_input  = keras.layers.Reshape((nx*nx))(object_input)
                 ###################################################################
                 # Autoencoder
                 ###################################################################
-                hidden_layer0 = keras.layers.Conv2D(32, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
+                hidden_layer0 = keras.layers.Conv2D(64, (7, 7), activation='relu', padding='same')(image_input)#(normalized)
                 #hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(hidden_layer0)#(normalized)
                 #hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
-                #hidden_layer0 = keras.layers.add([hidden_layer0, tf.keras.backend.tile(image_input, [1, 1, 1, 16])], name='h0')#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
-                hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
+
+                hidden_layer0 = keras.layers.add([hidden_layer0, image_input_tiled], name='h0')#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                #hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
                 hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
-                hidden_layer2 = keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(hidden_layer1)#(normalized)
+                #hidden_layer1 = tf.keras.backend.tile(hidden_layer1, [1, 1, 1, 2])
+                hidden_layer1 = keras.layers.Lambda(lambda x : my_fun(x, 2))(hidden_layer1)
+                
+                hidden_layer2 = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(hidden_layer1)#(normalized)
                 #hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer2)#(normalized)
                 #hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
-                #hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1], name='h2')
-                hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1], name='h2')
+                hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1], name='h2')
+                #hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1], name='h2')
                 
                 hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
-                hidden_layer4 = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(hidden_layer3)#(normalized)
+                #hidden_layer3 = tf.keras.backend.tile(hidden_layer3, [1, 1, 1, 2])
+                hidden_layer3 = keras.layers.Lambda(lambda x : my_fun(x, 2))(hidden_layer3)
+                hidden_layer4 = keras.layers.Conv2D(256, (3, 3), activation='relu', padding='same')(hidden_layer3)#(normalized)
                 #hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer4)#(normalized)
                 #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
-                #hidden_layer4 = keras.layers.add([hidden_layer4, tf.keras.backend.tile(hidden_layer3, [1, 1, 1, 2])], name='h4')
-                hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3], name='h4')
+                hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3], name='h4')
+                #hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3], name='h4')
                 
                 hidden_layer5 = keras.layers.MaxPooling2D()(hidden_layer4)
-                hidden_layer6 = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(hidden_layer5)#(normalized)
+                hidden_layer6 = keras.layers.Conv2D(256, (3, 3), activation='relu', padding='same')(hidden_layer5)#(normalized)
                 #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
-                #hidden_layer6 = keras.layers.add([hidden_layer6, tf.keras.backend.tile(hidden_layer5, [1, 1, 1, 2])], name='h6')
-                hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
+                hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5], name='h6')
+                
+                #alphas_part_layer = keras.layers.Lambda(lambda x : get_alphas_part(x))(hidden_layer6)
+                #obj_layer = keras.layers.Lambda(lambda x : get_obj_part(x))(hidden_layer6)
+                
+                
+                #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
                 hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
 
                 hidden_layer8 = keras.layers.Conv2D(256, (3, 3), activation='relu', padding='same')(hidden_layer7)#(normalized)
                 #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
-                #hidden_layer8 = keras.layers.add([hidden_layer8, tf.keras.backend.tile(hidden_layer7, [1, 1, 1, 2])], name='h8')
-                hidden_layer8 = keras.layers.concatenate([hidden_layer8, hidden_layer7], name='h8')
+                hidden_layer8 = keras.layers.add([hidden_layer8, hidden_layer7], name='h8')
+                #hidden_layer8 = keras.layers.concatenate([hidden_layer8, hidden_layer7], name='h8')
                 hidden_layer9 = keras.layers.MaxPooling2D()(hidden_layer8)
 
                 hidden_layer = keras.layers.Flatten()(hidden_layer9)
@@ -300,6 +341,12 @@ class nn_model:
                 output = keras.layers.Lambda(self.psf.aberrate)(hidden_layer)
                
                 model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
+
+                nn_mode_ = load_weights(model)
+                if nn_mode_ is not None:
+                    assert(nn_mode_ == nn_mode) # Model was saved with in mode
+                else:
+                    nn_mode_ = nn_mode
 
             elif nn_mode == MODE_3:
                 self.create_psf()
@@ -361,6 +408,7 @@ class nn_model:
                 full_model = Model(inputs=model.input, outputs=output)
                 model = full_model
 
+            
         self.model = model
         self.model.compile(optimizer='adadelta', loss='mse')
         self.nx = nx
@@ -456,7 +504,7 @@ class nn_model:
                 
                 
                 intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-                save_model(intermediate_layer_model)
+                save_weights(intermediate_layer_model)
             elif self.nn_mode == MODE_3:
                 history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
                             epochs=1,
