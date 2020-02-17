@@ -8,6 +8,56 @@ import utils
 import zernike
 
 
+def _centered(arr, newshape):
+    # Return the center newshape portion of the array.
+    currshape = tf.shape(arr)[-2:]
+    startind = (currshape - newshape) // 2
+    endind = startind + newshape
+    return arr[..., startind[0]:endind[0], startind[1]:endind[1]]
+
+def fftconv(in1, in2, mode="full", reorder_channels_before=True, reorder_channels_after=True):
+    # Reorder channels to come second (needed for fft)
+    if reorder_channels_before:
+        if len(tf.shape(in1)) == 4:
+            perm = [0, 3, 1, 2]
+        else:
+            perm = [2, 0, 1]
+
+        in1 = tf.transpose(in1, perm=perm)
+        in2 = tf.transpose(in2, perm=perm)
+
+    # Extract shapes
+    s1 = tf.convert_to_tensor(tf.shape(in1)[-2:])
+    s2 = tf.convert_to_tensor(tf.shape(in2)[-2:])
+    shape = s1 + s2 - 1
+
+    # Compute convolution in fourier space
+    sp1 = tf.signal.fft2d(in1, shape)
+    sp2 = tf.signal.fft2d(in2, shape)
+    ret = tf.signal.ifft2d(sp1 * sp2, shape)
+
+    # Crop according to mode
+    if mode == "full":
+        cropped = ret
+    elif mode == "same":
+        cropped = _centered(ret, s1)
+    elif mode == "valid":
+        cropped = _centered(ret, s1 - s2 + 1)
+    else:
+        raise ValueError("Acceptable mode flags are 'valid',"
+                         " 'same', or 'full'.")
+
+    result = cropped
+    # Reorder channels to last
+    if reorder_channels_after:
+        if len(tf.shape(in1)) == 4:
+            perm = [0, 2, 3, 1]
+        else:
+            perm = [1, 2, 0]
+
+        result = tf.transpose(result, perm=perm)
+    return result
+
 class phase_aberration_tf():
     
     def __init__(self, alphas, start_index = 3):
@@ -98,7 +148,7 @@ class psf_tf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=False):
         self.nx= nx
         coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
@@ -111,10 +161,10 @@ class psf_tf():
         self.corr = None # only for testing purposes
         self.coh_trans_func = coh_trans_func
         self.coh_trans_func.calc(self.coords)
+        self.corr_or_fft = corr_or_fft
         
 
-        
-        
+
     def calc(self, alphas=None):
         #self.incoh_vals = tf.zeros((2, self.nx1, self.nx1))
         #self.otf_vals = tf.zeros((2, self.nx1, self.nx1), dtype='complex')
@@ -123,19 +173,26 @@ class psf_tf():
             self.coh_trans_func.phase_aberr.set_alphas(alphas)
         coh_vals = self.coh_trans_func()
     
-        vals = tf.signal.ifft2d(coh_vals)
-        vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
-        vals = tf.signal.ifftshift(vals, axes=(1, 2))
-        
-        vals = tf.transpose(vals, (1, 2, 0))
-        #vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
-        # Maybe have to add channels axis first
-        #vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
-        vals = tf.transpose(vals, (2, 0, 1))
-        # In principle there shouldn't be negative values, but ...
-        #vals[vals < 0] = 0. # Set negative values to zero
-        vals = tf.cast(vals, dtype='complex64')
-        corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
+        if self.corr_or_fft:
+            corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
+            vals = tf.math.real(tf.signal.fftshift(tf.signal.ifft2d(tf.signal.ifftshift(corr, axes=(1, 2))), axes=(1, 2)))
+            #vals = tf.transpose(vals, (2, 0, 1))
+        else:
+            vals = tf.signal.ifft2d(coh_vals)
+            vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
+            vals = tf.signal.ifftshift(vals, axes=(1, 2))
+            
+            ###################################################################
+            #vals = tf.transpose(vals, (1, 2, 0))
+            ##vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+            ## Maybe have to add channels axis first
+            #vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
+            #vals = tf.transpose(vals, (2, 0, 1))
+            ###################################################################
+            # In principle there shouldn't be negative values, but ...
+            #vals[vals < 0] = 0. # Set negative values to zero
+            vals = tf.cast(vals, dtype='complex64')
+            corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
 
         #if normalize:
         #    norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
@@ -150,7 +207,6 @@ class psf_tf():
     alphas.shape = [l, jmax]
     '''
     def multiply(self, dat_F, alphas):
-
         if self.otf_vals is None:
             self.calc(alphas=alphas)
         return tf.math.multiply(dat_F, self.otf_vals)
@@ -177,41 +233,3 @@ class psf_tf():
         return D
 
 
-'''
-def _centered(arr, newshape):
-    # Return the center newshape portion of the array.
-    currshape = tf.shape(arr)[-2:]
-    startind = (currshape - newshape) // 2
-    endind = startind + newshape
-    return arr[..., startind[0]:endind[0], startind[1]:endind[1]]
-
-def fftconv(in1, in2, mode="full"):
-    # Reorder channels to come second (needed for fft)
-    in1 = tf.transpose(in1, perm=[0, 3, 1, 2])
-    in2 = tf.transpose(in2, perm=[0, 3, 1, 2])
-
-    # Extract shapes
-    s1 = tf.convert_to_tensor(tf.shape(in1)[-2:])
-    s2 = tf.convert_to_tensor(tf.shape(in2)[-2:])
-    shape = s1 + s2 - 1
-
-    # Compute convolution in fourier space
-    sp1 = tf.spectral.rfft2d(in1, shape)
-    sp2 = tf.spectral.rfft2d(in2, shape)
-    ret = tf.spectral.irfft2d(sp1 * sp2, shape)
-
-    # Crop according to mode
-    if mode == "full":
-        cropped = ret
-    elif mode == "same":
-        cropped = _centered(ret, s1)
-    elif mode == "valid":
-        cropped = _centered(ret, s1 - s2 + 1)
-    else:
-        raise ValueError("Acceptable mode flags are 'valid',"
-                         " 'same', or 'full'.")
-
-    # Reorder channels to last
-    result = tf.transpose(cropped, perm=[0, 2, 3, 1])
-    return result
-'''

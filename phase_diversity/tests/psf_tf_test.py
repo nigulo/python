@@ -10,6 +10,7 @@ import unittest
 import utils
 import plot
 import tensorflow as tf
+import misc
 
 jmax = 50
 diameter = 100.0
@@ -37,7 +38,6 @@ image10x10 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.407843
  [0.6509804,  0.6901961,  0.6509804,  0.6392157,  0.58431375, 0.5294118,
   0.45490196, 0.39607844, 0.36862746, 0.37254903]])
 
-'''
 image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
   0.38431373, 0.4509804, 0.45882353, 0.5137255, 0.49803922, 0.49803922,
   0.49019608, 0.4627451,  0.43529412, 0.42352942, 0.44705883, 0.46666667,
@@ -118,7 +118,7 @@ image20x20 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.407843
   0.49411765, 0.5137255,  0.5176471,  0.5686275,  0.5686275,  0.627451,
   0.63529414, 0.68235296, 0.6156863,  0.5921569,  0.5372549,  0.5411765,
   0.6,        0.60784316]])
-'''
+
 
 def get_params(nx):
 
@@ -147,17 +147,19 @@ def create_psf(nx):
 class test_aberrate(unittest.TestCase):
     
     def test(self):
-        nx = 10
+        nx = 20
         psf_tf_, psf_ = create_psf(nx)
-        image1 = utils.upsample(image10x10)
+        image1 = utils.upsample(image20x20)
 
         alphas = np.random.normal(size=(jmax))*10.
         D_expected = psf_.convolve(image1, alphas = np.array([alphas]))[0]
-
+        D_expected_0 = misc.sample_image(D_expected[0], 0.5)
+        D_expected_1 = misc.sample_image(D_expected[1], 0.5)
+        
         alphas_tf = tf.constant(alphas, dtype='float32')
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
         
-        image_tf = tf.constant(image10x10.flatten(), dtype='float32')
+        image_tf = tf.constant(image20x20.flatten(), dtype='float32')
         D = psf_tf_.aberrate(tf.concat((alphas_tf, image_tf), 0))
 
         
@@ -165,8 +167,8 @@ class test_aberrate(unittest.TestCase):
         print(D.shape)
         my_plot.colormap(D[0,:,:,0], [0, 0])
         my_plot.colormap(D[0,:,:,1], [0, 1])
-        my_plot.colormap(D_expected[0], [1, 0])
-        my_plot.colormap(D_expected[1], [1,1])
+        my_plot.colormap(D_expected_0, [1, 0])
+        my_plot.colormap(D_expected_1, [1,1])
             
         my_plot.save("test_aberrate.png")
         my_plot.close()
