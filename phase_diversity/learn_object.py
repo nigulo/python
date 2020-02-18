@@ -268,17 +268,17 @@ class nn_model:
                 model = keras.models.Model(inputs=image_input, outputs=output)
             elif nn_mode == MODE_2:
                 
-                def my_fun(a, num):
+                def tile(a, num):
                     return tf.tile(a, [1, 1, 1, num])
                 
                 def get_alphas_part(x):
-                    x = tf.reshape(x, [1000 + (nx//16)**2])
-                    return tf.reshape(tf.slice(x, [0], [1000]), [1, 1000])
+                    x = tf.reshape(x, [1000])
+                    return tf.reshape(tf.slice(x, [0], [500]), [1, 500])
                     #return tf.slice(x, [0], [1000])
                 
                 def get_obj_part(x):
-                    x = tf.reshape(x, [1000 + (nx//16)**2])
-                    return tf.reshape(tf.slice(x, [1000], [(nx//16)**2]), [1, nx//16, nx//16])
+                    x = tf.reshape(x, [1000])
+                    return tf.reshape(tf.slice(x, [500], [500]), [1, 500])
                     #return tf.slice(x, [1000], [(nx//16)**2])
                 
                 def resize(x):
@@ -290,7 +290,7 @@ class nn_model:
 
                 self.create_psf()
                 object_input = keras.layers.Input((nx*nx), name='object_input') # Channels first
-                image_input_tiled = keras.layers.Lambda(lambda x : my_fun(x, 32))(image_input)
+                image_input_tiled = keras.layers.Lambda(lambda x : tile(x, 32))(image_input)
                 #image_input = tf.keras.backend.tile(image_input, [1, 1, 1, 32])#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
                 #image_input_tiled = keras.layers.Input((nx, nx, 32), name='image_input_tiled')
                 #object_input  = keras.layers.Reshape((nx*nx))(object_input)
@@ -305,7 +305,7 @@ class nn_model:
                 #hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
                 hidden_layer1 = keras.layers.MaxPooling2D()(hidden_layer0)
                 #hidden_layer1 = tf.keras.backend.tile(hidden_layer1, [1, 1, 1, 2])
-                hidden_layer1 = keras.layers.Lambda(lambda x : my_fun(x, 2))(hidden_layer1)
+                hidden_layer1 = keras.layers.Lambda(lambda x : tile(x, 2))(hidden_layer1)
                 
                 hidden_layer2 = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(hidden_layer1)#(normalized)
                 #hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer2)#(normalized)
@@ -315,7 +315,7 @@ class nn_model:
                 
                 hidden_layer3 = keras.layers.MaxPooling2D()(hidden_layer2)
                 #hidden_layer3 = tf.keras.backend.tile(hidden_layer3, [1, 1, 1, 2])
-                hidden_layer3 = keras.layers.Lambda(lambda x : my_fun(x, 2))(hidden_layer3)
+                hidden_layer3 = keras.layers.Lambda(lambda x : tile(x, 2))(hidden_layer3)
                 hidden_layer4 = keras.layers.Conv2D(256, (3, 3), activation='relu', padding='same')(hidden_layer3)#(normalized)
                 #hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer4)#(normalized)
                 #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
@@ -331,7 +331,7 @@ class nn_model:
                 #hidden_layer6 = keras.layers.concatenate([hidden_layer6, hidden_layer5], name='h6')
                 hidden_layer7 = keras.layers.MaxPooling2D()(hidden_layer6)
 
-                hidden_layer7 = keras.layers.Lambda(lambda x : my_fun(x, 2))(hidden_layer7)
+                hidden_layer7 = keras.layers.Lambda(lambda x : tile(x, 2))(hidden_layer7)
                 hidden_layer8 = keras.layers.Conv2D(512, (3, 3), activation='relu', padding='same')(hidden_layer7)#(normalized)
                 #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
@@ -345,7 +345,7 @@ class nn_model:
                 hidden_layer9 = keras.layers.MaxPooling2D()(hidden_layer8)
 
                 hidden_layer = keras.layers.Flatten()(hidden_layer9)
-                hidden_layer = keras.layers.Dense(1000+(nx//16)**2, activation='relu')(hidden_layer)
+                hidden_layer = keras.layers.Dense(1000, activation='relu')(hidden_layer)
                 
                 alphas_layer = keras.layers.Lambda(lambda x : get_alphas_part(x))(hidden_layer)
                 obj_layer = keras.layers.Lambda(lambda x : get_obj_part(x))(hidden_layer)
@@ -355,19 +355,29 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(500, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax, activation='linear', name='alphas_layer')(alphas_layer)
                 
-                #obj_layer = keras.layers.Dense(6*6)(obj_layer)
-                obj_layer = keras.layers.Reshape((6, 6, 1))(obj_layer)
-                obj_layer = keras.layers.Conv2D(128, (3, 3), padding='same', activation='relu')(obj_layer)#(normalized)
+                obj_layer = keras.layers.Dense(6*6)(obj_layer)
+                obj_layer1 = keras.layers.Reshape((6, 6, 1))(obj_layer)
+                obj_layer = keras.layers.Conv2D(128, (3, 3), padding='same', activation='relu')(obj_layer1)#(normalized)
+                obj_layer = keras.layers.add([obj_layer, obj_layer1])
+                
+                obj_layer1 = keras.layers.UpSampling2D((2, 2))(obj_layer)
+                obj_layer = keras.layers.Conv2D(64, (3, 3), padding='same', activation='relu')(obj_layer1)#(normalized)
+                obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx//8, nx//8, 64])])
+                
                 obj_layer = keras.layers.UpSampling2D((2, 2))(obj_layer)
-                obj_layer = keras.layers.Conv2D(64, (3, 3), padding='same', activation='relu')(obj_layer)#(normalized)
-                obj_layer = keras.layers.UpSampling2D((2, 2))(obj_layer)
-                obj_layer = keras.layers.Lambda(lambda x : resize(x))(obj_layer)
-                obj_layer = keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu')(obj_layer)#(normalized)
-                obj_layer = keras.layers.UpSampling2D((2, 2))(obj_layer)
-                obj_layer = keras.layers.Conv2D(16, (3, 3), padding='same', activation='relu')(obj_layer)#(normalized)
-                obj_layer = keras.layers.UpSampling2D((2, 2))(obj_layer)
-                obj_layer = keras.layers.Conv2D(1, (7, 7), padding='same', activation='relu')(obj_layer)#(normalized)
+                obj_layer1 = keras.layers.Lambda(lambda x : resize(x))(obj_layer)
+                obj_layer = keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu')(obj_layer1)#(normalized)
+                obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx//4, nx//4, 32])])
+                
+                obj_layer1 = keras.layers.UpSampling2D((2, 2))(obj_layer)
+                obj_layer = keras.layers.Conv2D(16, (3, 3), padding='same', activation='relu')(obj_layer1)#(normalized)
+                obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx//2, nx//2, 16])])
+                
+                obj_layer1 = keras.layers.UpSampling2D((2, 2))(obj_layer)
+                obj_layer = keras.layers.Conv2D(1, (7, 7), padding='same', activation='relu')(obj_layer1)#(normalized)
+                obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx, nx, 1])])
                 obj_layer = keras.layers.BatchNormalization()(obj_layer)
+                obj_layer = keras.layers.Reshape((nx, nx), name='obj_layer')(obj_layer)
                 
                 
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax]), tf.reshape(obj_layer, [nx*nx])])#object_input])
@@ -583,8 +593,10 @@ class nn_model:
                     my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
                     my_test_plot.close()
         elif self.nn_mode == MODE_2:
-            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-            pred_alphas = intermediate_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
+            alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            pred_alphas = alphas_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
+            obj_layer_model = Model(inputs=model.input, outputs=model.get_layer("obj_layer").output)
+            pred_objs = obj_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
             #pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs, np.tile(self.Ds, [1, 1, 1, 16])], batch_size=1)
             pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
             #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
@@ -627,15 +639,17 @@ class nn_model:
 
 
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                my_test_plot = plot.plot(nrows=3, ncols=2)
+                my_test_plot = plot.plot(nrows=4, ncols=2)
                 #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
                 #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
                 my_test_plot.colormap(obj, [0, 0])
                 my_test_plot.colormap(obj_reconstr, [0, 1])
-                my_test_plot.colormap(self.Ds[i, :, :, 0], [1, 0])
-                my_test_plot.colormap(pred_Ds[i, :, :, 0], [1, 1])
-                my_test_plot.colormap(self.Ds[i, :, :, 1], [2, 0])
-                my_test_plot.colormap(pred_Ds[i, :, :, 1], [2, 1])
+                my_test_plot.colormap(obj, [1, 0])
+                my_test_plot.colormap(pred_objs[i], [1, 1])
+                my_test_plot.colormap(self.Ds[i, :, :, 0], [2, 0])
+                my_test_plot.colormap(pred_Ds[i, :, :, 0], [2, 1])
+                my_test_plot.colormap(self.Ds[i, :, :, 1], [3, 0])
+                my_test_plot.colormap(pred_Ds[i, :, :, 1], [3, 1])
                 #my_test_plot.colormap(D, [1, 0])
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
