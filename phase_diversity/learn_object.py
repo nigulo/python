@@ -536,8 +536,9 @@ class nn_model:
                 #            verbose=1)
                 
                 
-                intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-                save_weights(intermediate_layer_model)
+                #intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+                #save_weights(intermediate_layer_model)
+                save_weights(model)
             elif self.nn_mode == MODE_3:
                 history = model.fit([self.Ds_train, self.objs_train], self.Ds_train,
                             epochs=1,
