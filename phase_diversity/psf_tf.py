@@ -165,7 +165,7 @@ class psf_tf():
         
 
 
-    def calc(self, alphas=None):
+    def calc(self, alphas=None, normalize=True):
         #self.incoh_vals = tf.zeros((2, self.nx1, self.nx1))
         #self.otf_vals = tf.zeros((2, self.nx1, self.nx1), dtype='complex')
         
@@ -194,9 +194,9 @@ class psf_tf():
             vals = tf.cast(vals, dtype='complex64')
             corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
 
-        #if normalize:
-        #    norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
-        #    vals /= norm
+        if normalize:
+            norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
+            vals = tf.divide(vals, norm)
         self.incoh_vals = vals
         self.otf_vals = corr
         return self.incoh_vals
