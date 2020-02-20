@@ -312,7 +312,7 @@ class nn_model:
                 #hidden_layer0 = keras.layers.Conv2D(32, (64, 64), activation='relu', padding='same')(hidden_layer0)#(normalized)
                 #hidden_layer0 = keras.layers.BatchNormalization()(hidden_layer0)
 
-                #hidden_layer0 = keras.layers.add([hidden_layer0, image_input_tiled], name='h0')#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                hidden_layer0 = keras.layers.add([hidden_layer0, image_input_tiled], name='h0')#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
                 #hidden_layer0 = keras.layers.concatenate([hidden_layer0, image_input], name='h0')
                 hidden_layer1a = keras.layers.MaxPooling2D()(hidden_layer0)
                 #hidden_layer1 = tf.keras.backend.tile(hidden_layer1, [1, 1, 1, 2])
@@ -321,7 +321,7 @@ class nn_model:
                 hidden_layer2 = keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(hidden_layer1a)#(normalized)
                 #hidden_layer2 = keras.layers.Conv2D(32, (32, 32), activation='relu', padding='same')(hidden_layer2)#(normalized)
                 #hidden_layer2 = keras.layers.BatchNormalization()(hidden_layer2)
-                #hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1], name='h2')
+                hidden_layer2 = keras.layers.add([hidden_layer2, hidden_layer1b], name='h2')
                 #hidden_layer2 = keras.layers.concatenate([hidden_layer2, hidden_layer1], name='h2')
                 
                 hidden_layer3a = keras.layers.MaxPooling2D()(hidden_layer2)
@@ -330,7 +330,7 @@ class nn_model:
                 hidden_layer4 = keras.layers.Conv2D(256, (3, 3), activation='relu', padding='same')(hidden_layer3a)#(normalized)
                 #hidden_layer4 = keras.layers.Conv2D(32, (16, 16), activation='relu', padding='same')(hidden_layer4)#(normalized)
                 #hidden_layer4 = keras.layers.BatchNormalization()(hidden_layer4)
-                #hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3], name='h4')
+                hidden_layer4 = keras.layers.add([hidden_layer4, hidden_layer3b], name='h4')
                 #hidden_layer4 = keras.layers.concatenate([hidden_layer4, hidden_layer3], name='h4')
                 
                 hidden_layer5a = keras.layers.MaxPooling2D()(hidden_layer4)
@@ -338,7 +338,7 @@ class nn_model:
                 hidden_layer6 = keras.layers.Conv2D(512, (3, 3), activation='relu', padding='same')(hidden_layer5a)#(normalized)
                 #hidden_layer6 = keras.layers.Conv2D(32, (8, 8), activation='relu', padding='same')(hidden_layer6)#(normalized)
                 #hidden_layer6 = keras.layers.BatchNormalization()(hidden_layer6)
-                #hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5], name='h6')
+                hidden_layer6 = keras.layers.add([hidden_layer6, hidden_layer5b], name='h6')
                 
                 hidden_layer7a = keras.layers.MaxPooling2D()(hidden_layer6)
                 hidden_layer7 = keras.layers.Conv2D(512, (3, 3), activation='relu', padding='same')(hidden_layer7a)#(normalized)
@@ -363,7 +363,7 @@ class nn_model:
                 
                 #alphas_layer = keras.layers.Dense(500, activation='relu', name='tmp1')(hidden_layer)
                 #obj_layer = keras.layers.Dense(500, activation='relu', name='tmp2')(hidden_layer)
-                alphas_layer = keras.layers.Lambda(lambda x : get_alphas_part(x))(hidden_layer)
+                alphas_layer = hidden_layer#keras.layers.Lambda(lambda x : get_alphas_part(x))(hidden_layer)
                 obj_layer = keras.layers.Lambda(lambda x : get_obj_part(x))(hidden_layer)
                                 
                 #alphas_layer = keras.layers.Flatten()(alphas_layer)
