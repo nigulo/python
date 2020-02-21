@@ -1,8 +1,9 @@
 import matplotlib as mpl
 mpl.use('Agg')
 import numpy as np
-import numpy.random as random
 import sys
+np.set_printoptions(threshold=sys.maxsize)
+import numpy.random as random
 sys.setrecursionlimit(10000)
 import tensorflow.keras as keras
 keras.backend.set_image_data_format('channels_last')
@@ -33,12 +34,12 @@ num_frames_gen = 100
 # How many frames to use in training
 num_frames = 100
 # How many objects to use in training
-num_objs = 1#None
+num_objs = 10#None
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
 
-n_epochs = 10
+n_epochs = 1
 num_iters = 10
 num_reps = 1000
 suffle = True
@@ -172,7 +173,7 @@ def get_params(nx):
     #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 2.*np.pi*100
+    defocus = 2.*np.pi*1000
     #defocus = (0., 0.)
     return (arcsec_per_px, defocus)
 
@@ -431,7 +432,7 @@ class nn_model:
                 obj_layer = keras.layers.Reshape((nx, nx), name='obj_layer')(obj_layer)
                 
                 #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax]), tf.reshape(obj_layer, [nx*nx])])#object_input])
-                hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax]), tf.reshape(object_input, [nx*nx])])#object_input])
+                hidden_layer = keras.layers.concatenate([tf.math.scalar_mul(tf.constant(10, dtype="float32"), tf.reshape(alphas_layer, [jmax])), tf.reshape(object_input, [nx*nx])])#object_input])
                 output = keras.layers.Lambda(self.psf.aberrate)(hidden_layer)
                
                 model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
@@ -570,7 +571,7 @@ class nn_model:
 
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         
-        for epoch in np.arange(1):
+        for epoch in np.arange(n_epochs):
             if self.nn_mode == MODE_1:
                 history = model.fit(self.Ds_train, self.objs_train,
                             epochs=1,
@@ -691,6 +692,7 @@ class nn_model:
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 objs_reconstr.append(obj_reconstr)
 
+                print("pred_alphas", i, pred_alphas[i])
 
                 num_rows = 3
                 if pred_objs is not None:
@@ -921,7 +923,7 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
     aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
     defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 
-    coords, _, _ = utils.get_coords(nx//2, arcsec_per_px, diameter, wavelength)
+    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
 
     num_objects = len(images)
 
@@ -929,7 +931,7 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
     #true_coefs = np.zeros((num_frames, jmax))
     pa = psf.phase_aberration(jmax, start_index=0)
     pa.calc_terms(coords)
-    wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx//2, sampling=1.)
+    wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx, sampling=1.)
     #pa = psf.phase_aberration(np.random.normal(size=jmax))
     for frame_no in np.arange(num_frames):
         #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
@@ -942,7 +944,7 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
         #true_coefs[frame_no] = pa_true.alphas
         #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
         #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
-        psf_true = psf.psf(ctf_true, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        psf_true = psf.psf(ctf_true, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
         #######################################################################
         # Just checking if true_coefs are calculated correctly
@@ -962,19 +964,31 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
             #my_test_plot.colormap(image)
             #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
             #my_test_plot.close()
-            fimage = fft.fft2(misc.sample_image(image, .99))
-            fimage = fft.fftshift(fimage)
+            
+            
+            #image1 = misc.sample_image(image, .99)
+            #image1 -= np.mean(image)
+            #image1 /= np.std(image)
+            
+            image1 = utils.upsample(image)
+
+            D_D_d = psf_true.convolve(image1)
+            D = misc.sample_image(D_D_d[0, 0], 0.5)
+            D_d = misc.sample_image(D_D_d[0, 1], 0.5)
+
+            #fimage = fft.fft2(misc.sample_image(image, .99))
+            #fimage = fft.fftshift(fimage)
     
         
-            DFs1 = psf_true.multiply(fimage)
-            DF = DFs1[0, 0]
-            DF_d = DFs1[0, 1]
+            #DFs1 = psf_true.multiply(fimage)
+            #DF = DFs1[0, 0]
+            #DF_d = DFs1[0, 1]
             
-            DF = fft.ifftshift(DF)
-            DF_d = fft.ifftshift(DF_d)
+            #DF = fft.ifftshift(DF)
+            #DF_d = fft.ifftshift(DF_d)
         
-            D = fft.ifft2(DF).real
-            D_d = fft.ifft2(DF_d).real
+            #D = fft.ifft2(DF).real
+            #D_d = fft.ifft2(DF_d).real
 
             if noise_std_perc > 0.:
                 noise = np.random.poisson(lam=noise_std_perc*np.std(D), size=(nx-1, nx-1))
@@ -987,15 +1001,15 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
             # Just checking if true_coefs are calculated correctly
             if frame_no < 1 and obj_no < 5:
                 my_test_plot = plot.plot(nrows=1, ncols=3)
-                my_test_plot.colormap(image, [0])
+                my_test_plot.colormap(image, [0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(D, [1])
                 my_test_plot.colormap(D_d, [2])
                 my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
                 my_test_plot.close()
             ###################################################################
 
-            Ds[frame_no, obj_no, 0] = misc.sample_image(D, 1.01010101)
-            Ds[frame_no, obj_no, 1] = misc.sample_image(D_d, 1.01010101)
+            Ds[frame_no, obj_no, 0] = D#misc.sample_image(D, 1.01010101)
+            Ds[frame_no, obj_no, 1] = D_d#misc.sample_image(D_d, 1.01010101)
         print("Finished aberrating with wavefront", frame_no)
 
     return Ds, images, nx_orig

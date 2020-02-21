@@ -17,7 +17,6 @@ jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 
-image = plt.imread("psf_tf_test_input.png")
 
 
 def get_params(nx):
@@ -25,7 +24,7 @@ def get_params(nx):
     #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     arcsec_per_px = .25*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
     print("arcsec_per_px=", arcsec_per_px)
-    defocus = 2.*np.pi*100
+    defocus = 2.*np.pi*1000
     #defocus = (0., 0.)
     return (arcsec_per_px, defocus)
 
@@ -49,6 +48,12 @@ class test_aberrate(unittest.TestCase):
     def test(self):
         nx = 100
         psf_tf_, psf_ = create_psf(nx)
+
+        image = plt.imread("psf_tf_test_input.png")
+
+        image -= np.mean(image)
+        image /= np.std(image)
+        
         image1 = utils.upsample(image)
 
         alphas = np.random.normal(size=(jmax))*500.
@@ -68,7 +73,7 @@ class test_aberrate(unittest.TestCase):
         my_plot.colormap(D[0,:,:,0], [0, 0], show_colorbar=True, colorbar_prec=.3)
         my_plot.colormap(D[0,:,:,1], [0, 1])
         my_plot.colormap(D_expected_0, [1, 0])
-        my_plot.colormap(D_expected_1, [1,1])
+        my_plot.colormap(D_expected_1, [1, 1])
 
         my_plot.colormap(D_expected_0 - D[0,:,:,0], [2, 0], colorbar_prec=.3)
         my_plot.colormap(D_expected_1 - D[0,:,:,1], [2, 1])
