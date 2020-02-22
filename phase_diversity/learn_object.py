@@ -429,7 +429,7 @@ class nn_model:
                 obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx//2, nx//2, 32])])
                 
                 obj_layer1 = keras.layers.UpSampling2D((2, 2))(obj_layer)
-                #obj_layer1 = keras.layers.add([obj_layer1, tf.slice(image_input, [0, 0, 0, 0], [1, nx, nx, 1])])
+                obj_layer1 = keras.layers.add([obj_layer1, tf.slice(image_input, [0, 0, 0, 0], [1, nx, nx, 1])])
                 obj_layer = keras.layers.Conv2D(1, (7, 7), padding='same', activation='relu')(obj_layer1)#(normalized)
                 #obj_layer = keras.layers.add([obj_layer, tf.math.reduce_sum(obj_layer1, axis=3, keepdims=True)])
                 #obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx, nx, 1])])
