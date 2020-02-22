@@ -429,7 +429,7 @@ class nn_model:
                 obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx//2, nx//2, 32])])
                 
                 obj_layer1 = keras.layers.UpSampling2D((2, 2))(obj_layer)
-                obj_layer1 = keras.layers.add([obj_layer1, tf.slice(image_input, [0, 0, 0, 0], [1, nx, nx, 1])])
+                #obj_layer1 = keras.layers.add([obj_layer1, tf.slice(image_input, [0, 0, 0, 0], [1, nx, nx, 1])])
                 obj_layer = keras.layers.Conv2D(1, (7, 7), padding='same', activation='relu')(obj_layer1)#(normalized)
                 #obj_layer = keras.layers.add([obj_layer, tf.math.reduce_sum(obj_layer1, axis=3, keepdims=True)])
                 #obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx, nx, 1])])
@@ -704,22 +704,26 @@ class nn_model:
                 if pred_objs is not None:
                     num_rows += 1
                 #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-                my_test_plot = plot.plot(nrows=num_rows, ncols=2)
+                my_test_plot = plot.plot(nrows=num_rows, ncols=3)
                 #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
                 #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
                 row = 0
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
+                my_test_plot.colormap(obj - obj_reconstr, [row, 2])
                 row += 1
                 if pred_objs is not None:
                     my_test_plot.colormap(obj, [row, 0])
                     my_test_plot.colormap(pred_objs[i], [row, 1])
+                    my_test_plot.colormap(obj - pred_objs[i], [row, 2])
                     row += 1
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
                 my_test_plot.colormap(pred_Ds[i, :, :, 0], [row, 1])
+                my_test_plot.colormap(self.Ds[i, :, :, 0] - pred_Ds[i, :, :, 0], [row, 2])
                 row += 1
                 my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
                 my_test_plot.colormap(pred_Ds[i, :, :, 1], [row, 1])
+                my_test_plot.colormap(self.Ds[i, :, :, 1] - pred_Ds[i, :, :, 1], [row, 2])
                 #my_test_plot.colormap(D, [1, 0])
                 #my_test_plot.colormap(D_d, [1, 1])
                 #my_test_plot.colormap(D1[0, 0], [2, 0])
@@ -845,6 +849,11 @@ class nn_model:
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
             pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
+            try:
+                obj_layer_model = Model(inputs=model.input, outputs=model.get_layer("obj_layer").output)
+                pred_objs = obj_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
+            except ValueError:
+                pred_objs = None
             end = time.time()
             print("Prediction time" + str(end - start))
     
@@ -859,6 +868,8 @@ class nn_model:
     
             #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
             DFs = np.zeros((len(objs), 2, self.nx-1, self.nx-1), dtype='complex') # in Fourier space
+            if pred_objs is not None:
+                pred_obj = np.zeros((self.nx, self.nx))
             for i in np.arange(len(objs)):
                 D = misc.sample_image(Ds[i, :, :, 0], .99)
                 D_d = misc.sample_image(Ds[i, :, :, 1], .99)
@@ -866,6 +877,9 @@ class nn_model:
                 DF_d = fft.fft2(D_d)
                 DFs[i, 0] = DF
                 DFs[i, 1] = DF_d
+                
+                if pred_objs is not None:
+                    pred_obj += pred_objs[i]
                 
                 #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 #obj_reconstr = fft.ifftshift(obj_reconstr[0])
@@ -880,12 +894,22 @@ class nn_model:
                 #my_test_plot.colormap(obj_reconstr, [1])
                 #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
                 #my_test_plot.close()
-                
-            my_test_plot = plot.plot(nrows=2, ncols=2)
-            my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0, 0], show_colorbar=True, colorbar_prec=2)
-            my_test_plot.colormap(obj_reconstr, [0, 1])
-            my_test_plot.colormap(Ds[i, :, :, 0], [1, 0])
-            my_test_plot.colormap(Ds[i, :, :, 1], [1, 1])
+            
+            n_rows = 3
+            if pred_objs is not None:
+                n_rows += 1
+            my_test_plot = plot.plot(nrows=n_rows, ncols=2)
+            row = 0
+            obj = np.reshape(objs[i], (self.nx, self.nx))
+            my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+            my_test_plot.colormap(obj_reconstr, [row, 1])
+            row += 1
+            if pred_objs is not None:
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(pred_obj, [row, 1])
+                row += 1
+            my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
+            my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
             my_test_plot.save(dir_name + "/test_results_mean.png")
             my_test_plot.close()
             
