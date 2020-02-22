@@ -42,7 +42,7 @@ noise_std_perc = 0.#.01
 n_epochs = 2
 num_iters = 10
 num_reps = 1000
-suffle = True
+shuffle = True
 
 MODE_1 = 1 # aberrated images --> object
 MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> aberrated images
@@ -523,8 +523,12 @@ class nn_model:
             self.num_objs = Ds.shape[1]
         assert(self.num_objs <= Ds.shape[1])
         assert(Ds.shape[2] == 2)
-        i1 = random.randint(0, Ds.shape[0] + 1 - self.num_frames)
-        i2 = random.randint(0, Ds.shape[1] + 1 - self.num_objs)
+        if shuffle:
+            i1 = random.randint(0, Ds.shape[0] + 1 - self.num_frames)
+            i2 = random.randint(0, Ds.shape[1] + 1 - self.num_objs)
+        else:
+            i1 = 0
+            i2 = 0
         Ds = Ds[i1:i1+self.num_frames, i2:i2+self.num_objs]
         self.objs = objs[i2:i2+self.num_objs]
         num_objects = Ds.shape[1]
@@ -710,7 +714,7 @@ class nn_model:
                 row = 0
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
-                my_test_plot.colormap(obj - obj_reconstr, [row, 2])
+                my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
                 row += 1
                 if pred_objs is not None:
                     my_test_plot.colormap(obj, [row, 0])
