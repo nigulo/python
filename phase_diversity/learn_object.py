@@ -385,7 +385,7 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax, activation='linear')(alphas_layer)
-                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 10.), name='alphas_layer')(alphas_layer)
+                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 100.), name='alphas_layer')(alphas_layer)
                 
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
