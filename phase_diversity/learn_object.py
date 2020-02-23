@@ -440,6 +440,7 @@ class nn_model:
                 #hidden_layer = keras.layers.concatenate([tf.math.scalar_mul(tf.constant(10, dtype="float32"), tf.reshape(alphas_layer, [jmax])), tf.reshape(object_input, [nx*nx])])#object_input])
                 #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax]), tf.reshape(object_input, [nx*nx])])#object_input])
                 output = keras.layers.Lambda(self.psf.aberrate)(hidden_layer)
+                output = keras.layers.BatchNormalization()(output)
                
                 model = keras.models.Model(inputs=[image_input, object_input], outputs=output)
 
@@ -1041,7 +1042,10 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
                 my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
                 my_test_plot.close()
             ###################################################################
-
+            D -= np.mean(D)
+            D_d -= np.mean(D_d)
+            D /= np.std(D)
+            D_d /= np.std(D_d)
             Ds[frame_no, obj_no, 0] = D#misc.sample_image(D, 1.01010101)
             Ds[frame_no, obj_no, 1] = D_d#misc.sample_image(D_d, 1.01010101)
         print("Finished aberrating with wavefront", frame_no)
@@ -1069,6 +1073,14 @@ if Ds is None:
     Ds, objs, nx_orig = gen_data(num_frames_gen)
     save_data(Ds, objs)
 
+
+nx = Ds.shape[3]
+
+#Ds_mean = np.mean(Ds, axis=(2,3))
+#Ds_std = np.std(Ds, axis=(2,3))
+#Ds -= np.tile(np.reshape(Ds_mean, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
+#Ds /= np.tile(np.reshape(Ds_std, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
+
 my_test_plot = plot.plot()
 my_test_plot.colormap(Ds[0, 0, 0])
 my_test_plot.save(dir_name + "/D0.png")
@@ -1079,7 +1091,6 @@ my_test_plot.colormap(Ds[0, 0, 1])
 my_test_plot.save(dir_name + "/D0_d.png")
 my_test_plot.close()
 
-nx = Ds.shape[3]
 
 model = nn_model(nx, num_frames, num_objs)
 
