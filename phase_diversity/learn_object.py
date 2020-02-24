@@ -293,7 +293,6 @@ class nn_model:
             elif nn_mode == MODE_2:
                 
                 def tile(a, num):
-                    tf.print(a, output_stream=sys.stdout)
                     return tf.tile(a, [1, 1, 1, num])
                 
                 def get_alphas_part(x):
@@ -736,7 +735,7 @@ class nn_model:
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 objs_reconstr.append(obj_reconstr)
 
-                print("pred_alphas", i, pred_alphas[i])
+                #print("pred_alphas", i, pred_alphas[i])
 
                 num_rows = 3
                 if pred_objs is not None:
