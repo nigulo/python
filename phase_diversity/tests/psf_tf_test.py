@@ -17,6 +17,7 @@ jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 
+num_frames = 8
 
 
 def get_params(nx):
@@ -35,7 +36,7 @@ def create_psf(nx):
 
     pa = psf_tf.phase_aberration_tf(jmax, start_index=0)
     ctf = psf_tf.coh_trans_func_tf(aperture_func, pa, defocus_func)
-    psf_tf_ = psf_tf.psf_tf(ctf, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+    psf_tf_ = psf_tf.psf_tf(ctf, nx, arcsec_per_px=arcsec_per_px, diameter=diameter, wavelength=wavelength, num_frames=num_frames)
     
     
     pa = psf.phase_aberration(jmax, start_index=0)
@@ -56,10 +57,8 @@ class test_aberrate(unittest.TestCase):
         
         image1 = utils.upsample(image)
 
-        alphas = np.random.normal(size=(jmax))*500.
-        D_expected = psf_.convolve(image1, alphas = np.array([alphas]))[0]
-        D_expected_0 = misc.sample_image(D_expected[0], 0.5)
-        D_expected_1 = misc.sample_image(D_expected[1], 0.5)
+        alphas = np.random.normal(size=(jmax*num_frames))*500.
+        D_expected = psf_.convolve(image1, alphas = np.reshape(alphas, (num_frames, jmax)))
         
         alphas_tf = tf.constant(alphas, dtype='float32')
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
@@ -67,19 +66,24 @@ class test_aberrate(unittest.TestCase):
         image_tf = tf.constant(image.flatten(), dtype='float32')
         D = psf_tf_.aberrate(tf.concat((alphas_tf, image_tf), 0))
 
-        
-        my_plot = plot.plot(nrows=3, ncols=2)
-        print(D.shape)
-        my_plot.colormap(D[0,:,:,0], [0, 0], show_colorbar=True, colorbar_prec=.3)
-        my_plot.colormap(D[0,:,:,1], [0, 1])
-        my_plot.colormap(D_expected_0, [1, 0])
-        my_plot.colormap(D_expected_1, [1, 1])
+        for l in np.arange(num_frames):
 
-        my_plot.colormap(D_expected_0 - D[0,:,:,0], [2, 0], colorbar_prec=.3)
-        my_plot.colormap(D_expected_1 - D[0,:,:,1], [2, 1])
+            D_expected_0 = misc.sample_image(D_expected[l, 0], 0.5)
+            D_expected_1 = misc.sample_image(D_expected[l, 1], 0.5)
             
-        my_plot.save("test_aberrate.png")
-        my_plot.close()
+            my_plot = plot.plot(nrows=3, ncols=2)
+            print(D.shape)
+            my_plot.colormap(D[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.3)
+            my_plot.colormap(D[0, :, :, 2*l+1], [0, 1])
+            my_plot.colormap(D_expected_0, [1, 0])
+            my_plot.colormap(D_expected_1, [1, 1])
+    
+            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.3)
+            my_plot.colormap(np.abs(D_expected_1 - D[0, :, :, 2*l+1]), [2, 1])
+                
+            my_plot.save("test_aberrate" + str(l) + ".png")
+            my_plot.close()
+
 
         np.testing.assert_almost_equal(D, D_expected, 15)
 

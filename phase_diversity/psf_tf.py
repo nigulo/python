@@ -6,6 +6,7 @@ import tensorflow as tf
 
 import utils
 import zernike
+import sys
 
 
 def _centered(arr, newshape):
@@ -148,7 +149,7 @@ class psf_tf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=False):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=False, num_frames=1):
         self.nx= nx
         coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
@@ -162,43 +163,107 @@ class psf_tf():
         self.coh_trans_func = coh_trans_func
         self.coh_trans_func.calc(self.coords)
         self.corr_or_fft = corr_or_fft
+        self.num_frames = num_frames
         
 
+
+    '''
+        vals = fft.ifft2(coh_vals, axes=(-2, -1))
+        vals = (vals*vals.conjugate()).real
+        vals = fft.ifftshift(vals, axes=(-2, -1))
+        vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+        # In principle there shouldn't be negative values, but ...
+        vals[vals < 0] = 0. # Set negative values to zero
+        corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
+
+    if normalize:
+        norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
+        vals /= norm
+    '''
 
     def calc(self, alphas=None, normalize=True):
-        #self.incoh_vals = tf.zeros((2, self.nx1, self.nx1))
-        #self.otf_vals = tf.zeros((2, self.nx1, self.nx1), dtype='complex')
+        #self.incoh_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
+        #self.otf_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         
-        if alphas is not None:
-            self.coh_trans_func.phase_aberr.set_alphas(alphas)
-        coh_vals = self.coh_trans_func()
-    
-        if self.corr_or_fft:
-            corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
-            vals = tf.math.real(tf.signal.fftshift(tf.signal.ifft2d(tf.signal.ifftshift(corr, axes=(1, 2))), axes=(1, 2)))
-            #vals = tf.transpose(vals, (2, 0, 1))
-        else:
-            vals = tf.signal.ifft2d(coh_vals)
-            vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
-            vals = tf.signal.ifftshift(vals, axes=(1, 2))
-            
-            ###################################################################
-            #vals = tf.transpose(vals, (1, 2, 0))
-            ##vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
-            ## Maybe have to add channels axis first
-            #vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
-            #vals = tf.transpose(vals, (2, 0, 1))
-            ###################################################################
-            # In principle there shouldn't be negative values, but ...
-            #vals[vals < 0] = 0. # Set negative values to zero
-            vals = tf.cast(vals, dtype='complex64')
-            corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
+        
+        def fn(alphas):
+            if alphas is not None:
+                self.coh_trans_func.phase_aberr.set_alphas(alphas)
+            coh_vals = self.coh_trans_func()
+        
+            if self.corr_or_fft:
+                corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
+                vals = tf.math.real(tf.signal.fftshift(tf.signal.ifft2d(tf.signal.ifftshift(corr, axes=(1, 2))), axes=(1, 2)))
+                #vals = tf.transpose(vals, (2, 0, 1))
+            else:
+                
+                vals = tf.signal.ifft2d(coh_vals)
+                vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
+                vals = tf.signal.ifftshift(vals, axes=(1, 2))
+                
+                ###################################################################
+                #vals = tf.transpose(vals, (1, 2, 0))
+                ##vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+                ## Maybe have to add channels axis first
+                #vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
+                #vals = tf.transpose(vals, (2, 0, 1))
+                ###################################################################
+                # In principle there shouldn't be negative values, but ...
+                #vals[vals < 0] = 0. # Set negative values to zero
+                vals = tf.cast(vals, dtype='complex64')
+                corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
 
-        if normalize:
-            norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
-            vals = tf.divide(vals, norm)
-        self.incoh_vals = vals
-        self.otf_vals = corr
+            if normalize:
+                norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
+                vals = tf.divide(vals, norm)
+            #self.incoh_vals[2*i].assign(vals[0, :, :])
+            #self.incoh_vals[2*i+1].assign(vals[1, :, :])
+            #self.otf_vals[2*i].assign(corr[0, :, :])
+            #self.otf_vals[2*i+1].assign(corr[1, :, :])
+            
+            return corr
+            
+        otf_vals = tf.map_fn(fn, alphas, dtype='complex64')
+        self.otf_vals = tf.reshape(otf_vals, [self.num_frames*2, self.nx, self.nx])
+            
+        '''    
+        for i in np.arange(0, self.num_frames):
+        
+            if alphas is not None:
+                self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
+            coh_vals = self.coh_trans_func()
+        
+            if self.corr_or_fft:
+                corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
+                vals = tf.math.real(tf.signal.fftshift(tf.signal.ifft2d(tf.signal.ifftshift(corr, axes=(-2, -1))), axes=(-2, -1)))
+                #vals = tf.transpose(vals, (2, 0, 1))
+            else:
+                
+                vals = tf.signal.ifft2d(coh_vals)
+                vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
+                vals = tf.signal.ifftshift(vals, axes=(-2, 1))
+                
+                ###################################################################
+                #vals = tf.transpose(vals, (1, 2, 0))
+                ##vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+                ## Maybe have to add channels axis first
+                #vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
+                #vals = tf.transpose(vals, (2, 0, 1))
+                ###################################################################
+                # In principle there shouldn't be negative values, but ...
+                #vals[vals < 0] = 0. # Set negative values to zero
+                vals = tf.cast(vals, dtype='complex64')
+                corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(-2, 1))), axes=(-2, -1))
+
+            if normalize:
+                norm = tf.tile(tf.math.reduce_sum(vals, axis = (-2, -1), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
+                vals = tf.divide(vals, norm)
+            self.incoh_vals[2*i].assign(vals[0, :, :])
+            self.incoh_vals[2*i+1].assign(vals[1, :, :])
+            self.otf_vals[2*i].assign(corr[0, :, :])
+            self.otf_vals[2*i+1].assign(corr[1, :, :])
+        '''
+
         return self.incoh_vals
 
 
@@ -215,13 +280,13 @@ class psf_tf():
     def aberrate(self, x):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
-        x = tf.reshape(x, [jmax + nx*nx])
-        alphas = tf.slice(x, [0], [jmax])
-        obj = tf.reshape(tf.slice(x, [jmax], [nx*nx]), [nx, nx])
+        x = tf.reshape(x, [jmax*self.num_frames + nx*nx])
+        alphas = tf.reshape(tf.slice(x, [0], [jmax*self.num_frames]), [self.num_frames, jmax])
+        obj = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx]), [1, nx, nx])
+        obj = tf.tile(obj, [self.num_frames*2, 1, 1])
         
-        fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((nx, nx))))
-        fobj = tf.signal.fftshift(fobj)
-    
+        fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((self.num_frames*2, nx, nx))))
+        fobj = tf.signal.fftshift(fobj, axes = (1, 2))
     
         DF = self.multiply(fobj, alphas)
         DF = tf.signal.ifftshift(DF, axes = (1, 2))
@@ -229,7 +294,8 @@ class psf_tf():
         #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
         D = tf.transpose(D, (1, 2, 0))
         D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
-                    
+
+        #D = tf.transpose(tf.reshape(obj, [1, self.num_frames*2, self.nx, self.nx]), [0, 2, 3, 1])
         return D
 
 
