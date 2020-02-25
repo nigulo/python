@@ -12,12 +12,13 @@ import plot
 import tensorflow as tf
 import misc
 import matplotlib.pyplot as plt
+import numpy.fft as fft
 
 jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 
-num_frames = 8
+num_frames = 1
 
 
 def get_params(nx):
@@ -44,7 +45,7 @@ def create_psf(nx):
     psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
     return psf_tf_, psf_
 
-class test_aberrate(unittest.TestCase):
+class test_psf_tf(unittest.TestCase):
     
     def test(self):
         nx = 100
@@ -58,7 +59,8 @@ class test_aberrate(unittest.TestCase):
         image1 = utils.upsample(image)
 
         alphas = np.random.normal(size=(jmax*num_frames))*500.
-        D_expected = psf_.convolve(image1, alphas = np.reshape(alphas, (num_frames, jmax)))
+        alphas1 = np.reshape(alphas, (num_frames, jmax))
+        D_expected = psf_.convolve(image1, alphas = alphas1)
         
         alphas_tf = tf.constant(alphas, dtype='float32')
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
@@ -81,8 +83,26 @@ class test_aberrate(unittest.TestCase):
             my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.3)
             my_plot.colormap(np.abs(D_expected_1 - D[0, :, :, 2*l+1]), [2, 1])
                 
-            my_plot.save("test_aberrate" + str(l) + ".png")
+            my_plot.save("test_psf_tf_aberrate" + str(l) + ".png")
             my_plot.close()
+
+
+        dat_F = fft.fftshift(fft.fft2(image1), axes=(-2, -1))
+        dat_F = psf_.multiply(dat_F, alphas = alphas1)
+
+        image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
+
+        image_deconv= psf_tf_.deconvolve(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
+
+        my_plot = plot.plot(nrows=2, ncols=2)
+        my_plot.colormap(image, [0, 0], show_colorbar=True, colorbar_prec=.3)
+        my_plot.colormap(image_deconv_expected, [0, 1])
+        my_plot.colormap(image, [1, 0])
+        my_plot.colormap(image_deconv, [1, 1])
+
+            
+        my_plot.save("test_psf_tf_deconvolve.png")
+        my_plot.close()
 
 
         np.testing.assert_almost_equal(D, D_expected, 15)

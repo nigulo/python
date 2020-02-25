@@ -226,44 +226,6 @@ class psf_tf():
         otf_vals = tf.map_fn(fn, alphas, dtype='complex64')
         self.otf_vals = tf.reshape(otf_vals, [self.num_frames*2, self.nx, self.nx])
             
-        '''    
-        for i in np.arange(0, self.num_frames):
-        
-            if alphas is not None:
-                self.coh_trans_func.phase_aberr.set_alphas(alphas[i])
-            coh_vals = self.coh_trans_func()
-        
-            if self.corr_or_fft:
-                corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
-                vals = tf.math.real(tf.signal.fftshift(tf.signal.ifft2d(tf.signal.ifftshift(corr, axes=(-2, -1))), axes=(-2, -1)))
-                #vals = tf.transpose(vals, (2, 0, 1))
-            else:
-                
-                vals = tf.signal.ifft2d(coh_vals)
-                vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
-                vals = tf.signal.ifftshift(vals, axes=(-2, 1))
-                
-                ###################################################################
-                #vals = tf.transpose(vals, (1, 2, 0))
-                ##vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
-                ## Maybe have to add channels axis first
-                #vals = tf.image.resize(vals, size=(tf.shape(vals)[0]*2, tf.shape(vals)[1]*2))
-                #vals = tf.transpose(vals, (2, 0, 1))
-                ###################################################################
-                # In principle there shouldn't be negative values, but ...
-                #vals[vals < 0] = 0. # Set negative values to zero
-                vals = tf.cast(vals, dtype='complex64')
-                corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(-2, 1))), axes=(-2, -1))
-
-            if normalize:
-                norm = tf.tile(tf.math.reduce_sum(vals, axis = (-2, -1), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
-                vals = tf.divide(vals, norm)
-            self.incoh_vals[2*i].assign(vals[0, :, :])
-            self.incoh_vals[2*i+1].assign(vals[1, :, :])
-            self.otf_vals[2*i].assign(corr[0, :, :])
-            self.otf_vals[2*i+1].assign(corr[1, :, :])
-        '''
-
         return self.incoh_vals
 
 
@@ -299,3 +261,58 @@ class psf_tf():
         return D
 
 
+    '''
+        self.calc(alphas=alphas)
+        Ps = self.otf_vals
+        if not fft_shift_before:
+            Ps = fft.ifftshift(Ps, axes=(-2, -1))
+        if normalize:
+            Ds = utils.normalize_(Ds, Ps)
+    
+        D = Ds[:, 0, :, :]
+        D_d = Ds[:, 1, :, :]
+        
+        P = Ps[:, 0, :, :]
+        P_d = Ps[:, 1, :, :]
+    
+        P_conj = P.conjugate()
+        P_d_conj = P_d.conjugate()
+    
+        F_image = np.sum(D * P_conj + gamma * D_d * P_d_conj + regularizer_eps, axis=0)
+        den = np.sum(P*P_conj + gamma * P_d * P_d_conj + regularizer_eps, axis=0)
+        F_image /= den
+    
+        if fft_shift_before:
+            F_image = fft.ifftshift(F_image, axes=(-2, -1))
+    
+        image = fft.ifft2(F_image).real
+        if not fft_shift_before:
+            image = fft.ifftshift(image, axes=(-2, -1))
+    '''
+
+    def deconvolve(self, x):
+        nx = self.nx
+        jmax = self.coh_trans_func.phase_aberr.jmax
+        x = tf.reshape(x, [jmax*self.num_frames + nx*nx*self.num_frames*2])
+        alphas = tf.reshape(tf.slice(x, [0], [jmax*self.num_frames]), [self.num_frames, jmax])
+        #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
+        Ds = tf.transpose(tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [nx, nx, self.num_frames*2]), [2, 0, 1])
+
+        Ds = tf.complex(Ds, tf.zeros((self.num_frames*2, nx, nx)))
+        Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (1, 2)))
+
+        self.calc(alphas=alphas)
+        Ps = self.otf_vals
+        Ps = tf.signal.ifftshift(Ps, axes=(1, 2))
+
+        Ps_conj = tf.math.conj(Ps)
+    
+        num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[0])
+        den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[0])
+        F_image = tf.divide(num, den)
+    
+        image = tf.math.real(tf.signal.ifft2d(F_image))
+        image = tf.signal.ifftshift(image)
+        
+        return image
+        
