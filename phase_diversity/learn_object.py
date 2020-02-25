@@ -568,7 +568,8 @@ class nn_model:
         except ValueError:
             pred_objs = None
         #pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs, np.tile(self.Ds, [1, 1, 1, 16])], batch_size=1)
-        pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
+        if nn_mode == MODE_2:
+            pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
         #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
         #predicted_coefs = model.predict(Ds_train[0:n_test])
     
@@ -587,7 +588,7 @@ class nn_model:
         objs_reconstr = []
         i = 0
         while len(objs_test) < n_test:
-            DF = np.zeros((num_frames_input, 2, self.nx-1, self.nx-1))
+            DF = np.zeros((num_frames_input, 2, self.nx-1, self.nx-1), dtype="complex")
             for l in np.arange(num_frames_input):
                 D = misc.sample_image(self.Ds[i, :, :, 2*l], .99)
                 D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], .99)
@@ -611,34 +612,47 @@ class nn_model:
 
             #print("pred_alphas", i, pred_alphas[i])
 
-            num_rows = 3
-            if pred_objs is not None:
-                num_rows += 1
-            #D1 = psf_check.convolve(image, alphas=true_coefs[frame_no])
-            my_test_plot = plot.plot(nrows=num_rows, ncols=3)
-            #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
-            #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-            row = 0
-            my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
-            my_test_plot.colormap(obj_reconstr, [row, 1])
-            my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
-            row += 1
-            if pred_objs is not None:
+            if nn_mode == MODE_2:
+                num_rows = 3
+                if pred_objs is not None:
+                    num_rows += 1
+                my_test_plot = plot.plot(nrows=num_rows, ncols=3)
+                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
+                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                row = 0
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(obj_reconstr, [row, 1])
+                my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
+                row += 1
+                if pred_objs is not None:
+                    my_test_plot.colormap(obj, [row, 0])
+                    my_test_plot.colormap(pred_objs[i], [row, 1])
+                    my_test_plot.colormap(np.abs(obj - pred_objs[i]), [row, 2])
+                    row += 1
+                my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
+                my_test_plot.colormap(pred_Ds[i, :, :, 0], [row, 1])
+                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 0] - pred_Ds[i, :, :, 0]), [row, 2])
+                row += 1
+                my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
+                my_test_plot.colormap(pred_Ds[i, :, :, 1], [row, 1])
+                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[i, :, :, 1]), [row, 2])
+                #my_test_plot.colormap(D, [1, 0])
+                #my_test_plot.colormap(D_d, [1, 1])
+                #my_test_plot.colormap(D1[0, 0], [2, 0])
+                #my_test_plot.colormap(D1[0, 1], [2, 1])
+            else:
+                my_test_plot = plot.plot(nrows=2, ncols=3)
+                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
+                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+                row = 0
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(obj_reconstr, [row, 1])
+                my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
+                row += 1
                 my_test_plot.colormap(obj, [row, 0])
                 my_test_plot.colormap(pred_objs[i], [row, 1])
                 my_test_plot.colormap(np.abs(obj - pred_objs[i]), [row, 2])
-                row += 1
-            my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
-            my_test_plot.colormap(pred_Ds[i, :, :, 0], [row, 1])
-            my_test_plot.colormap(np.abs(self.Ds[i, :, :, 0] - pred_Ds[i, :, :, 0]), [row, 2])
-            row += 1
-            my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
-            my_test_plot.colormap(pred_Ds[i, :, :, 1], [row, 1])
-            my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[i, :, :, 1]), [row, 2])
-            #my_test_plot.colormap(D, [1, 0])
-            #my_test_plot.colormap(D_d, [1, 1])
-            #my_test_plot.colormap(D1[0, 0], [2, 0])
-            #my_test_plot.colormap(D1[0, 1], [2, 1])
+
             my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
             my_test_plot.close()
             
