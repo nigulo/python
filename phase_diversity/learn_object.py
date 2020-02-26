@@ -49,8 +49,8 @@ num_reps = 1000
 shuffle = True
 
 MODE_1 = 1 # aberrated images --> object
-MODE_2 = 2 # aberrated images --> wavefront coefs (+object as second input) --> aberrated images
-MODE_3 = 3 # aberrated images --> psf (+object as second input) --> aberrated images
+MODE_2 = 2 # aberrated images --> wavefront coefs + object --> aberrated images
+MODE_3 = 3 # aberrated images  --> wavefront coefs + object --> reconstructed object - object
 nn_mode = MODE_3
 
 #logfile = open(dir_name + '/log.txt', 'w')
@@ -396,14 +396,20 @@ class nn_model:
             #obj_layer1 = keras.layers.add([obj_layer1, tf.reshape(object_input, [1, nx, nx, 1])])
             obj_layer = keras.layers.Conv2D(128, (7, 7), padding='same', activation='relu')(obj_layer1)#(normalized)
             #obj_layer1 = keras.layers.add([obj_layer, hidden_layer0a])
-            obj_layer = keras.layers.Conv2D(1, (7, 7), padding='same', activation='relu')(obj_layer1)#(normalized)
+            obj_layer = keras.layers.Conv2D(1, (7, 7), padding='same', activation='relu')(obj_layer)#(normalized)
             #obj_layer = keras.layers.add([obj_layer, tf.math.reduce_sum(obj_layer1, axis=3, keepdims=True)])
             #obj_layer = keras.layers.add([obj_layer, tf.slice(obj_layer1, [0, 0, 0, 0], [1, nx, nx, 1])])
             obj_layer = keras.layers.BatchNormalization()(obj_layer)
             obj_layer = keras.layers.Reshape((nx, nx), name='obj_layer')(obj_layer)
             
             
-            if nn_mode == MODE_2:
+            if nn_mode == MODE_1:
+                hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
+                obj_reconst_layer = keras.layers.Lambda(self.psf.deconvolve)(hidden_layer)
+                output = keras.layers.subtract([obj_layer, obj_reconst_layer])
+                output = keras.layers.subtract([obj_layer, tf.reshape(object_input, [nx, nx])])
+
+            elif nn_mode == MODE_2:
                 #hidden_layer = keras.layers.concatenate([tf.math.scalar_mul(tf.constant(10, dtype="float32"), tf.reshape(alphas_layer, [jmax])), tf.reshape(object_input, [nx*nx])])#object_input])
                 #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax]), tf.reshape(object_input, [nx*nx])])#object_input])
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(obj_layer, [nx*nx])])#object_input])
@@ -412,7 +418,14 @@ class nn_model:
             elif nn_mode == MODE_3:
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
                 obj_reconst_layer = keras.layers.Lambda(self.psf.deconvolve)(hidden_layer)
-                output = keras.layers.subtract([obj_layer, obj_reconst_layer])
+                output1 = keras.layers.subtract([obj_layer, obj_reconst_layer])
+
+                hidden_layer2 = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(obj_layer, [nx*nx])])#object_input])
+                output2 = keras.layers.Lambda(self.psf.aberrate)(hidden_layer2)
+
+                output = keras.layers.concatenate([tf.reshape(tf.subtract(obj_layer, obj_reconst_layer), [1, nx, nx, 1]), output2], axis=3)
+
+                #output = keras.layers.subtract([obj_layer, tf.reshape(object_input, [nx, nx])])
                 #output = keras.layers.Lambda(lambda x: tf.multiply(x, x))(output)
             else:
                 assert(False)
@@ -521,12 +534,18 @@ class nn_model:
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         
         for epoch in np.arange(n_epochs):
-            if self.nn_mode == MODE_2:
+            if self.nn_mode == MODE_1:
+                output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
+                output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
+            elif self.nn_mode == MODE_2:
                 output_data_train = self.Ds_train
                 output_data_validation = self.Ds_validation
             else:
-                output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
-                output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
+                output_data_train = np.zeros((self.objs_train.shape[0], nx, nx, 1))
+                output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx, 1))
+
+                output_data_train = np.concatenate((output_data_train, self.Ds_train), axis=3)
+                output_data_validation = np.concatenate((output_data_validation, self.Ds_validation), axis=3)
             history = model.fit([self.Ds_train, self.objs_train], output_data_train,
                         epochs=1,
                         batch_size=1,
@@ -560,8 +579,11 @@ class nn_model:
         #######################################################################
         # Plot some of the training data results
         n_test = min(num_objs, 5)
-        alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-        pred_alphas = alphas_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
+        try:
+            alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            pred_alphas = alphas_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
+        except ValueError:
+            pred_alphas = None
         try:
             obj_layer_model = Model(inputs=model.input, outputs=model.get_layer("obj_layer").output)
             pred_objs = obj_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
@@ -570,6 +592,8 @@ class nn_model:
         #pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs, np.tile(self.Ds, [1, 1, 1, 16])], batch_size=1)
         if nn_mode == MODE_2:
             pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
+        else:
+            pred_Ds = None
         #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
         #predicted_coefs = model.predict(Ds_train[0:n_test])
     
@@ -606,29 +630,34 @@ class nn_model:
                 continue
             objs_test.append(obj)
             
-            obj_reconstr = psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            obj_reconstr = fft.ifftshift(obj_reconstr)
-            objs_reconstr.append(obj_reconstr)
-
+            if pred_alphas is not None:
+                obj_reconstr = psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = fft.ifftshift(obj_reconstr)
+                objs_reconstr.append(obj_reconstr)
             #print("pred_alphas", i, pred_alphas[i])
 
-            if nn_mode == MODE_2:
-                num_rows = 3
-                if pred_objs is not None:
-                    num_rows += 1
-                my_test_plot = plot.plot(nrows=num_rows, ncols=3)
-                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
-                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-                row = 0
+            num_rows = 0
+            if pred_alphas is not None:
+                num_rows += 1
+            if pred_objs is not None:
+                num_rows += 1
+            if pred_Ds is not None:
+                num_rows += 2
+            my_test_plot = plot.plot(nrows=num_rows, ncols=3)
+            #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
+            #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
+            row = 0
+            if pred_alphas is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
                 my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
                 row += 1
-                if pred_objs is not None:
-                    my_test_plot.colormap(obj, [row, 0])
-                    my_test_plot.colormap(pred_objs[i], [row, 1])
-                    my_test_plot.colormap(np.abs(obj - pred_objs[i]), [row, 2])
-                    row += 1
+            if pred_objs is not None:
+                my_test_plot.colormap(obj, [row, 0])
+                my_test_plot.colormap(pred_objs[i], [row, 1])
+                my_test_plot.colormap(np.abs(obj - pred_objs[i]), [row, 2])
+                row += 1
+            if pred_Ds is not None:
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
                 my_test_plot.colormap(pred_Ds[i, :, :, 0], [row, 1])
                 my_test_plot.colormap(np.abs(self.Ds[i, :, :, 0] - pred_Ds[i, :, :, 0]), [row, 2])
@@ -636,22 +665,6 @@ class nn_model:
                 my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
                 my_test_plot.colormap(pred_Ds[i, :, :, 1], [row, 1])
                 my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[i, :, :, 1]), [row, 2])
-                #my_test_plot.colormap(D, [1, 0])
-                #my_test_plot.colormap(D_d, [1, 1])
-                #my_test_plot.colormap(D1[0, 0], [2, 0])
-                #my_test_plot.colormap(D1[0, 1], [2, 1])
-            else:
-                my_test_plot = plot.plot(nrows=2, ncols=3)
-                #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
-                #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
-                row = 0
-                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
-                my_test_plot.colormap(obj_reconstr, [row, 1])
-                my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
-                row += 1
-                my_test_plot.colormap(obj, [row, 0])
-                my_test_plot.colormap(pred_objs[i], [row, 1])
-                my_test_plot.colormap(np.abs(obj - pred_objs[i]), [row, 2])
 
             my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
             my_test_plot.close()
@@ -728,9 +741,12 @@ class nn_model:
 
         print("test_4_2")
         start = time.time()    
-        intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
         #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
-        pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
+        try:
+            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs)], batch_size=1)
+        except ValueError:
+            pred_alphas = None
         try:
             obj_layer_model = Model(inputs=model.input, outputs=model.get_layer("obj_layer").output)
             pred_objs = obj_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
@@ -767,9 +783,10 @@ class nn_model:
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
             #obj_reconstr_mean += obj_reconstr
 
-        obj_reconstr = psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-        obj_reconstr = fft.ifftshift(obj_reconstr)
-        #obj_reconstr_mean += obj_reconstr
+        if pred_alphas is not None:
+            obj_reconstr = psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+            obj_reconstr = fft.ifftshift(obj_reconstr)
+            #obj_reconstr_mean += obj_reconstr
 
             #my_test_plot = plot.plot(nrows=1, ncols=2)
             #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
@@ -777,15 +794,18 @@ class nn_model:
             #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
             #my_test_plot.close()
         
-        n_rows = 3
+        n_rows = 2
+        if pred_alphas is not None:
+            n_rows += 1
         if pred_objs is not None:
             n_rows += 1
         my_test_plot = plot.plot(nrows=n_rows, ncols=2)
         row = 0
         obj = np.reshape(objs[i], (self.nx, self.nx))
-        my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
-        my_test_plot.colormap(obj_reconstr, [row, 1])
-        row += 1
+        if pred_alphas is not None:
+            my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+            my_test_plot.colormap(obj_reconstr, [row, 1])
+            row += 1
         if pred_objs is not None:
             my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
             my_test_plot.colormap(pred_obj, [row, 1])
