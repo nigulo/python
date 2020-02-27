@@ -18,7 +18,7 @@ jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 
-num_frames = 1
+num_frames = 8
 
 
 def get_params(nx):
