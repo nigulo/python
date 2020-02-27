@@ -224,7 +224,7 @@ class nn_model:
 
         model, nn_mode_ = load_model()
         
-        n_channels = 32
+        n_channels = 128
         if model is None:
             print("Creating model")
             nn_mode_ = nn_mode
@@ -530,6 +530,15 @@ class nn_model:
         self.Ds = self.Ds[random_indices]
         self.objs = self.objs[random_indices]
         
+        for i in np.arange(len(self.Ds)):
+            my_plot = plot.plot(nrows=self.Ds.shape[3], ncols=2)
+            for j in np.arange(self.Ds.shape[3]//2):
+                my_plot.colormap(self.Ds[i, :, :, 2*j], [j, 0], show_colorbar=True, colorbar_prec=2)
+                my_plot.colormap(self.Ds[i, :, :, 2*j+1], [j, 1], show_colorbar=True, colorbar_prec=2)
+    
+            my_plot.save(dir_name + "/Ds" + str(i) + ".png")
+            my_plot.close()
+                
         n_train = int(math.ceil(len(self.Ds)*train_perc))
 
         self.Ds_train = self.Ds[:n_train] 
