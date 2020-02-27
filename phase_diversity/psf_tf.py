@@ -316,3 +316,29 @@ class psf_tf():
         
         return image
         
+    def mfbd_loss(self, x):
+        nx = self.nx
+        jmax = self.coh_trans_func.phase_aberr.jmax
+        x = tf.reshape(x, [jmax*self.num_frames + nx*nx*self.num_frames*2])
+        alphas = tf.reshape(tf.slice(x, [0], [jmax*self.num_frames]), [self.num_frames, jmax])
+        #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
+        Ds = tf.transpose(tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [nx, nx, self.num_frames*2]), [2, 0, 1])
+
+        Ds = tf.complex(Ds, tf.zeros((self.num_frames*2, nx, nx)))
+        Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (1, 2)))
+        Ds_F_conj = tf.math.conj(Ds_F)
+
+        self.calc(alphas=alphas, normalize = False)
+        Ps = self.otf_vals
+        Ps = tf.signal.ifftshift(Ps, axes=(1, 2))
+
+        Ps_conj = tf.math.conj(Ps)
+    
+        num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[0])
+        num = tf.multiply(num, tf.math.conj(num))
+        
+        den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[0])
+
+        loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[0]) - num/den
+
+        return tf.math.real(loss)
