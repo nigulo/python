@@ -111,7 +111,7 @@ class test_psf_tf(unittest.TestCase):
             
         my_plot.save("test_psf_tf_mfbd_loss.png")
         my_plot.close()
-        print("mfbd_loss", np.sum(np.abs(mfbd_loss))/nx/nx)
+        print("mfbd_loss", np.sum(mfbd_loss*mfbd_loss))
 
         np.testing.assert_almost_equal(D, D_expected, 15)
 

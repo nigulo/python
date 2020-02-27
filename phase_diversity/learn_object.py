@@ -38,7 +38,7 @@ num_objs = 10#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
-num_frames_input = 4
+num_frames_input = 8
 
 fried_param = 0.1
 noise_std_perc = 0.#.01
@@ -224,7 +224,7 @@ class nn_model:
 
         model, nn_mode_ = load_model()
         
-        n_channels = 64
+        n_channels = 32
         if model is None:
             print("Creating model")
             nn_mode_ = nn_mode
@@ -268,7 +268,7 @@ class nn_model:
                 for i in np.arange(num_convs):
                     x1 = keras.layers.Conv2D(n_channels, (1, 1), activation='linear', padding='same')(x)#(normalized)
                     x2 = keras.layers.Conv2D(n_channels, kernel, activation='relu', padding='same')(x)#(normalized)
-                    x = keras.layers.add([x2, x1], name='h0')#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
+                    x = keras.layers.add([x2, x1])#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
                     if batch_normalization:
                         x = keras.layers.BatchNormalization()(x)
                 if max_pooling:
@@ -367,7 +367,7 @@ class nn_model:
             #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
             #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
             alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear', name='alphas_layer')(alphas_layer)
-            #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 10.), name='alphas_layer')(alphas_layer)
+            #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 100.), name='alphas_layer')(alphas_layer)
             
             #obj_layer = keras.layers.Dense(256)(obj_layer)
             #obj_layer = keras.layers.Dense(128)(obj_layer)
