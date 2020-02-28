@@ -40,7 +40,7 @@ num_objs = 10#None
 # Must be power of 2
 num_frames_input = 8
 
-fried_param = 0.1
+fried_param = 0.2
 noise_std_perc = 0.#.01
 
 n_epochs = 10
@@ -874,6 +874,8 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
     pa = psf.phase_aberration(jmax, start_index=0)
     pa.calc_terms(coords)
     wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx, sampling=1.)
+    DFs = np.zeros((num_frames, num_objects, 2, 2*nx-1, 2*nx-1), dtype='complex')
+    zernike_coefs = np.zeros((num_frames, jmax))
     #pa = psf.phase_aberration(np.random.normal(size=jmax))
     for frame_no in np.arange(num_frames):
         #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
@@ -887,6 +889,11 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
         #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
         #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
         psf_true = psf.psf(ctf_true, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+
+        zernike_coefs[frame_no] = ctf_true.dot(pa)
+        pa_check = psf.phase_aberration(jmax, start_index=0)
+        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+        psf_check = psf.psf(ctf_check, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
         #######################################################################
         # Just checking if true_coefs are calculated correctly
@@ -915,8 +922,9 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
             image1 = utils.upsample(image)
 
             D_D_d = psf_true.convolve(image1)
-            D = misc.sample_image(D_D_d[0, 0], 0.5)
-            D_d = misc.sample_image(D_D_d[0, 1], 0.5)
+
+            D = D_D_d[0, 0]
+            D_d = D_D_d[0, 1]
 
             #fimage = fft.fft2(misc.sample_image(image, .99))
             #fimage = fft.fftshift(fimage)
@@ -941,21 +949,44 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
 
             ###################################################################
             # Just checking if true_coefs are calculated correctly
-            if frame_no < 1 and obj_no < 5:
-                my_test_plot = plot.plot(nrows=1, ncols=3)
-                my_test_plot.colormap(image, [0], show_colorbar=True, colorbar_prec=2)
-                my_test_plot.colormap(D, [1])
-                my_test_plot.colormap(D_d, [2])
-                my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
-                my_test_plot.close()
+            #if frame_no < 5 and obj_no < 5:
+            #    my_test_plot = plot.plot(nrows=1, ncols=4)
+            #    my_test_plot.colormap(image, [0], show_colorbar=True, colorbar_prec=2)
+            #    my_test_plot.colormap(D, [1])
+            #    my_test_plot.colormap(D_d, [2])
+            #    my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
+            #    my_test_plot.close()
             ###################################################################
             #D -= np.mean(D)
             #D_d -= np.mean(D_d)
             #D /= np.std(D)
             #D_d /= np.std(D_d)
+
+            DFs[frame_no, obj_no, 0] = fft.fft2(D)
+            DFs[frame_no, obj_no, 1] = fft.fft2(D_d)
+
+            D = misc.sample_image(D, 0.5)
+            D_d = misc.sample_image(D_d, 0.5)
+
             Ds[frame_no, obj_no, 0] = D#misc.sample_image(D, 1.01010101)
             Ds[frame_no, obj_no, 1] = D_d#misc.sample_image(D_d, 1.01010101)
+
         print("Finished aberrating with wavefront", frame_no)
+
+    for obj_no in np.arange(5):
+        my_test_plot = plot.plot(nrows=1, ncols=4)
+        my_test_plot.colormap(images[obj_no], [0], show_colorbar=True, colorbar_prec=2)
+        my_test_plot.colormap(Ds[0, obj_no, 0], [1])
+        my_test_plot.colormap(Ds[0, obj_no, 1], [2])
+        ###############################################################
+    
+        obj_reconstr = psf_check.deconvolve(DFs[:, obj_no,:, :, :], alphas=zernike_coefs, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+        obj_reconstr = fft.ifftshift(obj_reconstr)
+        my_test_plot.colormap(obj_reconstr, [3])
+
+        my_test_plot.save(dir_name + "/check" + str(obj_no) + ".png")
+        my_test_plot.close()
+
 
     return Ds, images, nx_orig
 
