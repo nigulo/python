@@ -879,7 +879,8 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
     #pa = psf.phase_aberration(np.random.normal(size=jmax))
     for frame_no in np.arange(num_frames):
         #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
-        pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*25, -25), 25), start_index=0)
+        zernike_coefs[frame_no] = np.random.normal(size=jmax)*500
+        pa_true = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
         #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
         ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
         #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
@@ -892,7 +893,7 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
         print(np.max(coords), np.min(coords))
         #zernike_coefs[frame_no] = np.random.normal(size=(jmax))*np.linspace(1, .10, jmax)
         #zernike_coefs[frame_no][25] = -1.
-        zernike_coefs[frame_no] = ctf_true.dot(pa)
+        #zernike_coefs[frame_no] = ctf_true.dot(pa)
         print(zernike_coefs[frame_no])
         #######################################################################
         # Plot the wavefront
