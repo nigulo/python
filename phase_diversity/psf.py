@@ -33,7 +33,13 @@ class phase_aberration():
             z = zernike.zernike(n, m)
             self.pols.append(z)
 
-    def calc_terms(self, xs):
+    def calc_terms(self, xs=None, nx=None):
+        if xs is None:
+            assert(nx is not None)
+            xs = np.linspace(-1./np.sqrt(2.), 1./np.sqrt(2.), nx)
+            #print("PSF x_limit", xs[0], xs[-1])
+            xs = np.dstack(np.meshgrid(xs, xs)[::-1])
+            
         self.terms = np.zeros(np.concatenate(([len(self.pols)], np.shape(xs)[:-1])))
         i = 0
         rhos_phis = utils.cart_to_polar(xs)
@@ -108,12 +114,14 @@ class coh_trans_func():
         return np.array([self.pupil*np.exp(1.j * self.phase), self.pupil*np.exp(1.j * (self.phase + self.defocus))])
 
     '''
-        Returns the unnormalized coefficients for given expansion
+        Returns the coefficients for given expansion
     '''
     def dot(self, pa, normalize=True):
         if not hasattr(self, 'phase'):
             self.phase = self.phase_aberr()
         ret_val = np.sum(self.phase*pa.terms, axis=(1, 2))
+        #ret_val1 = np.sum(np.tile(np.reshape(self.phase, (1, self.phase.shape[0], self.phase.shape[1])), (len(pa.terms), 1, 1))*pa.terms, axis=(1, 2))
+        #np.testing.assert_array_almost_equal(ret_val, ret_val1)
         if normalize:
             ret_val /= np.sum(pa.terms*pa.terms, axis=(1, 2))
         # Check orthogonality

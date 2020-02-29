@@ -40,7 +40,7 @@ num_objs = 10#None
 # Must be power of 2
 num_frames_input = 8
 
-fried_param = 0.2
+fried_param = .1
 noise_std_perc = 0.#.01
 
 n_epochs = 10
@@ -872,7 +872,7 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
     Ds = np.zeros((num_frames, num_objects, 2, nx, nx)) # in real space
     #true_coefs = np.zeros((num_frames, jmax))
     pa = psf.phase_aberration(jmax, start_index=0)
-    pa.calc_terms(coords)
+    pa.calc_terms(nx=nx)
     wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx, sampling=1.)
     DFs = np.zeros((num_frames, num_objects, 2, 2*nx-1, 2*nx-1), dtype='complex')
     zernike_coefs = np.zeros((num_frames, jmax))
@@ -889,8 +889,23 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
         #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
         #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
         psf_true = psf.psf(ctf_true, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-
+        print(np.max(coords), np.min(coords))
+        #zernike_coefs[frame_no] = np.random.normal(size=(jmax))*np.linspace(1, .10, jmax)
+        #zernike_coefs[frame_no][25] = -1.
         zernike_coefs[frame_no] = ctf_true.dot(pa)
+        print(zernike_coefs[frame_no])
+        #######################################################################
+        # Plot the wavefront
+        pa_check = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
+        pa_check.calc_terms(nx=nx)
+        my_test_plot = plot.plot(nrows=1, ncols=3)
+        my_test_plot.colormap(wavefront[0,frame_no,:,:], [0], show_colorbar=True, colorbar_prec=2)
+        my_test_plot.colormap(pa_check(), [1])
+        my_test_plot.colormap(np.abs(wavefront[0,frame_no,:,:] - pa_check()), [2])
+        my_test_plot.save(dir_name + "/pa" + str(frame_no) + ".png")
+        my_test_plot.close()
+        #######################################################################
+
         pa_check = psf.phase_aberration(jmax, start_index=0)
         ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
         psf_check = psf.psf(ctf_check, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
