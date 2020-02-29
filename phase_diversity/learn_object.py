@@ -530,14 +530,14 @@ class nn_model:
         self.Ds = self.Ds[random_indices]
         self.objs = self.objs[random_indices]
         
-        for i in np.arange(len(self.Ds)):
-            my_plot = plot.plot(nrows=self.Ds.shape[3], ncols=2)
-            for j in np.arange(self.Ds.shape[3]//2):
-                my_plot.colormap(self.Ds[i, :, :, 2*j], [j, 0], show_colorbar=True, colorbar_prec=2)
-                my_plot.colormap(self.Ds[i, :, :, 2*j+1], [j, 1], show_colorbar=True, colorbar_prec=2)
+        #for i in np.arange(len(self.Ds)):
+        #    my_plot = plot.plot(nrows=self.Ds.shape[3]//2, ncols=2)
+        #    for j in np.arange(self.Ds.shape[3]//2):
+        #        my_plot.colormap(self.Ds[i, :, :, 2*j], [j, 0], show_colorbar=True, colorbar_prec=2)
+        #        my_plot.colormap(self.Ds[i, :, :, 2*j+1], [j, 1], show_colorbar=True, colorbar_prec=2)
     
-            my_plot.save(dir_name + "/Ds" + str(i) + ".png")
-            my_plot.close()
+        #    my_plot.save(dir_name + "/Ds" + str(i) + ".png")
+        #    my_plot.close()
                 
         n_train = int(math.ceil(len(self.Ds)*train_perc))
 
@@ -879,9 +879,9 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
     #pa = psf.phase_aberration(np.random.normal(size=jmax))
     for frame_no in np.arange(num_frames):
         #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
-        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*25, -25), 25), start_index=0)
-        ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
-        #ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+        pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*25, -25), 25), start_index=0)
+        #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
+        ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
         #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
         #true_coefs[frame_no] = ctf_true.dot(pa)
         
