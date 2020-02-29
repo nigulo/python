@@ -989,7 +989,7 @@ def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuff
 
         print("Finished aberrating with wavefront", frame_no)
 
-    for obj_no in np.arange(np.min(5, num_objects)):
+    for obj_no in np.arange(min(5, num_objects)):
         my_test_plot = plot.plot(nrows=1, ncols=4)
         my_test_plot.colormap(images[obj_no], [0], show_colorbar=True, colorbar_prec=2)
         my_test_plot.colormap(Ds[0, obj_no, 0], [1])
