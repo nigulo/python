@@ -304,8 +304,8 @@ class psf_tf():
         self.calc(alphas=alphas)
         Ps = self.otf_vals
         
-        #if do_fft:
-        Ps = tf.signal.ifftshift(Ps, axes=(1, 2))
+        if do_fft:
+            Ps = tf.signal.ifftshift(Ps, axes=(1, 2))
 
         Ps_conj = tf.math.conj(Ps)
     
