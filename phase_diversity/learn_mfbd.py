@@ -307,7 +307,7 @@ class nn_model:
             if nn_mode == MODE_1:
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
                 output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
-                output = keras.lauers.Lambda(lambda x: tf.math.reduce_sum(x))(output)
+                output = keras.layers.Lambda(lambda x: tf.math.reduce_sum(x))(output)
             elif nn_mode == MODE_2:
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
                 output = keras.layers.Lambda(self.psf.deconvolve_aberrate)(hidden_layer)
