@@ -116,7 +116,7 @@ class test_psf_tf(unittest.TestCase):
 
         #######################################################################
 
-        D_reconstr = psf_tf_.deconvolve_aberrate(tf.concat((alphas_tf, tf.reshape(D_expected, num_frames*2*nx*nx)), 0))
+        D_reconstr = psf_tf_.deconvolve_aberrate(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
 
         for l in np.arange(num_frames):
 
