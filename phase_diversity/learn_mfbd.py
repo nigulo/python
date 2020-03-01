@@ -434,8 +434,8 @@ class nn_model:
             if self.nn_mode == MODE_1:
                 #output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
                 #output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
-                output_data_train = np.zeros((self.objs_train.shape[0], 1))
-                output_data_validation = np.zeros((self.objs_validation.shape[0], 1))
+                output_data_train = np.zeros((self.objs_train.shape[0]))
+                output_data_validation = np.zeros((self.objs_validation.shape[0]))
             elif self.nn_mode == MODE_2:
                 output_data_train = self.Ds_train
                 output_data_validation = self.Ds_validation
