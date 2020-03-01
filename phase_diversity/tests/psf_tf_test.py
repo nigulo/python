@@ -86,13 +86,14 @@ class test_psf_tf(unittest.TestCase):
             my_plot.save("test_psf_tf_aberrate" + str(l) + ".png")
             my_plot.close()
 
+        #######################################################################
 
         dat_F = fft.fftshift(fft.fft2(image1), axes=(-2, -1))
         dat_F = psf_.multiply(dat_F, alphas = alphas1)
 
         image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
 
-        image_deconv= psf_tf_.deconvolve(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
+        image_deconv, _ = psf_tf_.deconvolve(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
 
         my_plot = plot.plot(nrows=2, ncols=2)
         my_plot.colormap(image, [0, 0], show_colorbar=True, colorbar_prec=.3)
@@ -112,6 +113,28 @@ class test_psf_tf(unittest.TestCase):
         my_plot.save("test_psf_tf_mfbd_loss.png")
         my_plot.close()
         print("mfbd_loss", np.sum(mfbd_loss*mfbd_loss))
+
+        #######################################################################
+
+        D_reconstr = psf_tf_.deconvolve_aberrate(tf.concat((alphas_tf, tf.reshape(D_expected, num_frames*2*nx*nx)), 0))
+
+        for l in np.arange(num_frames):
+
+            D_expected_0 = misc.sample_image(D_expected[l, 0], 0.5)
+            D_expected_1 = misc.sample_image(D_expected[l, 1], 0.5)
+            
+            my_plot = plot.plot(nrows=3, ncols=2)
+            print(D.shape)
+            my_plot.colormap(D_reconstr[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.3)
+            my_plot.colormap(D_reconstr[0, :, :, 2*l+1], [0, 1])
+            my_plot.colormap(D_expected_0, [1, 0])
+            my_plot.colormap(D_expected_1, [1, 1])
+    
+            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.3)
+            my_plot.colormap(np.abs(D_expected_1 - D[0, :, :, 2*l+1]), [2, 1])
+                
+            my_plot.save("test_psf_tf_deconvolve_aberrate" + str(l) + ".png")
+            my_plot.close()
 
         np.testing.assert_almost_equal(D, D_expected, 15)
 

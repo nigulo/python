@@ -290,7 +290,7 @@ class psf_tf():
             image = fft.ifftshift(image, axes=(-2, -1))
     '''
 
-    def deconvolve(self, x):
+    def deconvolve(self, x, do_fft = True):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
         x = tf.reshape(x, [jmax*self.num_frames + nx*nx*self.num_frames*2])
@@ -311,10 +311,13 @@ class psf_tf():
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[0])
         F_image = tf.divide(num, den)
     
-        image = tf.math.real(tf.signal.ifft2d(F_image))
-        image = tf.signal.ifftshift(image)
+        if do_fft:
+            image = tf.math.real(tf.signal.ifft2d(F_image))
+            image = tf.signal.ifftshift(image)
+        else:
+            image = F_image
         
-        return image
+        return image, Ps
         
     def mfbd_loss(self, x):
         nx = self.nx
@@ -342,3 +345,13 @@ class psf_tf():
         loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[0]) - num/den
 
         return tf.math.real(loss)
+    
+    def deconvolve_aberrate(self, x):
+        object_F, Ps = self.deconvolve(x, do_fft=False)
+        DF = tf.math.multiply(object_F, Ps)
+        DF = tf.signal.ifftshift(DF, axes = (1, 2))
+        D = tf.math.real(tf.signal.ifft2d(DF))
+        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.transpose(D, (1, 2, 0))
+        D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
+        return D        
