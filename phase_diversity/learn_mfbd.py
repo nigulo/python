@@ -50,7 +50,7 @@ shuffle = True
 
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
-nn_mode = MODE_2
+nn_mode = MODE_1
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -307,6 +307,7 @@ class nn_model:
             if nn_mode == MODE_1:
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
                 output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
+                output = keras.lauers.Lambda(lambda x: tf.math.reduce_sum(x))(output)
             elif nn_mode == MODE_2:
                 hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
                 output = keras.layers.Lambda(self.psf.deconvolve_aberrate)(hidden_layer)
@@ -431,8 +432,10 @@ class nn_model:
         
         for epoch in np.arange(n_epochs):
             if self.nn_mode == MODE_1:
-                output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
-                output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
+                #output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
+                #output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
+                output_data_train = np.zeros((self.objs_train.shape[0], 1))
+                output_data_validation = np.zeros((self.objs_validation.shape[0], 1))
             elif self.nn_mode == MODE_2:
                 output_data_train = self.Ds_train
                 output_data_validation = self.Ds_validation
