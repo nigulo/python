@@ -302,11 +302,9 @@ class psf_tf():
         Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (1, 2)))
 
         self.calc(alphas=alphas)
-        Ps = self.otf_vals
+        Ps1 = self.otf_vals
         
-        if do_fft:
-            Ps = tf.signal.ifftshift(Ps, axes=(1, 2))
-
+        Ps = tf.signal.ifftshift(Ps1, axes=(1, 2))
         Ps_conj = tf.math.conj(Ps)
     
         num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[0])
@@ -315,11 +313,10 @@ class psf_tf():
     
         if do_fft:
             image = tf.math.real(tf.signal.ifft2d(F_image))
-            image = tf.signal.ifftshift(image)
         else:
             image = F_image
-        
-        return image, Ps
+        image = tf.signal.ifftshift(image)
+        return image, Ps1
         
     def mfbd_loss(self, x):
         nx = self.nx
@@ -349,13 +346,11 @@ class psf_tf():
         return tf.math.real(loss)
     
     def deconvolve_aberrate(self, x):
-        object_F, Ps = self.deconvolve(x, do_fft=False)
-        #object_F = tf.signal.fftshift(object_F)
-        object_F = tf.tile(tf.reshape(object_F, [1, self.nx, self.nx]), [self.num_frames*2, 1, 1])
-        DF = tf.math.multiply(object_F, Ps)
-        #DF = tf.signal.ifftshift(DF, axes = (1, 2))
+        fobj, Ps = self.deconvolve(x, do_fft=False)
+        DF = tf.math.multiply(fobj, Ps)
+        DF = tf.signal.ifftshift(DF, axes = (1, 2))
         D = tf.math.real(tf.signal.ifft2d(DF))
-        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
         D = tf.transpose(D, (1, 2, 0))
         D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
         return D        

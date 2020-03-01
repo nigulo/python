@@ -18,7 +18,7 @@ jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 
-num_frames = 8
+num_frames = 2
 
 
 def get_params(nx):
@@ -68,10 +68,13 @@ class test_psf_tf(unittest.TestCase):
         image_tf = tf.constant(image.flatten(), dtype='float32')
         D = psf_tf_.aberrate(tf.concat((alphas_tf, image_tf), 0))
 
+        D_expected_ds = np.zeros((nx, nx, 2*num_frames))
         for l in np.arange(num_frames):
 
             D_expected_0 = misc.sample_image(D_expected[l, 0], 0.5)
             D_expected_1 = misc.sample_image(D_expected[l, 1], 0.5)
+            D_expected_ds[:, :, 2*l] = D_expected_0
+            D_expected_ds[:, :, 2*l+1] = D_expected_1
             
             my_plot = plot.plot(nrows=3, ncols=2)
             print(D.shape)
@@ -93,7 +96,7 @@ class test_psf_tf(unittest.TestCase):
 
         image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
 
-        image_deconv, _ = psf_tf_.deconvolve(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
+        image_deconv, _ = psf_tf_.deconvolve(tf.concat([alphas_tf, tf.reshape(D, [num_frames*2*nx*nx])], 0))
 
         my_plot = plot.plot(nrows=2, ncols=2)
         my_plot.colormap(image, [0, 0], show_colorbar=True, colorbar_prec=.3)
@@ -105,7 +108,7 @@ class test_psf_tf(unittest.TestCase):
         my_plot.save("test_psf_tf_deconvolve.png")
         my_plot.close()
 
-        mfbd_loss = psf_tf_.mfbd_loss(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
+        mfbd_loss = psf_tf_.mfbd_loss(tf.concat((alphas_tf, tf.reshape(D, [num_frames*2*nx*nx])), 0))
 
         my_plot = plot.plot(nrows=1, ncols=1)
         my_plot.colormap(mfbd_loss, [0], show_colorbar=True, colorbar_prec=.3)
@@ -116,7 +119,7 @@ class test_psf_tf(unittest.TestCase):
 
         #######################################################################
 
-        D_reconstr = psf_tf_.deconvolve_aberrate(tf.concat((alphas_tf, tf.reshape(D, num_frames*2*nx*nx)), 0))
+        D_reconstr = psf_tf_.deconvolve_aberrate(tf.concat((alphas_tf, tf.reshape(tf.constant(D_expected_ds, dtype='float32'), [num_frames*2*nx*nx])), 0))
 
         for l in np.arange(num_frames):
 
