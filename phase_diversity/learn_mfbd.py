@@ -52,6 +52,9 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_1
 
+batch_size = 8
+n_channels = 128
+
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
 #    for x in xs:
@@ -209,7 +212,7 @@ class nn_model:
 
         pa = psf_tf.phase_aberration_tf(jmax, start_index=0)
         ctf = psf_tf.coh_trans_func_tf(aperture_func, pa, defocus_func)
-        self.psf = psf_tf.psf_tf(ctf, nx, arcsec_per_px=arcsec_per_px, diameter=diameter, wavelength=wavelength, num_frames=num_frames_input)
+        self.psf = psf_tf.psf_tf(ctf, nx, arcsec_per_px=arcsec_per_px, diameter=diameter, wavelength=wavelength, num_frames=num_frames_input, batch_size=batch_size)
         
     
     
@@ -223,7 +226,6 @@ class nn_model:
 
         model, nn_mode_ = load_model()
         
-        n_channels = 128
         if model is None:
             print("Creating model")
             nn_mode_ = nn_mode
@@ -305,13 +307,13 @@ class nn_model:
            
             
             if nn_mode == MODE_1:
-                hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
+                hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
                 output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
-                output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
-                output = keras.layers.Flatten()(output)
+                #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
+                #output = keras.layers.Flatten()(output)
                 #output = keras.layers.Lambda(lambda x: tf.math.reduce_sum(x))(output)
             elif nn_mode == MODE_2:
-                hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [jmax*num_frames_input]), tf.reshape(image_input, [num_frames_input*2*nx*nx])])
+                hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
                 output = keras.layers.Lambda(self.psf.deconvolve_aberrate)(hidden_layer)
 
             else:
@@ -347,10 +349,12 @@ class nn_model:
 
             
         self.model = model
-        if nn_mode == MODE_1:
-            self.model.compile(optimizer='adadelta', loss='mse')
-        else:
-            self.model.compile(optimizer='adadelta', loss='mse')
+        
+        def mfbd_loss(y_true, y_pred):
+            return tf.reduce_sum(tf.subtract(y_true, y_pred))
+            
+        #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
+        self.model.compile(optimizer='adam', loss=mfbd_loss)#'mse')
         self.nx = nx
         self.validation_losses = []
         self.nn_mode = nn_mode_
@@ -406,11 +410,16 @@ class nn_model:
                 
         n_train = int(math.ceil(len(self.Ds)*train_perc))
 
-        self.Ds_train = self.Ds[:n_train] 
-        self.objs_train = self.objs[:n_train] 
+        n_train -= n_train % batch_size
+        
+        n_validation = len(self.Ds) - n_train
+        n_validation -= n_validation % batch_size
 
-        self.Ds_validation = self.Ds[n_train:]
-        self.objs_validation = self.objs[n_train:]
+        self.Ds_train = self.Ds[:n_train]
+        self.objs_train = self.objs[:n_train]
+
+        self.Ds_validation = self.Ds[n_train:n_train+n_validation]
+        self.objs_validation = self.objs[n_train:n_train+n_validation]
 
         #num_frames_train = Ds_train.shape[0]
         #num_objects_train = Ds_train.shape[1]
@@ -434,10 +443,10 @@ class nn_model:
         
         for epoch in np.arange(n_epochs):
             if self.nn_mode == MODE_1:
-                #output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
-                #output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
-                output_data_train = np.zeros((self.objs_train.shape[0], 1))
-                output_data_validation = np.zeros((self.objs_validation.shape[0], 1))
+                output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
+                output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
+                #output_data_train = np.zeros((self.objs_train.shape[0], 1))
+                #output_data_validation = np.zeros((self.objs_validation.shape[0], 1))
             elif self.nn_mode == MODE_2:
                 output_data_train = self.Ds_train
                 output_data_validation = self.Ds_validation
@@ -448,7 +457,7 @@ class nn_model:
                 #output_data_validation = np.concatenate((output_data_validation, self.Ds_validation), axis=3)
             history = model.fit(self.Ds_train, output_data_train,
                         epochs=1,
-                        batch_size=1,
+                        batch_size=batch_size,
                         shuffle=True,
                         validation_data=(self.Ds_validation, output_data_validation),
                         #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
@@ -596,7 +605,7 @@ class nn_model:
         #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
         try:
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-            pred_alphas = intermediate_layer_model.predict(Ds, batch_size=1)
+            pred_alphas = intermediate_layer_model.predict(Ds, batch_size=batch_size)
         except ValueError:
             pred_alphas = None
         end = time.time()

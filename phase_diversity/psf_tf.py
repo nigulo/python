@@ -149,7 +149,7 @@ class psf_tf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=False, num_frames=1):
+    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=False, num_frames=1, batch_size=1):
         self.nx= nx
         coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
         self.coords = coords
@@ -164,8 +164,11 @@ class psf_tf():
         self.coh_trans_func.calc(self.coords)
         self.corr_or_fft = corr_or_fft
         self.num_frames = num_frames
+        self.batch_size = batch_size
         
 
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
 
     '''
         vals = fft.ifft2(coh_vals, axes=(-2, -1))
@@ -185,7 +188,7 @@ class psf_tf():
         #self.incoh_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         #self.otf_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         
-        
+        #@tf.contrib.eager.defun
         def fn(alphas):
             if alphas is not None:
                 self.coh_trans_func.phase_aberr.set_alphas(alphas)
@@ -223,8 +226,8 @@ class psf_tf():
             
             return corr
             
-        otf_vals = tf.map_fn(fn, alphas, dtype='complex64')
-        self.otf_vals = tf.reshape(otf_vals, [self.num_frames*2, self.nx, self.nx])
+        otf_vals = tf.map_fn(lambda alphas : tf.map_fn(fn, alphas, dtype='complex64'), alphas, dtype='complex64')
+        self.otf_vals = tf.reshape(otf_vals, [self.batch_size, self.num_frames*2, self.nx, self.nx])
             
         return self.incoh_vals
 
@@ -242,115 +245,86 @@ class psf_tf():
     def aberrate(self, x):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
-        x = tf.reshape(x, [jmax*self.num_frames + nx*nx])
-        alphas = tf.reshape(tf.slice(x, [0], [jmax*self.num_frames]), [self.num_frames, jmax])
-        obj = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx]), [1, nx, nx])
-        obj = tf.tile(obj, [self.num_frames*2, 1, 1])
+        x = tf.reshape(x, [self.batch_size*(self.batch_size*jmax*self.num_frames + nx*nx)])
+        alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames, jmax])
+        obj = tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx]), [self.batch_size, 1, nx, nx])
+        obj = tf.tile(obj, [1, self.num_frames*2, 1, 1])
         
-        fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((self.num_frames*2, nx, nx))))
-        fobj = tf.signal.fftshift(fobj, axes = (1, 2))
+        fobj = tf.signal.fft2d(tf.complex(obj, tf.zeros((self.batch_size, self.num_frames*2, nx, nx))))
+        fobj = tf.signal.fftshift(fobj, axes = (2, 3))
     
         DF = self.multiply(fobj, alphas)
-        DF = tf.signal.ifftshift(DF, axes = (1, 2))
+        DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
         #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
-        D = tf.transpose(D, (1, 2, 0))
-        D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
+        D = tf.transpose(D, (0, 2, 3, 1))
+        #D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
 
         #D = tf.transpose(tf.reshape(obj, [1, self.num_frames*2, self.nx, self.nx]), [0, 2, 3, 1])
         return D
 
 
-    '''
-        self.calc(alphas=alphas)
-        Ps = self.otf_vals
-        if not fft_shift_before:
-            Ps = fft.ifftshift(Ps, axes=(-2, -1))
-        if normalize:
-            Ds = utils.normalize_(Ds, Ps)
-    
-        D = Ds[:, 0, :, :]
-        D_d = Ds[:, 1, :, :]
-        
-        P = Ps[:, 0, :, :]
-        P_d = Ps[:, 1, :, :]
-    
-        P_conj = P.conjugate()
-        P_d_conj = P_d.conjugate()
-    
-        F_image = np.sum(D * P_conj + gamma * D_d * P_d_conj + regularizer_eps, axis=0)
-        den = np.sum(P*P_conj + gamma * P_d * P_d_conj + regularizer_eps, axis=0)
-        F_image /= den
-    
-        if fft_shift_before:
-            F_image = fft.ifftshift(F_image, axes=(-2, -1))
-    
-        image = fft.ifft2(F_image).real
-        if not fft_shift_before:
-            image = fft.ifftshift(image, axes=(-2, -1))
-    '''
-
     def deconvolve(self, x, do_fft = True):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
-        x = tf.reshape(x, [jmax*self.num_frames + nx*nx*self.num_frames*2])
-        alphas = tf.reshape(tf.slice(x, [0], [jmax*self.num_frames]), [self.num_frames, jmax])
+        x = tf.reshape(x, [self.batch_size*(jmax*self.num_frames + nx*nx*self.num_frames*2)])
+        alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames, jmax])
         #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
-        Ds = tf.transpose(tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [nx, nx, self.num_frames*2]), [2, 0, 1])
+        Ds = tf.transpose(tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx*self.num_frames*2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
 
-        Ds = tf.complex(Ds, tf.zeros((self.num_frames*2, nx, nx)))
-        Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (1, 2)))
+        Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
+        Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
 
         self.calc(alphas=alphas)
         Ps1 = self.otf_vals
         
-        Ps = tf.signal.ifftshift(Ps1, axes=(1, 2))
+        Ps = tf.signal.ifftshift(Ps1, axes=(2, 3))
         Ps_conj = tf.math.conj(Ps)
     
-        num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[0])
-        den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[0])
+        num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[1])
+        den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
         F_image = tf.divide(num, den)
     
         if do_fft:
             image = tf.math.real(tf.signal.ifft2d(F_image))
         else:
             image = F_image
-        image = tf.signal.ifftshift(image)
+        image = tf.signal.ifftshift(image, axes=(1, 2))
         return image, Ps1
         
     def mfbd_loss(self, x):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
-        x = tf.reshape(x, [jmax*self.num_frames + nx*nx*self.num_frames*2])
-        alphas = tf.reshape(tf.slice(x, [0], [jmax*self.num_frames]), [self.num_frames, jmax])
+        x = tf.reshape(x, [self.batch_size*(jmax*self.num_frames + nx*nx*self.num_frames*2)])
+        alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames, jmax])
         #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
-        Ds = tf.transpose(tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [nx, nx, self.num_frames*2]), [2, 0, 1])
+        Ds = tf.transpose(tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx*self.num_frames*2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
 
-        Ds = tf.complex(Ds, tf.zeros((self.num_frames*2, nx, nx)))
-        Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (1, 2)))
+        Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
+        Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
         Ds_F_conj = tf.math.conj(Ds_F)
 
         self.calc(alphas=alphas, normalize = False)
         Ps = self.otf_vals
-        Ps = tf.signal.ifftshift(Ps, axes=(1, 2))
+        Ps = tf.signal.ifftshift(Ps, axes=(2, 3))
 
         Ps_conj = tf.math.conj(Ps)
     
-        num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[0])
+        num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[1])
         num = tf.multiply(num, tf.math.conj(num))
         
-        den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[0])
+        den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
 
-        loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[0]) - num/den
+        loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]) - num/den
 
         return tf.math.real(loss)
     
     def deconvolve_aberrate(self, x):
         fobj, Ps = self.deconvolve(x, do_fft=False)
         DF = tf.math.multiply(fobj, Ps)
-        DF = tf.signal.ifftshift(DF, axes = (1, 2))
+        DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
-        D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
-        D = tf.transpose(D, (1, 2, 0))
-        D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
+        D = tf.signal.fftshift(D, axes = (2, 3)) # Is it needed?
+        D = tf.transpose(D, (0, 2, 3, 1))
+        #D = tf.reshape(D, [1, D.shape[0], D.shape[1], D.shape[2]])
         return D        
