@@ -23,24 +23,16 @@ import numpy.fft as fft
 import time
 #import scipy.signal as signal
 
-diameter = 100.0
-wavelength = 5250.0
 gamma = 1.0
 
-# How many frames to generate per object
-num_frames_gen = 100
-
 # How many frames to use in training
-num_frames = 100
+num_frames = 20
 # How many objects to use in training
 num_objs = 10#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 8
-
-fried_param = .1
-noise_std_perc = 0.#.01
 
 n_epochs = 10
 num_iters = 10
@@ -86,7 +78,7 @@ if dir_name is None:
     
     f = open(dir_name + '/params.txt', 'w')
     f.write('fried jmax num_frames_gen num_frames num_objs nn_mode\n')
-    f.write('%f %d %d %d %d %d' % (fried_param, jmax, num_frames_gen, num_frames, num_objs, nn_mode) + "\n")
+    f.write('%d %d %d' % (num_frames, num_objs, nn_mode) + "\n")
     f.flush()
     f.close()
 
