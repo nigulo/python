@@ -120,6 +120,8 @@ class coh_trans_func_tf():
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
     
+        self.i = tf.constant(1.j, dtype='complex64')
+
     def set_phase_aberr(self, phase_aberr):
         self.phase_aberr = phase_aberr
     
@@ -141,7 +143,6 @@ class coh_trans_func_tf():
             assert(False)
         self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
         
-        self.i = tf.constant(1.j, dtype='complex64')
         self.pupil = tf.constant(pupil, dtype='float32')
         self.pupil = tf.complex(self.pupil, tf.zeros((pupil.shape[0], pupil.shape[1]), dtype='float32'))
         
