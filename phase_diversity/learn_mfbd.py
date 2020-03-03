@@ -250,8 +250,6 @@ class nn_model:
                     x = keras.layers.MaxPooling2D()(x)
                 return x
                 
-
-            self.create_psf()
             
             hidden_layer = conv_layer(image_input, n_channels)
             hidden_layer = conv_layer(hidden_layer, 2*n_channels)
