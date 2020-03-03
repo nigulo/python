@@ -161,7 +161,7 @@ class psf_tf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=NOne, wavelength=None, corr_or_fft=False, num_frames=1, batch_size=1):
+    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=False, num_frames=1, batch_size=1):
         self.coh_trans_func = coh_trans_func
         if nx is None:
             # Everything is precalculated
