@@ -658,7 +658,7 @@ my_test_plot.close()
 
 model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes, diversity)
 
-model.set_data(Ds, objs)
+model.set_data(Ds_train, objs_train)
 
 if train:
     for rep in np.arange(0, num_reps):
@@ -668,7 +668,7 @@ if train:
 
         model.test(Ds_test, objs_test)
         
-        model.set_data(Ds_test, objs_test)
+        model.set_data(Ds_train, objs_train)
             
     
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
