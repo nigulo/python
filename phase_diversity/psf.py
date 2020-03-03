@@ -60,11 +60,18 @@ class phase_aberration():
             vals += self.terms[i] * self.alphas[i]
         return vals
     
+    # TODO: why this method?
     def get_pol_values(self):
         vals = np.zeros(np.concatenate((np.array([len(self.terms)]), np.shape(self.terms[0]))))
         for i in np.arange(0, len(self.terms)):
             vals[i] = self.terms[i]
         return vals
+    
+    def get_terms(self):
+        return self.terms
+
+    def set_terms(self, terms):
+        self.terms = terms
 
 
 class wavefront():
@@ -87,7 +94,7 @@ Coherent transfer function, also called as generalized pupil function
 '''
 class coh_trans_func():
 
-    def __init__(self, pupil_func, phase_aberr = None, defocus_func = None):
+    def __init__(self, pupil_func = None, phase_aberr = None, defocus_func = None):
         self.pupil_func = pupil_func
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
@@ -99,7 +106,8 @@ class coh_trans_func():
     def calc(self, xs):
         if self.phase_aberr is not None:
             self.phase_aberr.calc_terms(xs)
-        self.pupil = self.pupil_func(xs)
+        if self.pupil_func is not None:
+            self.pupil = self.pupil_func(xs)
         if self.defocus_func is not None:
             self.defocus = self.defocus_func(xs)
         else:
@@ -110,7 +118,12 @@ class coh_trans_func():
 
     def get_defocus(self):
         return self.defocus
-    
+
+    def set_pupil(self, pupil):
+        self.pupil = pupil
+        
+    def set_defocus(self, defocus):
+        self.defocus = defocus
         
     def __call__(self):
         self.phase = self.phase_aberr()
@@ -148,34 +161,38 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=True, tip_tilt=None):
-        self.nx= nx
-        coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
-        self.coords = coords
-        x_min = np.min(self.coords, axis=(0,1))
-        x_max = np.max(self.coords, axis=(0,1))
-        #print("psf_coords", x_min, x_max, np.shape(self.coords))
-        np.testing.assert_array_almost_equal(x_min, -x_max)
-        self.incoh_vals = dict()
-        self.otf_vals = dict()
-        self.corr = dict() # only for testing purposes
+    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=True, tip_tilt=None):
         self.coh_trans_func = coh_trans_func
-        self.coh_trans_func.calc(self.coords)
+        if nx is None:
+            # Everything is precalculated
+            self.nx = coh_trans_func.get_pupil().shape[0]
+        else:
+            self.nx= nx
+            coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+            self.coords = coords
+            x_min = np.min(self.coords, axis=(0,1))
+            x_max = np.max(self.coords, axis=(0,1))
+            #print("psf_coords", x_min, x_max, np.shape(self.coords))
+            np.testing.assert_array_almost_equal(x_min, -x_max)
+            self.incoh_vals = dict()
+            self.otf_vals = dict()
+            self.corr = dict() # only for testing purposes
+            self.coh_trans_func.calc(self.coords)
         
-        # Repeat the same for bigger grid
-        xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
-        coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
-        self.coords1 = coords1
-
-        self.nx1 = self.nx * 2 - 1
-
-        self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
-        self.coh_trans_func1.calc(coords1)
-
-        xs2 = np.linspace(-x_limit, x_limit, (self.nx*2-1)*2-1)
-        coords2 = np.dstack(np.meshgrid(xs2, xs2)[::-1])
-        self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
-        self.coh_trans_func2.calc(coords2)
+            # Repeat the same for bigger grid
+            xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
+            coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
+            self.coords1 = coords1
+    
+            self.nx1 = self.nx * 2 - 1
+    
+            self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
+            self.coh_trans_func1.calc(coords1)
+    
+            xs2 = np.linspace(-x_limit, x_limit, (self.nx*2-1)*2-1)
+            coords2 = np.dstack(np.meshgrid(xs2, xs2)[::-1])
+            self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
+            self.coh_trans_func2.calc(coords2)
         
         self.corr_or_fft = corr_or_fft
         self.tip_tilt = tip_tilt

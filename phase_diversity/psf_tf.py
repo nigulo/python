@@ -106,20 +106,32 @@ class phase_aberration_tf():
         #vals = tf.math.reduce_sum(tf.math.multiply(self.terms, tf.reshape(self.alphas, [self.jmax, 1, 1])), 0)
         return vals
     
+    def set_terms(self, terms):
+        self.terms = tf.constant(terms, dtype='float32')
+        
 
 '''
 Coherent transfer function, also called as generalized pupil function
 '''
 class coh_trans_func_tf():
 
-    def __init__(self, pupil_func, phase_aberr, defocus_func = None):
+    def __init__(self, pupil_func = None, phase_aberr = None, defocus_func = None):
         self.pupil_func = pupil_func
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
         
+    def set_pupil(self, pupil):
+        self.nx = pupil.shape[0]
+        self.pupil = tf.constant(pupil, dtype='float32')
+        
+    def set_defocus(self, defocus):
+        self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
+
     def calc(self, xs):
-        self.phase_aberr.calc_terms(xs)
-        pupil = self.pupil_func(xs)
+        if self.phase_aberr is not None:
+            self.phase_aberr.calc_terms(xs)
+        if self.pupil_func is not None:
+            pupil = self.pupil_func(xs)
         if self.defocus_func is not None:
             defocus = self.defocus_func(xs)
         else:
@@ -149,22 +161,26 @@ class psf_tf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx, arcsec_per_px, diameter, wavelength, corr_or_fft=False, num_frames=1, batch_size=1):
-        self.nx= nx
-        coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
-        self.coords = coords
-        x_min = np.min(self.coords, axis=(0,1))
-        x_max = np.max(self.coords, axis=(0,1))
-        print("psf_coords", x_min, x_max, np.shape(self.coords))
-        np.testing.assert_array_almost_equal(x_min, -x_max)
-        self.incoh_vals = None
-        self.otf_vals = None
-        self.corr = None # only for testing purposes
+    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=NOne, wavelength=None, corr_or_fft=False, num_frames=1, batch_size=1):
         self.coh_trans_func = coh_trans_func
-        self.coh_trans_func.calc(self.coords)
-        self.corr_or_fft = corr_or_fft
-        self.num_frames = num_frames
-        self.batch_size = batch_size
+        if nx is None:
+            # Everything is precalculated
+            self.nx = coh_trans_func.nx
+        else:
+            self.nx = nx
+            coords, rc, x_limit = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
+            self.coords = coords
+            x_min = np.min(self.coords, axis=(0,1))
+            x_max = np.max(self.coords, axis=(0,1))
+            print("psf_coords", x_min, x_max, np.shape(self.coords))
+            np.testing.assert_array_almost_equal(x_min, -x_max)
+            self.incoh_vals = None
+            self.otf_vals = None
+            self.corr = None # only for testing purposes
+            self.coh_trans_func.calc(self.coords)
+            self.corr_or_fft = corr_or_fft
+            self.num_frames = num_frames
+            self.batch_size = batch_size
         
 
     def set_batch_size(self, batch_size):

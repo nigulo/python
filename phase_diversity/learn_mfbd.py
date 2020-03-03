@@ -114,34 +114,19 @@ import plot
 import psf
 import psf_tf
 import utils
-import kolmogorov
-import zernike
-
 
 def load_data():
-    data_file = dir_name + '/learn_object_Ds.dat.npz'
+    data_file = dir_name + '/Ds.npz'
     if os.path.exists(data_file):
         loaded = np.load(data_file)
-        Ds = loaded['a']
-        objs = loaded['b']
-        return Ds, objs
-
-    data_file = dir_name + '/learn_object_Ds.dat'
-    if os.path.exists(data_file):
-        Ds = np.load(data_file)
-        data_file = dir_name + '/learn_object_objs.dat'
-        if os.path.exists(data_file):
-            objs = np.load(data_file)
-        return Ds, objs
-
-    return None, None
-
-def save_data(Ds, objects):
-    np.savez_compressed(dir_name + '/learn_object_Ds.dat', a=Ds, b=objects)
-    #with open(dir_name + '/learn_object_Ds.dat', 'wb') as f:
-    #    np.save(f, Ds)
-    #with open(dir_name + '/learn_object_objs.dat', 'wb') as f:
-    #    np.save(f, objs)
+        Ds = loaded['Ds']
+        objs = loaded['objs']
+        pupil = loaded['pupil']
+        modes=loaded['modes']
+        diversity=loaded['diversity']
+        zernike_coefs=loaded['zernike_coefs']
+        return Ds, objs, pupil, modes, diversity, zernike_coefs
+    raise "No data found"
 
 
 def load_model():
@@ -173,7 +158,7 @@ def save_weights(model):
     with open(dir_name + '/learn_object_params.dat', 'wb') as f:
         pickle.dump(nn_mode, f, protocol=4)
 
-
+'''
 def get_params(nx):
 
     #arcsec_per_px = .03*(wavelength*1e-10)/(diameter*1e-2)*180/np.pi*3600
@@ -182,18 +167,18 @@ def get_params(nx):
     defocus = 2.*np.pi*1000
     #defocus = (0., 0.)
     return (arcsec_per_px, defocus)
-
+'''
 
 def convert_data(Ds_in):            
-    num_frames = Ds_in.shape[0]
-    num_objects = Ds_in.shape[1]
+    num_objects = Ds_in.shape[0]
+    num_frames = Ds_in.shape[1]
     Ds_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
     k = 0
     l = 0
     for i in np.arange(num_objects):
         for j in np.arange(num_frames):
-            Ds_out[k, :, :, 2*l] = Ds_in[j, i, 0, :, :]
-            Ds_out[k, :, :, 2*l+1] = Ds_in[j, i, 1, :, :]
+            Ds_out[k, :, :, 2*l] = Ds_in[i, j, 0, :, :]
+            Ds_out[k, :, :, 2*l+1] = Ds_in[i, j, 1, :, :]
             l += 1
             if l >= num_frames_input:
                 l = 0
@@ -202,25 +187,30 @@ def convert_data(Ds_in):
     #assert(k == (num_frames-num_frames_input+1)*num_objects)
     return Ds_out, num_frames-num_frames_input+1
 
-class nn_model:
-
-    
-    def create_psf(self):
-        arcsec_per_px, defocus = get_params(nx)
-        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-
-        pa = psf_tf.phase_aberration_tf(jmax, start_index=0)
-        ctf = psf_tf.coh_trans_func_tf(aperture_func, pa, defocus_func)
-        self.psf = psf_tf.psf_tf(ctf, nx, arcsec_per_px=arcsec_per_px, diameter=diameter, wavelength=wavelength, num_frames=num_frames_input, batch_size=batch_size)
-        
+class nn_model:       
     
     
-    def __init__(self, nx, num_frames, num_objs):
+    def __init__(self, nx, num_frames, num_objs, pupil, modes, diversity):
         
         self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
+        
+        pa_check = psf.phase_aberration(jmax=len(modes), start_index=0)
+        pa_check.set_terms(modes)
+        ctf_check = psf.coh_trans_func()
+        ctf_check.set_pupil(pupil)
+        ctf_check.set_defocus(diversity)
+        self.psf_check = psf.psf(ctf_check)
+        
+        pa = psf_tf.phase_aberration_tf(jmax=len(modes), start_index=0)
+        pa.set_terms(modes)
+        ctf = psf_tf.coh_trans_func_tf()
+        ctf.set_pupil(pupil)
+        ctf.set_defocus(diversity)
+        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size)
+        
+        
         num_defocus_channels = 2#self.num_frames*2
         image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input') # Channels first
 
@@ -359,21 +349,20 @@ class nn_model:
         self.validation_losses = []
         self.nn_mode = nn_mode_
 
-
     def set_data(self, Ds, objs, train_perc=.75):
-        assert(self.num_frames <= Ds.shape[0])
+        assert(self.num_frames <= Ds.shape[1])
         if self.num_objs is None or self.num_objs <= 0:
-            self.num_objs = Ds.shape[1]
-        assert(self.num_objs <= Ds.shape[1])
+            self.num_objs = Ds.shape[0]
+        assert(self.num_objs <= Ds.shape[0])
         assert(Ds.shape[2] == 2)
         if shuffle:
-            i1 = random.randint(0, Ds.shape[0] + 1 - self.num_frames)
-            i2 = random.randint(0, Ds.shape[1] + 1 - self.num_objs)
+            i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
+            i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
         else:
             i1 = 0
             i2 = 0
-        Ds = Ds[i1:i1+self.num_frames, i2:i2+self.num_objs]
-        self.objs = objs[i2:i2+self.num_objs]
+        Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
+        self.objs = objs[i1:i1+self.num_objs]
         num_objects = Ds.shape[1]
         self.Ds, num_frames = convert_data(Ds)
         
@@ -434,6 +423,8 @@ class nn_model:
         #self.coefs_validation = np.reshape(np.tile(coefs_validation, (1, num_objects_validation)), (num_objects_validation*num_frames_validation, jmax))
 
         #self.coefs_validation /= self.scale_factor
+                
+        
         
 
     def train(self):
@@ -501,14 +492,6 @@ class nn_model:
         #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
         #predicted_coefs = model.predict(Ds_train[0:n_test])
     
-        arcsec_per_px, defocus = get_params(self.nx)
-    
-        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-    
-        pa_check = psf.phase_aberration(jmax, start_index=0)
-        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
         #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
     
         #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
@@ -535,7 +518,7 @@ class nn_model:
             objs_test.append(obj)
             
             if pred_alphas is not None:
-                obj_reconstr = psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 objs_reconstr.append(obj_reconstr)
             #print("pred_alphas", i, pred_alphas[i])
@@ -572,14 +555,13 @@ class nn_model:
         #######################################################################
                     
     
-    def test(self):
+    def test(self, Ds_, objs):
         
         model = self.model
         
-        Ds_, objs, nx_orig = gen_data(num_frames=n_test_frames, images_dir = images_dir_test, num_images=n_test_objects)
         print("test_1")
-        num_frames = Ds_.shape[0]
-        num_objects = Ds_.shape[1]
+        num_frames = Ds_.shape[1]
+        num_objects = Ds_.shape[0]
 
         Ds, num_frames = convert_data(Ds_)
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
@@ -611,15 +593,6 @@ class nn_model:
         end = time.time()
         print("Prediction time" + str(end - start))
 
-        arcsec_per_px, defocus = get_params(self.nx)
-    
-        aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-        defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-    
-        pa_check = psf.phase_aberration(jmax, start_index=0)
-        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, self.nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-
         #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
         DFs = np.zeros((len(objs), 2, self.nx-1, self.nx-1), dtype='complex') # in Fourier space
         for i in np.arange(len(objs)):
@@ -636,7 +609,7 @@ class nn_model:
             #obj_reconstr_mean += obj_reconstr
 
         if pred_alphas is not None:
-            obj_reconstr = psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+            obj_reconstr = self.psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
             obj_reconstr = fft.ifftshift(obj_reconstr)
             #obj_reconstr_mean += obj_reconstr
 
@@ -660,186 +633,17 @@ class nn_model:
         my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
         my_test_plot.save(dir_name + "/test_results_mean.png")
         my_test_plot.close()
-        
-
-def gen_data(num_frames, images_dir = images_dir_train, num_images = None, shuffle = True):
-    image_file = None
-    images, _, nx, nx_orig = utils.read_images(images_dir, image_file, is_planet = False, image_size=None, tile=True)
-    images = np.asarray(images)
-    if shuffle:
-        random_indices = random.choice(len(images), size=len(images), replace=False)
-        images = images[random_indices]
-    print("nx, nx_orig", nx, nx_orig)
-    if num_images is not None and len(images) > num_images:
-        images = images[:num_images]
-
-    arcsec_per_px, defocus = get_params(nx_orig)
-    aperture_func = lambda xs: utils.aperture_circ(xs, coef=15, radius =1.)
-    defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
-
-    coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
-
-    num_objects = len(images)
-
-    Ds = np.zeros((num_frames, num_objects, 2, nx, nx)) # in real space
-    #true_coefs = np.zeros((num_frames, jmax))
-    pa = psf.phase_aberration(jmax, start_index=0)
-    pa.calc_terms(nx=nx)
-    wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx, sampling=1.)
-    DFs = np.zeros((num_frames, num_objects, 2, 2*nx-1, 2*nx-1), dtype='complex')
-    zernike_coefs = np.zeros((num_frames, jmax))
-    #pa = psf.phase_aberration(np.random.normal(size=jmax))
-    for frame_no in np.arange(num_frames):
-        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
-        zernike_coefs[frame_no] = np.random.normal(size=jmax)*500
-        pa_true = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
-        #ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
-        ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-        #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
-        #true_coefs[frame_no] = ctf_true.dot(pa)
-        
-        #true_coefs[frame_no] = pa_true.alphas
-        #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
-        #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
-        psf_true = psf.psf(ctf_true, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        print(np.max(coords), np.min(coords))
-        #zernike_coefs[frame_no] = np.random.normal(size=(jmax))*np.linspace(1, .10, jmax)
-        #zernike_coefs[frame_no][25] = -1.
-        #zernike_coefs[frame_no] = ctf_true.dot(pa)
-        print(zernike_coefs[frame_no])
-        #######################################################################
-        # Plot the wavefront
-        pa_check = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
-        pa_check.calc_terms(nx=nx)
-        my_test_plot = plot.plot(nrows=1, ncols=3)
-        my_test_plot.colormap(wavefront[0,frame_no,:,:], [0], show_colorbar=True, colorbar_prec=2)
-        my_test_plot.colormap(pa_check(), [1])
-        my_test_plot.colormap(np.abs(wavefront[0,frame_no,:,:] - pa_check()), [2])
-        my_test_plot.save(dir_name + "/pa" + str(frame_no) + ".png")
-        my_test_plot.close()
-        #######################################################################
-
-        pa_check = psf.phase_aberration(jmax, start_index=0)
-        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-
-        #######################################################################
-        # Just checking if true_coefs are calculated correctly
-        #pa_check = psf.phase_aberration(jmax, start_index=0)
-        #ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        #psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        #######################################################################
-        for obj_no in np.arange(num_objects):
-            image = images[obj_no]
-            # Omit for now (just technical issues)
-            image = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
-            image -= np.mean(image)
-            image /= np.std(image)
-            images[obj_no] = image
-            
-            #my_test_plot = plot.plot()
-            #my_test_plot.colormap(image)
-            #my_test_plot.save("critical_sampling" + str(frame_no) + " " + str(obj_no) + ".png")
-            #my_test_plot.close()
-            
-            
-            #image1 = misc.sample_image(image, .99)
-            #image1 -= np.mean(image)
-            #image1 /= np.std(image)
-            
-            image1 = utils.upsample(image)
-
-            D_D_d = psf_true.convolve(image1)
-
-            D = D_D_d[0, 0]
-            D_d = D_D_d[0, 1]
-
-            #fimage = fft.fft2(misc.sample_image(image, .99))
-            #fimage = fft.fftshift(fimage)
-    
-        
-            #DFs1 = psf_true.multiply(fimage)
-            #DF = DFs1[0, 0]
-            #DF_d = DFs1[0, 1]
-            
-            #DF = fft.ifftshift(DF)
-            #DF_d = fft.ifftshift(DF_d)
-        
-            #D = fft.ifft2(DF).real
-            #D_d = fft.ifft2(DF_d).real
-
-            if noise_std_perc > 0.:
-                noise = np.random.poisson(lam=noise_std_perc*np.std(D), size=(nx-1, nx-1))
-                noise_d = np.random.poisson(lam=noise_std_perc*np.std(D_d), size=(nx-1, nx-1))
-
-                D += noise
-                D_d += noise_d
-
-            ###################################################################
-            # Just checking if true_coefs are calculated correctly
-            #if frame_no < 5 and obj_no < 5:
-            #    my_test_plot = plot.plot(nrows=1, ncols=4)
-            #    my_test_plot.colormap(image, [0], show_colorbar=True, colorbar_prec=2)
-            #    my_test_plot.colormap(D, [1])
-            #    my_test_plot.colormap(D_d, [2])
-            #    my_test_plot.save(dir_name + "/check" + str(frame_no) + "_" + str(obj_no) + ".png")
-            #    my_test_plot.close()
-            ###################################################################
-            #D -= np.mean(D)
-            #D_d -= np.mean(D_d)
-            #D /= np.std(D)
-            #D_d /= np.std(D_d)
-
-            DFs[frame_no, obj_no, 0] = fft.fft2(D)
-            DFs[frame_no, obj_no, 1] = fft.fft2(D_d)
-
-            D = misc.sample_image(D, 0.5)
-            D_d = misc.sample_image(D_d, 0.5)
-
-            Ds[frame_no, obj_no, 0] = D#misc.sample_image(D, 1.01010101)
-            Ds[frame_no, obj_no, 1] = D_d#misc.sample_image(D_d, 1.01010101)
-
-        print("Finished aberrating with wavefront", frame_no)
-
-    for obj_no in np.arange(min(5, num_objects)):
-        my_test_plot = plot.plot(nrows=1, ncols=4)
-        my_test_plot.colormap(images[obj_no], [0], show_colorbar=True, colorbar_prec=2)
-        my_test_plot.colormap(Ds[0, obj_no, 0], [1])
-        my_test_plot.colormap(Ds[0, obj_no, 1], [2])
-        ###############################################################
-    
-        obj_reconstr = psf_check.deconvolve(DFs[:, obj_no,:, :, :], alphas=zernike_coefs, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-        obj_reconstr = fft.ifftshift(obj_reconstr)
-        my_test_plot.colormap(obj_reconstr, [3])
-
-        my_test_plot.save(dir_name + "/check" + str(obj_no) + ".png")
-        my_test_plot.close()
-
-
-    return Ds, images, nx_orig
-
-
-'''
-def load_data():
-    data_file = 'learn_object_data.pkl'
-    if load_data and os.path.isfile(data_file):
-        return pickle.load(open(data_file, 'rb'))
-    else:
-        return None
-
-def save_data(data):
-    with open('learn_object_data.pkl', 'wb') as f:
-        pickle.dump(data, f, protocol=4)
-'''
 
 
 
-Ds, objs = load_data()
-if Ds is None:
-    Ds, objs, nx_orig = gen_data(num_frames_gen)
-    save_data(Ds, objs)
+Ds, objs, pupil, modes, diversity, zernike_coefs = load_data()
 
+n_train = int(len(Ds)*.75)
 
+Ds_train = Ds[:n_train]
+objs_train = objs[:n_train]
+Ds_test = Ds[n_train:]
+objs_test = objs[n_train:]
 nx = Ds.shape[3]
 
 #Ds_mean = np.mean(Ds, axis=(2,3))
@@ -858,7 +662,7 @@ my_test_plot.save(dir_name + "/D0_d.png")
 my_test_plot.close()
 
 
-model = nn_model(nx, num_frames, num_objs)
+model = nn_model(nx, num_frames, num_objs, pupil, modes, diversity)
 
 model.set_data(Ds, objs)
 
@@ -870,13 +674,13 @@ if train:
 
         model.test()
         
-        model.set_data(Ds, objs)
+        model.set_data(Ds_test, objs_test)
             
     
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
         model.validation_losses = model.validation_losses[-20:]
 else:
-    model.test()
+    model.test(Ds_test, objs_test)
 
 #logfile.close()
