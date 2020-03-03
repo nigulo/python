@@ -666,7 +666,7 @@ if train:
     
         model.train()
 
-        model.test()
+        model.test(Ds_test, objs_test)
         
         model.set_data(Ds_test, objs_test)
             
