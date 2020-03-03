@@ -177,13 +177,15 @@ class psf_tf():
             x_max = np.max(self.coords, axis=(0,1))
             print("psf_coords", x_min, x_max, np.shape(self.coords))
             np.testing.assert_array_almost_equal(x_min, -x_max)
-            self.incoh_vals = None
-            self.otf_vals = None
-            self.corr = None # only for testing purposes
             self.coh_trans_func.calc(self.coords)
-            self.corr_or_fft = corr_or_fft
-            self.num_frames = num_frames
-            self.batch_size = batch_size
+
+        self.incoh_vals = None
+        self.otf_vals = None
+        self.corr = None # only for testing purposes
+
+        self.corr_or_fft = corr_or_fft
+        self.num_frames = num_frames
+        self.batch_size = batch_size
         
 
     def set_batch_size(self, batch_size):

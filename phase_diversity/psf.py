@@ -174,9 +174,6 @@ class psf():
             x_max = np.max(self.coords, axis=(0,1))
             #print("psf_coords", x_min, x_max, np.shape(self.coords))
             np.testing.assert_array_almost_equal(x_min, -x_max)
-            self.incoh_vals = dict()
-            self.otf_vals = dict()
-            self.corr = dict() # only for testing purposes
             self.coh_trans_func.calc(self.coords)
         
             # Repeat the same for bigger grid
@@ -194,6 +191,9 @@ class psf():
             self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
             self.coh_trans_func2.calc(coords2)
         
+        self.incoh_vals = dict()
+        self.otf_vals = dict()
+        self.corr = dict() # only for testing purposes
         self.corr_or_fft = corr_or_fft
         self.tip_tilt = tip_tilt
         
