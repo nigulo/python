@@ -51,10 +51,11 @@ wavelength = 5250.0
 gamma = 1.0
 
 # How many frames to generate per object
-num_frames = 100
-
+num_frames = 20
 # How many objects to use in training
-num_objs = 100#None
+num_objs = 2300#None
+
+new_frames_after_every_obj = 10
 
 
 fried_param = .1
@@ -65,7 +66,7 @@ fried_or_zernike_aberr = True
 
 
 def save_data(Ds, objects, pupil, modes, diversity, zernike_coefs):
-    np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objects, modes=modes, diversity=diversity, zernike_coefs=zernike_coefs)
+    np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objects, pupil=pupil, modes=modes, diversity=diversity, zernike_coefs=zernike_coefs)
 
 
 def get_params(nx):
@@ -81,7 +82,6 @@ def get_params(nx):
 def gen_data(images, num_frames, num_images = None, shuffle = True):
     nx = images[0].shape[0]
     images = np.asarray(images)
-    print("AAAA", images.shape)
     if shuffle:
         random_indices = random.choice(len(images), size=len(images), replace=False)
         images = images[random_indices]
@@ -97,12 +97,11 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
 
     num_objects = len(images)
 
-    Ds = np.zeros((num_frames, num_objects, 2, nx, nx)) # in real space
+    Ds = np.zeros((num_objects, num_frames, 2, nx, nx)) # in real space
     #true_coefs = np.zeros((num_frames, jmax))
     if fried_or_zernike_aberr:
-        wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames, size=4*nx, sampling=1.)
-    DFs = np.zeros((num_frames, num_objects, 2, 2*nx-1, 2*nx-1), dtype='complex')
-    zernike_coefs = np.zeros((num_frames, jmax))
+        wavefront = kolmogorov.kolmogorov(fried = np.array([fried_param]), num_realizations=num_frames*num_objects//new_frames_after_every_obj, size=4*nx, sampling=1.)
+    DFs = np.zeros((num_objects, num_frames, 2, 2*nx-1, 2*nx-1), dtype='complex')
 
     pa = psf.phase_aberration(jmax, start_index=0)
     pa.calc_terms(nx=nx)
@@ -124,53 +123,61 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
     my_test_plot.save(out_dir + "/pupil.png")
     my_test_plot.close()
 
-    
-    for frame_no in tqdm(np.arange(num_frames)):
-        #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
+    frame_no_start = 0
+    for obj_no in tqdm(np.arange(num_objects)):
         
-        if fried_or_zernike_aberr:
-            ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no,:,:]), defocus_func)
-            zernike_coefs[frame_no] = ctf_true.dot(pa)
-        else:
-            zernike_coefs[frame_no] = np.random.normal(size=jmax)*500
-            pa_true = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
-            ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
-        #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
-        #true_coefs[frame_no] = ctf_true.dot(pa)
+        if obj_no % new_frames_after_every_obj == 0:
+            psf_true = []
         
-        #true_coefs[frame_no] = pa_true.alphas
-        #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
-        #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
-        psf_true = psf.psf(ctf_true, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        #print(np.max(coords), np.min(coords))
-        #zernike_coefs[frame_no] = np.random.normal(size=(jmax))*np.linspace(1, .10, jmax)
-        #zernike_coefs[frame_no][25] = -1.
-        #zernike_coefs[frame_no] = ctf_true.dot(pa)
-        #print(zernike_coefs[frame_no])
-        #######################################################################
-        # Plot the wavefront
-        if fried_or_zernike_aberr:
-            pa_check = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
-            pa_check.calc_terms(nx=nx)
-            my_test_plot = plot.plot(nrows=1, ncols=3)
-            my_test_plot.colormap(wavefront[0,frame_no,:,:], [0], show_colorbar=True, colorbar_prec=2)
-            my_test_plot.colormap(pa_check(), [1])
-            my_test_plot.colormap(np.abs(wavefront[0,frame_no,:,:] - pa_check()), [2])
-            my_test_plot.save(out_dir + "/pa" + str(frame_no) + ".png")
-            my_test_plot.close()
-        #######################################################################
+            for frame_no in np.arange(num_frames):
+                #pa_true = psf.phase_aberration(np.minimum(np.maximum(np.random.normal(size=jmax)*10, -25), 25), start_index=0)
+                
+                zernike_coefs = np.zeros((num_frames, jmax))
+                if fried_or_zernike_aberr:
+                    ctf_true = psf.coh_trans_func(aperture_func, psf.wavefront(wavefront[0,frame_no_start+frame_no,:,:]), defocus_func)
+                    zernike_coefs[frame_no] = ctf_true.dot(pa)
+                else:
+                    zernike_coefs[frame_no] = np.random.normal(size=jmax)*500
+                    pa_true = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
+                    ctf_true = psf.coh_trans_func(aperture_func, pa_true, defocus_func)
+                #print("wavefront", np.max(wavefront[0,frame_no,:,:]), np.min(wavefront[0,frame_no,:,:]))
+                #true_coefs[frame_no] = ctf_true.dot(pa)
+                
+                #true_coefs[frame_no] = pa_true.alphas
+                #true_coefs[frame_no] -= np.mean(true_coefs[frame_no])
+                #true_coefs[frame_no] /= np.std(true_coefs[frame_no])
+                psf_true.append(psf.psf(ctf_true, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength))
+                #print(np.max(coords), np.min(coords))
+                #zernike_coefs[frame_no] = np.random.normal(size=(jmax))*np.linspace(1, .10, jmax)
+                #zernike_coefs[frame_no][25] = -1.
+                #zernike_coefs[frame_no] = ctf_true.dot(pa)
+                #print(zernike_coefs[frame_no])
+                #######################################################################
+                # Plot the wavefront
+                if False:#fried_or_zernike_aberr:
+                    pa_check = psf.phase_aberration(zernike_coefs[frame_no], start_index=0)
+                    pa_check.calc_terms(nx=nx)
+                    my_test_plot = plot.plot(nrows=1, ncols=3)
+                    my_test_plot.colormap(wavefront[0,frame_no,:,:], [0], show_colorbar=True, colorbar_prec=2)
+                    my_test_plot.colormap(pa_check(), [1])
+                    my_test_plot.colormap(np.abs(wavefront[0,frame_no,:,:] - pa_check()), [2])
+                    my_test_plot.save(f"{out_dir}/pa{frame_no_start}_{frame_no}.png")
+                    my_test_plot.close()
+                #######################################################################
+        
+                pa_check = psf.phase_aberration(jmax, start_index=0)
+                ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+                psf_check = psf.psf(ctf_check, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+        
+                #######################################################################
+                # Just checking if true_coefs are calculated correctly
+                #pa_check = psf.phase_aberration(jmax, start_index=0)
+                #ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
+                #psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
+                #######################################################################
+            frame_no_start += num_frames
 
-        pa_check = psf.phase_aberration(jmax, start_index=0)
-        ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        psf_check = psf.psf(ctf_check, nx, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-
-        #######################################################################
-        # Just checking if true_coefs are calculated correctly
-        #pa_check = psf.phase_aberration(jmax, start_index=0)
-        #ctf_check = psf.coh_trans_func(aperture_func, pa_check, defocus_func)
-        #psf_check = psf.psf(ctf_check, nx//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
-        #######################################################################
-        for obj_no in np.arange(num_objects):
+        for frame_no in np.arange(num_frames):
             image = images[obj_no]
             # Omit for now (just technical issues)
             image = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
@@ -190,7 +197,7 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
             
             image1 = utils.upsample(image)
 
-            D_D_d = psf_true.convolve(image1)
+            D_D_d = psf_true[frame_no].convolve(image1)
 
             D = D_D_d[0, 0]
             D_d = D_D_d[0, 1]
@@ -231,14 +238,14 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
             #D /= np.std(D)
             #D_d /= np.std(D_d)
 
-            DFs[frame_no, obj_no, 0] = fft.fft2(D)
-            DFs[frame_no, obj_no, 1] = fft.fft2(D_d)
+            DFs[obj_no, frame_no, 0] = fft.fft2(D)
+            DFs[obj_no, frame_no, 1] = fft.fft2(D_d)
 
             D = misc.sample_image(D, 0.5)
             D_d = misc.sample_image(D_d, 0.5)
 
-            Ds[frame_no, obj_no, 0] = D#misc.sample_image(D, 1.01010101)
-            Ds[frame_no, obj_no, 1] = D_d#misc.sample_image(D_d, 1.01010101)
+            Ds[obj_no, frame_no, 0] = D#misc.sample_image(D, 1.01010101)
+            Ds[obj_no, frame_no, 1] = D_d#misc.sample_image(D_d, 1.01010101)
 
 
     for obj_no in np.arange(min(5, num_objects)):
@@ -248,7 +255,7 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
         my_test_plot.colormap(Ds[0, obj_no, 1], [2])
         ###############################################################
     
-        obj_reconstr = psf_check.deconvolve(DFs[:, obj_no,:, :, :], alphas=zernike_coefs, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+        obj_reconstr = psf_check.deconvolve(DFs[obj_no, :, :, :, :], alphas=zernike_coefs, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
         obj_reconstr = fft.ifftshift(obj_reconstr)
         my_test_plot.colormap(obj_reconstr, [3])
 
