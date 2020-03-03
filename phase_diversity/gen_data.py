@@ -42,8 +42,6 @@ image_file = None#"icont"
 image_size = 96
 tile=False
 scale=1.0
-num_subimages = 100
-num_angles = 10
 
 jmax = 44
 diameter = 100.0
@@ -62,7 +60,6 @@ fried_param = .1
 noise_std_perc = 0.#.01
 
 fried_or_zernike_aberr = True
-
 
 
 def save_data(Ds, objects, pupil, modes, diversity, zernike_coefs):
@@ -269,6 +266,9 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
 
 if __name__ == '__main__':
     
+    num_angles = 10
+    num_subimages = num_objs//num_angles
+
     images = gen_images.gen_images(in_dir, None, image_file, image_size, tile, scale, num_subimages, num_angles, ret=True)
     Ds, pupil, modes, diversity, zernike_coefs = gen_data(images, num_frames, num_images=num_objs)
     save_data(Ds, images, pupil, modes, diversity, zernike_coefs)
