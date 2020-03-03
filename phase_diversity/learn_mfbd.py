@@ -492,7 +492,7 @@ class nn_model:
         objs_reconstr = []
         i = 0
         while len(objs_test) < n_test:
-            DF = np.zeros((num_frames_input, 2, 2.*self.nx-1, 2.*self.nx-1), dtype="complex")
+            DF = np.zeros((num_frames_input, 2, 2*self.nx-1, 2*self.nx-1), dtype="complex")
             for l in np.arange(num_frames_input):
                 D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
                 D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
@@ -587,7 +587,7 @@ class nn_model:
         print("Prediction time" + str(end - start))
 
         #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
-        DFs = np.zeros((len(objs), 2, 2.*self.nx-1, 2.*self.nx-1), dtype='complex') # in Fourier space
+        DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
         for i in np.arange(len(objs)):
             D = misc.sample_image(Ds[i, :, :, 0], (2.*self.nx - 1)/nx)
             D_d = misc.sample_image(Ds[i, :, :, 1], (2.*self.nx - 1)/nx)
