@@ -119,7 +119,10 @@ class coh_trans_func_tf():
         self.pupil_func = pupil_func
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
-        
+    
+    def set_phase_aberr(self, phase_aberr):
+        self.phase_aberr = phase_aberr
+    
     def set_pupil(self, pupil):
         self.nx = pupil.shape[0]
         self.pupil = tf.constant(pupil, dtype='float32')
