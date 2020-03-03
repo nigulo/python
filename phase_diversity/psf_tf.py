@@ -128,6 +128,7 @@ class coh_trans_func_tf():
     def set_pupil(self, pupil):
         self.nx = pupil.shape[0]
         self.pupil = tf.constant(pupil, dtype='float32')
+        self.pupil = tf.complex(self.pupil, tf.zeros((pupil.shape[0], pupil.shape[1]), dtype='float32'))
         
     def set_defocus(self, defocus):
         self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
