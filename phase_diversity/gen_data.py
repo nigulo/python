@@ -22,7 +22,6 @@ import config
 import misc
 import plot
 import psf
-import psf_tf
 import utils
 import kolmogorov
 import zernike
@@ -51,9 +50,9 @@ gamma = 1.0
 # How many frames to generate per object
 num_frames = 20
 # How many objects to use in training
-num_objs = 2300#None
+num_objs = 100#None
 
-new_frames_after_every_obj = 10
+new_frames_after_every_obj = 2
 
 
 fried_param = .1
