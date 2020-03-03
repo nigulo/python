@@ -183,6 +183,7 @@ class nn_model:
     
     def __init__(self, jmax, nx, num_frames, num_objs, pupil, modes, diversity):
         
+        self.jmax = jmax
         self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
@@ -419,6 +420,7 @@ class nn_model:
         
 
     def train(self):
+        jmax = self.jmax
         model = self.model
 
         print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
@@ -490,10 +492,10 @@ class nn_model:
         objs_reconstr = []
         i = 0
         while len(objs_test) < n_test:
-            DF = np.zeros((num_frames_input, 2, self.nx-1, self.nx-1), dtype="complex")
+            DF = np.zeros((num_frames_input, 2, 2.*self.nx-1, 2.*self.nx-1), dtype="complex")
             for l in np.arange(num_frames_input):
-                D = misc.sample_image(self.Ds[i, :, :, 2*l], .99)
-                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], .99)
+                D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
+                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
                 DF[l, 0] = fft.fft2(D)
                 DF[l, 1] = fft.fft2(D_d)
             
@@ -526,7 +528,7 @@ class nn_model:
             if pred_alphas is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
-                my_test_plot.colormap(misc.sample_image(obj, .99) - obj_reconstr, [row, 2])
+                my_test_plot.colormap(obj - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
@@ -585,10 +587,10 @@ class nn_model:
         print("Prediction time" + str(end - start))
 
         #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
-        DFs = np.zeros((len(objs), 2, self.nx-1, self.nx-1), dtype='complex') # in Fourier space
+        DFs = np.zeros((len(objs), 2, 2.*self.nx-1, 2.*self.nx-1), dtype='complex') # in Fourier space
         for i in np.arange(len(objs)):
-            D = misc.sample_image(Ds[i, :, :, 0], .99)
-            D_d = misc.sample_image(Ds[i, :, :, 1], .99)
+            D = misc.sample_image(Ds[i, :, :, 0], (2.*self.nx - 1)/nx)
+            D_d = misc.sample_image(Ds[i, :, :, 1], (2.*self.nx - 1)/nx)
             DF = fft.fft2(D)
             DF_d = fft.fft2(D_d)
             DFs[i, 0] = DF
