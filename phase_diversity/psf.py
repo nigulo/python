@@ -87,18 +87,30 @@ Coherent transfer function, also called as generalized pupil function
 '''
 class coh_trans_func():
 
-    def __init__(self, pupil_func, phase_aberr, defocus_func = None):
+    def __init__(self, pupil_func, phase_aberr = None, defocus_func = None):
         self.pupil_func = pupil_func
         self.phase_aberr = phase_aberr
         self.defocus_func = defocus_func
         
+    def set_phase_aberr(self, phase_aberr):
+        self.phase_aberr = phase_aberr
+        
+        
     def calc(self, xs):
-        self.phase_aberr.calc_terms(xs)
+        if self.phase_aberr is not None:
+            self.phase_aberr.calc_terms(xs)
         self.pupil = self.pupil_func(xs)
         if self.defocus_func is not None:
             self.defocus = self.defocus_func(xs)
         else:
             self.defocus = 0.
+    
+    def get_pupil(self):
+        return self.pupil
+
+    def get_defocus(self):
+        return self.defocus
+    
         
     def __call__(self):
         self.phase = self.phase_aberr()

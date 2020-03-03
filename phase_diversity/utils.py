@@ -243,7 +243,7 @@ def read_images(dir="images", image_file=None, is_planet = False, image_size = N
                     start_index_y = max_row - image_size//2#np.random.randint(0, start_index_max)
                     sub_image = image[start_index_x:start_index_x + image_size,start_index_y:start_index_y + image_size]
                 else:
-                    sub_image = image[start_coord:start_coord + image_size, start_coord:start_coord+ image_size]
+                    sub_image = image[start_coord:start_coord + image_size, start_coord:start_coord + image_size]
                 
                 
                 nx_orig = np.shape(sub_image)[0]
