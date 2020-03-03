@@ -528,7 +528,7 @@ class nn_model:
             if pred_alphas is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
-                my_test_plot.colormap(obj - obj_reconstr, [row, 2])
+                my_test_plot.colormap(misc.sample_image(obj, (2.*self.nx - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
