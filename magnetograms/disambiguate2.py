@@ -125,7 +125,6 @@ def load(file_name):
             b = np.transpose(b, (1, 2, 0))
             theta = np.transpose(theta, (1, 2, 0))
             phi = np.transpose(phi, (1, 2, 0))
-            
         else:
             print("Use disambiguate.py for single layer data")
             sys.exit(0)
@@ -134,6 +133,32 @@ def load(file_name):
             theta = dat[1]
             phi = dat[2]
         hdul.close()
+    elif file_name == 'MURaM':
+        hdul = fits.open(file_name+'/result_5.100000.fits')
+        print("Data.shape", hdul[0].data.shape)
+        bx = hdul[0].data
+        hdul.close()
+        hdul = fits.open(file_name+'/result_6.100000.fits')
+        bz = hdul[0].data
+        hdul.close()
+        hdul = fits.open(file_name+'/result_7.100000.fits')
+        by = hdul[0].data
+        hdul.close()
+
+        bx = np.transpose(bx, (0, 2, 1))
+        by = np.transpose(by, (0, 2, 1))
+        bz = np.transpose(bz, (0, 2, 1))
+
+        # Take only three surface layers
+        bx = bx[:, :, -3:]
+        by = by[:, :, -3:]
+        bz = bz[:, :, -3:]
+
+        b = np.sqrt(bx**2 + by**2 + bz**2)
+        phi = np.arctan2(by, bx)
+        theta = np.arccos((bz+1e-10)/(b+1e-10))
+
+
     elif file_name[-4:] == '.pkl':
         if os.path.isfile(file_name):
             y = pickle.load(open(file_name, 'rb'))
