@@ -196,14 +196,14 @@ class nn_model:
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
         
-        pa_check = psf.phase_aberration(jmax=len(modes), start_index=0)
+        pa_check = psf.phase_aberration(len(modes), start_index=0)
         pa_check.set_terms(modes)
         ctf_check = psf.coh_trans_func()
         ctf_check.set_pupil(pupil)
         ctf_check.set_defocus(diversity)
         self.psf_check = psf.psf(ctf_check)
         
-        pa = psf_tf.phase_aberration_tf(jmax=len(modes), start_index=0)
+        pa = psf_tf.phase_aberration_tf(len(modes), start_index=0)
         pa.set_terms(modes)
         ctf = psf_tf.coh_trans_func_tf()
         ctf.set_pupil(pupil)
@@ -344,7 +344,7 @@ class nn_model:
             return tf.reduce_sum(tf.subtract(y_true, y_pred))
             
         #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
-        self.model.compile(optimizer='adam', loss=mfbd_loss)#'mse')
+        self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
         self.nx = nx
         self.validation_losses = []
         self.nn_mode = nn_mode_
