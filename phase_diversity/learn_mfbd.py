@@ -23,7 +23,6 @@ import numpy.fft as fft
 import time
 #import scipy.signal as signal
 
-jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 gamma = 1.0
@@ -645,6 +644,7 @@ objs_train = objs[:n_train]
 Ds_test = Ds[n_train:]
 objs_test = objs[n_train:]
 nx = Ds.shape[3]
+jmax = len(modes)
 
 #Ds_mean = np.mean(Ds, axis=(2,3))
 #Ds_std = np.std(Ds, axis=(2,3))
@@ -662,7 +662,7 @@ my_test_plot.save(dir_name + "/D0_d.png")
 my_test_plot.close()
 
 
-model = nn_model(nx, num_frames, num_objs, pupil, modes, diversity)
+model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes, diversity)
 
 model.set_data(Ds, objs)
 
