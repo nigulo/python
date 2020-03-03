@@ -180,9 +180,7 @@ class psf():
             xs1 = np.linspace(-x_limit, x_limit, self.nx*2-1)
             coords1 = np.dstack(np.meshgrid(xs1, xs1)[::-1])
             self.coords1 = coords1
-    
-            self.nx1 = self.nx * 2 - 1
-    
+        
             self.coh_trans_func1 = copy.deepcopy(self.coh_trans_func)
             self.coh_trans_func1.calc(coords1)
     
@@ -191,6 +189,8 @@ class psf():
             self.coh_trans_func2 = copy.deepcopy(self.coh_trans_func)
             self.coh_trans_func2.calc(coords2)
         
+        self.nx1 = self.nx * 2 - 1
+
         self.incoh_vals = dict()
         self.otf_vals = dict()
         self.corr = dict() # only for testing purposes
