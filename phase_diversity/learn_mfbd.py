@@ -28,7 +28,7 @@ gamma = 1.0
 # How many frames to use in training
 num_frames = 20
 # How many objects to use in training
-num_objs = 10#None
+num_objs = 100#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
