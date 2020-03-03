@@ -189,7 +189,7 @@ def convert_data(Ds_in):
 class nn_model:       
     
     
-    def __init__(self, nx, num_frames, num_objs, pupil, modes, diversity):
+    def __init__(self, jmax, nx, num_frames, num_objs, pupil, modes, diversity):
         
         self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
