@@ -630,8 +630,8 @@ class nn_model:
 
 Ds, objs, pupil, modes, diversity, zernike_coefs = load_data()
 
-mean = np.mean(Ds, axis=(3, 4))
-std = np.std(Ds, axis=(3, 4))
+mean = np.mean(Ds, axis=(3, 4), keepdims=True)
+std = np.std(Ds, axis=(3, 4), keepdims=True)
 Ds -= mean
 Ds /= std
 
