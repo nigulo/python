@@ -32,10 +32,9 @@ num_objs = 75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
-num_frames_input = 8
+num_frames_input = 4
 
 n_epochs = 10
-num_iters = 10
 num_reps = 1000
 shuffle = True
 
@@ -233,7 +232,7 @@ class nn_model:
                 return tf.math.scalar_mul(tf.constant(num, dtype="float32"), x)
 
 
-            def conv_layer(x, n_channels, kernel=(3, 3), max_pooling=True, batch_normalization=True, num_convs=3):
+            def conv_layer(x, n_channels, kernel=(3, 3), max_pooling=True, batch_normalization=True, num_convs=2):
                 for i in np.arange(num_convs):
                     x1 = keras.layers.Conv2D(n_channels, (1, 1), activation='linear', padding='same')(x)#(normalized)
                     x2 = keras.layers.Conv2D(n_channels, kernel, activation='relu', padding='same')(x)#(normalized)
@@ -276,8 +275,8 @@ class nn_model:
             #alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
             #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
             #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
-            alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear', name='alphas_layer')(alphas_layer)
-            #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 100.), name='alphas_layer')(alphas_layer)
+            alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
+            alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 500.), name='alphas_layer')(alphas_layer)
             
             #obj_layer = keras.layers.Dense(256)(obj_layer)
             #obj_layer = keras.layers.Dense(128)(obj_layer)
@@ -333,7 +332,7 @@ class nn_model:
         self.model = model
         
         def mfbd_loss(y_true, y_pred):
-            return tf.reduce_sum(tf.subtract(y_true, y_pred))
+            return tf.reduce_sum(tf.subtract(y_true, y_pred))/(nx*nx)
             
         #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
         self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
@@ -630,6 +629,11 @@ class nn_model:
 
 
 Ds, objs, pupil, modes, diversity, zernike_coefs = load_data()
+
+mean = np.mean(Ds, axis=(3, 4))
+std = np.std(Ds, axis=(3, 4))
+Ds -= mean
+Ds /= std
 
 n_train = int(len(Ds)*.75)
 

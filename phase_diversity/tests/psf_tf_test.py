@@ -108,14 +108,18 @@ class test_psf_tf(unittest.TestCase):
         my_plot.save("test_psf_tf_deconvolve.png")
         my_plot.close()
 
-        mfbd_loss = psf_tf_.mfbd_loss(tf.concat((alphas_tf, tf.reshape(D, [num_frames*2*nx*nx])), 0))
+
+        alphas2 = np.random.normal(size=(jmax*num_frames))*500.
+        alphas_tf2 = tf.constant(alphas2, dtype='float32')
+
+        mfbd_loss = psf_tf_.mfbd_loss(tf.concat((alphas_tf2, tf.reshape(D, [num_frames*2*nx*nx])), 0))
 
         my_plot = plot.plot(nrows=1, ncols=1)
         my_plot.colormap(mfbd_loss[0], [0], show_colorbar=True, colorbar_prec=.3)
             
         my_plot.save("test_psf_tf_mfbd_loss.png")
         my_plot.close()
-        print("mfbd_loss", np.sum(mfbd_loss*mfbd_loss))
+        print("mfbd_loss", np.sum(mfbd_loss)/nx/nx)
 
         #######################################################################
 
