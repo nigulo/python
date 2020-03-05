@@ -28,13 +28,13 @@ gamma = 1.0
 # How many frames to use in training
 num_frames = 20
 # How many objects to use in training
-num_objs = 10#75#None
+num_objs = 75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 4
 
-n_epochs = 1
+n_epochs = 10
 num_reps = 1000
 shuffle = True
 
