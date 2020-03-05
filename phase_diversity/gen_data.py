@@ -122,6 +122,13 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
     frame_no_start = 0
     for obj_no in tqdm(np.arange(num_objects)):
         
+        image = images[obj_no]
+        # Omit for now (just technical issues)
+        image = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
+        image -= np.mean(image)
+        image /= np.std(image)
+        images[obj_no] = image
+        
         if obj_no % new_frames_after_every_obj == 0:
             psf_true = []
         
@@ -174,12 +181,6 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
             frame_no_start += num_frames
 
         for frame_no in np.arange(num_frames):
-            image = images[obj_no]
-            # Omit for now (just technical issues)
-            image = misc.sample_image(psf.critical_sampling(misc.sample_image(image, .99), arcsec_per_px, diameter, wavelength), 1.01010101)
-            image -= np.mean(image)
-            image /= np.std(image)
-            images[obj_no] = image
             
             #my_test_plot = plot.plot()
             #my_test_plot.colormap(image)
@@ -247,19 +248,19 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
     for obj_no in np.arange(min(5, num_objects)):
         my_test_plot = plot.plot(nrows=1, ncols=4)
         my_test_plot.colormap(images[obj_no], [0], show_colorbar=True, colorbar_prec=2)
-        my_test_plot.colormap(Ds[0, obj_no, 0], [1])
-        my_test_plot.colormap(Ds[0, obj_no, 1], [2])
+        my_test_plot.colormap(Ds[obj_no, 0, 0], [1])
+        my_test_plot.colormap(Ds[obj_no, 0, 1], [2])
         ###############################################################
     
         obj_reconstr = psf_check.deconvolve(DFs[obj_no, :, :, :, :], alphas=zernike_coefs, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
         obj_reconstr = fft.ifftshift(obj_reconstr)
         my_test_plot.colormap(obj_reconstr, [3])
 
-        my_test_plot.save(out_dir + "/check" + str(obj_no) + ".png")
+        my_test_plot.save(out_dir + "/check_reconstr" + str(obj_no) + ".png")
         my_test_plot.close()
 
 
-    return Ds, pupil, modes, diversity, zernike_coefs
+    return Ds, images, pupil, modes, diversity, zernike_coefs
 
 
 
@@ -269,5 +270,15 @@ if __name__ == '__main__':
     num_subimages = num_objs//num_angles
 
     images = gen_images.gen_images(in_dir, None, image_file, image_size, tile, scale, num_subimages, num_angles, ret=True)
-    Ds, pupil, modes, diversity, zernike_coefs = gen_data(images, num_frames, num_images=num_objs)
+    Ds, images, pupil, modes, diversity, zernike_coefs = gen_data(images, num_frames, num_images=num_objs)
     save_data(Ds, images, pupil, modes, diversity, zernike_coefs)
+
+    for obj_no in np.arange(min(5, num_objs)):
+        my_test_plot = plot.plot(nrows=1, ncols=3)
+        my_test_plot.colormap(images[obj_no], [0], show_colorbar=True, colorbar_prec=2)
+        my_test_plot.colormap(Ds[obj_no, 0, 0], [1])
+        my_test_plot.colormap(Ds[obj_no, 0, 1], [2])
+        ###############################################################
+    
+        my_test_plot.save(out_dir + "/check" + str(obj_no) + ".png")
+        my_test_plot.close()
