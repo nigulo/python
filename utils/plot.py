@@ -7,7 +7,7 @@ from matplotlib.colors import LogNorm, SymLogNorm
 from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
 import matplotlib.colors as colors
 import matplotlib.ticker as ticker
-import pyhdust.triangle as triangle
+#import pyhdust.triangle as triangle
 import numpy as np
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
@@ -194,9 +194,11 @@ class plot:
             x1 = pos[1, 0]
             y1 = pos[1, 1]
             width = x1 - x0
-            
-            xlabel_pos = ax.get_xticklabels().get_window_extent()
-            xlabel_height = xlabel_pos[1, 1] - xlabel_pos[0, 1] 
+            if len(ax.get_xticklabels()) > 0:
+                xlabel_pos = ax.get_xticklabels()[0].get_window_extent().get_points()
+                xlabel_height = xlabel_pos[1, 1] - xlabel_pos[0, 1]
+            else:
+                xlabel_height = 0
             cbar_ax = self.fig.add_axes([x1, y0 + xlabel_height, width/20, y1-y0])
             ax.tick_params(labelsize=self.axis_units_font_size)
             self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')

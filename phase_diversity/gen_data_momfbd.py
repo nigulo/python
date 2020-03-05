@@ -1,6 +1,6 @@
 import numpy as np
-#from pyana import pyana as pa
-import pyana as pa
+from pyana import pyana as pa
+#import pyana as pa
 import glob
 import scipy.io as io
 from tqdm import tqdm
