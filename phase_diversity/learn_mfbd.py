@@ -28,13 +28,13 @@ gamma = 1.0
 # How many frames to use in training
 num_frames = 20
 # How many objects to use in training
-num_objs = 75#None
+num_objs = 10#75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 4
 
-n_epochs = 10
+n_epochs = 1
 num_reps = 1000
 shuffle = True
 
@@ -601,7 +601,9 @@ class nn_model:
         
         objs_test = []
         for i in np.arange(len(objs)):
-            obj = self.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+            if len(objs_test) >= n_test_objects:
+                break
+            obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
             ###################################################################            
             # Just to plot results only for different objects
@@ -621,12 +623,12 @@ class nn_model:
                 for j in np.arange(i, len(objs)):
                     if np.all(objs[j] == obj):
                         for l in np.arange(num_frames_input):
-                            D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
-                            D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
+                            D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.nx - 1)/nx)
+                            D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.nx - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
-                            alphas.append(pred_alphas[l*jmax:(l+1)*jmax])
+                            alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
             
@@ -658,7 +660,7 @@ class nn_model:
                 row += 1
             my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
             my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-            my_test_plot.save(dir_name + "/test_results_mean.png")
+            my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
             my_test_plot.close()
 
 
