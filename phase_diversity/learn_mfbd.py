@@ -557,6 +557,7 @@ class nn_model:
     
     def test(self, Ds_, objs):
         
+        jmax = self.jmax
         model = self.model
         
         print("test_1")
@@ -597,44 +598,68 @@ class nn_model:
 
         #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
         DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
+        
+        objs_test = []
         for i in np.arange(len(objs)):
-            D = misc.sample_image(Ds[i, :, :, 0], (2.*self.nx - 1)/nx)
-            D_d = misc.sample_image(Ds[i, :, :, 1], (2.*self.nx - 1)/nx)
-            DF = fft.fft2(D)
-            DF_d = fft.fft2(D_d)
-            DFs[i, 0] = DF
-            DFs[i, 1] = DF_d
-            
+            obj = self.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+            found = False
+            ###################################################################            
+            # Just to plot results only for different objects
+            for obj_test in objs_test:
+                if np.all(obj_test == obj):
+                    found = True
+                    break
+            if found:
+                continue
+            ###################################################################            
+            objs_test.append(obj)
+
+            # Find all other realizations of the same object
+            DFs = []
+            alphas = []
+            if pred_alphas is not None:
+                for j in np.arange(i, len(objs)):
+                    if np.all(objs[j] == obj):
+                        for l in np.arange(num_frames_input):
+                            D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
+                            D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
+                            DF = fft.fft2(D)
+                            DF_d = fft.fft2(D_d)
+                            DFs.append(np.array([DF, DF_d]))
+                            alphas.append(pred_alphas[l*jmax:(l+1)*jmax])
+            DFs = np.asarray(DFs, dtype="complex")
+            alphas = np.asarray(alphas)
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
             #obj_reconstr_mean += obj_reconstr
 
-        if pred_alphas is not None:
-            obj_reconstr = self.psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            obj_reconstr = fft.ifftshift(obj_reconstr)
-            #obj_reconstr_mean += obj_reconstr
-
-            #my_test_plot = plot.plot(nrows=1, ncols=2)
-            #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-            #my_test_plot.colormap(obj_reconstr, [1])
-            #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
-            #my_test_plot.close()
-        
-        n_rows = 1
-        if pred_alphas is not None:
-            n_rows += 1
-        my_test_plot = plot.plot(nrows=n_rows, ncols=2)
-        row = 0
-        obj = objs[i]#np.reshape(objs[i], (self.nx, self.nx))
-        if pred_alphas is not None:
-            my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
-            my_test_plot.colormap(obj_reconstr, [row, 1])
-            row += 1
-        my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
-        my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-        my_test_plot.save(dir_name + "/test_results_mean.png")
-        my_test_plot.close()
+            if len(alphas) > 0:
+                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = fft.ifftshift(obj_reconstr)
+                #obj_reconstr_mean += obj_reconstr
+    
+                #my_test_plot = plot.plot(nrows=1, ncols=2)
+                #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+                #my_test_plot.colormap(obj_reconstr, [1])
+                #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                #my_test_plot.close()
+            else:
+                obj_reconstr  = None
+            n_rows = 1
+            if obj_reconstr is not None:
+                n_rows += 1
+            my_test_plot = plot.plot(nrows=n_rows, ncols=2)
+            row = 0
+            obj = objs[i]#np.reshape(objs[i], (self.nx, self.nx))
+            if obj_reconstr is not None:
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(obj_reconstr, [row, 1])
+                row += 1
+            my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
+            my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
+            my_test_plot.save(dir_name + "/test_results_mean.png")
+            my_test_plot.close()
 
 
 
