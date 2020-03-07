@@ -161,23 +161,26 @@ def get_params(nx):
     return (arcsec_per_px, defocus)
 '''
 
-def convert_data(Ds_in):            
+def convert_data(Ds_in, objs_in):
     num_objects = Ds_in.shape[0]
     num_frames = Ds_in.shape[1]
     Ds_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+    objs_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, objs_in.shape[1], objs_in.shape[2]))
     k = 0
     l = 0
     for i in np.arange(num_objects):
         for j in np.arange(num_frames):
             Ds_out[k, :, :, 2*l] = Ds_in[i, j, 0, :, :]
             Ds_out[k, :, :, 2*l+1] = Ds_in[i, j, 1, :, :]
+            objs_out[k] = objs_in[i]
             l += 1
             if l >= num_frames_input:
                 l = 0
                 k += 1
     Ds_out = Ds_out[:k]
+    objs_out = objs_out[:k]
     #assert(k == (num_frames-num_frames_input+1)*num_objects)
-    return Ds_out, num_frames-num_frames_input+1
+    return Ds_out, objs_out, num_frames-num_frames_input+1
 
 class nn_model:       
     
@@ -278,7 +281,7 @@ class nn_model:
             #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
             #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
             alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-            alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 500.), name='alphas_layer')(alphas_layer)
+            alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
             
             #obj_layer = keras.layers.Dense(256)(obj_layer)
             #obj_layer = keras.layers.Dense(128)(obj_layer)
@@ -355,9 +358,11 @@ class nn_model:
             i1 = 0
             i2 = 0
         Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
-        self.objs = objs[i1:i1+self.num_objs]
+        objs = objs[i1:i1+self.num_objs]
         num_objects = Ds.shape[1]
-        self.Ds, num_frames = convert_data(Ds)
+        
+        
+        self.Ds, self.objs, num_frames = convert_data(Ds, objs)
         
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
@@ -371,9 +376,9 @@ class nn_model:
         #for i in np.arange(len(objs)):
         #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
         print("objs", self.objs.shape, self.num_objs, num_objects)
-        self.objs = np.tile(self.objs, (num_frames, 1, 1))
+        #self.objs = np.reshape(np.repeat(self.objs, num_frames, axis=0), (num_frames*self.objs.shape[0], self.objs.shape[1], self.objs.shape[2]))
 
-        self.objs = np.reshape(self.objs, (len(self.objs), -1))
+        #self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                     
         # Shuffle the data
@@ -403,20 +408,15 @@ class nn_model:
         self.Ds_validation = self.Ds[n_train:n_train+n_validation]
         self.objs_validation = self.objs[n_train:n_train+n_validation]
 
-        #num_frames_train = Ds_train.shape[0]
-        #num_objects_train = Ds_train.shape[1]
-        #self.Ds_train = np.reshape(Ds_train, (num_frames_train*num_objects_train, Ds_train.shape[2], Ds_train.shape[3], Ds_train.shape[4]))
-        #self.coefs_train = np.reshape(np.tile(coefs_train, (1, num_objects_train)), (num_objects_train*num_frames_train, jmax))
 
-        #self.coefs_train /= self.scale_factor
-
-        #num_frames_validation = Ds_validation.shape[0]
-        #num_objects_validation = Ds_validation.shape[1]
-        #self.Ds_validation = np.reshape(Ds_validation, (num_frames_validation*num_objects_validation, Ds_validation.shape[2], Ds_validation.shape[3], Ds_validation.shape[4]))
-        #self.coefs_validation = np.reshape(np.tile(coefs_validation, (1, num_objects_validation)), (num_objects_validation*num_frames_validation, jmax))
-
-        #self.coefs_validation /= self.scale_factor
-                
+        #for i in np.arange(len(self.objs)):
+        #    my_test_plot = plot.plot(nrows=3, ncols=1)
+        #    my_test_plot.colormap(self.objs[i], [0, 0], show_colorbar=True, colorbar_prec=2)
+        #    my_test_plot.colormap(self.Ds[i, :, :, 0], [1, 0])
+        #    my_test_plot.colormap(self.Ds[i, :, :, 1], [2, 0])
+    
+        #    my_test_plot.save(dir_name + "/data_check" + str(i) + ".png")
+        #    my_test_plot.close()
         
         
 
@@ -475,12 +475,12 @@ class nn_model:
         n_test = min(num_objs, 5)
         try:
             alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-            pred_alphas = alphas_layer_model.predict([self.Ds, np.zeros_like(self.objs)], batch_size=1)
+            pred_alphas = alphas_layer_model.predict(self.Ds, batch_size=batch_size)
         except ValueError:
             pred_alphas = None
         #pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs, np.tile(self.Ds, [1, 1, 1, 16])], batch_size=1)
         if nn_mode == MODE_2:
-            pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
+            pred_Ds = model.predict(self.Ds, batch_size=batch_size)
         else:
             pred_Ds = None
         #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
@@ -492,16 +492,13 @@ class nn_model:
         objs_test = []
         objs_reconstr = []
         i = 0
-        while len(objs_test) < n_test:
-            DF = np.zeros((num_frames_input, 2, 2*self.nx-1, 2*self.nx-1), dtype="complex")
-            for l in np.arange(num_frames_input):
-                D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
-                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
-                DF[l, 0] = fft.fft2(D)
-                DF[l, 1] = fft.fft2(D_d)
+        while len(objs_test) < n_test and i < len(self.objs):
             
-            obj = np.reshape(self.objs[i], (self.nx, self.nx))
+            obj = self.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
+
+            ###################################################################            
+            # Just to plot results only for different objects
             for obj_test in objs_test:
                 if np.all(obj_test == obj):
                     found = True
@@ -509,12 +506,23 @@ class nn_model:
             if found:
                 i += 1
                 continue
+            ###################################################################            
             objs_test.append(obj)
+
+            DF = np.zeros((num_frames_input, 2, 2*self.nx-1, 2*self.nx-1), dtype="complex")
+            for l in np.arange(num_frames_input):
+                D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
+                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
+                DF[l, 0] = fft.fft2(D)
+                DF[l, 1] = fft.fft2(D_d)
             
             if pred_alphas is not None:
                 obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 objs_reconstr.append(obj_reconstr)
+                
+                pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.nx - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
+                pred_Ds  = np.transpose(pred_Ds, (0, 2, 3, 1))
             #print("pred_alphas", i, pred_alphas[i])
 
             num_rows = 0
@@ -533,12 +541,12 @@ class nn_model:
                 row += 1
             if pred_Ds is not None:
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
-                my_test_plot.colormap(pred_Ds[i, :, :, 0], [row, 1])
-                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 0] - pred_Ds[i, :, :, 0]), [row, 2])
+                my_test_plot.colormap(pred_Ds[0, :, :, 0], [row, 1])
+                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.nx - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
                 row += 1
                 my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
-                my_test_plot.colormap(pred_Ds[i, :, :, 1], [row, 1])
-                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[i, :, :, 1]), [row, 2])
+                my_test_plot.colormap(pred_Ds[0, :, :, 1], [row, 1])
+                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.nx - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
 
             my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
             my_test_plot.close()
@@ -551,17 +559,20 @@ class nn_model:
     
     def test(self, Ds_, objs):
         
+        jmax = self.jmax
         model = self.model
         
         print("test_1")
         num_frames = Ds_.shape[1]
-        num_objects = Ds_.shape[0]
+        #num_objects = Ds_.shape[0]
 
-        Ds, num_frames = convert_data(Ds_)
+        Ds, objs, num_frames = convert_data(Ds_, objs)
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
-        objs = objs[:num_objects]
-        objs = np.tile(objs, (num_frames, 1, 1))
-        objs = np.reshape(objs, (len(objs), -1))
+        #objs = objs[:num_objects]
+        #objs = np.reshape(np.repeat(objs, num_frames, axis=0), (num_frames*objs.shape[0], objs.shape[1], objs.shape[2]))
+        
+        #objs = np.tile(objs, (num_frames, 1, 1))
+        #objs = np.reshape(objs, (len(objs), -1))
         print("test_2")
 
         # Shuffle the data
@@ -589,44 +600,70 @@ class nn_model:
 
         #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
         DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
+        
+        objs_test = []
         for i in np.arange(len(objs)):
-            D = misc.sample_image(Ds[i, :, :, 0], (2.*self.nx - 1)/nx)
-            D_d = misc.sample_image(Ds[i, :, :, 1], (2.*self.nx - 1)/nx)
-            DF = fft.fft2(D)
-            DF_d = fft.fft2(D_d)
-            DFs[i, 0] = DF
-            DFs[i, 1] = DF_d
-            
+            if len(objs_test) >= n_test_objects:
+                break
+            obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+            found = False
+            ###################################################################            
+            # Just to plot results only for different objects
+            for obj_test in objs_test:
+                if np.all(obj_test == obj):
+                    found = True
+                    break
+            if found:
+                continue
+            ###################################################################            
+            objs_test.append(obj)
+
+            # Find all other realizations of the same object
+            DFs = []
+            alphas = []
+            if pred_alphas is not None:
+                for j in np.arange(i, len(objs)):
+                    if np.all(objs[j] == obj):
+                        for l in np.arange(num_frames_input):
+                            D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.nx - 1)/nx)
+                            D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.nx - 1)/nx)
+                            DF = fft.fft2(D)
+                            DF_d = fft.fft2(D_d)
+                            DFs.append(np.array([DF, DF_d]))
+                            alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+            DFs = np.asarray(DFs, dtype="complex")
+            alphas = np.asarray(alphas)
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
             #obj_reconstr_mean += obj_reconstr
 
-        if pred_alphas is not None:
-            obj_reconstr = self.psf_check.deconvolve(DFs, alphas=pred_alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            obj_reconstr = fft.ifftshift(obj_reconstr)
-            #obj_reconstr_mean += obj_reconstr
-
-            #my_test_plot = plot.plot(nrows=1, ncols=2)
-            #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-            #my_test_plot.colormap(obj_reconstr, [1])
-            #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
-            #my_test_plot.close()
-        
-        n_rows = 1
-        if pred_alphas is not None:
-            n_rows += 1
-        my_test_plot = plot.plot(nrows=n_rows, ncols=2)
-        row = 0
-        obj = np.reshape(objs[i], (self.nx, self.nx))
-        if pred_alphas is not None:
-            my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
-            my_test_plot.colormap(obj_reconstr, [row, 1])
-            row += 1
-        my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
-        my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-        my_test_plot.save(dir_name + "/test_results_mean.png")
-        my_test_plot.close()
+            if len(alphas) > 0:
+                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = fft.ifftshift(obj_reconstr)
+                #obj_reconstr_mean += obj_reconstr
+    
+                #my_test_plot = plot.plot(nrows=1, ncols=2)
+                #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+                #my_test_plot.colormap(obj_reconstr, [1])
+                #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                #my_test_plot.close()
+            else:
+                obj_reconstr  = None
+            n_rows = 1
+            if obj_reconstr is not None:
+                n_rows += 1
+            my_test_plot = plot.plot(nrows=n_rows, ncols=2)
+            row = 0
+            obj = objs[i]#np.reshape(objs[i], (self.nx, self.nx))
+            if obj_reconstr is not None:
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(obj_reconstr, [row, 1])
+                row += 1
+            my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
+            my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
+            my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
+            my_test_plot.close()
 
 
 
