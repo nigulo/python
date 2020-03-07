@@ -104,6 +104,8 @@ import plot
 import psf
 import psf_tf
 import utils
+import gen_images
+import gen_data
 
 def load_data():
     data_file = dir_name + '/Ds.npz'
@@ -679,6 +681,20 @@ if train:
         #    break
         model.validation_losses = model.validation_losses[-20:]
 else:
-    model.test(Ds_test, objs_test)
+
+    in_dir = "images"
+    image_file = None#"icont"
+    image_size = nx
+    tile=False
+    scale=1.0
+
+    num_angles = 1
+    num_subimages = n_test_objects
+
+
+    images = gen_images.gen_images(in_dir, None, image_file, image_size, tile, scale, num_subimages, num_angles, ret=True)
+    Ds, pupil, modes, diversity, zernike_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
+    
+    model.test(Ds, images)
 
 #logfile.close()
