@@ -730,7 +730,7 @@ else:
 
 
     images = gen_images.gen_images(in_dir, None, image_file, image_size, tile, scale, num_subimages, num_angles, ret=True)
-    Ds, pupil, modes, diversity, zernike_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
+    Ds, images, pupil, modes, diversity, zernike_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
     
     model.test(Ds, images)
 
