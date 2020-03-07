@@ -75,7 +75,7 @@ def get_params(nx):
     return (arcsec_per_px, defocus)
 
 
-def gen_data(images, num_frames, num_images = None, shuffle = True):
+def gen_data(images, num_frames, num_images = None, shuffle = True, new_frames_after_every_obj=2):
     nx = images[0].shape[0]
     images = np.asarray(images)
     if shuffle:
@@ -92,6 +92,7 @@ def gen_data(images, num_frames, num_images = None, shuffle = True):
     defocus_func = lambda xs: defocus*np.sum(xs*xs, axis=2)
 
     num_objects = len(images)
+    new_frames_after_every_obj = min(num_objects, new_frames_after_every_obj)
 
     Ds = np.zeros((num_objects, num_frames, 2, nx, nx)) # in real space
     #true_coefs = np.zeros((num_frames, jmax))
