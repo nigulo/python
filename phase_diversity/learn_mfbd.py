@@ -32,7 +32,7 @@ num_objs = 75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
-num_frames_input = 4
+num_frames_input = 8
 
 n_epochs = 10
 num_reps = 1000
@@ -43,7 +43,7 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 nn_mode = MODE_1
 
 batch_size = 8
-n_channels = 128
+n_channels = 256
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
