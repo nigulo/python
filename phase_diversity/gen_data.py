@@ -48,11 +48,11 @@ wavelength = 5250.0
 gamma = 1.0
 
 # How many frames to generate per object
-num_frames = 20
+num_frames = 200
 # How many objects to use in training
 num_objs = 100#None
 
-new_frames_after_every_obj = 2
+new_frames_after_every_obj = 10
 
 
 fried_param = .1
