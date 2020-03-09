@@ -110,20 +110,29 @@ class coh_trans_func():
             self.pupil = self.pupil_func(xs)
         if self.defocus_func is not None:
             self.defocus = self.defocus_func(xs)
+            self.diversity = np.zeros((2, self.defocus.shape[0], self.defocus.shape[1]))
+            self.diversity[1] = self.defocus;
         else:
             self.defocus = 0.
+            self.diversity = np.zeros(2)
     
     def get_pupil(self):
         return self.pupil
 
-    def get_defocus(self):
-        return self.defocus
-
     def set_pupil(self, pupil):
         self.pupil = pupil
         
+    def get_defocus(self):
+        return self.defocus
+
     def set_defocus(self, defocus):
         self.defocus = defocus
+
+    def get_diversity(self):
+        return self.diversity
+
+    def set_diversity(self, diversity):
+        self.diversity = diversity
         
     def __call__(self):
         self.phase = self.phase_aberr()
@@ -136,7 +145,7 @@ class coh_trans_func():
             my_plot.save("aperture_test.png")
             my_plot.close()
 
-        return np.array([self.pupil*np.exp(1.j * self.phase), self.pupil*np.exp(1.j * (self.phase + self.defocus))])
+        return np.array([self.pupil*np.exp(1.j * self.phase + self.diversity[0]), self.pupil*np.exp(1.j * (self.phase + self.diversity[1]))])
 
     '''
         Returns the coefficients for given expansion

@@ -62,7 +62,7 @@ fried_or_zernike_aberr = True
 
 
 def save_data(Ds, objects, pupil, modes, diversity, zernike_coefs):
-    np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objects, pupil=pupil, modes=modes, diversity=diversity, zernike_coefs=zernike_coefs)
+    np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objects, pupil=pupil, modes=modes, diversity=diversity, coefs=zernike_coefs)
 
 
 def get_params(nx):
