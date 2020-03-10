@@ -107,8 +107,8 @@ import plot
 import psf
 import psf_tf
 import utils
-import gen_images
-import gen_data
+#import gen_images
+#import gen_data
 
 #tf.debugging.set_log_device_placement(True)
 gpus = tf.config.experimental.list_physical_devices('GPU')
