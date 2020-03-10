@@ -160,13 +160,15 @@ def load_model():
     return None, None
 
 def save_model(model):
-    tf.keras.models.save_model(model, dir_name + '/model.h5')
+    tf.keras.models.save_model(model, dir_name + '/model.tf')
     with open(dir_name + '/params.dat', 'wb') as f:
         pickle.dump(nn_mode, f, protocol=4)
 
 
 def load_weights(model):
     model_file = dir_name + '/weights.h5'
+    if not os.path.exists(model_file):
+        model_file = dir_name + '/weights.tf'
     if os.path.exists(model_file):
         model.load_weights(model_file)
         nn_mode = pickle.load(open(dir_name + '/params.dat', 'rb'))
