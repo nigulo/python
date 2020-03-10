@@ -108,11 +108,18 @@ class test_psf_tf(unittest.TestCase):
         my_plot.save("test_psf_tf_deconvolve.png")
         my_plot.close()
 
+        diversity = np.tile(psf_.coh_trans_func.get_diversity(), [num_frames, 1, 1])
+        print("diversity", diversity.shape)
+        diversity_tf = tf.constant(diversity, dtype='float32')
+        #diversity_tf = tf.reshape(tf.transpose(tf.constant(diversity, dtype='float32'), [1, 2, 0]), [2*nx*nx])
+        #alphas2 = np.random.normal(size=(jmax*num_frames))*500.
+        #alphas_tf2 = tf.constant(alphas2, dtype='float32')
+        a1 = tf.reshape(alphas_tf, [1, num_frames, jmax])
+        a2 = tf.reshape(diversity_tf, [1, num_frames, 2*nx*nx])
+        a3 = tf.concat([a1, a2], axis=2)
 
-        alphas2 = np.random.normal(size=(jmax*num_frames))*500.
-        alphas_tf2 = tf.constant(alphas2, dtype='float32')
-
-        mfbd_loss = psf_tf_.mfbd_loss(tf.concat((alphas_tf2, tf.reshape(D, [num_frames*2*nx*nx])), 0))
+        psf_tf_.set_diversity = True
+        mfbd_loss = psf_tf_.mfbd_loss(tf.concat((tf.reshape(a3, [num_frames*(jmax+2*nx*nx)]), tf.reshape(D, [num_frames*2*nx*nx])), 0))
 
         my_plot = plot.plot(nrows=1, ncols=1)
         my_plot.colormap(mfbd_loss[0], [0], show_colorbar=True, colorbar_prec=.3)
@@ -123,6 +130,7 @@ class test_psf_tf(unittest.TestCase):
 
         #######################################################################
 
+        psf_tf_.set_diversity = False
         D_reconstr = psf_tf_.deconvolve_aberrate(tf.concat((alphas_tf, tf.reshape(tf.constant(D_expected_ds, dtype='float32'), [num_frames*2*nx*nx])), 0))
 
         for l in np.arange(num_frames):

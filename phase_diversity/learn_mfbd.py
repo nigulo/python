@@ -350,8 +350,8 @@ class nn_model:
                 
                 if nn_mode == MODE_1:
                     
-                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input, jmax])
-                    a2 = tf.reshape(diversity_input, [batch_size_per_gpu, num_frames_input, 2*nx*nx])
+                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input, jmax])                    
+                    a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, num_frames_input, 2*nx*nx])
                     a3 = tf.concat([a1, a2], axis=2)
                     
                     hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])

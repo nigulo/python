@@ -231,7 +231,8 @@ class psf_tf():
             self.coh_trans_func.phase_aberr.set_alphas(alphas)
 
             if self.set_diversity:
-                diversity = tf.transpose(tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [nx, nx, 2]), [2, 0, 1])
+                diversity = tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [2, nx, nx])
+                #diversity = tf.transpose(tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [nx, nx, 2]), [2, 0, 1])
                 self.coh_trans_func.set_diversity(diversity)
             coh_vals = self.coh_trans_func()
         
