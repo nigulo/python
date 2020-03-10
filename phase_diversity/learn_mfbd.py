@@ -113,16 +113,14 @@ import utils
 #tf.debugging.set_log_device_placement(True)
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
-  # Create 2 virtual GPUs with 1GB memory each
   try:
-    tf.config.experimental.set_virtual_device_configuration(
-        gpus[0],
-        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024),
-         tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+    # Currently, memory growth needs to be the same across GPUs
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-    print(len(gpus), "Physical GPU,", len(logical_gpus), "Logical GPUs")
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
   except RuntimeError as e:
-    # Virtual devices must be set before GPUs have been initialized
+    # Memory growth must be set before GPUs have been initialized
     print(e)
 
 def load_data(data_file="Ds.npz"):
