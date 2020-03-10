@@ -28,13 +28,13 @@ gamma = 1.0
 # How many frames to use in training
 num_frames = 20
 # How many objects to use in training
-num_objs = 10#75#None
+num_objs = 75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 8
 
-n_epochs = 1
+n_epochs = 10
 num_reps = 1000
 shuffle = True
 
@@ -61,7 +61,7 @@ train = True
 if len(sys.argv) > 2:
     if sys.argv[2].upper() == "TEST":
         train = False
-        
+
 n_test_frames = 10
 if len(sys.argv) > 3:
     n_test_frames = int(sys.argv[3])
@@ -70,6 +70,9 @@ n_test_objects = 1
 if len(sys.argv) > 4:
     n_test_objects = int(sys.argv[4])
 
+test_data_file = "Ds_test.npz"
+if len(sys.argv) > 5:
+    test_data_file = sys.argv[5]
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -122,8 +125,8 @@ if gpus:
     # Virtual devices must be set before GPUs have been initialized
     print(e)
 
-def load_data():
-    data_file = dir_name + '/Ds.npz'
+def load_data(data_file="Ds.npz"):
+    data_file = dir_name + '/' + data_file
     if os.path.exists(data_file):
         loaded = np.load(data_file)
         Ds = loaded['Ds']
@@ -147,32 +150,32 @@ def load_data():
 
 
 def load_model():
-    model_file = dir_name + '/learn_object_model.h5'
+    model_file = dir_name + '/model.h5'
     if not os.path.exists(model_file):
-        model_file = dir_name + '/learn_object_model.dat' # Just an old file suffix
+        model_file = dir_name + '/model.dat' # Just an old file suffix
     if os.path.exists(model_file):
         model = tf.keras.models.load_model(model_file)
-        nn_mode = pickle.load(open(dir_name + '/learn_object_params.dat', 'rb'))
+        nn_mode = pickle.load(open(dir_name + '/params.dat', 'rb'))
         return model, nn_mode
     return None, None
 
 def save_model(model):
-    tf.keras.models.save_model(model, dir_name + '/learn_object_model.h5')
-    with open(dir_name + '/learn_object_params.dat', 'wb') as f:
+    tf.keras.models.save_model(model, dir_name + '/model.h5')
+    with open(dir_name + '/params.dat', 'wb') as f:
         pickle.dump(nn_mode, f, protocol=4)
 
 
 def load_weights(model):
-    model_file = dir_name + '/learn_object_weights.h5'
+    model_file = dir_name + '/weights.h5'
     if os.path.exists(model_file):
         model.load_weights(model_file)
-        nn_mode = pickle.load(open(dir_name + '/learn_object_params.dat', 'rb'))
+        nn_mode = pickle.load(open(dir_name + '/params.dat', 'rb'))
         return nn_mode
     return None
 
 def save_weights(model):
-    model.save_weights(dir_name + '/learn_object_weights.h5')
-    with open(dir_name + '/learn_object_params.dat', 'wb') as f:
+    model.save_weights(dir_name + '/weights.h5')
+    with open(dir_name + '/params.dat', 'wb') as f:
         pickle.dump(nn_mode, f, protocol=4)
 
 '''
@@ -362,12 +365,6 @@ class nn_model:
                
                 model = keras.models.Model(inputs=[image_input, diversity_input], outputs=output)
     
-                nn_mode_ = load_weights(model)
-                if nn_mode_ is not None:
-                    assert(nn_mode_ == nn_mode) # Model was saved with in mode
-                else:
-                    nn_mode_ = nn_mode
-    
                #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
                 
             
@@ -396,6 +393,12 @@ class nn_model:
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
+
+        nn_mode_ = load_weights(model)
+        if nn_mode_ is not None:
+            assert(nn_mode_ == nn_mode) # Model was saved with in mode
+        else:
+            nn_mode_ = nn_mode
 
         self.nx = nx
         self.validation_losses = []
@@ -750,84 +753,95 @@ class nn_model:
 
 
 
-Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data()
-
-mean = np.mean(Ds, axis=(3, 4), keepdims=True)
-std = np.std(Ds, axis=(3, 4), keepdims=True)
-Ds -= mean
-Ds /= std
-
-n_train = int(len(Ds)*.75)
-print("n_train, n_test", n_train, len(Ds) - n_train)
-
-Ds_train = Ds[:n_train]
-Ds_test = Ds[n_train:]
-if objs is not None:
-    objs_train = objs[:n_train]
-    objs_test = objs[n_train:]
-else:
-    objs_train = None
-    objs_test = None
-
-if positions is not None:
-    positions_train = positions[:n_train]
-    positions_test = positions[n_train:]
-else:
-    positions_train = None
-    positions_test = None
-
-nx = Ds.shape[3]
-jmax = len(modes)
-
-#Ds_mean = np.mean(Ds, axis=(2,3))
-#Ds_std = np.std(Ds, axis=(2,3))
-#Ds -= np.tile(np.reshape(Ds_mean, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
-#Ds /= np.tile(np.reshape(Ds_std, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
-
-my_test_plot = plot.plot()
-my_test_plot.colormap(Ds[0, 0, 0])
-my_test_plot.save(dir_name + "/D0.png")
-my_test_plot.close()
-
-my_test_plot = plot.plot()
-my_test_plot.colormap(Ds[0, 0, 1])
-my_test_plot.save(dir_name + "/D0_d.png")
-my_test_plot.close()
-
-
-model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
-
-model.set_data(Ds_train, objs_train, diversity, positions_train)
-
 if train:
+
+    Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data()
+
+
+    mean = np.mean(Ds, axis=(3, 4), keepdims=True)
+    std = np.std(Ds, axis=(3, 4), keepdims=True)
+    Ds -= mean
+    Ds /= std
+    
+    n_train = int(len(Ds)*.75)
+    print("n_train, n_test", n_train, len(Ds) - n_train)
+    
+    Ds_train = Ds[:n_train]
+    Ds_test = Ds[n_train:]
+    if objs is not None:
+        objs_train = objs[:n_train]
+        objs_test = objs[n_train:]
+    else:
+        objs_train = None
+        objs_test = None
+    
+    if positions is not None:
+        positions_train = positions[:n_train]
+        positions_test = positions[n_train:]
+    else:
+        positions_train = None
+        positions_test = None
+    
+    nx = Ds.shape[3]
+    jmax = len(modes)
+
+    #Ds_mean = np.mean(Ds, axis=(2,3))
+    #Ds_std = np.std(Ds, axis=(2,3))
+    #Ds -= np.tile(np.reshape(Ds_mean, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
+    #Ds /= np.tile(np.reshape(Ds_std, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
+    
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(Ds[0, 0, 0])
+    my_test_plot.save(dir_name + "/D0.png")
+    my_test_plot.close()
+    
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(Ds[0, 0, 1])
+    my_test_plot.save(dir_name + "/D0_d.png")
+    my_test_plot.close()
+
+    model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
+
     for rep in np.arange(0, num_reps):
+        model.set_data(Ds_train, objs_train, diversity, positions_train)
         print("Rep no: " + str(rep))
     
         model.train()
 
         model.test(Ds_test, objs_test, diversity, positions_test)
         
-        model.set_data(Ds_train, objs_train, diversity, positions_train)
-            
-    
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
         model.validation_losses = model.validation_losses[-20:]
 else:
 
-    in_dir = "images"
-    image_file = None#"icont"
-    image_size = nx
-    tile=False
-    scale=1.0
+    #in_dir = "images"
+    #image_file = None#"icont"
+    #image_size = nx
+    #tile=False
+    #scale=1.0
 
-    num_angles = 1
-    num_subimages = n_test_objects
+    #num_angles = 1
+    #num_subimages = n_test_objects
 
+    #images = gen_images.gen_images(in_dir, None, image_file, image_size, tile, scale, num_subimages, num_angles, ret=True)
+    #Ds, images, pupil, modes, diversity, true_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
 
-    images = gen_images.gen_images(in_dir, None, image_file, image_size, tile, scale, num_subimages, num_angles, ret=True)
-    Ds, images, pupil, modes, diversity, true_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
     
-    model.test(Ds, images)
+    Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data(test_data_file)
+
+
+    mean = np.mean(Ds, axis=(3, 4), keepdims=True)
+    std = np.std(Ds, axis=(3, 4), keepdims=True)
+    Ds -= mean
+    Ds /= std
+    
+    nx = Ds.shape[3]
+    jmax = len(modes)
+    
+    
+    model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
+    
+    model.test(Ds, objs)
 
 #logfile.close()
