@@ -123,6 +123,8 @@ if gpus:
     # Memory growth must be set before GPUs have been initialized
     print(e)
 
+n_gpus = len(gpus)
+
 def load_data(data_file="Ds.npz"):
     data_file = dir_name + '/' + data_file
     if os.path.exists(data_file):
@@ -251,7 +253,8 @@ class nn_model:
         ctf.set_phase_aberr(pa)
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
-        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size, set_diversity=True)
+        batch_size_per_gpu = batch_size//n_gpus
+        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True)
         
         
         num_defocus_channels = 2#self.num_frames*2
@@ -344,18 +347,18 @@ class nn_model:
                 
                 if nn_mode == MODE_1:
                     
-                    a1 = tf.reshape(alphas_layer, [batch_size, num_frames_input, jmax])
-                    a2 = tf.reshape(diversity_input, [batch_size, num_frames_input, 2*nx*nx])
+                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input, jmax])
+                    a2 = tf.reshape(diversity_input, [batch_size_per_gpu, num_frames_input, 2*nx*nx])
                     a3 = tf.concat([a1, a2], axis=2)
                     
-                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
                     #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
                     #output = keras.layers.Flatten()(output)
                     #output = keras.layers.Lambda(lambda x: tf.math.reduce_sum(x))(output)
                 elif nn_mode == MODE_2:
-                    hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
+                    hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size_per_gpu*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.deconvolve_aberrate)(hidden_layer)
     
                 else:
