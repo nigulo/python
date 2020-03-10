@@ -34,7 +34,8 @@ num_objs = 75#None
 # Must be power of 2
 num_frames_input = 8
 
-n_epochs = 10
+n_epochs_2 = 1
+n_epochs_1 = 10
 num_reps = 1000
 shuffle = True
 
@@ -520,7 +521,7 @@ class nn_model:
         #ds = tf.data.Dataset.from_tensors((self.Ds_train, output_data_train)).batch(batch_size)
         #ds_val = tf.data.Dataset.from_tensors((self.Ds_validation, output_data_validation)).batch(batch_size)
         
-        for epoch in np.arange(n_epochs):
+        for epoch in np.arange(n_epochs_2):
 
                 #output_data_train = np.concatenate((output_data_train, self.Ds_train), axis=3)
                 #output_data_validation = np.concatenate((output_data_validation, self.Ds_validation), axis=3)
@@ -533,7 +534,7 @@ class nn_model:
             #            verbose=1)
 
             history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
-                        epochs=1,
+                        epochs=n_epochs_1,
                         batch_size=batch_size,
                         shuffle=True,
                         validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
