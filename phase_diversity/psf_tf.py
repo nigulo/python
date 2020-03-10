@@ -365,8 +365,8 @@ class psf_tf():
         num = tf.multiply(num, tf.math.conj(num))
         
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
-
-        loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]) - num/den
+        eps = tf.constant(1e-10, dtype='complex64')
+        loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]) - tf.math.add(num, eps)/tf.math.add(den, eps)
 
         return tf.math.real(loss)
     
