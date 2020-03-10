@@ -280,7 +280,7 @@ class psf():
         return fft.ifft2(fft.ifftshift(dat_F, axes=(-2, -1))).real
         
 
-    def deconvolve(self, Ds, alphas, gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False):
+    def deconvolve(self, Ds, alphas, gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize=False):
         self.calc(alphas=alphas)
         Ps = self.otf_vals
         if not fft_shift_before:
