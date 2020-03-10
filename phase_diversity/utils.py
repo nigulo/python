@@ -126,8 +126,8 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     P_conj = P.conjugate()
     P_d_conj = P_d.conjugate()
 
-    F_image = np.sum(D * P_conj + gamma * D_d * P_d_conj + regularizer_eps, axis=0)
-    den = np.sum(P*P_conj + gamma * P_d * P_d_conj + regularizer_eps, axis=0)
+    F_image = np.sum(D * P_conj + gamma * D_d * P_d_conj, axis=0) + regularizer_eps
+    den = np.sum(P*P_conj + gamma * P_d * P_d_conj, axis=0) + regularizer_eps
     F_image /= den
 
     if fft_shift_before:

@@ -26,7 +26,7 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 20
+num_frames = 200
 # How many objects to use in training
 num_objs = 75#None
 
@@ -408,10 +408,14 @@ class nn_model:
         self.nn_mode = nn_mode_
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.75):
-        assert(self.num_frames <= Ds.shape[1])
+        if self.num_frames is None or self.num_frames <= 0:
+            self.num_frames = Ds.shape[1]
+        self.num_frames = min(self.num_frames, Ds.shape[1])
+        #assert(self.num_frames <= Ds.shape[1])
         if self.num_objs is None or self.num_objs <= 0:
             self.num_objs = Ds.shape[0]
-        assert(self.num_objs <= Ds.shape[0])
+        self.num_objs = min(self.num_objs, Ds.shape[0])
+        #assert(self.num_objs <= Ds.shape[0])
         assert(Ds.shape[2] == 2)
         if objs is None:
             # Just generate dummy array in case we don't have true object data
