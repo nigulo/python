@@ -26,7 +26,7 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 200
+num_frames = 100
 # How many objects to use in training
 num_objs = 75#None
 
