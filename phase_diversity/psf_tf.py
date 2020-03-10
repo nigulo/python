@@ -134,7 +134,9 @@ class coh_trans_func_tf():
     #    self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
 
     def set_diversity(self, diversity):
-        self.diversity = tf.complex(tf.constant(diversity, dtype='float32'), tf.zeros_like(diversity, dtype='float32'))
+        #self.diversity = tf.complex(tf.constant(diversity, dtype='float32'), tf.zeros_like(diversity, dtype='float32'))
+        # diversity is already a tensor
+        self.diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
 
     def calc(self, xs):
         if self.phase_aberr is not None:
@@ -230,7 +232,7 @@ class psf_tf():
 
             if self.set_diversity:
                 diversity = tf.transpose(tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [nx, nx, 2]), [2, 0, 1])
-                self.coh_trans_func.phase_aberr.set_diversity(diversity)
+                self.coh_trans_func.set_diversity(diversity)
             coh_vals = self.coh_trans_func()
         
             if self.corr_or_fft:
@@ -334,13 +336,14 @@ class psf_tf():
     def mfbd_loss(self, x):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
-        x = tf.reshape(x, [self.batch_size*(jmax*self.num_frames + nx*nx*self.num_frames*2)])
         size1 = self.batch_size*jmax*self.num_frames
         size1a = jmax
         size2 = self.batch_size*nx*nx*self.num_frames*2
         if self.set_diversity:
             size1 += size2
             size1a += 2*nx*nx
+
+        x = tf.reshape(x, [size1 + size2])
 
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 

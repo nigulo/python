@@ -107,7 +107,7 @@ import utils
 import gen_images
 import gen_data
 
-tf.debugging.set_log_device_placement(True)
+#tf.debugging.set_log_device_placement(True)
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
   # Create 2 virtual GPUs with 1GB memory each
@@ -211,7 +211,8 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                 if positions is None:
                     diversity_out[k, :, :, 2*l] = diversity_in[0]
                     diversity_out[k, :, :, 2*l+1] = diversity_in[1]
-                else:    
+                else:
+                    print(diversity_out.shape, k, l, positions[i, 0], positions[i, 1], diversity_in.shape)
                     diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
                     diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
                 
@@ -249,7 +250,7 @@ class nn_model:
         ctf.set_phase_aberr(pa)
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
-        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size)
+        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size, set_diversity=True)
         
         
         num_defocus_channels = 2#self.num_frames*2
@@ -257,8 +258,8 @@ class nn_model:
         self.strategy = tf.distribute.MirroredStrategy()
         with self.strategy.scope():
 
-            image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input') # Channels first
-            diversity_input = keras.layers.Input((2, nx, nx), name='diversity_input')
+            image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
+            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='diversity_input')
     
             model, nn_mode_ = load_model()
             
@@ -346,7 +347,7 @@ class nn_model:
                     a2 = tf.reshape(diversity_input, [batch_size, num_frames_input, 2*nx*nx])
                     a3 = tf.concat([a1, a2], axis=2)
                     
-                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
                     #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
@@ -406,6 +407,9 @@ class nn_model:
             self.num_objs = Ds.shape[0]
         assert(self.num_objs <= Ds.shape[0])
         assert(Ds.shape[2] == 2)
+        if objs is None:
+            # Just generate dummy array in case we don't have true object data
+            objs = np.zeros((Ds.shape[0], Ds.shape[3], Ds.shape[4]))
         if shuffle:
             i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
             i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
@@ -413,8 +417,7 @@ class nn_model:
             i1 = 0
             i2 = 0
         Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
-        if objs is not None:
-            objs = objs[i1:i1+self.num_objs]
+        objs = objs[i1:i1+self.num_objs]
         if positions is not None:
             positions = positions[i1:i1+self.num_objs]
         num_objects = Ds.shape[1]
@@ -488,7 +491,7 @@ class nn_model:
         jmax = self.jmax
         model = self.model
 
-        print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
+        #print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         
         if self.nn_mode == MODE_1:
             output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
@@ -517,11 +520,11 @@ class nn_model:
             #            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
             #            verbose=1)
 
-            history = model.fit(x=self.Ds_train, y=output_data_train,
+            history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
                         epochs=1,
                         batch_size=batch_size,
                         shuffle=True,
-                        validation_data=[self.Ds_validation, output_data_validation],
+                        validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
                         #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                         verbose=1)
             
