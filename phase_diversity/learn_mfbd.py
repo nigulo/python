@@ -351,7 +351,7 @@ class nn_model:
                     a2 = tf.reshape(diversity_input, [batch_size_per_gpu, num_frames_input, 2*nx*nx])
                     a3 = tf.concat([a1, a2], axis=2)
                     
-                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
                     #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
