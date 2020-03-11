@@ -225,7 +225,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                         # Just a defocus
                         diversity_out[k, :, :, 2*l+1] = diversity_in
                 else:
-                    assert(len(diversity_in.shape) == 4)
+                    assert(len(diversity_in.shape) == 5)
                     diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
                     diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
             ids[k] = i    
