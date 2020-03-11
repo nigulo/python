@@ -227,10 +227,11 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                         diversity_out[k, :, :, 2*l+1] = diversity_in
                 else:
                     assert(len(diversity_in.shape) == 5)
-                    for div_i in np.arange(diversity_in.shape[2]):
-                        #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
-                        diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
-                        #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
+                    #for div_i in np.arange(diversity_in.shape[2]):
+                    #    #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
+                    #    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
+                    #    #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
+                    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
             ids[k] = i    
             l += 1
             if l >= num_frames_input:
