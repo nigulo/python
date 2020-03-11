@@ -167,9 +167,9 @@ def save_model(model):
 
 
 def load_weights(model):
-    model_file = dir_name + '/weights.h5'
+    model_file = dir_name + '/weights.tf'
     if not os.path.exists(model_file):
-        model_file = dir_name + '/weights.tf'
+        model_file = dir_name + '/weights.h5'
     if os.path.exists(model_file):
         model.load_weights(model_file)
         nn_mode = pickle.load(open(dir_name + '/params.dat', 'rb'))
