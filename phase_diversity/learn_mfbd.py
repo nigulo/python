@@ -216,9 +216,16 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                 objs_out[k] = objs_in[i]
             if diversity_out is not None:
                 if positions is None:
-                    diversity_out[k, :, :, 2*l] = diversity_in[0]
-                    diversity_out[k, :, :, 2*l+1] = diversity_in[1]
+                    if len(diversity_in.shape) == 3:
+                        # Diversities both for focus and defocus image
+                        diversity_out[k, :, :, 2*l] = diversity_in[0]
+                        diversity_out[k, :, :, 2*l+1] = diversity_in[1]
+                    else:
+                        assert(len(diversity_in.shape) == 2)
+                        # Just a defocus
+                        diversity_out[k, :, :, 2*l+1] = diversity_in
                 else:
+                    assert(len(diversity_in.shape) == 4)
                     diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
                     diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
             ids[k] = i    
@@ -241,6 +248,9 @@ class nn_model:
         self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
+        self.nx = nx
+        self.validation_losses = []
+        self.hanning = utils.hanning(nx, int(np.ceil(nx/10)))
         
         pa_check = psf.phase_aberration(len(modes), start_index=0)
         pa_check.set_terms(modes)
@@ -404,8 +414,6 @@ class nn_model:
         else:
             nn_mode_ = nn_mode
 
-        self.nx = nx
-        self.validation_losses = []
         self.nn_mode = nn_mode_
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.75):
@@ -434,6 +442,7 @@ class nn_model:
         num_objects = Ds.shape[1]
         
         self.Ds, self.objs, self.diversities, num_frames, self.obj_ids = convert_data(Ds, objs, diversity, positions)
+        self.Ds = self.hanning.multiply(self.Ds, axis=1)
         
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
@@ -657,6 +666,7 @@ class nn_model:
         #num_objects = Ds_.shape[0]
 
         Ds, objs, diversities, num_frames, obj_ids = convert_data(Ds_, objs, diversity, positions)
+        Ds = self.hanning.multiply(Ds, axis=1)
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
         #objs = objs[:num_objects]
         #objs = np.reshape(np.repeat(objs, num_frames, axis=0), (num_frames*objs.shape[0], objs.shape[1], objs.shape[2]))

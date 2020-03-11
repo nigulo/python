@@ -264,3 +264,25 @@ def read_images(dir="images", image_file=None, is_planet = False, image_size = N
     assert(len(images_d) == 0 or len(images_d) == len(images))
     print("Num images", len(images), images[0].shape, nx, nx_orig)
     return images, images_d, nx, nx_orig
+
+class hanning:
+    
+    def __init__(self, num_pixels, num_pixels_apodization):
+        hanning = np.hanning(num_pixels_apodization)
+        win = np.ones(num_pixels)
+        win[:num_pixels_apodization//2] = hanning[:num_pixels_apodization//2]
+        win[-num_pixels_apodization//2:] = hanning[-num_pixels_apodization//2:]
+        self.win = np.outer(win, win)
+        
+    def multiply(self, image, axis=None):
+        win = self.win
+        if axis is not None:
+            # axis is the starting index of the consecuive axis that 
+            # represent the 2d image in data
+            #for i in np.arange(axis):
+            #    win = win[None, ...]
+            for i in np.arange(axis+2, len(image.shape)):
+                win = win[..., None]
+        return image * win
+    
+    
