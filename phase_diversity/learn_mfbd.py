@@ -43,7 +43,7 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_1
 
-batch_size = 4
+batch_size = 8
 n_channels = 256
 
 #logfile = open(dir_name + '/log.txt', 'w')
@@ -227,11 +227,11 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                         diversity_out[k, :, :, 2*l+1] = diversity_in
                 else:
                     assert(len(diversity_in.shape) == 5)
-                    #for div_i in np.arange(diversity_in.shape[2]):
-                    #    #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
-                    #    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
-                    #    #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
-                    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
+                    for div_i in np.arange(diversity_in.shape[2]):
+                        #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
+                        diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
+                        #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
+                    #diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
             ids[k] = i    
             l += 1
             if l >= num_frames_input:
@@ -547,6 +547,7 @@ class nn_model:
         #ds = tf.data.Dataset.from_tensors((self.Ds_train, output_data_train)).batch(batch_size)
         #ds_val = tf.data.Dataset.from_tensors((self.Ds_validation, output_data_validation)).batch(batch_size)
         
+        
         for epoch in np.arange(n_epochs_2):
 
                 #output_data_train = np.concatenate((output_data_train, self.Ds_train), axis=3)
@@ -558,7 +559,6 @@ class nn_model:
             #            validation_data=ds_val,
             #            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
             #            verbose=1)
-
             history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
                         epochs=n_epochs_1,
                         batch_size=batch_size,
