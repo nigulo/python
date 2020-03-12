@@ -5,7 +5,7 @@ import zernike
 import utils
 import copy
 
-__DEBUG__ = False
+__DEBUG__ = True
 if __DEBUG__:
     import sys
     import os
@@ -129,7 +129,10 @@ class coh_trans_func():
         self.defocus = defocus
 
     def get_diversity(self):
-        return self.diversity
+        if hasattr(self, 'diversity'):
+            return self.diversity
+        else:
+            return None
 
     def set_diversity(self, diversity):
         self.diversity = diversity
@@ -454,6 +457,46 @@ class psf():
         return grads/(self.nx*self.nx)
 
 
+    def critical_sampling(self, image, threshold=1e-3):
+    
+        pa_copy = self.coh_trans_func.phase_aberr
+        pa = phase_aberration([])
+        pa.calc_terms(nx = self.nx)
+        self.coh_trans_func.phase_aberr = pa
+        diversity_copy = self.coh_trans_func.get_diversity()
+        self.coh_trans_func.set_diversity(np.zeros((2, self.nx, self.nx)))
+        self.calc()
+        self.coh_trans_func.phase_aberr = pa_copy
+        self.coh_trans_func.set_diversity(diversity_copy)
+        
+        fimage = fft.fft2(fft.fftshift(image))
+        #_, coefs = psf_.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
+        #coefs = coefs[0, 0, :, :]
+        #coefs = np.abs(coefs)
+        otf_vals = fft.ifftshift(self.otf_vals, axes=(-2, -1))
+        coefs = np.abs(otf_vals[0, 0, :, :])
+        
+        if __DEBUG__:
+            my_plot = plot.plot()
+            my_plot.hist(coefs, bins=100)
+            my_plot.save("transfer_func_hist.png")
+            my_plot.close()
+        
+        mask = np.ones_like(coefs)
+        indices = np.where(coefs < threshold)
+        mask[indices] = 0.
+        
+        if __DEBUG__:
+            my_plot = plot.plot(nrows=2)
+            my_plot.colormap(fft.fftshift(coefs), [0])
+            my_plot.colormap(fft.fftshift(mask), [1])
+            my_plot.save("transfer_func.png")
+            my_plot.close()
+        
+        fimage *= mask
+        return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
+
+
 def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3):
     nx = image.shape[0]
     coords, _, _ = utils.get_coords(nx, arcsec_per_px, diameter, wavelength)
@@ -463,30 +506,4 @@ def critical_sampling(image, arcsec_per_px, diameter, wavelength, threshold=1e-3
     ctf = coh_trans_func(aperture_func, pa, defocus_func)
     psf_ = psf(ctf, (nx+1)//2, arcsec_per_px = arcsec_per_px, diameter = diameter, wavelength = wavelength)
 
-    psf_.calc()
-    
-    fimage = fft.fft2(fft.fftshift(image))
-    #_, coefs = psf_.multiply(np.array([[fimage, fimage]]), np.array([], dtype='complex'))
-    #coefs = coefs[0, 0, :, :]
-    #coefs = np.abs(coefs)
-    coefs = np.abs(psf_.otf_vals[0, 0, :, :])
-    
-    if __DEBUG__:
-        my_plot = plot.plot()
-        my_plot.hist(coefs, bins=100)
-        my_plot.save("transfer_func_hist.png")
-        my_plot.close()
-    
-    mask = np.ones_like(coefs)
-    indices = np.where(coefs < threshold)
-    mask[indices] = 0.
-    
-    if __DEBUG__:
-        my_plot = plot.plot(nrows=2)
-        my_plot.colormap(fft.fftshift(coefs), [0])
-        my_plot.colormap(fft.fftshift(mask), [1])
-        my_plot.save("transfer_func.png")
-        my_plot.close()
-    
-    fimage *= mask
-    return fft.ifftshift(fft.ifft2(fimage), axes=(-2, -1)).real
+    return psf_.critical_sampling(image, threshold)

@@ -15,6 +15,11 @@ def center(ds, axis = None):
     return ds - mean_ds
 
 def sample_image(image, factor):
+    if len(image.shape) > 2:
+        image_out = []
+        for i in np.arange(len(image)):
+            image_out.append(sample_image(image[i], factor))
+        return np.asarray(image_out)
     if image.dtype == 'complex':
         real = scipy.ndimage.zoom(image.real, factor, output=None, order=3, mode='constant', cval=0.0, prefilter=True)
         imag = scipy.ndimage.zoom(image.imag, factor, output=None, order=3, mode='constant', cval=0.0, prefilter=True)

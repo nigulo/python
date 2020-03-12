@@ -19,6 +19,7 @@ import math
 import pickle
 import os.path
 import numpy.fft as fft
+import matplotlib.pyplot as plt
 
 import time
 #import scipy.signal as signal
@@ -26,16 +27,16 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 100
+num_frames = 20#100
 # How many objects to use in training
-num_objs = 75#None
+num_objs = 10#75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 8
 
 n_epochs_2 = 1
-n_epochs_1 = 10
+n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
 
@@ -445,7 +446,11 @@ class nn_model:
         num_objects = Ds.shape[1]
         
         self.Ds, self.objs, self.diversities, num_frames, self.obj_ids = convert_data(Ds, objs, diversity, positions)
+        med = np.median(self.Ds, axis=(1, 2), keepdims=True)
+        self.Ds -= med
         self.Ds = self.hanning.multiply(self.Ds, axis=1)
+        self.Ds += med
+        self.Ds /= med
         
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
@@ -670,7 +675,11 @@ class nn_model:
         #num_objects = Ds_.shape[0]
 
         Ds, objs, diversities, num_frames, obj_ids = convert_data(Ds_, objs, diversity, positions)
+        med = np.median(Ds, axis=(1, 2), keepdims=True)
+        Ds -= med
         Ds = self.hanning.multiply(Ds, axis=1)
+        Ds += med
+        Ds /= med
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
         #objs = objs[:num_objects]
         #objs = np.reshape(np.repeat(objs, num_frames, axis=0), (num_frames*objs.shape[0], objs.shape[1], objs.shape[2]))
@@ -780,10 +789,10 @@ if train:
     Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data()
 
 
-    mean = np.mean(Ds, axis=(3, 4), keepdims=True)
-    std = np.std(Ds, axis=(3, 4), keepdims=True)
-    Ds -= mean
-    Ds /= std
+    #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
+    #std = np.std(Ds, axis=(3, 4), keepdims=True)
+    #Ds -= mean
+    #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
     
     n_train = int(len(Ds)*.75)
     print("n_train, n_test", n_train, len(Ds) - n_train)
@@ -822,6 +831,13 @@ if train:
     my_test_plot.save(dir_name + "/D0_d.png")
     my_test_plot.close()
     
+    #pupil = misc.sample_image(pupil[nx//4:nx*3//4,nx//4:nx*3//4], 2)
+    #pupil[np.where(pupil < 0.001)] = 0.
+    #pupil[np.where(pupil > 0.1)] = 1.
+    #pupil = np.ones_like(pupil)
+    #modes = misc.sample_image(modes[:, nx//4:nx*3//4,nx//4:nx*3//4], 2)
+    print("pupil", pupil)
+    
     my_test_plot = plot.plot()
     if len(diversity.shape) == 5:
         my_test_plot.colormap(diversity[0, 0, 1], show_colorbar=True)
@@ -843,7 +859,51 @@ if train:
         my_test_plot.save(dir_name + f"/mode{i}.png")
         my_test_plot.close()
         
+
+    ###########################################################################
+    # Null check of deconvolution
+    pa_check = psf.phase_aberration(len(modes), start_index=1)
+    pa_check.set_terms(np.zeros((jmax, nx, nx)))#modes)
+    ctf_check = psf.coh_trans_func()
+    ctf_check.set_phase_aberr(pa_check)
+    ctf_check.set_pupil(pupil)
+    #ctf_check.set_diversity(diversity[i, j])
+    psf_check = psf.psf(ctf_check)
+
+    D = misc.sample_image(Ds[0, 0, 0], (2.*nx - 1)/nx)
+    #D = misc.sample_image(plt.imread("tests/psf_tf_test_input.png")[0:96, 0:96], (2.*nx - 1)/nx)
+    #D = psf_check.critical_sampling(D, threshold=1e-3)
+
+    #hanning = utils.hanning(D.shape[0], 20)
+    #med = np.median(D)
+    #D -= med
+    #D = hanning.multiply(D)
+    #D += med
+    #D /= med
     
+    D_d = D
+
+    #D = misc.sample_image(Ds[0, 0, 0], (2.*nx - 1)/nx)
+    #D_d = misc.sample_image(Ds[0, 0, 1], (2.*nx - 1)/nx)
+    DF = fft.fft2(D)
+    DF_d = DF#fft.fft2(D)#fft.fft2(D_d)
+            
+    #diversity = np.concatenate((diversity[0, :, :, 0], diversity[0, :, :, 1]))
+    #self.psf_check.coh_trans_func.set_diversity(diversity)
+    psf_check.coh_trans_func.set_diversity(np.zeros((2, nx, nx)))
+    obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.zeros((1, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+    obj_reconstr = fft.ifftshift(obj_reconstr)
+
+
+    my_test_plot = plot.plot(nrows=1, ncols=3)
+    my_test_plot.colormap(D, [0], show_colorbar=True)
+    my_test_plot.colormap(D_d, [1])
+    my_test_plot.colormap(obj_reconstr, [2])
+
+    my_test_plot.save(dir_name + "/null_deconv.png")
+    my_test_plot.close()
+
+    ###########################################################################
 
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
 
@@ -876,10 +936,10 @@ else:
     Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data(test_data_file)
 
 
-    mean = np.mean(Ds, axis=(3, 4), keepdims=True)
-    std = np.std(Ds, axis=(3, 4), keepdims=True)
-    Ds -= mean
-    Ds /= std
+    #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
+    #std = np.std(Ds, axis=(3, 4), keepdims=True)
+    #Ds -= mean
+    #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
     
     nx = Ds.shape[3]
     jmax = len(modes)
