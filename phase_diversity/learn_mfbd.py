@@ -256,7 +256,9 @@ class nn_model:
         self.nx = nx
         self.validation_losses = []
         self.hanning = utils.hanning(nx, 2)
-        
+        self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
+        self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
+         
         pa_check = psf.phase_aberration(len(modes), start_index=1)
         pa_check.set_terms(modes)
         ctf_check = psf.coh_trans_func()
@@ -613,20 +615,20 @@ class nn_model:
             ###################################################################            
             obj_ids_test.append(self.obj_ids[i])
 
-            DF = np.zeros((num_frames_input, 2, 2*self.nx-1, 2*self.nx-1), dtype="complex")
+            DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
             for l in np.arange(num_frames_input):
-                D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.nx - 1)/nx)
-                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.nx - 1)/nx)
+                D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                 DF[l, 0] = fft.fft2(D)
                 DF[l, 1] = fft.fft2(D_d)
             
             if pred_alphas is not None:
-                diversity = np.concatenate((self.diversities[i, :, :, 0], self.diversities[i, :, :, 1]))
+                diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 objs_reconstr.append(obj_reconstr)
-                pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.nx - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
+                pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
                 pred_Ds  = np.transpose(pred_Ds, (0, 2, 3, 1))
             #print("pred_alphas", i, pred_alphas[i])
 
@@ -642,16 +644,16 @@ class nn_model:
             if pred_alphas is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
-                my_test_plot.colormap(misc.sample_image(obj, (2.*self.nx - 1)/nx) - obj_reconstr, [row, 2])
+                my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, :, :, 0], [row, 1])
-                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.nx - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
+                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
                 row += 1
                 my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, :, :, 1], [row, 1])
-                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.nx - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
+                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
 
             my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
             my_test_plot.close()
@@ -739,8 +741,8 @@ class nn_model:
                 for j in np.arange(i, len(objs)):
                     if obj_ids[j] == obj_ids[i]:
                         for l in np.arange(num_frames_input):
-                            D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.nx - 1)/nx)
-                            D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.nx - 1)/nx)
+                            D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+                            D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
@@ -754,7 +756,7 @@ class nn_model:
             #obj_reconstr_mean += obj_reconstr
 
             if len(alphas) > 0:
-                diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
+                diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
