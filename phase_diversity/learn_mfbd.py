@@ -26,9 +26,9 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 100
+num_frames = 20#100
 # How many objects to use in training
-num_objs = 75#None
+num_objs = 10#75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
@@ -227,11 +227,11 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                         diversity_out[k, :, :, 2*l+1] = diversity_in
                 else:
                     assert(len(diversity_in.shape) == 5)
-                    for div_i in np.arange(diversity_in.shape[2]):
-                        #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
-                        diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
-                        #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
-                    #diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
+                    #for div_i in np.arange(diversity_in.shape[2]):
+                    #    #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
+                    #    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
+                    #    #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
+                    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
             ids[k] = i    
             l += 1
             if l >= num_frames_input:
@@ -273,19 +273,6 @@ class nn_model:
         batch_size_per_gpu = batch_size//max(1, n_gpus)
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True)
         
-        self.alphas_scale = np.array([3.4211644e-07, 2.9869247e-07, 1.2330536e-07, 1.2948983e-07,
-            1.3634113e-07, 6.2635998e-08, 6.0679490e-08, 6.1960371e-08,
-            6.2712253e-08, 4.1066169e-08, 4.8136709e-08, 4.3251813e-08,
-            4.8604090e-08, 4.6081762e-08, 3.6688341e-08, 4.7021366e-08,
-            4.4507608e-08, 4.7089408e-08, 3.8737561e-08, 3.7861817e-08,
-            5.0583559e-08, 5.0688101e-08, 4.7258556e-08, 4.9367131e-08,
-            4.6206999e-08, 3.9753179e-08, 3.9710063e-08, 4.7511332e-08,
-            3.4647051e-08, 4.4375597e-08, 3.8252473e-08, 3.7187508e-08,
-            3.6801211e-08, 3.1744438e-08, 3.1704403e-08, 4.5903555e-08,
-            2.5063319e-08, 2.7119935e-08, 2.6932595e-08, 2.9540985e-08,
-            2.2285006e-08, 2.0293584e-08, 2.1038879e-08, 1.8963931e-08])
-        self.alphas_scale = tf.constant(np.tile(self.alphas_scale[:jmax], num_frames_input), dtype='float32')
-
         num_defocus_channels = 2#self.num_frames*2
 
         self.strategy = tf.distribute.MirroredStrategy()
@@ -363,8 +350,7 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
-                alphas_layer = keras.layers.Lambda(lambda x : tf.multiply(x, self.alphas_scale), name='alphas_layer')(alphas_layer)
+                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
                 
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
@@ -827,7 +813,7 @@ if train:
     #Ds /= np.tile(np.reshape(Ds_std, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
     
     my_test_plot = plot.plot()
-    my_test_plot.colormap(Ds[0, 0, 0])
+    my_test_plot.colormap(Ds[0, 0, 0], show_colorbar=True)
     my_test_plot.save(dir_name + "/D0.png")
     my_test_plot.close()
     
@@ -835,6 +821,29 @@ if train:
     my_test_plot.colormap(Ds[0, 0, 1])
     my_test_plot.save(dir_name + "/D0_d.png")
     my_test_plot.close()
+    
+    my_test_plot = plot.plot()
+    if len(diversity.shape) == 5:
+        my_test_plot.colormap(diversity[0, 0, 1], show_colorbar=True)
+    elif len(diversity.shape) == 3:
+        my_test_plot.colormap(diversity[1], show_colorbar=True)
+    else:
+        my_test_plot.colormap(diversity, show_colorbar=True)
+    my_test_plot.save(dir_name + "/diversity.png")
+    my_test_plot.close()
+
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(pupil, show_colorbar=True)
+    my_test_plot.save(dir_name + "/pupil.png")
+    my_test_plot.close()
+    
+    for i in np.arange(len(modes)):
+        my_test_plot = plot.plot()
+        my_test_plot.colormap(modes[i], show_colorbar=True)
+        my_test_plot.save(dir_name + f"/mode{i}.png")
+        my_test_plot.close()
+        
+    
 
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
 
