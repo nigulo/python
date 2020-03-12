@@ -260,10 +260,10 @@ class nn_model:
         self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
          
         pa_check = psf.phase_aberration(len(modes), start_index=1)
-        pa_check.set_terms(modes)
+        pa_check.set_terms(self.modes)
         ctf_check = psf.coh_trans_func()
         ctf_check.set_phase_aberr(pa_check)
-        ctf_check.set_pupil(pupil)
+        ctf_check.set_pupil(self.pupil)
         #ctf_check.set_diversity(diversity[i, j])
         self.psf_check = psf.psf(ctf_check)
         
