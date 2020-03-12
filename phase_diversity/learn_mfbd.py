@@ -836,7 +836,6 @@ if train:
     #pupil[np.where(pupil > 0.1)] = 1.
     #pupil = np.ones_like(pupil)
     #modes = misc.sample_image(modes[:, nx//4:nx*3//4,nx//4:nx*3//4], 2)
-    print("pupil", pupil)
     
     my_test_plot = plot.plot()
     if len(diversity.shape) == 5:
