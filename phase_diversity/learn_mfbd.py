@@ -35,7 +35,7 @@ num_objs = 10#75#None
 # Must be power of 2
 num_frames_input = 8
 
-n_epochs_2 = 1
+n_epochs_2 = 10
 n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
