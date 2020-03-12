@@ -43,7 +43,7 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_1
 
-batch_size = 8
+batch_size = 4
 n_channels = 256
 
 #logfile = open(dir_name + '/log.txt', 'w')
@@ -254,9 +254,9 @@ class nn_model:
         self.num_objs = num_objs
         self.nx = nx
         self.validation_losses = []
-        self.hanning = utils.hanning(nx, int(np.ceil(nx/10)))
+        self.hanning = utils.hanning(nx, 2)
         
-        pa_check = psf.phase_aberration(len(modes), start_index=0)
+        pa_check = psf.phase_aberration(len(modes), start_index=1)
         pa_check.set_terms(modes)
         ctf_check = psf.coh_trans_func()
         ctf_check.set_phase_aberr(pa_check)
@@ -264,7 +264,7 @@ class nn_model:
         #ctf_check.set_diversity(diversity[i, j])
         self.psf_check = psf.psf(ctf_check)
         
-        pa = psf_tf.phase_aberration_tf(len(modes), start_index=0)
+        pa = psf_tf.phase_aberration_tf(len(modes), start_index=1)
         pa.set_terms(modes)
         ctf = psf_tf.coh_trans_func_tf()
         ctf.set_phase_aberr(pa)
@@ -273,7 +273,19 @@ class nn_model:
         batch_size_per_gpu = batch_size//max(1, n_gpus)
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True)
         
-        
+        self.alphas_scale = np.array([3.4211644e-07, 2.9869247e-07, 1.2330536e-07, 1.2948983e-07,
+            1.3634113e-07, 6.2635998e-08, 6.0679490e-08, 6.1960371e-08,
+            6.2712253e-08, 4.1066169e-08, 4.8136709e-08, 4.3251813e-08,
+            4.8604090e-08, 4.6081762e-08, 3.6688341e-08, 4.7021366e-08,
+            4.4507608e-08, 4.7089408e-08, 3.8737561e-08, 3.7861817e-08,
+            5.0583559e-08, 5.0688101e-08, 4.7258556e-08, 4.9367131e-08,
+            4.6206999e-08, 3.9753179e-08, 3.9710063e-08, 4.7511332e-08,
+            3.4647051e-08, 4.4375597e-08, 3.8252473e-08, 3.7187508e-08,
+            3.6801211e-08, 3.1744438e-08, 3.1704403e-08, 4.5903555e-08,
+            2.5063319e-08, 2.7119935e-08, 2.6932595e-08, 2.9540985e-08,
+            2.2285006e-08, 2.0293584e-08, 2.1038879e-08, 1.8963931e-08])
+        self.alphas_scale = tf.constant(np.tile(self.alphas_scale[:jmax], num_frames_input), dtype='float32')
+
         num_defocus_channels = 2#self.num_frames*2
 
         self.strategy = tf.distribute.MirroredStrategy()
@@ -317,7 +329,7 @@ class nn_model:
                     if max_pooling:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
-                    
+                
                 
                 hidden_layer = conv_layer(image_input, n_channels)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
@@ -351,7 +363,8 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
+                #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
+                alphas_layer = keras.layers.Lambda(lambda x : tf.multiply(x, self.alphas_scale), name='alphas_layer')(alphas_layer)
                 
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
@@ -552,7 +565,8 @@ class nn_model:
                         shuffle=True,
                         validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
                         #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1)
+                        verbose=1,
+                        steps_per_epoch=None)
             
             
             #intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
