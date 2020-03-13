@@ -215,8 +215,13 @@ class psf():
             l = 1
         else:
             l = alphas.shape[0]
-        self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1))
-        self.otf_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
+            
+        if self.corr_or_fft:
+            self.incoh_vals = np.zeros((l, 2, self.nx1, self.nx1))
+            self.otf_vals = np.zeros((l, 2, self.nx1, self.nx1), dtype='complex')
+        else:
+            self.incoh_vals = np.zeros((l, 2, self.nx, self.nx))
+            self.otf_vals = np.zeros((l, 2, self.nx, self.nx), dtype='complex')
         
         for i in np.arange(0, l):
             if alphas is not None:
@@ -231,7 +236,8 @@ class psf():
                 vals = fft.ifft2(coh_vals, axes=(-2, -1))
                 vals = (vals*vals.conjugate()).real
                 vals = fft.ifftshift(vals, axes=(-2, -1))
-                vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
+                if False: 
+                    vals = np.array([utils.upsample(vals[0]), utils.upsample(vals[1])])
                 # In principle there shouldn't be negative values, but ...
                 vals[vals < 0] = 0. # Set negative values to zero
                 corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))

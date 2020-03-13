@@ -35,7 +35,7 @@ num_objs = 10#75#None
 # Must be power of 2
 num_frames_input = 8
 
-n_epochs_2 = 1
+n_epochs_2 = 10
 n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
@@ -244,6 +244,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
     #assert(k == (num_frames-num_frames_input+1)*num_objects)
     return Ds_out, objs_out, diversity_out, num_frames - num_frames_input + 1, ids
 
+
 class nn_model:       
     
     
@@ -256,16 +257,23 @@ class nn_model:
         self.nx = nx
         self.validation_losses = []
         self.hanning = utils.hanning(nx, 2)
-        self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
-        self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
+        #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
+        #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
+
+        self.pupil = pupil
+        self.modes = modes
+
+        self.modes_orig = modes
+        self.pupil_orig = pupil
+
          
         pa_check = psf.phase_aberration(len(modes), start_index=1)
-        pa_check.set_terms(self.modes)
+        pa_check.set_terms(modes)
         ctf_check = psf.coh_trans_func()
         ctf_check.set_phase_aberr(pa_check)
-        ctf_check.set_pupil(self.pupil)
+        ctf_check.set_pupil(pupil)
         #ctf_check.set_diversity(diversity[i, j])
-        self.psf_check = psf.psf(ctf_check)
+        self.psf_check = psf.psf(ctf_check, corr_or_fft=False)
         
         pa = psf_tf.phase_aberration_tf(len(modes), start_index=1)
         pa.set_terms(modes)
@@ -275,6 +283,7 @@ class nn_model:
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = batch_size//max(1, n_gpus)
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True)
+        
         
         num_defocus_channels = 2#self.num_frames*2
 
@@ -517,7 +526,40 @@ class nn_model:
         #    my_test_plot.save(dir_name + "/data_check" + str(i) + ".png")
         #    my_test_plot.close()
         
+
+    '''        
+    def deconvolve(self, num_frames, alphas, diversity, Ds):
+    
+        pa = psf_tf.phase_aberration_tf(len(self.modes_orig), start_index=1)
+        pa.set_terms(self.modes_orig)
+        ctf = psf_tf.coh_trans_func_tf()
+        ctf.set_phase_aberr(pa)
+        ctf.set_pupil(self.pupil_orig)
+        #ctf.set_diversity(diversity[i, j])
+        psf_ = psf_tf.psf_tf(ctf, num_frames=num_frames, batch_size=1, set_diversity=True)
+        #alphas = tf.constant(alphas, dtype="float32")
+        #diversity = tf.constant(diversity, dtype="float32")
+        #Ds = tf.constant(Ds, dtype="float32")
         
+        alphas = tf.cast(alphas, tf.float32)
+        diversity = tf.cast(diversity, tf.float32)
+        Ds = tf.cast(Ds, tf.float32)
+
+        print("num_frames", num_frames)
+        print("alphas", alphas)
+        print("diversity", diversity)
+        print("Ds", Ds)
+    
+        a1 = tf.reshape(alphas, [1, num_frames, self.jmax])                    
+        a2 = tf.reshape(tf.transpose(diversity, [2, 0, 1]), [1, num_frames_input, 2*self.nx*self.nx])
+        a3 = tf.concat([a1, a2], axis=2)
+        
+        x = tf.concat([tf.reshape(a3, [num_frames*(self.jmax+2*self.nx*self.nx)]), tf.reshape(Ds, [num_frames*2*self.nx*self.nx])], axis=0)
+        #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
+        obj, _ = psf_.deconvolve(x)
+        print("obj", obj[0])
+        return obj[0]
+    '''
 
     def train(self):
         jmax = self.jmax
@@ -615,20 +657,28 @@ class nn_model:
             ###################################################################            
             obj_ids_test.append(self.obj_ids[i])
 
-            DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
+            DF = np.zeros((num_frames_input, 2, self.nx, self.nx), dtype="complex")
+            #DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
             for l in np.arange(num_frames_input):
-                D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
-                D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
+                D = self.Ds[i, :, :, 2*l]
+                D_d = self.Ds[i, :, :, 2*l+1]
+                #D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+                #D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                 DF[l, 0] = fft.fft2(D)
                 DF[l, 1] = fft.fft2(D_d)
             
             if pred_alphas is not None:
-                diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
+                diversity = np.concatenate((self.diversities[i, :, :, 0], self.diversities[i, :, :, 1]))
+                #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
+                
+                #obj_reconstr = self.deconvolve(num_frames_input, pred_alphas[i], self.diversities[i], self.Ds[i])
+                
                 objs_reconstr.append(obj_reconstr)
-                pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
+                pred_Ds = self.psf_check.convolve(obj, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
+                #pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
                 pred_Ds  = np.transpose(pred_Ds, (0, 2, 3, 1))
             #print("pred_alphas", i, pred_alphas[i])
 
@@ -644,16 +694,19 @@ class nn_model:
             if pred_alphas is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
-                my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
+                my_test_plot.colormap(obj - obj_reconstr, [row, 2])
+                #my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
                 my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, :, :, 0], [row, 1])
-                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
+                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 0] - pred_Ds[0, :, :, 0]), [row, 2])
+                #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
                 row += 1
                 my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, :, :, 1], [row, 1])
-                my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
+                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[0, :, :, 1]), [row, 2])
+                #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
 
             my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
             my_test_plot.close()
@@ -741,8 +794,10 @@ class nn_model:
                 for j in np.arange(i, len(objs)):
                     if obj_ids[j] == obj_ids[i]:
                         for l in np.arange(num_frames_input):
-                            D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
-                            D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
+                            D = Ds[j, :, :, 2*l]
+                            D_d = Ds[j, :, :, 2*l+1]
+                            #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+                            #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
@@ -756,7 +811,8 @@ class nn_model:
             #obj_reconstr_mean += obj_reconstr
 
             if len(alphas) > 0:
-                diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
+                diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
+                #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
@@ -836,7 +892,7 @@ if train:
     pupil_check = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
     #pupil_check[np.where(pupil_check < 0.001)] = 0.
     #pupil_check[np.where(pupil_check > 0.1)] = 1.
-    pupil_check = np.ones_like(pupil_check)
+    #pupil_check = np.ones_like(pupil_check)
     modes_check = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
     
     my_test_plot = plot.plot()

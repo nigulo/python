@@ -309,15 +309,30 @@ class psf_tf():
     def deconvolve(self, x, do_fft = True):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
-        x = tf.reshape(x, [self.batch_size*(jmax*self.num_frames + nx*nx*self.num_frames*2)])
-        alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames, jmax])
-        #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
-        Ds = tf.transpose(tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx*self.num_frames*2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
+        
+        size1 = self.batch_size*jmax*self.num_frames
+        size1a = jmax
+        size2 = self.batch_size*nx*nx*self.num_frames*2
+        if self.set_diversity:
+            size1 += size2
+            size1a += 2*nx*nx
+
+        x = tf.reshape(x, [size1 + size2])
+        
+        
+        #x = tf.reshape(x, [self.batch_size*(jmax*self.num_frames + nx*nx*self.num_frames*2)])
+        #alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames, jmax])
+        ##Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
+        #Ds = tf.transpose(tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx*self.num_frames*2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
+
+        alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, self.num_frames, size1a])
+        Ds = tf.transpose(tf.reshape(tf.slice(x, [size1], [size2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
+
 
         Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
         Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
 
-        self.calc(data=alphas)
+        self.calc(data=alphas_diversity)
         Ps1 = self.otf_vals
         
         Ps = tf.signal.ifftshift(Ps1, axes=(2, 3))
