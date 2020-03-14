@@ -147,6 +147,10 @@ def load_data(data_file="Ds.npz"):
             positions = loaded['positions']
         except:
             positions = None
+        try:
+            coords = loaded['coords']
+        except:
+            coords = None
         return Ds, objs, pupil, modes, diversity, coefs, positions
     raise "No data found"
 
@@ -193,7 +197,7 @@ def get_params(nx):
     return (arcsec_per_px, defocus)
 '''
 
-def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
+def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None):
     num_objects = Ds_in.shape[0]
     num_frames = Ds_in.shape[1]
     Ds_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
@@ -206,6 +210,8 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
     else:
         diversity_out = None
     ids = np.zeros((num_frames-num_frames_input+1)*num_objects, dtype='int')
+    positions_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
+    coords_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
         
     k = 0
     l = 0
@@ -233,7 +239,11 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
                     #    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
                     #    #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
                     diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
-            ids[k] = i    
+            ids[k] = i
+            if positions is not None:
+                positions_out[k] = positions[i]
+            if coords is not None:
+                coords_out[k] = coords[i]
             l += 1
             if l >= num_frames_input:
                 l = 0
@@ -242,7 +252,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None):
     if objs_out is not None:
         objs_out = objs_out[:k]
     #assert(k == (num_frames-num_frames_input+1)*num_objects)
-    return Ds_out, objs_out, diversity_out, num_frames - num_frames_input + 1, ids
+    return Ds_out, objs_out, diversity_out, num_frames - num_frames_input + 1, ids, positions_out, coords_out
 
 
 class nn_model:       
@@ -456,7 +466,7 @@ class nn_model:
             positions = positions[i1:i1+self.num_objs]
         num_objects = Ds.shape[1]
         
-        self.Ds, self.objs, self.diversities, num_frames, self.obj_ids = convert_data(Ds, objs, diversity, positions)
+        self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
         med = np.median(self.Ds, axis=(1, 2), keepdims=True)
         self.Ds -= med
         self.Ds = self.hanning.multiply(self.Ds, axis=1)
@@ -488,6 +498,7 @@ class nn_model:
         if self.diversities is not None:
             self.diversities = self.diversities[random_indices]
         self.obj_ids = self.obj_ids[random_indices]
+        self.positions = self.positions[random_indices]
         
         #for i in np.arange(len(self.Ds)):
         #    my_plot = plot.plot(nrows=self.Ds.shape[3]//2, ncols=2)
@@ -717,7 +728,7 @@ class nn_model:
         #######################################################################
                     
     
-    def test(self, Ds_, objs, diversity, positions):
+    def test(self, Ds_, objs, diversity, positions, coords):
         if objs is None:
             # Just generate dummy array in case we don't have true object data
             objs = np.zeros((Ds_.shape[0], Ds_.shape[3], Ds_.shape[4]))
@@ -729,7 +740,7 @@ class nn_model:
         num_frames = Ds_.shape[1]
         #num_objects = Ds_.shape[0]
 
-        Ds, objs, diversities, num_frames, obj_ids = convert_data(Ds_, objs, diversity, positions)
+        Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
         med = np.median(Ds, axis=(1, 2), keepdims=True)
         Ds -= med
         Ds = self.hanning.multiply(Ds, axis=1)
@@ -771,6 +782,7 @@ class nn_model:
         #DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
         
         obj_ids_test = []
+        
         for i in np.arange(len(objs)):
             if len(obj_ids_test) >= n_test_objects:
                 break
@@ -802,6 +814,10 @@ class nn_model:
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+                            if len(alphas) >= n_test_frames:
+                                break
+                    if len(alphas) >= n_test_frames:
+                        break
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
             print("alphas", len(alphas), len(DFs))
@@ -844,7 +860,7 @@ class nn_model:
 
 if train:
 
-    Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data()
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data()
 
 
     #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
@@ -870,6 +886,11 @@ if train:
     else:
         positions_train = None
         positions_test = None
+
+    if coords is not None:
+        coords_test = coords[n_train:]
+    else:
+        coords_test = None
     
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -973,7 +994,7 @@ if train:
     
         model.train()
 
-        model.test(Ds_test, objs_test, diversity, positions_test)
+        model.test(Ds_test, objs_test, diversity, positions_test, coords_test)
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
@@ -993,7 +1014,7 @@ else:
     #Ds, images, pupil, modes, diversity, true_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
 
     
-    Ds, objs, pupil, modes, diversity, true_coefs, positions = load_data(test_data_file)
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(test_data_file)
 
 
     #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
@@ -1007,6 +1028,6 @@ else:
     
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
     
-    model.test(Ds, objs)
+    model.test(Ds, objs, diversity, positions, coords)
 
 #logfile.close()
