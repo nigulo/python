@@ -783,6 +783,19 @@ class nn_model:
         
         obj_ids_test = []
         
+        if coords is not None:
+            start_coords = np.zeros_like(coords)
+            delta_x = coords[1:, 0] - coords[:-1, 0]
+            delta_y = coords[1:, 1] - coords[:-1, 1]
+            delta_x = nx - delta_x
+            delta_y = nx - delta_y
+                        
+            start_coords[:-1, 0] = coords[:-1, 0] + delta_x//2
+            start_coords[:-1, 1] = coords[:-1, 1] + delta_y//2
+
+            start_coords[-1, 0] = start_coords[-2, 0] + start_coords[-2, 0] - start_coords[-3, 0]
+            start_coords[-1, 1] = start_coords[-2, 1] + start_coords[-2, 1] - start_coords[-3, 1]
+        
         for i in np.arange(len(objs)):
             if len(obj_ids_test) >= n_test_objects:
                 break
