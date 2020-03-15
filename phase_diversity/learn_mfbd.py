@@ -751,8 +751,10 @@ class nn_model:
                 if pos[1] < 0:
                     return coord1
                 else:
+                    coord0 = self.coords_of_pos(coords, positions, [0, pos[1]])
                     return np.array([coord1[0], coord0[1]])
             else:
+                coord0 = self.coords_of_pos(coords, positions, [pos[0], 0])
                 return np.array([coord0[0], coord1[1]])
         #print("max_pos", max_pos, positions)
         if pos[0] > max_pos[0] or pos[1] > max_pos[1]:
@@ -771,11 +773,14 @@ class nn_model:
                 if pos[1] > max_pos[1]:
                     return coord1
                 else:
+                    coord0 = self.coords_of_pos(coords, positions, [max_pos[0], pos[1]])
                     return np.array([coord1[0], coord0[1]])
             else:
+                coord0 = self.coords_of_pos(coords, positions, [pos[0], max_pos[1]])
                 return np.array([coord0[0], coord1[1]])
-        index = np.where(positions == pos)[0]
-        return coords[index][0]
+        filtr = np.all(positions == pos, axis=1)
+        #print("pos, filtr", pos, filtr)
+        return coords[filtr][0]
     
     def crop(self, i, coords, positions):
         nx = self.nx
@@ -783,12 +788,14 @@ class nn_model:
         pos = positions[i]
         top_left_coord = self.coords_of_pos(coords, positions, pos - [1, 1]) + [nx, nx]
         bottom_right_coord = self.coords_of_pos(coords, positions, pos + [1, 1])
-
-        top_left_coord  = (top_left_coord + coord)//2, 
+        print("top_left_coord, bottom_right_coord", top_left_coord, bottom_right_coord)
+        
+        top_left_coord  = (top_left_coord + coord)//2
         bottom_right_coord = (bottom_right_coord + coord + [nx, nx])//2
         top_left_delta = top_left_coord - coord 
         bottom_right_delta = bottom_right_coord - coord - [nx, nx]
     
+        print("pos, coord, i", pos, coord, i)
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
     def test(self, Ds_, objs, diversity, positions, coords):
@@ -854,9 +861,11 @@ class nn_model:
         
         full_shape = np.zeros(2, dtype="int")
         
+        print("coords, pos", coords, positions)
+        
         for i in np.arange(len(objs)):
-            if len(obj_ids_test) >= n_test_objects:
-                break
+            #if len(obj_ids_test) >= n_test_objects:
+            #    break
             obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
             ###################################################################            
@@ -937,13 +946,21 @@ class nn_model:
             my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
             my_test_plot.close()
 
+        max_pos = np.max(positions, axis = 0)
+        min_coord = np.min(cropped_coords, axis = 0)
+        full_shape[0] = full_shape[0] // (max_pos[1] + 1)
+        full_shape[1] = full_shape[1] // (max_pos[0] + 1)
         print("full_shape", full_shape)
         full_obj = np.zeros(full_shape)
         full_reconstr = np.zeros(full_shape)
         for i in np.arange(len(cropped_objs)):
-            full_obj[cropped_coords[i]] = cropped_objs[i]
-            full_reconstr[cropped_coords[i]] = cropped_reconstrs[i]
-        my_test_plot = plot.plot(nrows=n_rows, ncols=2)
+            x = cropped_coords[i][0]-min_coord[0]
+            y = cropped_coords[i][1]-min_coord[1]
+            s = cropped_objs[i].shape
+            print(x, y, s)
+            full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
+            full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
+        my_test_plot = plot.plot(nrows=1, ncols=2)
         my_test_plot.colormap(full_obj, [0], show_colorbar=True, colorbar_prec=2)
         my_test_plot.colormap(full_reconstr, [1])
         my_test_plot.save(dir_name + "/test_results.png")
@@ -1115,8 +1132,22 @@ else:
         n_test_frames = Ds.shape[1]
     n_test_objects = min(Ds.shape[0], n_test_objects)
     n_test_frames = min(Ds.shape[1], n_test_frames)
+    
+    max_pos = np.max(positions, axis = 0)
 
-    Ds = Ds[:n_test_objects, :n_test_frames]
+    print("n_test_objects", n_test_objects)
+    print(max_pos)
+    max_pos = np.round(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
+    print(max_pos)
+    filtr = np.all(positions < max_pos, axis=1)
+
+    Ds = Ds[filtr, :n_test_frames]
+    objs = objs[filtr]
+    positions = positions[filtr]
+    coords = coords[filtr]
+    
+    print(positions)
+    print(coords)
 
     #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
