@@ -726,7 +726,45 @@ class nn_model:
 
  
         #######################################################################
-                    
+    
+    def coords_of_pos(self, coords, positions, pos):
+        if pos[0] < 0 or pos[1] < 0:
+            # extrapolate left coord
+            coord0 = self.coords_of_pos(coords, positions, [0, 0])
+            coord1 = 2*coord0 - self.coords_of_pos(coords, positions, [1, 1])
+            if pos[0] < 0:
+                if pos[1] < 0:
+                    return coord1
+                else:
+                    return np.array([coord1[0], coord0[1]])
+            else:
+                return np.array([coord0[0], coord1[1]])
+        max_pos = np.max(positions, axis = 0)
+        if pos[0] > max_pos[0] or pos[1] > max_pos[1]:
+            # extrapolate left coord
+            coord0 = self.coords_of_pos(coords, positions, max_pos)
+            coord1 = 2*coord0 - self.coords_of_pos(coords, positions, max_pos - [1, 1])
+            if pos[0]> max_pos[0]:
+                if pos[1] > max_pos[1]:
+                    return coord1
+                else:
+                    return np.array([coord1[0], coord0[1]])
+            else:
+                return np.array([coord0[0], coord1[1]])
+        index = np.where(positions == pos)[0]
+        return coords[index][0]
+    
+    def crop(self, i, coords, positions):
+        nx = self.nx
+        coord = coords[i]
+        pos = positions[i]
+        top_left_coord = self.coords_of_pos(coords, positions, pos - [1, 1]) + [nx, nx]
+        bottom_right_coord = self.coords_of_pos(coords, positions, pos + [1, 1]) - [nx, nx]
+
+        top_left_delta = top_left_coord - coord 
+        bottom_right_delta = bottom_right_coord - coord - [nx, nx]
+    
+        return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
     def test(self, Ds_, objs, diversity, positions, coords):
         if objs is None:
@@ -783,18 +821,11 @@ class nn_model:
         
         obj_ids_test = []
         
-        if coords is not None:
-            start_coords = np.zeros_like(coords)
-            delta_x = coords[1:, 0] - coords[:-1, 0]
-            delta_y = coords[1:, 1] - coords[:-1, 1]
-            delta_x = nx - delta_x
-            delta_y = nx - delta_y
-                        
-            start_coords[:-1, 0] = coords[:-1, 0] + delta_x//2
-            start_coords[:-1, 1] = coords[:-1, 1] + delta_y//2
-
-            start_coords[-1, 0] = start_coords[-2, 0] + start_coords[-2, 0] - start_coords[-3, 0]
-            start_coords[-1, 1] = start_coords[-2, 1] + start_coords[-2, 1] - start_coords[-3, 1]
+        cropped_objs = []
+        cropped_reconstrs = []
+        cropped_coords = []
+        
+        full_shape = np.zeros(2, dtype="int")
         
         for i in np.arange(len(objs)):
             if len(obj_ids_test) >= n_test_objects:
@@ -811,6 +842,12 @@ class nn_model:
                 continue
             ###################################################################            
             obj_ids_test.append(obj_ids[i])
+            
+            top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
+            cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
+            cropped_objs.append(cropped_obj)
+            cropped_coords.append(top_left_coord)
+            full_shape += cropped_obj.shape
 
             # Find all other realizations of the same object
             DFs = []
@@ -845,6 +882,8 @@ class nn_model:
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
+
+                cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 #obj_reconstr_mean += obj_reconstr
     
                 #my_test_plot = plot.plot(nrows=1, ncols=2)
@@ -869,6 +908,17 @@ class nn_model:
             my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
             my_test_plot.close()
 
+        full_obj = np.zeros(full_shape)
+        full_reconstr = np.zeros(full_shape)
+        for i in len(cropped_objs):
+            full_obj[cropped_coords[i]] = cropped_objs[i]
+            full_reconstr[cropped_coords[i]] = cropped_reconstrs[i]
+        my_test_plot = plot.plot(nrows=n_rows, ncols=2)
+        my_test_plot.colormap(full_obj, [0], show_colorbar=True, colorbar_prec=2)
+        my_test_plot.colormap(full_reconstr, [1])
+        my_test_plot.save(dir_name + "/test_results.png")
+        my_test_plot.close()
+            
 
 
 if train:
