@@ -64,11 +64,11 @@ if len(sys.argv) > 2:
     if sys.argv[2].upper() == "TEST":
         train = False
 
-n_test_frames = 10
+n_test_frames = None
 if len(sys.argv) > 3:
     n_test_frames = int(sys.argv[3])
 
-n_test_objects = 1
+n_test_objects = None
 if len(sys.argv) > 4:
     n_test_objects = int(sys.argv[4])
 
@@ -151,7 +151,7 @@ def load_data(data_file="Ds.npz"):
             coords = loaded['coords']
         except:
             coords = None
-        return Ds, objs, pupil, modes, diversity, coefs, positions
+        return Ds, objs, pupil, modes, diversity, coefs, positions, coords
     raise "No data found"
 
 
@@ -251,6 +251,11 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     Ds_out = Ds_out[:k]
     if objs_out is not None:
         objs_out = objs_out[:k]
+    if diversity_out is not None:
+        diversity_out = diversity_out[:k]
+    ids = ids[:k]
+    positions_out = positions_out[:k]
+    coords_out = coords_out[:k]
     #assert(k == (num_frames-num_frames_input+1)*num_objects)
     return Ds_out, objs_out, diversity_out, num_frames - num_frames_input + 1, ids, positions_out, coords_out
 
@@ -728,10 +733,20 @@ class nn_model:
         #######################################################################
     
     def coords_of_pos(self, coords, positions, pos):
+        #print("pos", pos)
+        max_pos = np.max(positions, axis = 0)
         if pos[0] < 0 or pos[1] < 0:
             # extrapolate left coord
             coord0 = self.coords_of_pos(coords, positions, [0, 0])
-            coord1 = 2*coord0 - self.coords_of_pos(coords, positions, [1, 1])
+            if max_pos[0] == 0:
+                if max_pos[1] == 0: # We have only single patch
+                    coord1 = coord0 - [nx, nx] + [nx//10, nx//10]
+                else:
+                    coord1 = np.array([coord0[0] - nx + nx//10, 2*coord0[1] - self.coords_of_pos(coords, positions, [0, 1])[1]])
+            elif max_pos[1] == 0:
+                coord1 = np.array([2*coord0[0] - self.coords_of_pos(coords, positions, [1, 0])[0], coord0[1] - nx + nx//10])
+            else:                
+                coord1 = 2*coord0 - self.coords_of_pos(coords, positions, [1, 1])
             if pos[0] < 0:
                 if pos[1] < 0:
                     return coord1
@@ -739,12 +754,20 @@ class nn_model:
                     return np.array([coord1[0], coord0[1]])
             else:
                 return np.array([coord0[0], coord1[1]])
-        max_pos = np.max(positions, axis = 0)
+        #print("max_pos", max_pos, positions)
         if pos[0] > max_pos[0] or pos[1] > max_pos[1]:
             # extrapolate left coord
             coord0 = self.coords_of_pos(coords, positions, max_pos)
-            coord1 = 2*coord0 - self.coords_of_pos(coords, positions, max_pos - [1, 1])
-            if pos[0]> max_pos[0]:
+            if max_pos[0] == 0:
+                if max_pos[1] == 0: # We have only single patch
+                    coord1 = coord0 - [nx, nx] + [nx//10, nx//10]
+                else:
+                    coord1 = np.array([coord0[0] - nx + nx//10, 2*coord0[1] - self.coords_of_pos(coords, positions, max_pos - [0, 1])[1]])
+            elif max_pos[1] == 0:
+                coord1 = np.array([2*coord0[0] - self.coords_of_pos(coords, positions, max_pos - [1, 0])[0], coord0[1] - nx + nx//10])
+            else:
+                coord1 = 2*coord0 - self.coords_of_pos(coords, positions, max_pos - [1, 1])
+            if pos[0] > max_pos[0]:
                 if pos[1] > max_pos[1]:
                     return coord1
                 else:
@@ -759,14 +782,17 @@ class nn_model:
         coord = coords[i]
         pos = positions[i]
         top_left_coord = self.coords_of_pos(coords, positions, pos - [1, 1]) + [nx, nx]
-        bottom_right_coord = self.coords_of_pos(coords, positions, pos + [1, 1]) - [nx, nx]
+        bottom_right_coord = self.coords_of_pos(coords, positions, pos + [1, 1])
 
+        top_left_coord  = (top_left_coord + coord)//2, 
+        bottom_right_coord = (bottom_right_coord + coord + [nx, nx])//2
         top_left_delta = top_left_coord - coord 
         bottom_right_delta = bottom_right_coord - coord - [nx, nx]
     
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
     def test(self, Ds_, objs, diversity, positions, coords):
+        #print("positions, coords", positions, coords)
         if objs is None:
             # Just generate dummy array in case we don't have true object data
             objs = np.zeros((Ds_.shape[0], Ds_.shape[3], Ds_.shape[4]))
@@ -779,6 +805,7 @@ class nn_model:
         #num_objects = Ds_.shape[0]
 
         Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
+        #print("positions1, coords1", positions, coords)
         med = np.median(Ds, axis=(1, 2), keepdims=True)
         Ds -= med
         Ds = self.hanning.multiply(Ds, axis=1)
@@ -814,7 +841,7 @@ class nn_model:
         except ValueError:
             pred_alphas = None
         end = time.time()
-        print("Prediction time" + str(end - start))
+        print("Prediction time: " + str(end - start))
 
         #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
         #DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
@@ -844,10 +871,12 @@ class nn_model:
             obj_ids_test.append(obj_ids[i])
             
             top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
+            print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
             cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
             cropped_objs.append(cropped_obj)
             cropped_coords.append(top_left_coord)
             full_shape += cropped_obj.shape
+            print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
 
             # Find all other realizations of the same object
             DFs = []
@@ -908,9 +937,10 @@ class nn_model:
             my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
             my_test_plot.close()
 
+        print("full_shape", full_shape)
         full_obj = np.zeros(full_shape)
         full_reconstr = np.zeros(full_shape)
-        for i in len(cropped_objs):
+        for i in np.arange(len(cropped_objs)):
             full_obj[cropped_coords[i]] = cropped_objs[i]
             full_reconstr[cropped_coords[i]] = cropped_reconstrs[i]
         my_test_plot = plot.plot(nrows=n_rows, ncols=2)
@@ -1079,6 +1109,14 @@ else:
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(test_data_file)
 
+    if n_test_objects is None:
+        n_test_objects = Ds.shape[0]
+    if n_test_frames is None:
+        n_test_frames = Ds.shape[1]
+    n_test_objects = min(Ds.shape[0], n_test_objects)
+    n_test_frames = min(Ds.shape[1], n_test_frames)
+
+    Ds = Ds[:n_test_objects, :n_test_frames]
 
     #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
