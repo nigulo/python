@@ -27,15 +27,15 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 100
+num_frames = 20#100
 # How many objects to use in training
-num_objs = 75#None
+num_objs = 10#75#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 8
 
-n_epochs_2 = 10
+n_epochs_2 = 1
 n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
@@ -271,7 +271,7 @@ class nn_model:
         self.num_objs = num_objs
         self.nx = nx
         self.validation_losses = []
-        self.hanning = utils.hanning(nx, 2)
+        self.hanning = utils.hanning(nx, 10)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
 
@@ -799,6 +799,9 @@ class nn_model:
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
     def test(self, Ds_, objs, diversity, positions, coords):
+        estimate_full_image = True
+        if coords is None:
+            estimate_full_image = False
         #print("positions, coords", positions, coords)
         if objs is None:
             # Just generate dummy array in case we don't have true object data
@@ -807,7 +810,6 @@ class nn_model:
         jmax = self.jmax
         model = self.model
         
-        print("test_1")
         num_frames = Ds_.shape[1]
         #num_objects = Ds_.shape[0]
 
@@ -824,14 +826,12 @@ class nn_model:
         
         #objs = np.tile(objs, (num_frames, 1, 1))
         #objs = np.reshape(objs, (len(objs), -1))
-        print("test_2")
 
         # Shuffle the data
         #random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
         #Ds = Ds[random_indices]
         #objs = objs[random_indices]
         #diversities = diversities[random_indices]
-        print("test_3")
 
         #Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
         #for i in np.arange(num_objects):
@@ -839,7 +839,6 @@ class nn_model:
         #        Ds[i, 2*j] = Ds_[j, i, 0]
         #        Ds[i, 2*j+1] = Ds_[j, i, 1]
 
-        print("test_4_2")
         start = time.time()    
         #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
         try:
@@ -861,7 +860,7 @@ class nn_model:
         
         full_shape = np.zeros(2, dtype="int")
         
-        print("coords, pos", coords, positions)
+        #print("coords, pos", coords, positions)
         
         for i in np.arange(len(objs)):
             #if len(obj_ids_test) >= n_test_objects:
@@ -879,13 +878,14 @@ class nn_model:
             ###################################################################            
             obj_ids_test.append(obj_ids[i])
             
-            top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
-            print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
-            cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
-            cropped_objs.append(cropped_obj)
-            cropped_coords.append(top_left_coord)
-            full_shape += cropped_obj.shape
-            print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
+            if estimate_full_image:
+                top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
+                print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
+                cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
+                cropped_objs.append(cropped_obj)
+                cropped_coords.append(top_left_coord)
+                full_shape += cropped_obj.shape
+                print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
 
             # Find all other realizations of the same object
             DFs = []
@@ -902,10 +902,10 @@ class nn_model:
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
-                            if len(alphas) >= n_test_frames:
-                                break
-                    if len(alphas) >= n_test_frames:
-                        break
+                            #if n_test_frames is not None and len(alphas) >= n_test_frames:
+                            #    break
+                    #if len(alphas) >= n_test_frames:
+                    #    break
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
             print("alphas", len(alphas), len(DFs))
@@ -921,7 +921,8 @@ class nn_model:
                 obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
 
-                cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                if estimate_full_image:
+                    cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 #obj_reconstr_mean += obj_reconstr
     
                 #my_test_plot = plot.plot(nrows=1, ncols=2)
@@ -946,25 +947,26 @@ class nn_model:
             my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
             my_test_plot.close()
 
-        max_pos = np.max(positions, axis = 0)
-        min_coord = np.min(cropped_coords, axis = 0)
-        full_shape[0] = full_shape[0] // (max_pos[1] + 1)
-        full_shape[1] = full_shape[1] // (max_pos[0] + 1)
-        print("full_shape", full_shape)
-        full_obj = np.zeros(full_shape)
-        full_reconstr = np.zeros(full_shape)
-        for i in np.arange(len(cropped_objs)):
-            x = cropped_coords[i][0]-min_coord[0]
-            y = cropped_coords[i][1]-min_coord[1]
-            s = cropped_objs[i].shape
-            print(x, y, s)
-            full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
-            full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
-        my_test_plot = plot.plot(nrows=1, ncols=2)
-        my_test_plot.colormap(full_obj, [0], show_colorbar=True, colorbar_prec=2)
-        my_test_plot.colormap(full_reconstr, [1])
-        my_test_plot.save(dir_name + "/test_results.png")
-        my_test_plot.close()
+        if estimate_full_image:
+            max_pos = np.max(positions, axis = 0)
+            min_coord = np.min(cropped_coords, axis = 0)
+            full_shape[0] = full_shape[0] // (max_pos[1] + 1)
+            full_shape[1] = full_shape[1] // (max_pos[0] + 1)
+            print("full_shape", full_shape)
+            full_obj = np.zeros(full_shape)
+            full_reconstr = np.zeros(full_shape)
+            for i in np.arange(len(cropped_objs)):
+                x = cropped_coords[i][0]-min_coord[0]
+                y = cropped_coords[i][1]-min_coord[1]
+                s = cropped_objs[i].shape
+                print(x, y, s)
+                full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
+                full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
+            my_test_plot = plot.plot(nrows=1, ncols=2)
+            my_test_plot.colormap(full_obj, [0], show_colorbar=True, colorbar_prec=2)
+            my_test_plot.colormap(full_reconstr, [1])
+            my_test_plot.save(dir_name + "/test_results.png")
+            my_test_plot.close()
             
 
 
@@ -980,9 +982,10 @@ if train:
     
     n_train = int(len(Ds)*.75)
     print("n_train, n_test", n_train, len(Ds) - n_train)
+    print("num_frames", Ds.shape[1])
     
     Ds_train = Ds[:n_train]
-    Ds_test = Ds[n_train:]
+    Ds_test = Ds[n_train:, :10] # Take only 10 frames for testing purposes
     if objs is not None:
         objs_train = objs[:n_train]
         objs_test = objs[n_train:]
@@ -997,10 +1000,10 @@ if train:
         positions_train = None
         positions_test = None
 
-    if coords is not None:
-        coords_test = coords[n_train:]
-    else:
-        coords_test = None
+    #if coords is not None:
+    #    coords_test = coords[n_train:]
+    #else:
+    coords_test = None
     
     nx = Ds.shape[3]
     jmax = len(modes)
