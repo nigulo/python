@@ -216,38 +216,48 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     k = 0
     l = 0
     for i in np.arange(num_objects):
+        Ds_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+        diversity_k = ((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
         for j in np.arange(num_frames):
-            Ds_out[k, :, :, 2*l] = Ds_in[i, j, 0, :, :]
-            Ds_out[k, :, :, 2*l+1] = Ds_in[i, j, 1, :, :]
-            if objs_out is not None:
-                objs_out[k] = objs_in[i]
+            Ds_k[:, :, 2*l] = Ds_in[i, j, 0, :, :]
+            Ds_k[:, :, 2*l+1] = Ds_in[i, j, 1, :, :]
             if diversity_out is not None:
                 if positions is None:
                     if len(diversity_in.shape) == 3:
                         # Diversities both for focus and defocus image
                         #diversity_out[k, :, :, 2*l] = diversity_in[0]
                         for div_i in np.arange(diversity_in.shape[0]):
-                            diversity_out[k, :, :, 2*l+1] += diversity_in[div_i]
+                            diversity_k[:, :, 2*l+1] += diversity_in[div_i]
                     else:
                         assert(len(diversity_in.shape) == 2)
                         # Just a defocus
-                        diversity_out[k, :, :, 2*l+1] = diversity_in
+                        diversity_k[:, :, 2*l+1] = diversity_in
                 else:
                     assert(len(diversity_in.shape) == 5)
                     #for div_i in np.arange(diversity_in.shape[2]):
                     #    #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
                     #    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
                     #    #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
-                    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
-            ids[k] = i
-            if positions is not None:
-                positions_out[k] = positions[i]
-            if coords is not None:
-                coords_out[k] = coords[i]
+                    diversity_k[:, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
             l += 1
             if l >= num_frames_input:
+                Ds_out[k] = Ds_k
+                if diversity_out is not None:
+                    diversity_out[k] = diversity_k
+                if objs_out is not None:
+                    objs_out[k] = objs_in[i]
+                ids[k] = i
+                if positions is not None:
+                    positions_out[k] = positions[i]
+                if coords is not None:
+                    coords_out[k] = coords[i]
                 l = 0
                 k += 1
+                Ds_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+                diversity_k = ((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+        if l > 0:
+            # Number of frames not divisible by num_frames_input
+            k += 1
     Ds_out = Ds_out[:k]
     if objs_out is not None:
         objs_out = objs_out[:k]
