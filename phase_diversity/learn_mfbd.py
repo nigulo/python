@@ -1119,7 +1119,7 @@ if train:
     my_test_plot.colormap(D1, [1])
     my_test_plot.colormap(obj_reconstr, [2])
 
-    my_test_plot.save(dir_name + "/null_deconv.png")
+    my_test_plot.save(f"{dir_name}/null_deconv.png")
     my_test_plot.close()
 
     ###########################################################################
