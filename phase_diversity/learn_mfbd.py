@@ -217,7 +217,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     l = 0
     for i in np.arange(num_objects):
         Ds_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
-        diversity_k = ((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+        diversity_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
         for j in np.arange(num_frames):
             Ds_k[:, :, 2*l] = Ds_in[i, j, 0, :, :]
             Ds_k[:, :, 2*l+1] = Ds_in[i, j, 1, :, :]
@@ -254,7 +254,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
                 l = 0
                 k += 1
                 Ds_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
-                diversity_k = ((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+                diversity_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
         if l > 0:
             # Number of frames not divisible by num_frames_input
             k += 1
