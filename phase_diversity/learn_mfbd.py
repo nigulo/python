@@ -104,7 +104,7 @@ else:
     n_epochs_mode_2 = 10
     
     # How many frames to use in training
-    num_frames = 320
+    num_frames = 640
     # How many objects to use in training
     num_objs = 80#None
     
@@ -113,7 +113,7 @@ else:
     num_frames_input = 1
     
     batch_size = 16
-    n_channels = 32
+    n_channels = 128
     
     num_frames_mode_2 = num_frames
 
