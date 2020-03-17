@@ -272,6 +272,7 @@ class nn_model:
         self.nx = nx
         self.validation_losses = []
         self.hanning = utils.hanning(nx, 10)
+        self.filter = utils.create_filter(nx)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
 
@@ -473,10 +474,11 @@ class nn_model:
         
         self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
         med = np.median(self.Ds, axis=(1, 2), keepdims=True)
+        std = np.std(self.Ds, axis=(1, 2), keepdims=True)
         self.Ds -= med
         self.Ds = self.hanning.multiply(self.Ds, axis=1)
-        self.Ds += med
-        self.Ds /= med
+        #self.Ds += med
+        self.Ds /= std
         
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
@@ -816,10 +818,11 @@ class nn_model:
         Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
         #print("positions1, coords1", positions, coords)
         med = np.median(Ds, axis=(1, 2), keepdims=True)
+        std = np.std(Ds, axis=(1, 2), keepdims=True)
         Ds -= med
         Ds = self.hanning.multiply(Ds, axis=1)
-        Ds += med
-        Ds /= med
+        #Ds += med
+        Ds /= std
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
         #objs = objs[:num_objects]
         #objs = np.reshape(np.repeat(objs, num_frames, axis=0), (num_frames*objs.shape[0], objs.shape[1], objs.shape[2]))
@@ -846,6 +849,9 @@ class nn_model:
             pred_alphas = intermediate_layer_model.predict([Ds, diversities], batch_size=batch_size)
         except ValueError:
             pred_alphas = None
+            
+        Ds *= std
+            
         end = time.time()
         print("Prediction time: " + str(end - start))
 
@@ -918,7 +924,8 @@ class nn_model:
                 diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
                 #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
+                                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
 
                 if estimate_full_image:
@@ -1085,7 +1092,8 @@ if train:
     #diversity = np.concatenate((diversity[0, :, :, 0], diversity[0, :, :, 1]))
     #self.psf_check.coh_trans_func.set_diversity(diversity)
     psf_check.coh_trans_func.set_diversity(np.zeros((2, nx//2, nx//2)))
-    obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=None, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+    obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=None, gamma=gamma, do_fft = True, fft_shift_before = False, 
+                                        ret_all=False, a_est=None, normalize = False)
     obj_reconstr = fft.ifftshift(obj_reconstr)
     #D1 = psf_check.convolve(D)
 

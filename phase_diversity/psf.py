@@ -289,14 +289,14 @@ class psf():
         return fft.ifft2(fft.ifftshift(dat_F, axes=(-2, -1))).real
         
 
-    def deconvolve(self, Ds, alphas, gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize=False):
+    def deconvolve(self, Ds, alphas, gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize=False, fltr=None):
         self.calc(alphas=alphas)
         Ps = self.otf_vals
         if not fft_shift_before:
             Ps = fft.ifftshift(Ps, axes=(-2, -1))
         if normalize:
             Ds = utils.normalize_(Ds, Ps)
-        return utils.deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift_before = fft_shift_before, ret_all=ret_all, tip_tilt=self.tip_tilt, a_est=a_est)
+        return utils.deconvolve_(Ds, Ps, gamma, do_fft = do_fft, fft_shift_before = fft_shift_before, ret_all=ret_all, tip_tilt=self.tip_tilt, a_est=a_est, fltr=fltr)
 
 
     def encode_params(self, alphas, a = None):

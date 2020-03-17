@@ -114,7 +114,7 @@ def normalize_(Ds, Ps):
     When calling from psf, set fft_shift_before = True, 
     when from psf_basis, set fft_shift_before = False
 '''
-def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=False, tip_tilt = None, a_est=None):
+def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=False, tip_tilt = None, a_est=None, fltr=None):
     regularizer_eps = 1e-10
     assert(gamma == 1.0) # Because in likelihood we didn't involve gamma
     D = Ds[:, 0, :, :]
@@ -175,7 +175,11 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     '''
     
     #np.savetxt("F.txt", F_image, fmt='%f')
-    
+
+    if fltr is not None:
+        # Filter out high frequency atrifacts
+        F_image *= fltr
+        
     if not do_fft and not ret_all:
         return F_image
 
@@ -195,6 +199,16 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
     else:
         return image
 
+
+def create_filter(nx, freq_limit = 0.4):
+    x = np.linspace(-1, 1, nx)
+    xx, yy = np.meshgrid(x, x)
+    rho = np.sqrt(xx ** 2 + yy ** 2)
+    fltr = rho <= freq_limit
+    fltr = np.fft.fftshift(fltr.astype('float'))
+    return fltr
+     
+    
 '''
     is_planet specifies whether image contains a disk shaped object.
     image_size is the number of pixels to sample from the whole image (both in x and y).
@@ -203,7 +217,7 @@ def deconvolve_(Ds, Ps, gamma, do_fft = True, fft_shift_before = False, ret_all=
         tile is False then only image (0:image_size, 0:image_size) is returned.
     
 '''
-def read_images(dir="images", image_file=None, is_planet = False, image_size = None, tile=False, scale=1.0):
+def read_images(dir="images", image_file=None, is_planet=False, image_size=None, tile=False, scale=1.0):
     assert(not is_planet or (is_planet and not tile))
     images = []
     images_d = []
