@@ -290,6 +290,15 @@ class plot:
                         ax1.set_ylabel(labels[1])
                     else:
                         raise "Identical text for both axis? Really?"
+
+    def set_axis_title(self, ax_index = None, title = None):
+        if ax_index is None:
+            ax = None
+        else:
+            ax = self.get_ax(ax_index)
+        for ax1 in self.axes.flatten():
+            if ax is None or ax == ax1:               
+                ax1.set_title(title)
     
     '''
         Plot histogram

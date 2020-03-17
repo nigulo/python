@@ -655,17 +655,17 @@ class nn_model:
         #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
     
         #self.Ds_reconstr = np.array(self.Ds_train.shape[0], 1, self.Ds_train.shape[2], self.Ds_train.shape[3])
-        obj_ids_test = []
+        obj_ids_used = []
         objs_reconstr = []
         i = 0
-        while len(obj_ids_test) < n_test and i < len(self.objs):
+        while len(obj_ids_used) < n_test and i < len(self.objs):
             
             obj = self.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
 
             ###################################################################            
             # Just to plot results only for different objects
-            for obj_id in obj_ids_test:
+            for obj_id in obj_ids_used:
                 if obj_id == self.obj_ids[i]:
                     found = True
                     break
@@ -673,7 +673,7 @@ class nn_model:
                 i += 1
                 continue
             ###################################################################            
-            obj_ids_test.append(self.obj_ids[i])
+            obj_ids_used.append(self.obj_ids[i])
 
             DF = np.zeros((num_frames_input, 2, self.nx, self.nx), dtype="complex")
             #DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
@@ -860,6 +860,7 @@ class nn_model:
         
         obj_ids_test = []
         
+        cropped_Ds = []
         cropped_objs = []
         cropped_reconstrs = []
         cropped_coords = []
@@ -890,6 +891,7 @@ class nn_model:
                 cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
                 cropped_objs.append(cropped_obj)
                 cropped_coords.append(top_left_coord)
+                cropped_Ds.append(Ds[i, :, :, 0][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 full_shape += cropped_obj.shape
                 print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
 
@@ -962,6 +964,7 @@ class nn_model:
             print("full_shape", full_shape)
             full_obj = np.zeros(full_shape)
             full_reconstr = np.zeros(full_shape)
+            full_D = np.zeros(full_shape)
             for i in np.arange(len(cropped_objs)):
                 x = cropped_coords[i][0]-min_coord[0]
                 y = cropped_coords[i][1]-min_coord[1]
@@ -969,9 +972,15 @@ class nn_model:
                 print(x, y, s)
                 full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
-            my_test_plot = plot.plot(nrows=1, ncols=2)
+                full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
+            my_test_plot = plot.plot(nrows=1, ncols=3)
             my_test_plot.colormap(full_obj, [0], show_colorbar=True, colorbar_prec=2)
             my_test_plot.colormap(full_reconstr, [1])
+            my_test_plot.colormap(full_D, [2])
+            
+            my_test_plot.set_axis_title([0], "MOMFBD")
+            my_test_plot.set_axis_title([1], "Neural network")
+            my_test_plot.set_axis_title([2], "Raw frame")
             my_test_plot.save(dir_name + "/test_results.png")
             my_test_plot.close()
             
