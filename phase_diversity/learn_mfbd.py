@@ -735,7 +735,7 @@ class nn_model:
                 my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[0, :, :, 1]), [row, 2])
                 #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
 
-            my_test_plot.save(dir_name + "/train_results" + str(i) + ".png")
+            my_test_plot.save(f"{dir_name}/train{i}.png")
             my_test_plot.close()
             
             i += 1
