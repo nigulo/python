@@ -215,12 +215,11 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     positions_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
     coords_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
         
-    Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
-    diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
-
     k = 0
     for i in np.arange(num_objects):
         l = 0
+        Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+        diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
         for j in np.arange(num_frames):
             Ds_k[:, :, 2*l] = Ds_in[i, j, 0, :, :]
             Ds_k[:, :, 2*l+1] = Ds_in[i, j, 1, :, :]
@@ -256,8 +255,8 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
                     coords_out[k] = coords[i]
                 l = 0
                 k += 1
-                #Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
-                #diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+                Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+                diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
     Ds_out = Ds_out[:k]
     if objs_out is not None:
         objs_out = objs_out[:k]
@@ -810,7 +809,7 @@ class nn_model:
         print("pos, coord, i", pos, coord, i)
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
-    def test(self, Ds_, objs, diversity, positions, coords):
+    def test(self, Ds_, objs, diversity, positions, coords, file_prefix):
         estimate_full_image = True
         if coords is None:
             estimate_full_image = False
@@ -956,14 +955,13 @@ class nn_model:
                 n_rows += 1
             my_test_plot = plot.plot(nrows=n_rows, ncols=2)
             row = 0
-            obj = objs[i]#np.reshape(objs[i], (self.nx, self.nx))
             if obj_reconstr is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
                 row += 1
             my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
             my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-            my_test_plot.save(dir_name + "/test_results" + str(i) +".png")
+            my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
             my_test_plot.close()
 
         if estimate_full_image:
@@ -991,7 +989,7 @@ class nn_model:
             my_test_plot.set_axis_title([0], "MOMFBD")
             my_test_plot.set_axis_title([1], "Neural network")
             my_test_plot.set_axis_title([2], "Raw frame")
-            my_test_plot.save(dir_name + "/test_results.png")
+            my_test_plot.save(f"{dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
 
@@ -1134,7 +1132,7 @@ if train:
     
         model.train()
 
-        model.test(Ds_test, objs_test, diversity, positions_test, coords_test)
+        model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
@@ -1190,6 +1188,6 @@ else:
     
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
     
-    model.test(Ds, objs, diversity, positions, coords)
+    model.test(Ds, objs, diversity, positions, coords, "test")
 
 #logfile.close()
