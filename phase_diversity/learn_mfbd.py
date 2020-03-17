@@ -198,26 +198,29 @@ def get_params(nx):
 '''
 
 def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None):
+    assert(Ds_in.shape[2] == 2)
+    assert(Ds_in.shape[0] == objs_in.shape[0])
     num_objects = Ds_in.shape[0]
     num_frames = Ds_in.shape[1]
-    Ds_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+    Ds_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
     if objs_in is not None:
         objs_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, objs_in.shape[1], objs_in.shape[2]))
     else:
         objs_out  = None
     if diversity_in is not None:
-        diversity_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+        diversity_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
     else:
         diversity_out = None
     ids = np.zeros((num_frames-num_frames_input+1)*num_objects, dtype='int')
     positions_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
     coords_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
         
+    Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+    diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+
     k = 0
-    l = 0
     for i in np.arange(num_objects):
-        Ds_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
-        diversity_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
+        l = 0
         for j in np.arange(num_frames):
             Ds_k[:, :, 2*l] = Ds_in[i, j, 0, :, :]
             Ds_k[:, :, 2*l+1] = Ds_in[i, j, 1, :, :]
@@ -253,12 +256,8 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
                     coords_out[k] = coords[i]
                 l = 0
                 k += 1
-                Ds_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
-                diversity_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
-        if l > 0:
-            # Number of frames not divisible by num_frames_input
-            l = 0
-            k += 1
+                #Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+                #diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
     Ds_out = Ds_out[:k]
     if objs_out is not None:
         objs_out = objs_out[:k]
@@ -927,7 +926,7 @@ class nn_model:
                     #    break
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
-            print("alphas", len(alphas), len(DFs))
+            #print("alphas", len(alphas), len(DFs))
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
