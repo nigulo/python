@@ -257,6 +257,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
                 diversity_k = np.zeros((Ds.shape[3], Ds.shape[4], Ds.shape[2]*num_frames_input))
         if l > 0:
             # Number of frames not divisible by num_frames_input
+            l = 0
             k += 1
     Ds_out = Ds_out[:k]
     if objs_out is not None:
