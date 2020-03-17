@@ -953,16 +953,14 @@ class nn_model:
             n_rows = 1
             if obj_reconstr is not None:
                 n_rows += 1
-            my_test_plot = plot.plot(nrows=n_rows+2, ncols=2)
+            my_test_plot = plot.plot(nrows=n_rows, ncols=2)
             row = 0
             if obj_reconstr is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
                 row += 1
-            my_test_plot.colormap(Ds[i, :, :, 9], [row, 0])
+            my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
             my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-            my_test_plot.colormap(Ds[i, :, :, 6], [row+1, 0])
-            my_test_plot.colormap(Ds[i, :, :, 7], [row+1, 1])
             my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
             my_test_plot.close()
 
