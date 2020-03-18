@@ -33,9 +33,9 @@ num_objs = 20#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
-num_frames_input = 8
+num_frames_input = 16
 
-n_epochs_2 = 10
+n_epochs_2 = 5
 n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
@@ -45,7 +45,7 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 nn_mode = MODE_1
 
 batch_size = 8
-n_channels = 256
+n_channels = 512
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -998,6 +998,8 @@ if train:
 
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data()
 
+    random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
+    Ds = Ds[:, random_indices]
 
     #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
@@ -1009,7 +1011,7 @@ if train:
     print("num_frames", Ds.shape[1])
     
     Ds_train = Ds[:n_train]
-    Ds_test = Ds[n_train:, :10] # Take only 10 frames for testing purposes
+    Ds_test = Ds[n_train:, :num_frames_input]
     if objs is not None:
         objs_train = objs[:n_train]
         objs_test = objs[n_train:]
