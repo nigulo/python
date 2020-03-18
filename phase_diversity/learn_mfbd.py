@@ -27,7 +27,7 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 32
+num_frames = 64
 # How many objects to use in training
 num_objs = 10#None
 
@@ -44,7 +44,7 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_1
 
-batch_size = 8
+batch_size = 1
 n_channels = 512
 
 #logfile = open(dir_name + '/log.txt', 'w')
