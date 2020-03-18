@@ -831,10 +831,11 @@ class nn_model:
                 reconstr_validation = reconstr[self.n_train:self.n_train+self.n_validation]
                 reconstrs = dict()
                 for obj_id in self.obj_ids:
+                    print("obj_id", obj_id)
+                    sys.stdout.flush()
                     Ds_ = np.asarray(Ds_per_obj[obj_id])
                     reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
                 for i in np.arange(len(self.Ds)):
-                    print("obj_id", obj_id)
                     reconstr[i] = reconstrs[obj_ids[i]]
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
@@ -1417,8 +1418,9 @@ if train:
 
     ###########################################################################
     n_test_frames = Ds_test.shape[1] # Necessary to be set (TODO: refactor)
-
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
+
+    sys.stdout.flush()
 
     for rep in np.arange(0, num_reps):
         model.set_data(Ds_train, objs_train, diversity, positions_train)
