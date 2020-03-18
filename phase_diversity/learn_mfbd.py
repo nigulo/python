@@ -486,8 +486,9 @@ class nn_model:
         std = np.std(self.Ds, axis=(1, 2), keepdims=True)
         self.Ds -= med
         self.Ds = self.hanning.multiply(self.Ds, axis=1)
-        #self.Ds += med
-        self.Ds /= std
+        self.Ds += med
+        #self.Ds /= std
+        self.Ds /= med
         
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
@@ -830,8 +831,9 @@ class nn_model:
         std = np.std(Ds, axis=(1, 2), keepdims=True)
         Ds -= med
         Ds = self.hanning.multiply(Ds, axis=1)
-        #Ds += med
-        Ds /= std
+        Ds += med
+        #Ds /= std
+        Ds /= med
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
         #objs = objs[:num_objects]
         #objs = np.reshape(np.repeat(objs, num_frames, axis=0), (num_frames*objs.shape[0], objs.shape[1], objs.shape[2]))
@@ -859,7 +861,8 @@ class nn_model:
         except ValueError:
             pred_alphas = None
             
-        Ds *= std
+        #Ds *= std
+        Ds *= med
             
         end = time.time()
         print("Prediction time: " + str(end - start))
