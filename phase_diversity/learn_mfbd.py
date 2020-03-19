@@ -635,9 +635,10 @@ class nn_model:
                             steps_per_epoch=None)
                 return history
             
-            p = Process(target=fit_func)
-            p.start()
-            p.join()       
+            fit_func()
+            #p = Process(target=fit_func)
+            #p.start()
+            #p.join()       
             
             #intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             #save_weights(intermediate_layer_model)
