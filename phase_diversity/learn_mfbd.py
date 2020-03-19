@@ -257,7 +257,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
                 l = 0
                 k += 1
                 Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
-                diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+                diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]))
     Ds_out = Ds_out[:k]
     if objs_out is not None:
         objs_out = objs_out[:k]
