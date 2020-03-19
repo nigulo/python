@@ -28,7 +28,7 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 64
+num_frames = 32
 # How many objects to use in training
 num_objs = 10#None
 
@@ -37,7 +37,7 @@ num_objs = 10#None
 num_frames_input = 16
 
 n_epochs_2 = 10
-n_epochs_1 = 1
+n_epochs_1 = 2
 num_reps = 1000
 shuffle = True
 
