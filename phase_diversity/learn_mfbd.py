@@ -141,7 +141,7 @@ def load_data(data_file="Ds.npz"):
         modes = loaded['modes']
         diversity = loaded['diversity']
         try:
-            coefs = loaded['coefs']
+            coefs = loaded['alphas']
         except:
             coefs = None
         try:
