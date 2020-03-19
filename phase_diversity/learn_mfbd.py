@@ -43,7 +43,10 @@ shuffle = True
 
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
-nn_mode = MODE_1
+nn_mode = MODE_2
+
+if nn_mode == MODE_2:
+    num_frames_input = 1
 
 batch_size = 2
 n_channels = 512
@@ -308,7 +311,7 @@ class nn_model:
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
-        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True)
+        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, mode=nn_mode)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
         
@@ -317,8 +320,15 @@ class nn_model:
         self.strategy = tf.distribute.MirroredStrategy()
         with self.strategy.scope():
 
-            image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
             diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')
+            
+            if nn_mode == MODE_1:
+                image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
+            elif nn_mode == MODE_2:
+                image_input = keras.layers.Input((nx, nx, num_defocus_channels), name='image_input')
+                DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
+            else:
+                raise Exception("Unsupported mode")
     
             model, nn_mode_ = load_model()
             
@@ -356,7 +366,6 @@ class nn_model:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
                 
-                
                 hidden_layer = conv_layer(image_input, n_channels)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
@@ -388,9 +397,14 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
-                alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
+                #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
+                if nn_mode == MODE_1:
+                    alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
+                elif nn_mode == MODE_2:
+                    alphas_layer = keras.layers.Dense(jmax, activation='linear')(alphas_layer)
+
+                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
                 #obj_layer = keras.layers.Dense(64)(obj_layer)
@@ -412,14 +426,21 @@ class nn_model:
                     #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
                     #output = keras.layers.Flatten()(output)
                     #output = keras.layers.Lambda(lambda x: tf.math.reduce_sum(x))(output)
+
+                    model = keras.models.Model(inputs=[image_input, diversity_input], outputs=output)
                 elif nn_mode == MODE_2:
-                    hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size_per_gpu*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx])])
-                    output = keras.layers.Lambda(self.psf.deconvolve_aberrate)(hidden_layer)
-    
-                else:
-                    assert(False)
-               
-                model = keras.models.Model(inputs=[image_input, diversity_input], outputs=output)
+                    
+                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, jmax])                    
+                    a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
+                    a3 = tf.concat([a1, a2], axis=1)
+                                  
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(jmax + 2*nx*nx)]), 
+                                                             tf.reshape(image_input, [batch_size_per_gpu*2*nx*nx]),
+                                                             tf.reshape(DD_DP_PP_input, [batch_size_per_gpu*4*nx*nx])])
+                    #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
+                    output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
+                   
+                    model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input], outputs=output)
     
                #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
                 
@@ -445,8 +466,12 @@ class nn_model:
             self.model = model
             
             def mfbd_loss(y_true, y_pred):
-                #return tf.math.reduce_sum(tf.math.subtract(y_pred, y_true))/(nx*nx)
-                return tf.math.reduce_sum(y_pred)/(nx*nx)
+                if nn_mode == MODE_1:
+                    loss = y_pred
+                    #return tf.math.reduce_sum(tf.math.subtract(y_pred, y_true))/(nx*nx)
+                elif nn_mode == MODE_2:
+                    loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
+                return tf.math.reduce_sum(loss)/(nx*nx)
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
@@ -548,6 +573,11 @@ class nn_model:
 
         self.obj_ids_train = self.obj_ids[:n_train]
         self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
+        
+        if nn_mode == MODE_2:
+            self.DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
+            self.DD_DP_PP_train = self.DD_DP_PP[:n_train]
+            self.DD_DP_PP_validation = self.DD_DP_PP[n_train:n_train+n_validation]
         #for i in np.arange(len(self.objs)):
         #    my_test_plot = plot.plot(nrows=3, ncols=1)
         #    my_test_plot.colormap(self.objs[i], [0, 0], show_colorbar=True, colorbar_prec=2)
@@ -592,24 +622,31 @@ class nn_model:
         return obj[0]
     '''
 
+    def predict(self, Ds, diversities, DD_DP_PP, obj_ids):
+        output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
+        
+        output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
+
+        DD_DP_PP_out = output[:, 1:, :, :]
+        DD_DP_PP_sums = dict()
+        for i in np.arange(len(DD_DP_PP_out)):
+            if not obj_ids[i] in DD_DP_PP_sums:
+                DD_DP_PP_sums[obj_ids[i]] = np.zeros_like(DD_DP_PP_out[0])
+            DD_DP_PP_sums[obj_ids[i]] += DD_DP_PP_out[i]
+        DD_DP_PP_sums = np.sum(DD_DP_PP)
+        for i in len(Ds):
+            DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
+        
+ 
     def train(self):
         jmax = self.jmax
         model = self.model
 
         #print(self.Ds_train.shape, self.objs_train.shape, self.Ds_validation.shape, self.objs_validation.shape)
         
-        if self.nn_mode == MODE_1:
-            #output_data_train = np.zeros((self.objs_train.shape[0], nx, nx))
-            #output_data_validation = np.zeros((self.objs_validation.shape[0], nx, nx))
-            output_data_train = np.zeros(self.objs_train.shape[0])
-            output_data_validation = np.zeros(self.objs_validation.shape[0])
-            #output_data_train = np.zeros((self.objs_train.shape[0], 1))
-            #output_data_validation = np.zeros((self.objs_validation.shape[0], 1))
-        elif self.nn_mode == MODE_2:
-            output_data_train = self.Ds_train
-            output_data_validation = self.Ds_validation
-        else:
-            assert(False)
+        output_data_train = np.zeros(self.objs_train.shape[0])
+        output_data_validation = np.zeros(self.objs_validation.shape[0])
+
         
         # TODO: find out why it doesnt work with datasets
         #ds = tf.data.Dataset.from_tensors((self.Ds_train, output_data_train)).batch(batch_size)
@@ -629,14 +666,27 @@ class nn_model:
             #            verbose=1)
             
             #def fit_func():
-            history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
-                        epochs=n_epochs_1,
-                        batch_size=batch_size,
-                        shuffle=True,
-                        validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
-                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1,
-                        steps_per_epoch=None)
+            if self.nn_mode == MODE_1:
+                history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
+                            epochs=n_epochs_1,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
+                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                            verbose=1,
+                            steps_per_epoch=None)
+            elif self.nn_mode == MODE_2:
+                history = model.fit(x=[self.Ds_train, self.diversities_train, self.DD_DP_PP_train], y=output_data_train,
+                            epochs=n_epochs_1,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            validation_data=[[self.Ds_validation, self.diversities_validation, self.DD_DP_PP_validation], output_data_validation],
+                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                            verbose=1,
+                            steps_per_epoch=None)
+
+                predict(self.predict(self, self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids))
+
             #    return history
             
             #fit_func()
@@ -661,16 +711,16 @@ class nn_model:
         #######################################################################
         # Plot some of the training data results
         n_test = min(num_objs, 5)
-        try:
-            alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+
+        alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+        if self.nn_mode == MODE_1:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
-        except ValueError:
-            pred_alphas = None
-        #pred_alphas = intermediate_layer_model.predict([self.Ds, self.objs, np.tile(self.Ds, [1, 1, 1, 16])], batch_size=1)
-        if nn_mode == MODE_2:
-            pred_Ds = model.predict([self.Ds, self.diversities], batch_size=batch_size)
-        else:
-            pred_Ds = None
+        elif self.nn_mode == MODE_2:
+            for epoch in np.arange(n_epochs_2):
+                self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
+            pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities, self.DD_DP_PP], batch_size=batch_size)
+            
+        pred_Ds = None
         #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)
         #predicted_coefs = model.predict(Ds_train[0:n_test])
     
@@ -857,7 +907,7 @@ class nn_model:
         #random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
         #Ds = Ds[random_indices]
         #objs = objs[random_indices]
-        #diversities = diversities[random_indices]
+        #diversities = diversities[random_indices]f
 
         #Ds = np.zeros((num_objects, 2*num_frames, Ds_.shape[3], Ds_.shape[4]))
         #for i in np.arange(num_objects):
@@ -867,11 +917,14 @@ class nn_model:
 
         start = time.time()    
         #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
-        try:
+        if self.nn_mode == MODE_1:
             intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             pred_alphas = intermediate_layer_model.predict([Ds, diversities], batch_size=batch_size)
-        except ValueError:
-            pred_alphas = None
+        elif self.nn_mode == MODE_2:
+            DD_DP_PP = np.zeros(len(Ds), 3, nx, nx)
+            for epoch in np.arange(n_epochs_2):
+                self.predict(Ds, diversities, DD_DP_PP, obj_ids)
+            pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
             
         #Ds *= std
         Ds *= med

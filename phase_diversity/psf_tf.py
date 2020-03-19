@@ -176,7 +176,8 @@ class psf_tf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=False, num_frames=1, batch_size=1, set_diversity=False):
+    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=False, 
+                 num_frames=1, batch_size=1, set_diversity=False, mode=1):
         self.coh_trans_func = coh_trans_func
         if nx is None:
             # Everything is precalculated
@@ -199,6 +200,10 @@ class psf_tf():
         self.num_frames = num_frames
         self.batch_size = batch_size
         self.set_diversity = set_diversity
+        self.mode = mode
+        if mode == 2:
+            assert(self.num_frames == 1)
+        
 
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
@@ -363,20 +368,26 @@ class psf_tf():
     def mfbd_loss(self, x):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
+        mode = self.mode
         size1 = self.batch_size*jmax*self.num_frames
         size1a = self.num_frames*jmax
         size2 = self.batch_size*nx*nx*self.num_frames*2
+        size3 = 0
         if self.set_diversity:
             size1 += self.batch_size*nx*nx*2
             size1a += 2*nx*nx
+        if mode == 2:
+            size3 = self.batch_size*nx*nx*4
 
-        x = tf.reshape(x, [size1 + size2])
+        x = tf.reshape(x, [size1 + size2 + size3])
 
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
         alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, size1a])
         #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
         Ds = tf.transpose(tf.reshape(tf.slice(x, [size1], [size2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
+        if mode == 2:
+            DD_DP_PP = tf.reshape(tf.slice(x, [size1 + size2], [size3]), [self.batch_size, 4, nx, nx])
         
         Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
         Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
@@ -389,13 +400,33 @@ class psf_tf():
         Ps_conj = tf.math.conj(Ps)
     
         num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[1])
+        if mode == 2:
+            num = tf.reshape(num, [self.batch_size, 1, nx, nx])
+            DP_real = tf.math.real(num)
+            DP_imag = tf.math.imag(num)
+            num = tf.add(num, tf.complex(tf.slice(DD_DP_PP, [0, 1, 0, 0], [self.batch_size, 1, nx, nx]), 
+                                         tf.slice(DD_DP_PP, [0, 2, 0, 0], [self.batch_size, 1, nx, nx])))
         num = tf.multiply(num, tf.math.conj(num))
+        num = tf.math.real(num)
         
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
-        eps = tf.constant(1e-10, dtype='complex64')
-        loss = tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]) - tf.math.add(num, eps)/tf.math.add(den, eps)
+        den = tf.math.real(den)
+        if mode == 2:
+            PP = tf.reshape(den, [self.batch_size, 1, nx, nx])
+            den = tf.add(PP, tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx]))
 
-        return tf.math.real(loss)
+        eps = tf.constant(1e-10)
+        
+        DD = tf.math.real(tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]))
+            
+        if mode == 1:
+            return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
+        elif mode == 2:
+            DD = tf.math.add(tf.reshape(DD, [self.batch_size, 1, nx, nx]), tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])) 
+            loss = DD - tf.math.add(num, eps)/tf.math.add(den, eps)
+            return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=1)
+
+
     
     def deconvolve_aberrate(self, x):
         fobj, Ps = self.deconvolve(x, do_fft=False)
