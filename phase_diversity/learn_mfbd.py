@@ -982,7 +982,7 @@ class nn_model:
             if true_coefs is not None:
                 true_alphas = true_coefs[i]
                 nrows = int(np.sqrt(jmax))
-                ncols = int(ceil(jmax/nrows))
+                ncols = int(math.ceil(jmax/nrows))
                 my_test_plot = plot.plot(nrows=nrows, ncols=ncols)
                 row = 0
                 col = 0
