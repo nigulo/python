@@ -222,18 +222,14 @@ class psf_tf():
         #self.otf_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         
         #@tf.contrib.eager.defun
-        def fn(alphas_diversity):
+        def fn1(alphas):
             nx = self.nx
             jmax = self.coh_trans_func.phase_aberr.jmax
     
-            alphas = tf.slice(alphas_diversity, [0], [jmax])
+            alphas = tf.slice(alphas, [0], [jmax])
 
             self.coh_trans_func.phase_aberr.set_alphas(alphas)
 
-            if self.set_diversity:
-                diversity = tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [2, nx, nx])
-                #diversity = tf.transpose(tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [nx, nx, 2]), [2, 0, 1])
-                self.coh_trans_func.set_diversity(diversity)
             coh_vals = self.coh_trans_func()
         
             if self.corr_or_fft:
@@ -267,8 +263,22 @@ class psf_tf():
             #self.otf_vals[2*i+1].assign(corr[1, :, :])
             
             return corr
+
+        #@tf.contrib.eager.defun
+        def fn2(alphas_diversity):
+            nx = self.nx
+            jmax = self.coh_trans_func.phase_aberr.jmax
+        
+            alphas = tf.reshape(tf.slice(alphas_diversity, [0], [self.num_frames*jmax]), [self.num_frames, jmax])
+            if self.set_diversity:
+                diversity = tf.reshape(tf.slice(alphas_diversity, [self.num_frames*jmax], [2*nx*nx]), [2, nx, nx])
+                #diversity = tf.transpose(tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [nx, nx, 2]), [2, 0, 1])
+                self.coh_trans_func.set_diversity(diversity)
+                
+            return tf.map_fn(fn1, alphas, dtype='complex64')
             
-        otf_vals = tf.map_fn(lambda alphas_diversity : tf.map_fn(fn, alphas_diversity, dtype='complex64'), data, dtype='complex64')
+            
+        otf_vals = tf.map_fn(fn2, data, dtype='complex64')
         self.otf_vals = tf.reshape(otf_vals, [self.batch_size, self.num_frames*2, self.nx, self.nx])
             
         return self.incoh_vals
@@ -288,7 +298,7 @@ class psf_tf():
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
         x = tf.reshape(x, [self.batch_size*(self.batch_size*jmax*self.num_frames + nx*nx)])
-        alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames, jmax])
+        alphas = tf.reshape(tf.slice(x, [0], [self.batch_size*jmax*self.num_frames]), [self.batch_size, self.num_frames*jmax])
         obj = tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx]), [self.batch_size, 1, nx, nx])
         obj = tf.tile(obj, [1, self.num_frames*2, 1, 1])
         
@@ -311,10 +321,10 @@ class psf_tf():
         jmax = self.coh_trans_func.phase_aberr.jmax
         
         size1 = self.batch_size*jmax*self.num_frames
-        size1a = jmax
+        size1a = self.num_frames*jmax
         size2 = self.batch_size*nx*nx*self.num_frames*2
         if self.set_diversity:
-            size1 += size2
+            size1 += self.batch_size*nx*nx*2
             size1a += 2*nx*nx
 
         x = tf.reshape(x, [size1 + size2])
@@ -325,7 +335,8 @@ class psf_tf():
         ##Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
         #Ds = tf.transpose(tf.reshape(tf.slice(x, [self.batch_size*jmax*self.num_frames], [self.batch_size*nx*nx*self.num_frames*2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
 
-        alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, self.num_frames, size1a])
+        alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, size1a])
+        #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
         Ds = tf.transpose(tf.reshape(tf.slice(x, [size1], [size2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
 
 
@@ -353,17 +364,17 @@ class psf_tf():
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
         size1 = self.batch_size*jmax*self.num_frames
-        size1a = jmax
+        size1a = self.num_frames*jmax
         size2 = self.batch_size*nx*nx*self.num_frames*2
         if self.set_diversity:
-            size1 += size2
+            size1 += self.batch_size*nx*nx*2
             size1a += 2*nx*nx
 
         x = tf.reshape(x, [size1 + size2])
 
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
-        alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, self.num_frames, size1a])
+        alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, size1a])
         #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
         Ds = tf.transpose(tf.reshape(tf.slice(x, [size1], [size2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
         

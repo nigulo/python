@@ -209,7 +209,7 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     else:
         objs_out  = None
     if diversity_in is not None:
-        diversity_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+        diversity_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]))
     else:
         diversity_out = None
     ids = np.zeros((num_frames-num_frames_input+1)*num_objects, dtype='int')
@@ -220,28 +220,28 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     for i in np.arange(num_objects):
         l = 0
         Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
-        diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
+        diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]))
         for j in np.arange(num_frames):
             Ds_k[:, :, 2*l] = Ds_in[i, j, 0, :, :]
             Ds_k[:, :, 2*l+1] = Ds_in[i, j, 1, :, :]
-            if diversity_out is not None:
+            if diversity_out is not None and l == 0:
                 if positions is None:
                     if len(diversity_in.shape) == 3:
                         # Diversities both for focus and defocus image
-                        #diversity_out[k, :, :, 2*l] = diversity_in[0]
+                        #diversity_out[k, :, :, 0] = diversity_in[0]
                         for div_i in np.arange(diversity_in.shape[0]):
-                            diversity_k[:, :, 2*l+1] += diversity_in[div_i]
+                            diversity_k[:, :, 1] += diversity_in[div_i]
                     else:
                         assert(len(diversity_in.shape) == 2)
                         # Just a defocus
-                        diversity_k[:, :, 2*l+1] = diversity_in
+                        diversity_k[:, :, 1] = diversity_in
                 else:
                     assert(len(diversity_in.shape) == 5)
                     #for div_i in np.arange(diversity_in.shape[2]):
-                    #    #diversity_out[k, :, :, 2*l] = diversity_in[positions[i, 0], positions[i, 1], 0]
-                    #    diversity_out[k, :, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
-                    #    #diversity_out[k, :, :, 2*l+1] = diversity_in[positions[i, 0], positions[i, 1], 1]
-                    diversity_k[:, :, 2*l+1] += diversity_in[positions[i, 0], positions[i, 1], 1]
+                    #    #diversity_out[k, :, :, 0] = diversity_in[positions[i, 0], positions[i, 1], 0]
+                    #    diversity_out[k, :, :, 1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
+                    #    #diversity_out[k, :, :, 1] = diversity_in[positions[i, 0], positions[i, 1], 1]
+                    diversity_k[:, :, 1] += diversity_in[positions[i, 0], positions[i, 1], 1]
             l += 1
             if l >= num_frames_input:
                 Ds_out[k] = Ds_k
@@ -402,11 +402,11 @@ class nn_model:
                 
                 if nn_mode == MODE_1:
                     
-                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input, jmax])                    
-                    a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, num_frames_input, 2*nx*nx])
-                    a3 = tf.concat([a1, a2], axis=2)
+                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax])                    
+                    a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
+                    a3 = tf.concat([a1, a2], axis=1)
                     
-                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*(jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*jmax+2*nx*nx]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
                     #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
