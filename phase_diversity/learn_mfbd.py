@@ -13,6 +13,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 
 tf.compat.v1.disable_eager_execution()
+from multiprocessing import Process
 
 import math
 
@@ -622,15 +623,21 @@ class nn_model:
             #            validation_data=ds_val,
             #            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
             #            verbose=1)
-            history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
-                        epochs=n_epochs_1,
-                        batch_size=batch_size,
-                        shuffle=True,
-                        validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
-                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                        verbose=1,
-                        steps_per_epoch=None)
             
+            def fit_func():
+                history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
+                            epochs=n_epochs_1,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
+                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                            verbose=1,
+                            steps_per_epoch=None)
+                return history
+            
+            p = Process(target=fit_func)
+            p.start()
+            p.join()       
             
             #intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             #save_weights(intermediate_layer_model)
@@ -810,7 +817,7 @@ class nn_model:
         print("pos, coord, i", pos, coord, i)
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
-    def test(self, Ds_, objs, diversity, positions, coords, file_prefix):
+    def test(self, Ds_, objs, diversity, positions, coords, file_prefix, true_coefs=None):
         estimate_full_image = True
         if coords is None:
             estimate_full_image = False
@@ -966,6 +973,26 @@ class nn_model:
             my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
             my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
             my_test_plot.close()
+
+            if true_coefs is not None:
+                true_alphas = true_coefs[i]
+                nrows = int(np.sqrt(jmax))
+                ncols = int(ceil(jmax/nrows))
+                my_test_plot = plot.plot(nrows=nrows ncols=ncols)
+                row = 0
+                col = 0
+                #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
+                xs = np.arange(modes_nn.shape[1])
+                for coef_index in np.arange(modes_nn.shape[2]):
+                    scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
+                    ax[row, col].plot(xs, np.reshape(alphas[:, coef_index], -1), "r-")
+                    ax[row, col].plot(xs, np.reshape(true_alphas[:, coef_index]*scale, -1), "b--")
+                    col += 1
+                    if col >= ncols:
+                        row += 1
+                        col = 0
+                my_test_plot.save("alphas.png")
+                my_test_plot.close()
 
         if estimate_full_image:
             max_pos = np.max(positions, axis = 0)
@@ -1178,6 +1205,7 @@ else:
     objs = objs[filtr]
     positions = positions[filtr]
     coords = coords[filtr]
+    true_coefs = true_coefs[filtr, :n_test_frames]
     
     print(positions)
     print(coords)
@@ -1193,6 +1221,6 @@ else:
     
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
     
-    model.test(Ds, objs, diversity, positions, coords, "test")
+    model.test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
 
 #logfile.close()
