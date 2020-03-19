@@ -36,7 +36,7 @@ num_objs = 10#None
 # Must be power of 2
 num_frames_input = 16
 
-n_epochs_2 = 5
+n_epochs_2 = 1
 n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
@@ -628,18 +628,18 @@ class nn_model:
             #            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
             #            verbose=1)
             
-            def fit_func():
-                history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
-                            epochs=n_epochs_1,
-                            batch_size=batch_size,
-                            shuffle=True,
-                            validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
-                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                            verbose=1,
-                            steps_per_epoch=None)
-                return history
+            #def fit_func():
+            history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
+                        epochs=n_epochs_1,
+                        batch_size=batch_size,
+                        shuffle=True,
+                        validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
+                        #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                        verbose=1,
+                        steps_per_epoch=None)
+            #    return history
             
-            fit_func()
+            #fit_func()
             #p = Process(target=fit_func)
             #p.start()
             #p.join()       
