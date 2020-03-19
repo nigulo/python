@@ -28,15 +28,18 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 16
+num_frames = 64
 # How many objects to use in training
-num_objs = 4#None
+num_objs = 32#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 16
 
-n_epochs_2 = 2
+batch_size = 8
+n_channels = 512
+
+n_epochs_2 = 10
 n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
@@ -46,10 +49,8 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 nn_mode = MODE_2
 
 if nn_mode == MODE_2:
+    n_channels /= num_frames_input
     num_frames_input = 1
-
-batch_size = 8
-n_channels = 512
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -1098,7 +1099,10 @@ if train:
     print("num_frames", Ds.shape[1])
     
     Ds_train = Ds[:n_train]
-    Ds_test = Ds[n_train:, :num_frames_input]
+    num_frames_valid = num_frames_input
+    if nn_mode == MODE_2:
+        num_frames_valid = 10
+    Ds_test = Ds[n_train:, :num_frames_valid]
     if objs is not None:
         objs_train = objs[:n_train]
         objs_test = objs[n_train:]
