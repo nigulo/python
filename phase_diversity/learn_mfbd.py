@@ -978,7 +978,7 @@ class nn_model:
                 true_alphas = true_coefs[i]
                 nrows = int(np.sqrt(jmax))
                 ncols = int(ceil(jmax/nrows))
-                my_test_plot = plot.plot(nrows=nrows ncols=ncols)
+                my_test_plot = plot.plot(nrows=nrows, ncols=ncols)
                 row = 0
                 col = 0
                 #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
