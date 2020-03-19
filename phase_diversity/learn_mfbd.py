@@ -30,7 +30,7 @@ gamma = 1.0
 # How many frames to use in training
 num_frames = 64
 # How many objects to use in training
-num_objs = 20#None
+num_objs = 10#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
@@ -996,7 +996,7 @@ class nn_model:
                     if col >= ncols:
                         row += 1
                         col = 0
-                my_test_plot.save("alphas.png")
+                my_test_plot.save(f"{dir_name}/alphas{i}.png")
                 my_test_plot.close()
 
         if estimate_full_image:
