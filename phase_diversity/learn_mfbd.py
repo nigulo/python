@@ -445,7 +445,7 @@ class nn_model:
             self.model = model
             
             def mfbd_loss(y_true, y_pred):
-                return tf.reduce_sum(tf.subtract(y_pred, y_true))/(nx*nx)
+                return tf.math.reduce_sum(tf.math.subtract(y_pred, y_true))/(nx*nx)
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
