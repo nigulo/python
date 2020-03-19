@@ -990,8 +990,8 @@ class nn_model:
                 xs = np.arange(alphas.shape[0])
                 for coef_index in np.arange(alphas.shape[1]):
                     scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
-                    ax[row, col].plot(xs, np.reshape(alphas[:, coef_index], -1), "r-")
-                    ax[row, col].plot(xs, np.reshape(true_alphas[:, coef_index]*scale, -1), "b--")
+                    my_test_plot.plot(xs, np.reshape(alphas[:, coef_index], -1), [row, col], "r-")
+                    my_test_plot.plot(xs, np.reshape(true_alphas[:, coef_index]*scale, -1), [row, col], "b--")
                     col += 1
                     if col >= ncols:
                         row += 1
