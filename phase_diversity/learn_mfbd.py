@@ -49,7 +49,7 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 nn_mode = MODE_2
 
 if nn_mode == MODE_2:
-    n_channels /= num_frames_input
+    n_channels //= num_frames_input
     num_frames_input = 1
 
 #logfile = open(dir_name + '/log.txt', 'w')
