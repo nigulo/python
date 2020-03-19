@@ -28,16 +28,16 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 32
+num_frames = 16
 # How many objects to use in training
-num_objs = 10#None
+num_objs = 4#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
 num_frames_input = 16
 
-n_epochs_2 = 10
-n_epochs_1 = 2
+n_epochs_2 = 2
+n_epochs_1 = 1
 num_reps = 1000
 shuffle = True
 
@@ -48,7 +48,7 @@ nn_mode = MODE_2
 if nn_mode == MODE_2:
     num_frames_input = 1
 
-batch_size = 2
+batch_size = 8
 n_channels = 512
 
 #logfile = open(dir_name + '/log.txt', 'w')
@@ -633,8 +633,7 @@ class nn_model:
             if not obj_ids[i] in DD_DP_PP_sums:
                 DD_DP_PP_sums[obj_ids[i]] = np.zeros_like(DD_DP_PP_out[0])
             DD_DP_PP_sums[obj_ids[i]] += DD_DP_PP_out[i]
-        DD_DP_PP_sums = np.sum(DD_DP_PP)
-        for i in len(Ds):
+        for i in np.arange(len(Ds)):
             DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
         
  
@@ -685,7 +684,7 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None)
 
-                predict(self.predict(self, self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids))
+                self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
 
             #    return history
             
@@ -917,11 +916,11 @@ class nn_model:
 
         start = time.time()    
         #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
+        alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
         if self.nn_mode == MODE_1:
-            intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
-            pred_alphas = intermediate_layer_model.predict([Ds, diversities], batch_size=batch_size)
+            pred_alphas = alphas_layer_model.predict([Ds, diversities], batch_size=batch_size)
         elif self.nn_mode == MODE_2:
-            DD_DP_PP = np.zeros(len(Ds), 3, nx, nx)
+            DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             for epoch in np.arange(n_epochs_2):
                 self.predict(Ds, diversities, DD_DP_PP, obj_ids)
             pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
