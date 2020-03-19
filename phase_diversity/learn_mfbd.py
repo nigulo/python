@@ -28,9 +28,9 @@ import time
 gamma = 1.0
 
 # How many frames to use in training
-num_frames = 16
+num_frames = 64
 # How many objects to use in training
-num_objs = 5#None
+num_objs = 10#None
 
 # How many frames of the same object are sent to NN input
 # Must be power of 2
@@ -406,7 +406,7 @@ class nn_model:
                     a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
                     a3 = tf.concat([a1, a2], axis=1)
                     
-                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*num_frames_input*jmax+2*nx*nx]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(num_frames_input*jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss)(hidden_layer)
                     #output = keras.layers.Lambda(lambda x: tf.reshape(tf.math.reduce_sum(x), [1]))(output)
