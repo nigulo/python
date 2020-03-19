@@ -987,8 +987,8 @@ class nn_model:
                 row = 0
                 col = 0
                 #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
-                xs = np.arange(modes_nn.shape[1])
-                for coef_index in np.arange(modes_nn.shape[2]):
+                xs = np.arange(alphas.shape[0])
+                for coef_index in np.arange(alphas.shape[1]):
                     scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
                     ax[row, col].plot(xs, np.reshape(alphas[:, coef_index], -1), "r-")
                     ax[row, col].plot(xs, np.reshape(true_alphas[:, coef_index]*scale, -1), "b--")
