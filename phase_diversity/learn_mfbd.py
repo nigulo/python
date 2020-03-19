@@ -307,7 +307,7 @@ class nn_model:
         ctf.set_phase_aberr(pa)
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
-        batch_size_per_gpu = batch_size//max(1, n_gpus)
+        batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
