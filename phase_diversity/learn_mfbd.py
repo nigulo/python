@@ -318,7 +318,7 @@ class nn_model:
         with self.strategy.scope():
 
             image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
-            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='diversity_input')
+            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')
     
             model, nn_mode_ = load_model()
             
