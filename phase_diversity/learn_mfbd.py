@@ -1266,7 +1266,7 @@ else:
     
     max_pos = np.max(positions, axis = 0)
 
-    print("n_test_objects", n_test_objects)
+    print("n_test_objects, n_test_frames", n_test_objects, n_test_frames)
     print(max_pos)
     max_pos = np.round(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
     print(max_pos)
