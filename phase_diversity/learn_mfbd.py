@@ -27,18 +27,6 @@ import time
 
 gamma = 1.0
 
-# How many frames to use in training
-num_frames = 64
-# How many objects to use in training
-num_objs = 32#None
-
-# How many frames of the same object are sent to NN input
-# Must be power of 2
-num_frames_input = 16
-
-batch_size = 8
-n_channels = 512
-
 n_epochs_2 = 10
 n_epochs_1 = 1
 num_reps = 1000
@@ -47,10 +35,6 @@ shuffle = True
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
-
-if nn_mode == MODE_2:
-    n_channels //= num_frames_input
-    num_frames_input = 1
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -90,6 +74,31 @@ if len(sys.argv) > i:
     test_data_file = sys.argv[i]
 i +=1
 
+if nn_mode == MODE_1:
+    # How many frames to use in training
+    num_frames = 64
+    # How many objects to use in training
+    num_objs = 10#None
+    
+    # How many frames of the same object are sent to NN input
+    # Must be power of 2
+    num_frames_input = 8
+    
+    batch_size = 1
+    n_channels = 256
+else:
+    # How many frames to use in training
+    num_frames = 64
+    # How many objects to use in training
+    num_objs = 32#None
+    
+    # How many frames of the same object are sent to NN input
+    # Must be power of 2
+    num_frames_input = 1
+    
+    batch_size = 8
+    n_channels = 32
+    
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -366,7 +375,7 @@ class nn_model:
                     return tf.math.scalar_mul(tf.constant(num, dtype="float32"), x)
     
     
-                def conv_layer(x, n_channels, kernel=(3, 3), max_pooling=True, batch_normalization=True, num_convs=2):
+                def conv_layer(x, n_channels, kernel=(3, 3), max_pooling=True, batch_normalization=True, num_convs=3):
                     for i in np.arange(num_convs):
                         x1 = keras.layers.Conv2D(n_channels, (1, 1), activation='linear', padding='same')(x)#(normalized)
                         x2 = keras.layers.Conv2D(n_channels, kernel, activation='relu', padding='same')(x)#(normalized)
@@ -1111,7 +1120,7 @@ if train:
     Ds_train = Ds[:n_train]
     num_frames_valid = num_frames_input
     if nn_mode == MODE_2:
-        num_frames_valid = 10
+        num_frames_valid = int(16/batch_size)*batch_size
     Ds_test = Ds[n_train:, :num_frames_valid]
     if objs is not None:
         objs_train = objs[:n_train]
