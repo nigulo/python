@@ -1268,8 +1268,9 @@ else:
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :n_test_frames]
     
-    print(positions)
-    print(coords)
+    print("true_coefs", true_coefs.shape)
+    #print(positions)
+    #print(coords)
 
     #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
     #std = np.std(Ds, axis=(3, 4), keepdims=True)

@@ -422,7 +422,8 @@ class psf_tf():
         if mode == 1:
             return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode == 2:
-            DD1 = tf.math.add(tf.reshape(DD, [self.batch_size, 1, nx, nx]), tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])) 
+            DD = tf.reshape(DD, [self.batch_size, 1, nx, nx])
+            DD1 = tf.math.add(DD, tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])) 
             loss = DD1 - tf.math.add(num, eps)/tf.math.add(den, eps)
             return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=1)
 
