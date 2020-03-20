@@ -305,7 +305,7 @@ class nn_model:
         self.nx = nx
         self.validation_losses = []
         self.hanning = utils.hanning(nx, 10)
-        self.filter = utils.create_filter(nx, freq_limit = 0.6)
+        self.filter = utils.create_filter(nx, freq_limit = 0.5)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
 
