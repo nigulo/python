@@ -76,7 +76,7 @@ i +=1
 
 if nn_mode == MODE_1:
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 32
     # How many objects to use in training
     num_objs = 10#None
     
