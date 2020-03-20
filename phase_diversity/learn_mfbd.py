@@ -1043,7 +1043,7 @@ class nn_model:
             my_test_plot.close()
 
             if true_coefs is not None:
-                true_alphas = true_coefs[i]
+                true_alphas = true_coefs[obj_ids[i]]
                 nrows = int(np.sqrt(jmax))
                 ncols = int(math.ceil(jmax/nrows))
                 my_test_plot = plot.plot(nrows=nrows, ncols=ncols)
