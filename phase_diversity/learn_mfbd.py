@@ -59,27 +59,37 @@ if nn_mode == MODE_2:
 #    logfile.write("\n")
 #    logfile.flush()
     
-
+i = 1
 dir_name = None
-if len(sys.argv) > 1:
-    dir_name = sys.argv[1]
+if len(sys.argv) > i:
+    dir_name = sys.argv[i]
+i +=1
+
+if len(sys.argv) > i:
+    nn_mode = int(sys.argv[i])
+i +=1
 
 train = True
-if len(sys.argv) > 2:
-    if sys.argv[2].upper() == "TEST":
+if len(sys.argv) > i:
+    if sys.argv[i].upper() == "TEST":
         train = False
+i +=1
 
 n_test_frames = None
-if len(sys.argv) > 3:
-    n_test_frames = int(sys.argv[3])
+if len(sys.argv) > i:
+    n_test_frames = int(sys.argv[i])
+i +=1
 
 n_test_objects = None
-if len(sys.argv) > 4:
-    n_test_objects = int(sys.argv[4])
+if len(sys.argv) > i:
+    n_test_objects = int(sys.argv[i])
+i +=1
 
 test_data_file = "Ds_test.npz"
-if len(sys.argv) > 5:
-    test_data_file = sys.argv[5]
+if len(sys.argv) > i:
+    test_data_file = sys.argv[i]
+i +=1
+
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
