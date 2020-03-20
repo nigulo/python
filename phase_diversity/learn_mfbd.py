@@ -896,12 +896,12 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None,
                                 callbacks=[MyCustomCallback(model)])
-                    
-                    if self.val_loss > history.history['val_loss']:
-                        self.val_loss = history.history['val_loss']
+                    print(history.history['val_loss'])
+                    if self.val_loss > history.history['val_loss'][-1]:
+                        self.val_loss = history.history['val_loss'][-1]
                         save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss))
                     else:
-                        print("Validation loss increased", self.val_loss, history.history['val_loss'])
+                        print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
                         sys.exit()
                     validation_losses.append(history.history['val_loss'])
                     if len(validation_losses) >= 10:
