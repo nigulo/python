@@ -1275,13 +1275,14 @@ else:
     ctf_check.set_pupil(pupil)
     #ctf_check.set_diversity(diversity[i, j])
     psf_check = psf.psf(ctf_check, corr_or_fft=False)
-    for i in np.arange(10):
+    for i in np.arange(100, 110):
         ###############################################################
         # DBG
         obj_tmp = psf_check.critical_sampling(objs[i])
-        my_test_plot = plot.plot(nrows=1, ncols=2)
+        my_test_plot = plot.plot(nrows=1, ncols=3)
         my_test_plot.colormap(objs[i], [0])
         my_test_plot.colormap(obj_tmp, [1])
+        my_test_plot.colormap(objs[i]-obj_tmp, [2])
         my_test_plot.save(f"{dir_name}/critical_sampling{i}.png")
         my_test_plot.close()
         ###############################################################
