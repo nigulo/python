@@ -102,6 +102,10 @@ else:
     batch_size = 4
     n_channels = 128
     
+    num_frames_mode_2 = 100
+    
+    n_test_frames = num_frames_mode_2
+    
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -642,10 +646,15 @@ class nn_model:
 
         DD_DP_PP_out = output[:, 1:, :, :]
         DD_DP_PP_sums = dict()
+        DD_DP_PP_counts = dict()
         for i in np.arange(len(DD_DP_PP_out)):
+            obj_id = obj_ids[i]
             if not obj_ids[i] in DD_DP_PP_sums:
-                DD_DP_PP_sums[obj_ids[i]] = np.zeros_like(DD_DP_PP_out[0])
-            DD_DP_PP_sums[obj_ids[i]] += DD_DP_PP_out[i]
+                DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
+                DD_DP_PP_counts[obj_id] = 0
+            if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
+                DD_DP_PP_counts[obj_id] += 1
+                DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
         for i in np.arange(len(Ds)):
             DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
         
@@ -1113,6 +1122,9 @@ if train:
     print("n_train, n_test", n_train, len(Ds) - n_train)
     print("num_frames", Ds.shape[1])
     
+    if nn_mode == MODE_2:
+        assert(n_train >= num_frames_mode_2)
+    
     Ds_train = Ds[:n_train]
     num_frames_valid = num_frames_input
     if nn_mode == MODE_2:
@@ -1291,9 +1303,12 @@ else:
     n_test_objects = min(Ds.shape[0], n_test_objects)
     n_test_frames = min(Ds.shape[1], n_test_frames)
     
+    print("n_test_objects, n_test_frames", n_test_objects, n_test_frames)
+    if nn_mode == MODE_2:
+        assert(n_test_frames >= num_frames_mode_2)
+    
     max_pos = np.max(positions, axis = 0)
 
-    print("n_test_objects, n_test_frames", n_test_objects, n_test_frames)
     print(max_pos)
     max_pos = np.round(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
     print(max_pos)
