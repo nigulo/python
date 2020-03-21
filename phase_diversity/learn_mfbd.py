@@ -1274,7 +1274,7 @@ else:
     ctf_check.set_phase_aberr(pa_check)
     ctf_check.set_pupil(pupil)
     #ctf_check.set_diversity(diversity[i, j])
-    psf_check = psf.psf(ctf_check)
+    psf_check = psf.psf(ctf_check, corr_or_fft=False)
     for i in np.arange(10):
         ###############################################################
         # DBG
