@@ -986,6 +986,7 @@ class nn_model:
                 print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
                 cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
                 cropped_objs.append(cropped_obj)
+                
                 cropped_coords.append(top_left_coord)
                 cropped_Ds.append(Ds[i, :, :, 0][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 full_shape += cropped_obj.shape
@@ -1266,6 +1267,25 @@ else:
 
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(test_data_file)
+
+    pa_check = psf.phase_aberration([])#len(modes), start_index=1)
+    pa_check.set_terms(np.array([]))#np.zeros((jmax, nx//2, nx//2)))#modes)
+    ctf_check = psf.coh_trans_func()
+    ctf_check.set_phase_aberr(pa_check)
+    ctf_check.set_pupil(pupil)
+    #ctf_check.set_diversity(diversity[i, j])
+    psf_check = psf.psf(ctf_check)
+    for i in np.arange(10):
+        ###############################################################
+        # DBG
+        obj_tmp = psf_check.critical_sampling(obja[i])
+        my_test_plot = plot.plot(nrows=1, ncols=2)
+        my_test_plot.colormap(obj, [0])
+        my_test_plot.colormap(obj_tmp, [1])
+        my_test_plot.save(f"{dir_name}/critical_sampling{i}.png")
+        my_test_plot.close()
+        ###############################################################
+        
 
     if n_test_objects is None:
         n_test_objects = Ds.shape[0]
