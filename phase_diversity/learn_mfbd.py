@@ -1280,7 +1280,7 @@ else:
         # DBG
         obj_tmp = psf_check.critical_sampling(objs[i])
         my_test_plot = plot.plot(nrows=1, ncols=2)
-        my_test_plot.colormap(obj, [0])
+        my_test_plot.colormap(objs[i], [0])
         my_test_plot.colormap(obj_tmp, [1])
         my_test_plot.save(f"{dir_name}/critical_sampling{i}.png")
         my_test_plot.close()
