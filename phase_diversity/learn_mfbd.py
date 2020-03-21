@@ -1278,14 +1278,14 @@ else:
     for i in np.arange(10):
         ###############################################################
         # DBG
-        obj_tmp = psf_check.critical_sampling(obja[i])
+        obj_tmp = psf_check.critical_sampling(objs[i])
         my_test_plot = plot.plot(nrows=1, ncols=2)
         my_test_plot.colormap(obj, [0])
         my_test_plot.colormap(obj_tmp, [1])
         my_test_plot.save(f"{dir_name}/critical_sampling{i}.png")
         my_test_plot.close()
         ###############################################################
-        
+    print("Critical sampling")
 
     if n_test_objects is None:
         n_test_objects = Ds.shape[0]
