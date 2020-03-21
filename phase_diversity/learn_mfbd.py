@@ -29,6 +29,9 @@ gamma = 1.0
 
 n_epochs_2 = 10
 n_epochs_1 = 1
+
+n_epochs_mode_2 = 5
+
 num_reps = 1000
 shuffle = True
 
@@ -90,14 +93,14 @@ else:
     # How many frames to use in training
     num_frames = 64
     # How many objects to use in training
-    num_objs = 32#None
+    num_objs = 10#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 1
+    num_frames_input = 4
     
-    batch_size = 8
-    n_channels = 32
+    batch_size = 4
+    n_channels = 128
     
 
 if dir_name is None:
@@ -342,10 +345,8 @@ class nn_model:
 
             diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')
             
-            if nn_mode == MODE_1:
-                image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
-            elif nn_mode == MODE_2:
-                image_input = keras.layers.Input((nx, nx, num_defocus_channels), name='image_input')
+            image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
+            if nn_mode == MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
             else:
                 raise Exception("Unsupported mode")
@@ -419,11 +420,7 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
-                if nn_mode == MODE_1:
-                    alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                elif nn_mode == MODE_2:
-                    alphas_layer = keras.layers.Dense(jmax, activation='linear')(alphas_layer)
-
+                alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
@@ -434,11 +431,11 @@ class nn_model:
                 #obj_layer = keras.layers.Dense(1152)(obj_layer)
                
                 
-                if nn_mode == MODE_1:
-                    
-                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax])                    
-                    a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
-                    a3 = tf.concat([a1, a2], axis=1)
+                a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax])                    
+                a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
+                a3 = tf.concat([a1, a2], axis=1)
+
+                if nn_mode == MODE_1:                    
                     
                     hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(num_frames_input*jmax+2*nx*nx)]), tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
@@ -449,13 +446,9 @@ class nn_model:
 
                     model = keras.models.Model(inputs=[image_input, diversity_input], outputs=output)
                 elif nn_mode == MODE_2:
-                    
-                    a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, jmax])                    
-                    a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
-                    a3 = tf.concat([a1, a2], axis=1)
-                                  
-                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(jmax + 2*nx*nx)]), 
-                                                             tf.reshape(image_input, [batch_size_per_gpu*2*nx*nx]),
+                                                      
+                    hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(num_frames_input*jmax + 2*nx*nx)]), 
+                                                             tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx]),
                                                              tf.reshape(DD_DP_PP_input, [batch_size_per_gpu*4*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
@@ -695,6 +688,7 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None)
             elif self.nn_mode == MODE_2:
+                #for epoch_mode_2 in np.arange(n_epochs_mode_2):
                 history = model.fit(x=[self.Ds_train, self.diversities_train, self.DD_DP_PP_train], y=output_data_train,
                             epochs=n_epochs_1,
                             batch_size=batch_size,
@@ -735,7 +729,7 @@ class nn_model:
         if self.nn_mode == MODE_1:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
         elif self.nn_mode == MODE_2:
-            for epoch in np.arange(n_epochs_2):
+            for epoch in np.arange(n_epochs_mode_2):
                 self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities, self.DD_DP_PP], batch_size=batch_size)
             
@@ -941,7 +935,7 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([Ds, diversities], batch_size=batch_size)
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
-            for epoch in np.arange(n_epochs_2):
+            for epoch in np.arange(n_epochs_mode_2):
                 self.predict(Ds, diversities, DD_DP_PP, obj_ids)
             pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
             
@@ -1268,6 +1262,7 @@ else:
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(test_data_file)
 
+    '''
     pa_check = psf.phase_aberration([])#len(modes), start_index=1)
     pa_check.set_terms(np.array([]))#np.zeros((jmax, nx//2, nx//2)))#modes)
     ctf_check = psf.coh_trans_func()
@@ -1286,7 +1281,8 @@ else:
         my_test_plot.save(f"{dir_name}/critical_sampling{i}.png")
         my_test_plot.close()
         ###############################################################
-    print("Critical sampling")
+    print("Critical sampling tetśt")
+    '''
 
     if n_test_objects is None:
         n_test_objects = Ds.shape[0]

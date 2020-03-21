@@ -201,8 +201,6 @@ class psf_tf():
         self.batch_size = batch_size
         self.set_diversity = set_diversity
         self.mode = mode
-        if mode == 2:
-            assert(self.num_frames == 1)
         
 
     def set_batch_size(self, batch_size):
