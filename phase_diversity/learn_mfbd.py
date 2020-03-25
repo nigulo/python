@@ -1014,13 +1014,16 @@ class nn_model:
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
-                            print("alphas", j, l, alphas[-1])
+                            print("alphas", j, l, alphas[-1][0])
                             #if n_test_frames is not None and len(alphas) >= n_test_frames:
                             #    break
                     #if len(alphas) >= n_test_frames:
                     #    break
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
+            for iii in np.arange(len(alphas)):
+                print("alphas111", j, l, alphas[iii, 0])
+                
             #print("alphas", len(alphas), len(DFs))
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
@@ -1064,7 +1067,7 @@ class nn_model:
                 true_alphas = true_coefs[obj_ids[i]]
                 nrows = int(np.sqrt(jmax))
                 ncols = int(math.ceil(jmax/nrows))
-                my_test_plot = plot.plot(nrows=nrows, ncols=ncols)
+                my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
                 row = 0
                 col = 0
                 #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
