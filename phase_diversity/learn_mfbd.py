@@ -528,6 +528,14 @@ class nn_model:
         
         self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
         
+        med = np.median(self.Ds, axis=(1, 2), keepdims=True)
+        #std = np.std(Ds, axis=(1, 2), keepdims=True)
+        self.Ds -= med
+        self.Ds = self.hanning.multiply(self.Ds, axis=1)
+        #self.Ds += med
+        ##Ds /= std
+        self.Ds /= med
+        
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
         #self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
@@ -908,13 +916,13 @@ class nn_model:
 
         Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
         #print("positions1, coords1", positions, coords)
-        #med = np.median(Ds, axis=(1, 2), keepdims=True)
+        med = np.median(Ds, axis=(1, 2), keepdims=True)
         #std = np.std(Ds, axis=(1, 2), keepdims=True)
-        #Ds -= med
-        #Ds = self.hanning.multiply(Ds, axis=1)
+        Ds -= med
+        Ds = self.hanning.multiply(Ds, axis=1)
         #Ds += med
         ##Ds /= std
-        #Ds /= med
+        Ds /= med
         
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
         #objs = objs[:num_objects]
@@ -947,8 +955,9 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
             
         #Ds *= std
-        #Ds *= med
-            
+        Ds *= med
+        Ds += med
+        
         end = time.time()
         print("Prediction time: " + str(end - start))
 
@@ -1116,14 +1125,14 @@ if train:
     random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
     Ds = Ds[:, random_indices]
 
-    hanning = utils.hanning(nx, 10)
-    med = np.median(Ds, axis=(3, 4), keepdims=True)
-    std = np.std(Ds, axis=(3, 4), keepdims=True)
-    Ds -= med
-    Ds = hanning.multiply(Ds, axis=3)
-    Ds += med
-    #Ds /= std
-    Ds /= med
+    #hanning = utils.hanning(nx, 10)
+    #med = np.median(Ds, axis=(3, 4), keepdims=True)
+    #std = np.std(Ds, axis=(3, 4), keepdims=True)
+    #Ds -= med
+    #Ds = hanning.multiply(Ds, axis=3)
+    #Ds += med
+    ##Ds /= std
+    #Ds /= med
     
     n_train = int(len(Ds)*.75)
     print("n_train, n_test", n_train, len(Ds) - n_train)
@@ -1327,14 +1336,14 @@ else:
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :n_test_frames]
     
-    hanning = utils.hanning(nx, 10)
-    med = np.median(Ds, axis=(3, 4), keepdims=True)
-    std = np.std(Ds, axis=(3, 4), keepdims=True)
-    Ds -= med
-    Ds = hanning.multiply(Ds, axis=3)
-    Ds += med
-    #Ds /= std
-    Ds /= med
+    #hanning = utils.hanning(nx, 10)
+    #med = np.median(Ds, axis=(3, 4), keepdims=True)
+    #std = np.std(Ds, axis=(3, 4), keepdims=True)
+    #Ds -= med
+    #Ds = hanning.multiply(Ds, axis=3)
+    #Ds += med
+    ##Ds /= std
+    #Ds /= med
     
     print("true_coefs", true_coefs.shape)
     #print(positions)
