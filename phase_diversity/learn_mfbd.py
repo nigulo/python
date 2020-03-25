@@ -594,14 +594,14 @@ class nn_model:
         self.obj_ids_train = self.obj_ids[:n_train]
         self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
         
-        #for i in np.arange(len(self.objs)):
-        #    my_test_plot = plot.plot(nrows=3, ncols=1)
-        #    my_test_plot.colormap(self.objs[i], [0, 0], show_colorbar=True, colorbar_prec=2)
-        #    my_test_plot.colormap(self.Ds[i, :, :, 0], [1, 0])
-        #    my_test_plot.colormap(self.Ds[i, :, :, 1], [2, 0])
+        for i in np.arange(len(self.objs)):
+            my_test_plot = plot.plot(nrows=3, ncols=1)
+            my_test_plot.colormap(self.objs[i], [0, 0], show_colorbar=True, colorbar_prec=2)
+            my_test_plot.colormap(self.Ds[i, :, :, 0], [1, 0])
+            my_test_plot.colormap(self.Ds[i, :, :, 1], [2, 0])
     
-        #    my_test_plot.save(dir_name + "/data_check" + str(i) + ".png")
-        #    my_test_plot.close()
+            my_test_plot.save(dir_name + "/data_check" + str(i) + ".png")
+            my_test_plot.close()
         
 
     '''        
