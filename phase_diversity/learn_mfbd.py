@@ -1117,10 +1117,10 @@ if train:
     Ds = Ds[:, random_indices]
 
     hanning = utils.hanning(nx, 10)
-    med = np.median(Ds, axis=(2, 3), keepdims=True)
-    std = np.std(Ds, axis=(2, 3), keepdims=True)
+    med = np.median(Ds, axis=(3, 4), keepdims=True)
+    std = np.std(Ds, axis=(3, 4), keepdims=True)
     Ds -= med
-    Ds = hanning.multiply(Ds, axis=2)
+    Ds = hanning.multiply(Ds, axis=3)
     Ds += med
     #Ds /= std
     Ds /= med
@@ -1328,10 +1328,10 @@ else:
     true_coefs = true_coefs[filtr, :n_test_frames]
     
     hanning = utils.hanning(nx, 10)
-    med = np.median(Ds, axis=(2, 3), keepdims=True)
-    std = np.std(Ds, axis=(2, 3), keepdims=True)
+    med = np.median(Ds, axis=(3, 4), keepdims=True)
+    std = np.std(Ds, axis=(3, 4), keepdims=True)
     Ds -= med
-    Ds = hanning.multiply(Ds, axis=2)
+    Ds = hanning.multiply(Ds, axis=3)
     Ds += med
     #Ds /= std
     Ds /= med
