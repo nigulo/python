@@ -30,7 +30,7 @@ gamma = 1.0
 n_epochs_2 = 12
 n_epochs_1 = 1
 
-n_epochs_mode_2 = 2
+n_epochs_mode_2 = 4
 
 num_reps = 1000
 shuffle = True
@@ -91,16 +91,16 @@ if nn_mode == MODE_1:
     n_channels = 256
 else:
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 32
     # How many objects to use in training
     num_objs = 10#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 4
+    num_frames_input = 1
     
     batch_size = 4
-    n_channels = 256
+    n_channels = 128
     
     num_frames_mode_2 = num_frames
     
