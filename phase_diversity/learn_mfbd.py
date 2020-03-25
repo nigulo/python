@@ -352,8 +352,8 @@ class nn_model:
             image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
             if nn_mode == MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
-            else:
-                raise Exception("Unsupported mode")
+            #else:
+            #    raise Exception("Unsupported mode")
     
             model, nn_mode_ = load_model()
             
