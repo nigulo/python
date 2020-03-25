@@ -27,10 +27,10 @@ import time
 
 gamma = 1.0
 
-n_epochs_2 = 10
+n_epochs_2 = 12
 n_epochs_1 = 1
 
-n_epochs_mode_2 = 5
+n_epochs_mode_2 = 2
 
 num_reps = 1000
 shuffle = True
@@ -100,9 +100,9 @@ else:
     num_frames_input = 4
     
     batch_size = 4
-    n_channels = 128
+    n_channels = 256
     
-    num_frames_mode_2 = 100
+    num_frames_mode_2 = num_frames
     
     n_test_frames = num_frames_mode_2
     
@@ -485,10 +485,10 @@ class nn_model:
             def mfbd_loss(y_true, y_pred):
                 if nn_mode == MODE_1:
                     loss = y_pred
-                    #return tf.math.reduce_sum(tf.math.subtract(y_pred, y_true))/(nx*nx)
+                    return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
                 elif nn_mode == MODE_2:
                     loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
-                return tf.math.reduce_sum(loss)/(nx*nx)
+                    return tf.math.reduce_sum(loss, axis=[1, 2, 3])/(nx*nx)
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
@@ -576,6 +576,9 @@ class nn_model:
         
         n_validation = len(self.Ds) - n_train
         n_validation -= n_validation % batch_size
+        
+        self.n_train = n_train
+        self.n_validation = n_validation
 
         self.Ds_train = self.Ds[:n_train]
         self.Ds_validation = self.Ds[n_train:n_train+n_validation]
@@ -591,10 +594,6 @@ class nn_model:
         self.obj_ids_train = self.obj_ids[:n_train]
         self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
         
-        if nn_mode == MODE_2:
-            self.DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-            self.DD_DP_PP_train = self.DD_DP_PP[:n_train]
-            self.DD_DP_PP_validation = self.DD_DP_PP[n_train:n_train+n_validation]
         #for i in np.arange(len(self.objs)):
         #    my_test_plot = plot.plot(nrows=3, ncols=1)
         #    my_test_plot.colormap(self.objs[i], [0, 0], show_colorbar=True, colorbar_prec=2)
@@ -697,17 +696,22 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None)
             elif self.nn_mode == MODE_2:
-                #for epoch_mode_2 in np.arange(n_epochs_mode_2):
-                history = model.fit(x=[self.Ds_train, self.diversities_train, self.DD_DP_PP_train], y=output_data_train,
-                            epochs=n_epochs_1,
-                            batch_size=batch_size,
-                            shuffle=True,
-                            validation_data=[[self.Ds_validation, self.diversities_validation, self.DD_DP_PP_validation], output_data_validation],
-                            #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
-                            verbose=1,
-                            steps_per_epoch=None)
-
-                self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
+                self.DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
+                self.DD_DP_PP_train = self.DD_DP_PP[:self.n_train]
+                self.DD_DP_PP_validation = self.DD_DP_PP[self.n_train:self.n_train+self.n_validation]
+                for epoch_mode_2 in np.arange(n_epochs_mode_2):
+                    history = model.fit(x=[self.Ds_train, self.diversities_train, self.DD_DP_PP_train], y=output_data_train,
+                                epochs=n_epochs_1,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                validation_data=[[self.Ds_validation, self.diversities_validation, self.DD_DP_PP_validation], output_data_validation],
+                                #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
+                                verbose=1,
+                                steps_per_epoch=None)
+    
+                    self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
+                    
+                    epoch += 1
 
             #    return history
             
