@@ -947,7 +947,7 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
             
         #Ds *= std
-        Ds *= med
+        #Ds *= med
             
         end = time.time()
         print("Prediction time: " + str(end - start))
