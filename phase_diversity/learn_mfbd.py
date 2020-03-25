@@ -796,7 +796,7 @@ class nn_model:
                 pred_Ds = self.psf_check.convolve(obj, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
                 #pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
                 pred_Ds  = np.transpose(pred_Ds, (0, 2, 3, 1))
-            print("pred_alphas", i, pred_alphas[i])
+            #print("pred_alphas", i, pred_alphas[i])
 
             num_rows = 0
             if pred_alphas is not None:
@@ -1014,6 +1014,7 @@ class nn_model:
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+                            print("alphas", j, l, alphas[-1])
                             #if n_test_frames is not None and len(alphas) >= n_test_frames:
                             #    break
                     #if len(alphas) >= n_test_frames:
