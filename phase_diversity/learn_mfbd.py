@@ -1110,6 +1110,9 @@ if train:
 
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data()
 
+    nx = Ds.shape[3]
+    jmax = len(modes)
+
     random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
     Ds = Ds[:, random_indices]
 
@@ -1153,9 +1156,6 @@ if train:
     #else:
     coords_test = None
     
-    nx = Ds.shape[3]
-    jmax = len(modes)
-
     #Ds_mean = np.mean(Ds, axis=(2,3))
     #Ds_std = np.std(Ds, axis=(2,3))
     #Ds -= np.tile(np.reshape(Ds_mean, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
@@ -1278,6 +1278,9 @@ else:
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(test_data_file)
 
+    nx = Ds.shape[3]
+    jmax = len(modes)
+
     '''
     pa_check = psf.phase_aberration([])#len(modes), start_index=1)
     pa_check.set_terms(np.array([]))#np.zeros((jmax, nx//2, nx//2)))#modes)
@@ -1341,11 +1344,7 @@ else:
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
     #Ds -= mean
     #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
-    
-    nx = Ds.shape[3]
-    jmax = len(modes)
-    
-    
+
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
     
     model.test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
