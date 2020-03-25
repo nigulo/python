@@ -527,13 +527,6 @@ class nn_model:
         num_objects = Ds.shape[1]
         
         self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
-        med = np.median(self.Ds, axis=(1, 2), keepdims=True)
-        std = np.std(self.Ds, axis=(1, 2), keepdims=True)
-        self.Ds -= med
-        self.Ds = self.hanning.multiply(self.Ds, axis=1)
-        self.Ds += med
-        #self.Ds /= std
-        self.Ds /= med
         
         #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
         #
@@ -915,13 +908,14 @@ class nn_model:
 
         Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
         #print("positions1, coords1", positions, coords)
-        med = np.median(Ds, axis=(1, 2), keepdims=True)
-        std = np.std(Ds, axis=(1, 2), keepdims=True)
-        Ds -= med
-        Ds = self.hanning.multiply(Ds, axis=1)
-        Ds += med
-        #Ds /= std
-        Ds /= med
+        #med = np.median(Ds, axis=(1, 2), keepdims=True)
+        #std = np.std(Ds, axis=(1, 2), keepdims=True)
+        #Ds -= med
+        #Ds = self.hanning.multiply(Ds, axis=1)
+        #Ds += med
+        ##Ds /= std
+        #Ds /= med
+        
         #Ds = np.transpose(np.reshape(Ds_, (num_frames*num_objects, Ds_.shape[2], Ds_.shape[3], Ds_.shape[4])), (0, 2, 3, 1))
         #objs = objs[:num_objects]
         #objs = np.reshape(np.repeat(objs, num_frames, axis=0), (num_frames*objs.shape[0], objs.shape[1], objs.shape[2]))
@@ -1021,8 +1015,6 @@ class nn_model:
                     #    break
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
-            for iii in np.arange(len(alphas)):
-                print("alphas111", j, l, alphas[iii, 0])
                 
             #print("alphas", len(alphas), len(DFs))
             
@@ -1121,10 +1113,14 @@ if train:
     random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
     Ds = Ds[:, random_indices]
 
-    #mean = np.mean(Ds, axis=(3, 4), keepdims=True)
-    #std = np.std(Ds, axis=(3, 4), keepdims=True)
-    #Ds -= mean
-    #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
+    hanning = utils.hanning(nx, 10)
+    med = np.median(Ds, axis=(2, 3), keepdims=True)
+    std = np.std(Ds, axis=(2, 3), keepdims=True)
+    Ds -= med
+    Ds = hanning.multiply(Ds, axis=2)
+    Ds += med
+    #Ds /= std
+    Ds /= med
     
     n_train = int(len(Ds)*.75)
     print("n_train, n_test", n_train, len(Ds) - n_train)
@@ -1327,6 +1323,15 @@ else:
     positions = positions[filtr]
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :n_test_frames]
+    
+    hanning = utils.hanning(nx, 10)
+    med = np.median(Ds, axis=(2, 3), keepdims=True)
+    std = np.std(Ds, axis=(2, 3), keepdims=True)
+    Ds -= med
+    Ds = hanning.multiply(Ds, axis=2)
+    Ds += med
+    #Ds /= std
+    Ds /= med
     
     print("true_coefs", true_coefs.shape)
     #print(positions)
