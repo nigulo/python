@@ -25,7 +25,8 @@ class plot:
     def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., extent=[0., 1., 0., 1.], title=None, smart_axis=True):
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
-        fig.suptitle(title, fontsize=16)
+        if title is not None:
+            fig.suptitle(title, fontsize=16)
         self.fig = fig
         self.axes = axes
         self.extent = extent

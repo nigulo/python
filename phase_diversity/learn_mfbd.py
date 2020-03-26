@@ -727,9 +727,11 @@ class nn_model:
             
             #intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             #save_weights(intermediate_layer_model)
-            if n_gpus >= 1:
-                device = cuda.get_current_device()
-                device.reset()
+            #if n_gpus >= 1:
+            #    cuda.select_device(1)
+            #    cuda.close()                
+            #    #device = cuda.get_current_device()
+            #    #device.reset()
             save_weights(model)
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
@@ -816,7 +818,7 @@ class nn_model:
             #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
             row = 0
             if pred_alphas is not None:
-                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
                 my_test_plot.colormap(obj - obj_reconstr, [row, 2])
                 #my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
@@ -1063,7 +1065,7 @@ class nn_model:
             my_test_plot = plot.plot(nrows=n_rows, ncols=2)
             row = 0
             if obj_reconstr is not None:
-                my_test_plot.colormap(obj, [row, 0], show_colorbar=True, colorbar_prec=2)
+                my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
                 row += 1
             my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
@@ -1110,7 +1112,7 @@ class nn_model:
                 full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
             my_test_plot = plot.plot(nrows=1, ncols=3)
-            my_test_plot.colormap(full_obj, [0], show_colorbar=True, colorbar_prec=2)
+            my_test_plot.colormap(full_obj, [0], show_colorbar=True)
             my_test_plot.colormap(full_reconstr, [1])
             my_test_plot.colormap(full_D, [2])
             
