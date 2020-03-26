@@ -398,6 +398,8 @@ class psf_tf():
         Ps_conj = tf.math.conj(Ps)
     
         num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[1])
+        if mode == 1:
+            num = tf.math.reduce_sum(num, axis=[0])
         if mode == 2:
             num = tf.reshape(num, [self.batch_size, 1, nx, nx])
             DP_real = tf.math.real(num)
@@ -408,6 +410,8 @@ class psf_tf():
         num = tf.math.real(num)
         
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
+        if mode == 1:
+            den = tf.math.reduce_sum(den, axis=[0])
         den = tf.math.real(den)
         if mode == 2:
             PP = tf.reshape(den, [self.batch_size, 1, nx, nx])
@@ -418,7 +422,8 @@ class psf_tf():
         DD = tf.math.real(tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]))
             
         if mode == 1:
-            return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
+            return tf.math.reduce_sum(DD, axis=[0]) - tf.math.add(num, eps)/tf.math.add(den, eps)
+            #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode == 2:
             DD = tf.reshape(DD, [self.batch_size, 1, nx, nx])
             DD1 = tf.math.add(DD, tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])) 

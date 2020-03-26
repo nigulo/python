@@ -85,10 +85,10 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 8
+    num_frames_input = 1
     
-    batch_size = 1
-    n_channels = 256
+    batch_size = 32
+    n_channels = 512
 else:
     # How many frames to use in training
     num_frames = 32
@@ -99,7 +99,7 @@ else:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 4
+    batch_size = 16
     n_channels = 128
     
     num_frames_mode_2 = num_frames
@@ -157,6 +157,9 @@ if gpus:
     print(e)
 
 n_gpus = len(gpus)
+
+if n_gpus >= 1:
+    from numba import cuda
 
 def load_data(data_file="Ds.npz"):
     data_file = dir_name + '/' + data_file
@@ -485,7 +488,8 @@ class nn_model:
             def mfbd_loss(y_true, y_pred):
                 if nn_mode == MODE_1:
                     loss = y_pred
-                    return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
+                    #return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
+                    return tf.math.reduce_sum(loss)/(nx*nx)
                 elif nn_mode == MODE_2:
                     loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
                     return tf.math.reduce_sum(loss, axis=[1, 2, 3])/(nx*nx)
@@ -532,7 +536,7 @@ class nn_model:
         #std = np.std(Ds, axis=(1, 2), keepdims=True)
         self.Ds -= med
         self.Ds = self.hanning.multiply(self.Ds, axis=1)
-        #self.Ds += med
+        self.Ds += med
         ##Ds /= std
         self.Ds /= med
         
@@ -723,6 +727,9 @@ class nn_model:
             
             #intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
             #save_weights(intermediate_layer_model)
+            if n_gpus >= 1:
+                device = cuda.get_current_device()
+                device.reset()
             save_weights(model)
         self.validation_losses.append(history.history['val_loss'])
         print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
@@ -920,7 +927,7 @@ class nn_model:
         #std = np.std(Ds, axis=(1, 2), keepdims=True)
         Ds -= med
         Ds = self.hanning.multiply(Ds, axis=1)
-        #Ds += med
+        Ds += med
         ##Ds /= std
         Ds /= med
         
@@ -956,7 +963,7 @@ class nn_model:
             
         #Ds *= std
         Ds *= med
-        Ds += med
+        #Ds += med
         
         end = time.time()
         print("Prediction time: " + str(end - start))
