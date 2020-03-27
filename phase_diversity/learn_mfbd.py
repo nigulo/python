@@ -732,7 +732,7 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None)
     
-                    self.predict_mode_2(self.Ds_train, self.diversities_train, DD_DP_PP_train, self.obj_ids)
+                    self.predict_mode2(self.Ds_train, self.diversities_train, DD_DP_PP_train, self.obj_ids)
                     
                     epoch += 1
 
