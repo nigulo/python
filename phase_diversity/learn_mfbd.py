@@ -493,11 +493,17 @@ class nn_model:
             def mfbd_loss(y_true, y_pred):
                 if nn_mode == MODE_1:
                     loss = y_pred
-                    #return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
-                    return tf.math.reduce_sum(loss)/(nx*nx)
+                    if sum_over_batch:
+                        return tf.math.reduce_sum(loss)/(nx*nx)
+                    else:
+                        return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
                 elif nn_mode == MODE_2:
-                    loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
-                    return tf.math.reduce_sum(loss, axis=[1, 2, 3])/(nx*nx)
+                    if sum_over_batch:
+                        loss = tf.slice(y_pred, [0, 0, 0], [1, nx, nx])
+                        return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
+                    else:
+                        loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
+                        return tf.math.reduce_sum(loss, axis=[1, 2, 3])/(nx*nx)
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
