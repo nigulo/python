@@ -39,6 +39,8 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
 
+sum_over_batch = True
+
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
 #    for x in xs:
@@ -105,7 +107,10 @@ else:
     num_frames_mode_2 = num_frames
     
     n_test_frames = num_frames_mode_2
-    
+
+assert(num_frames % num_frames_input == 0)
+if sum_over_batch:
+    assert((num_frames // num_frames_input) % batch_size == 0)
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -341,7 +346,7 @@ class nn_model:
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
-        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, mode=nn_mode)
+        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
         
@@ -643,7 +648,7 @@ class nn_model:
         return obj[0]
     '''
 
-    def predict(self, Ds, diversities, DD_DP_PP, obj_ids):
+    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids):
         output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
         
         output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
@@ -651,9 +656,16 @@ class nn_model:
         DD_DP_PP_out = output[:, 1:, :, :]
         DD_DP_PP_sums = dict()
         DD_DP_PP_counts = dict()
+        if sum_over_batch:
+            assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
+        else:
+            assert(len(DD_DP_PP_out) == len(Ds))
         for i in np.arange(len(DD_DP_PP_out)):
-            obj_id = obj_ids[i]
-            if not obj_ids[i] in DD_DP_PP_sums:
+            if sum_over_batch:
+                obj_id = obj_ids[i*batch_size]
+            else:
+                obj_id = obj_ids[i]
+            if not obj_id in DD_DP_PP_sums:
                 DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
                 DD_DP_PP_counts[obj_id] = 0
             if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
@@ -753,7 +765,7 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
         elif self.nn_mode == MODE_2:
             for epoch in np.arange(n_epochs_mode_2):
-                self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
+                self.predict_mode2(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities, self.DD_DP_PP], batch_size=batch_size)
             
         pred_Ds = None
@@ -960,7 +972,7 @@ class nn_model:
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             for epoch in np.arange(n_epochs_mode_2):
-                self.predict(Ds, diversities, DD_DP_PP, obj_ids)
+                self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids)
             pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
             
         #Ds *= std
