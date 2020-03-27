@@ -720,8 +720,8 @@ class nn_model:
                             steps_per_epoch=None)
             elif self.nn_mode == MODE_2:
                 DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-                DD_DP_PP_train = self.DD_DP_PP[:self.n_train]
-                DD_DP_PP_validation = self.DD_DP_PP[self.n_train:self.n_train+self.n_validation]
+                DD_DP_PP_train = DD_DP_PP[:self.n_train]
+                DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
                 for epoch_mode_2 in np.arange(n_epochs_mode_2):
                     history = model.fit(x=[self.Ds_train, self.diversities_train, DD_DP_PP_train], y=output_data_train,
                                 epochs=n_epochs_1,
