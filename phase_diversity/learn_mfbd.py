@@ -83,25 +83,25 @@ if nn_mode == MODE_1:
     # How many frames to use in training
     num_frames = 32
     # How many objects to use in training
-    num_objs = 10#None
+    num_objs = 5#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 512
+    n_channels = 128
 else:
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 64
     # How many objects to use in training
-    num_objs = 10#None
+    num_objs = 5#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 16
+    batch_size = 4
     n_channels = 128
     
     num_frames_mode_2 = num_frames
@@ -713,20 +713,20 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None)
             elif self.nn_mode == MODE_2:
-                self.DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-                self.DD_DP_PP_train = self.DD_DP_PP[:self.n_train]
-                self.DD_DP_PP_validation = self.DD_DP_PP[self.n_train:self.n_train+self.n_validation]
+                DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
+                DD_DP_PP_train = self.DD_DP_PP[:self.n_train]
+                DD_DP_PP_validation = self.DD_DP_PP[self.n_train:self.n_train+self.n_validation]
                 for epoch_mode_2 in np.arange(n_epochs_mode_2):
-                    history = model.fit(x=[self.Ds_train, self.diversities_train, self.DD_DP_PP_train], y=output_data_train,
+                    history = model.fit(x=[self.Ds_train, self.diversities_train, DD_DP_PP_train], y=output_data_train,
                                 epochs=n_epochs_1,
                                 batch_size=batch_size,
                                 shuffle=True,
-                                validation_data=[[self.Ds_validation, self.diversities_validation, self.DD_DP_PP_validation], output_data_validation],
+                                validation_data=[[self.Ds_validation, self.diversities_validation, DD_DP_PP_validation], output_data_validation],
                                 #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                                 verbose=1,
                                 steps_per_epoch=None)
     
-                    self.predict(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
+                    self.predict_mode_2(self.Ds_train, self.diversities_train, DD_DP_PP_train, self.obj_ids)
                     
                     epoch += 1
 
