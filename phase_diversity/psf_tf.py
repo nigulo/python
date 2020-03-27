@@ -403,7 +403,10 @@ class psf_tf():
         if self.sum_over_batch:
             num = tf.math.reduce_sum(num, axis=[0])
         if mode == 2:
-            num = tf.reshape(num, [self.batch_size, 1, nx, nx])
+            if self.sum_over_batch:
+                num = tf.reshape(num, [1, nx, nx])
+            else:
+                num = tf.reshape(num, [self.batch_size, 1, nx, nx])
             DP_real = tf.math.real(num)
             DP_imag = tf.math.imag(num)
 
