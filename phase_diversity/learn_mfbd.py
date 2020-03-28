@@ -161,7 +161,7 @@ if gpus:
     # Memory growth must be set before GPUs have been initialized
     print(e)
 
-n_gpus = len(gpus)
+n_gpus = 1#len(gpus)
 
 if n_gpus >= 1:
     from numba import cuda
@@ -352,8 +352,9 @@ class nn_model:
         
         num_defocus_channels = 2#self.num_frames*2
 
-        self.strategy = tf.distribute.MirroredStrategy()
-        with self.strategy.scope():
+        #self.strategy = tf.distribute.MirroredStrategy()
+        #with self.strategy.scope():
+        with tf.device('/device:GPU:0'):
 
             image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
             diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')            
