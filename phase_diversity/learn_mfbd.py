@@ -593,6 +593,8 @@ class nn_model:
         n_validation = len(self.Ds) - n_train
         n_validation -= n_validation % batch_size
         
+        print("n_train, n_validation", n_train, n_validation)
+        
         self.n_train = n_train
         self.n_validation = n_validation
 
