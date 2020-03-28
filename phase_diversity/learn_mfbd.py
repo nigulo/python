@@ -656,30 +656,32 @@ class nn_model:
     '''
 
     def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids):
-        output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
-        
-        output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
-
-        DD_DP_PP_out = output[:, 1:, :, :]
-        DD_DP_PP_sums = dict()
-        DD_DP_PP_counts = dict()
-        if sum_over_batch:
-            assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
-        else:
-            assert(len(DD_DP_PP_out) == len(Ds))
-        for i in np.arange(len(DD_DP_PP_out)):
+        self.strategy = tf.distribute.MirroredStrategy()
+        with self.strategy.scope():
+            output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
+            
+            output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
+    
+            DD_DP_PP_out = output[:, 1:, :, :]
+            DD_DP_PP_sums = dict()
+            DD_DP_PP_counts = dict()
             if sum_over_batch:
-                obj_id = obj_ids[i*batch_size]
+                assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
             else:
-                obj_id = obj_ids[i]
-            if not obj_id in DD_DP_PP_sums:
-                DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
-                DD_DP_PP_counts[obj_id] = 0
-            if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
-                DD_DP_PP_counts[obj_id] += 1
-                DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
-        for i in np.arange(len(Ds)):
-            DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
+                assert(len(DD_DP_PP_out) == len(Ds))
+            for i in np.arange(len(DD_DP_PP_out)):
+                if sum_over_batch:
+                    obj_id = obj_ids[i*batch_size]
+                else:
+                    obj_id = obj_ids[i]
+                if not obj_id in DD_DP_PP_sums:
+                    DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
+                    DD_DP_PP_counts[obj_id] = 0
+                if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
+                    DD_DP_PP_counts[obj_id] += 1
+                    DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
+            for i in np.arange(len(Ds)):
+                DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
         
  
     def train(self):
