@@ -451,7 +451,7 @@ class psf_tf():
             loss = DD1 - tf.math.add(num, eps)/tf.math.add(den, eps)
             
             if self.sum_over_batch:
-                return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0)
+                return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
             else:
                 return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=1)
 

@@ -498,7 +498,7 @@ class nn_model:
                         return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
                 elif nn_mode == MODE_2:
                     if sum_over_batch:
-                        loss = tf.slice(y_pred, [0, 0, 0], [1, nx, nx])
+                        loss = tf.slice(y_pred, [0, 0, 0, 0], [1, 1, nx, nx])
                         return tf.math.reduce_sum(loss, axis=[1, 2])/(nx*nx)
                     else:
                         loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
@@ -656,31 +656,32 @@ class nn_model:
     '''
 
     def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids):
-        self.strategy = tf.distribute.MirroredStrategy()
-        with self.strategy.scope():
-            output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
-            
-            output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
-    
-            DD_DP_PP_out = output[:, 1:, :, :]
-            DD_DP_PP_sums = dict()
-            DD_DP_PP_counts = dict()
+        output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
+        
+        output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
+
+        DD_DP_PP_out = output[:, 1:, :, :]
+        DD_DP_PP_sums = dict()
+        DD_DP_PP_counts = dict()
+        #if sum_over_batch:
+        #    assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
+        #else:
+        assert(len(DD_DP_PP_out) == len(Ds))
+        for i in np.arange(len(DD_DP_PP_out)):
+            #if sum_over_batch:
+            #    obj_id = obj_ids[i*batch_size]
+            #else:
+            obj_id = obj_ids[i]
+            if not obj_id in DD_DP_PP_sums:
+                DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
+                DD_DP_PP_counts[obj_id] = 0
+            if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
+                DD_DP_PP_counts[obj_id] += 1
+                DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
+        for i in np.arange(len(Ds)):
             if sum_over_batch:
-                assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
+                DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_Size - DD_DP_PP_out[i]
             else:
-                assert(len(DD_DP_PP_out) == len(Ds))
-            for i in np.arange(len(DD_DP_PP_out)):
-                if sum_over_batch:
-                    obj_id = obj_ids[i*batch_size]
-                else:
-                    obj_id = obj_ids[i]
-                if not obj_id in DD_DP_PP_sums:
-                    DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
-                    DD_DP_PP_counts[obj_id] = 0
-                if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
-                    DD_DP_PP_counts[obj_id] += 1
-                    DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
-            for i in np.arange(len(Ds)):
                 DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
         
  
@@ -773,9 +774,10 @@ class nn_model:
         if self.nn_mode == MODE_1:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
         elif self.nn_mode == MODE_2:
+            DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             for epoch in np.arange(n_epochs_mode_2):
-                self.predict_mode2(self.Ds, self.diversities, self.DD_DP_PP, self.obj_ids)
-            pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities, self.DD_DP_PP], batch_size=batch_size)
+                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
+            pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities, DD_DP_PP], batch_size=batch_size)
             
         pred_Ds = None
         #pred_Ds = model.predict([self.Ds, self.objs], batch_size=1)

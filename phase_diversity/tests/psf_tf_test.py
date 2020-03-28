@@ -125,7 +125,7 @@ class test_psf_tf(unittest.TestCase):
         mfbd_loss = psf_tf_.mfbd_loss(tf.concat((tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(D, [num_frames*2*nx*nx])), 0))
 
         my_plot = plot.plot(nrows=1, ncols=1)
-        my_plot.colormap(mfbd_loss[0], [0], show_colorbar=True, colorbar_prec=.3)
+        my_plot.colormap(mfbd_loss, [0], show_colorbar=True, colorbar_prec=.3)
             
         my_plot.save("test_psf_tf_mfbd_loss.png")
         my_plot.close()
