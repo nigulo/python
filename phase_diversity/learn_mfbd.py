@@ -355,9 +355,8 @@ class nn_model:
         self.strategy = tf.distribute.MirroredStrategy()
         with self.strategy.scope():
 
-            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')
-            
             image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
+            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')            
             if nn_mode == MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
             #else:
@@ -734,7 +733,7 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None)
     
-                    self.predict_mode2(self.Ds_train, self.diversities_train, DD_DP_PP_train, self.obj_ids)
+                    self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
                     
                     epoch += 1
 
