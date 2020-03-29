@@ -27,8 +27,8 @@ import time
 
 gamma = 1.0
 
-n_epochs_2 = 12
-n_epochs_1 = 1
+n_epochs_2 = 8
+n_epochs_1 = 10
 
 n_epochs_mode_2 = 4
 
@@ -101,8 +101,8 @@ else:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 8
-    n_channels = 128
+    batch_size = 4
+    n_channels = 256
     
     num_frames_mode_2 = num_frames
     
@@ -1354,7 +1354,7 @@ else:
     
     print("n_test_objects, n_test_frames", n_test_objects, n_test_frames)
     if nn_mode == MODE_2:
-        assert(n_test_frames >= num_frames_mode_2)
+        assert(n_test_frames == num_frames_mode_2)
     
     max_pos = np.max(positions, axis = 0)
 
