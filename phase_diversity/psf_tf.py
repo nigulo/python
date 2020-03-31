@@ -400,57 +400,59 @@ class psf_tf():
     
         num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[1])
         
-        if self.sum_over_batch:
-            num = tf.math.reduce_sum(num, axis=[0])
         if mode == 2:
-            if self.sum_over_batch:
-                num = tf.reshape(num, [1, nx, nx])
-            else:
-                num = tf.reshape(num, [self.batch_size, 1, nx, nx])
+            #if self.sum_over_batch:
+            #    num = tf.reshape(num, [1, nx, nx])
+            #else:
+            num = tf.reshape(num, [self.batch_size, 1, nx, nx])
             DP_real = tf.math.real(num)
             DP_imag = tf.math.imag(num)
 
             num1 = tf.complex(tf.slice(DD_DP_PP, [0, 1, 0, 0], [self.batch_size, 1, nx, nx]), 
                                          tf.slice(DD_DP_PP, [0, 2, 0, 0], [self.batch_size, 1, nx, nx]))
-            if self.sum_over_batch:
-                num1 = tf.math.reduce_sum(num1, axis=[0])
             num = tf.add(num, num1)
+        if self.sum_over_batch:
+            num = tf.math.reduce_sum(num, axis=[0])
         num = tf.multiply(num, tf.math.conj(num))
         num = tf.math.real(num)
         
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
+        if mode == 2:
+            PP1 = tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx])
+            #if self.sum_over_batch:
+            #    PP = tf.reshape(den, [1, nx, nx])
+            #    PP1 = tf.math.reduce_sum(PP1, axis=[0])
+            #else:
+            PP = tf.reshape(den, [self.batch_size, 1, nx, nx])            
+            den = tf.add(PP, PP1)
+
         if self.sum_over_batch:
             den = tf.math.reduce_sum(den, axis=[0])
         den = tf.math.real(den)
-        if mode == 2:
-            PP1 = tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx])
-            if self.sum_over_batch:
-                PP = tf.reshape(den, [1, nx, nx])
-                PP1 = tf.math.reduce_sum(PP1, axis=[0])
-            else:
-                PP = tf.reshape(den, [self.batch_size, 1, nx, nx])
-            
-            den = tf.add(PP, PP1)
 
         eps = tf.constant(1e-10)
         
         DD = tf.math.real(tf.math.reduce_sum(tf.multiply(Ds_F, Ds_F_conj), axis=[1]))
-        if self.sum_over_batch:
-            DD = tf.math.reduce_sum(DD, axis=[0])
         if mode == 1:
+            if self.sum_over_batch:
+                DD = tf.math.reduce_sum(DD, axis=[0])
             return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode == 2:
             DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
-            if self.sum_over_batch:
-                DD = tf.reshape(DD, [1, nx, nx])
-                DD1 = tf.math.reduce_sum(DD1, axis=[0])
-            else:
-                DD = tf.reshape(DD, [self.batch_size, 1, nx, nx])
+            #if self.sum_over_batch:
+            #    DD = tf.reshape(DD, [1, nx, nx])
+            #    DD1 = tf.math.reduce_sum(DD1, axis=[0])
+            #else:
+            DD = tf.reshape(DD, [self.batch_size, 1, nx, nx])
             DD1 = tf.math.add(DD, DD1) 
+            if self.sum_over_batch:
+                DD1 = tf.math.reduce_sum(DD1, axis=[0])
             loss = DD1 - tf.math.add(num, eps)/tf.math.add(den, eps)
             
             if self.sum_over_batch:
+                loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
+                return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
                 return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
             else:
                 return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=1)
