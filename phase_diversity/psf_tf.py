@@ -452,10 +452,10 @@ class psf_tf():
             
             if self.sum_over_batch:
                 loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
-                return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
-                return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
-            else:
-                return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=1)
+            #    return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
+            #    return tf.tile(tf.reshape(tf.concat([loss, DD, DP_real, DP_imag, PP], axis=0), [1, 5, nx, nx]), [self.batch_size, 1, 1, 1])
+            #else:
+            return tf.concat([loss, DD, DP_real, DP_imag, PP], axis=1)
 
     
     def deconvolve_aberrate(self, x):
