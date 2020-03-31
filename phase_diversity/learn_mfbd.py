@@ -137,9 +137,9 @@ else:
     n_epochs_mode_2 = 10
     
     # How many frames to use in training
-    num_frames = 320#640
+    num_frames = 640
     # How many objects to use in training
-    num_objs = 8#0#None
+    num_objs = 8#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -955,7 +955,7 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None,
                                 callbacks=[MyCustomCallback(model)])
-                    if self.val_loss > history.history['val_loss'][-1]:
+                    if True:#self.val_loss > history.history['val_loss'][-1]:
                         self.val_loss = history.history['val_loss'][-1]
                         save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss))
                     else:
