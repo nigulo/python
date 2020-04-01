@@ -105,7 +105,7 @@ if nn_mode == MODE_1:
 elif nn_mode == MODE_2:
     num_reps = 1000
     
-    n_epochs_2 = 1
+    n_epochs_2 = 4
     n_epochs_1 = 1
     
     n_epochs_mode_2 = 10
