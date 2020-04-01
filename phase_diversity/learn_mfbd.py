@@ -102,7 +102,7 @@ else:
     num_frames_input = 1
     
     batch_size = 4
-    n_channels = 256
+    n_channels = 512
     
     num_frames_mode_2 = num_frames
     
