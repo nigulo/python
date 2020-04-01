@@ -101,7 +101,7 @@ else:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 4
+    batch_size = 2
     n_channels = 512
     
     num_frames_mode_2 = num_frames
