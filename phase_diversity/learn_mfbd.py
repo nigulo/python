@@ -101,7 +101,7 @@ else:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 2
+    batch_size = 4
     n_channels = 512
     
     num_frames_mode_2 = num_frames
@@ -404,7 +404,7 @@ class nn_model:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
                 
-                hidden_layer = conv_layer(image_input, n_channels)
+                hidden_layer = conv_layer(image_input, n_channels, num_convs=1)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
