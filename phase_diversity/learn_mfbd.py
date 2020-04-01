@@ -27,7 +27,7 @@ import time
 
 gamma = 1.0
 
-n_epochs_2 = 8
+n_epochs_2 = 1
 n_epochs_1 = 10
 
 n_epochs_mode_2 = 4
@@ -516,7 +516,7 @@ class nn_model:
 
         self.nn_mode = nn_mode_
 
-    def set_data(self, Ds, objs, diversity, positions, train_perc=.75):
+    def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
         if self.num_frames is None or self.num_frames <= 0:
             self.num_frames = Ds.shape[1]
         self.num_frames = min(self.num_frames, Ds.shape[1])
@@ -738,8 +738,6 @@ class nn_model:
                                 steps_per_epoch=None)
     
                     self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
-                    
-                    epoch += 1
 
             #    return history
             
