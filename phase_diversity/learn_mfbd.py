@@ -128,8 +128,12 @@ images_dir_test = "images_in"#images_in_test"
 sys.path.append('../utils')
 sys.path.append('..')
 
+gpu_id = '/device:GPU:0'
+
 if train:
     sys.stdout = open(dir_name + '/log.txt', 'a')
+    gpu_id = '/device:GPU:1'
+
     
 #else:
 #    dir_name = "."
@@ -354,7 +358,7 @@ class nn_model:
 
         #self.strategy = tf.distribute.MirroredStrategy()
         #with self.strategy.scope():
-        with tf.device('/device:GPU:0'):
+        with tf.device(gpu_id):
 
             image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
             diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')            
