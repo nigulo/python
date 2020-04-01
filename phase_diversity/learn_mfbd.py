@@ -1296,7 +1296,7 @@ if train:
     
         model.train()
 
-        if rep % 5 == 0
+        if rep % 5 == 0:
             model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
