@@ -410,13 +410,14 @@ class psf_tf():
 
             num1 = tf.complex(tf.slice(DD_DP_PP, [0, 1, 0, 0], [self.batch_size, 1, nx, nx]), 
                                          tf.slice(DD_DP_PP, [0, 2, 0, 0], [self.batch_size, 1, nx, nx]))
-            num = tf.add(num, num1)
+            num = tf.math.add(num, num1)
         if self.sum_over_batch:
             num = tf.math.reduce_sum(num, axis=[0])
         num = tf.multiply(num, tf.math.conj(num))
         num = tf.math.real(num)
         
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
+        den = tf.math.real(den)
         if mode == 2:
             PP1 = tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx])
             #if self.sum_over_batch:
@@ -424,11 +425,10 @@ class psf_tf():
             #    PP1 = tf.math.reduce_sum(PP1, axis=[0])
             #else:
             PP = tf.reshape(den, [self.batch_size, 1, nx, nx])            
-            den = tf.add(PP, PP1)
+            den = tf.math.add(PP, PP1)
 
         if self.sum_over_batch:
             den = tf.math.reduce_sum(den, axis=[0])
-        den = tf.math.real(den)
 
         eps = tf.constant(1e-10)
         
