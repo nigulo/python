@@ -102,7 +102,7 @@ else:
     num_frames_input = 1
     
     batch_size = 4
-    n_channels = 512
+    n_channels = 32
     
     num_frames_mode_2 = num_frames
     
@@ -354,6 +354,8 @@ class nn_model:
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
+        if not train:
+            self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch)
         
         num_defocus_channels = 2#self.num_frames*2
 
@@ -520,6 +522,20 @@ class nn_model:
             nn_mode_ = nn_mode
 
         self.nn_mode = nn_mode_
+
+    def deconvolve(self, Ds, alphas, diversity):
+        assert(len(alphas) == len(Ds))
+        num_frames = len(alphas)
+        assert(num_frames == n_frames_test)
+        with tf.device(gpu_id):
+            a1 = tf.reshape(alphas, [1, num_frames_input*jmax])                    
+            a2 = tf.reshape(tf.transpose(diversity, [0, 3, 1, 2]), [1, 2*nx*nx])
+            a3 = tf.concat([a1, a2], axis=1)
+
+            x = tfs.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])])
+            image_deconv, _ = self.psf_test.deconvolve(x)
+        return image_deconv
+        
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
         if self.num_frames is None or self.num_frames <= 0:
@@ -1040,6 +1056,7 @@ class nn_model:
 
             # Find all other realizations of the same object
             DFs = []
+            Ds_ = []
             alphas = []
             if pred_alphas is not None:
                 for j in np.arange(i, len(objs)):
@@ -1051,6 +1068,7 @@ class nn_model:
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
+                            Ds_.append(np.array([D, D_d]))
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                             print("alphas", j, l, alphas[-1][0])
@@ -1058,6 +1076,7 @@ class nn_model:
                             #    break
                     #if len(alphas) >= n_test_frames:
                     #    break
+            Ds_ = np.asarray(Ds_, dtype="complex")
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                 
@@ -1071,6 +1090,7 @@ class nn_model:
                 diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
                 #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
+                #obj_reconstr = self.deconvolve(Ds_, alphas, diversity)
                 obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
                                                          ret_all=False, a_est=None, normalize = False, fltr=self.filter)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
