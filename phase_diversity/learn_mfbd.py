@@ -132,6 +132,7 @@ gpu_id = '/device:GPU:0'
 
 if train:
     sys.stdout = open(dir_name + '/log.txt', 'a')
+else:
     gpu_id = '/device:GPU:1'
 
     
