@@ -680,10 +680,10 @@ class nn_model:
                 DD_DP_PP_counts[obj_id] += 1
                 DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
         for i in np.arange(len(Ds)):
-            if sum_over_batch:
-                DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_size - DD_DP_PP_out[i]
-            else:
-                DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
+            #if sum_over_batch:
+            #    DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_size - DD_DP_PP_out[i]
+            #else:
+            DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
         
  
     def train(self):
