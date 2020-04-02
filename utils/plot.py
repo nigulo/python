@@ -195,7 +195,9 @@ class plot:
             y1 = pos[1, 1]
             width = x1 - x0
             
-            cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
+            xlabel_pos = ax.get_xticklabels().get_window_extent()
+            xlabel_height = xlabel_pos[1, 1] - xlabel_pos[0, 1] 
+            cbar_ax = self.fig.add_axes([x1, y0 + xlabel_height, width/20, y1-y0])
             ax.tick_params(labelsize=self.axis_units_font_size)
             self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
     
