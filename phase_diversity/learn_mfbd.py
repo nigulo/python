@@ -131,21 +131,21 @@ elif nn_mode == MODE_2:
 else:
     num_reps = 1000
     
-    n_epochs_2 = 1
+    n_epochs_2 = 4
     n_epochs_1 = 1
     
-    n_epochs_mode_2 = 10
+    n_epochs_mode_2 = 2
     
     # How many frames to use in training
     num_frames = 640
     # How many objects to use in training
-    num_objs = 8#None
+    num_objs = 20#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 16
+    batch_size = 32
     n_channels = 32
     
     num_frames_mode_2 = num_frames
