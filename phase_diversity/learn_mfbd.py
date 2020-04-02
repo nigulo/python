@@ -12,8 +12,8 @@ import tensorflow as tf
 #import tensorflow.signal as tf_signal
 from tensorflow.keras.models import Model
 
-tf.compat.v1.disable_eager_execution()
-from multiprocessing import Process
+#tf.compat.v1.disable_eager_execution()
+#from multiprocessing import Process
 
 import math
 
