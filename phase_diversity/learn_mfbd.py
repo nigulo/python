@@ -139,7 +139,7 @@ else:
     # How many frames to use in training
     num_frames = 640
     # How many objects to use in training
-    num_objs = 20#None
+    num_objs = 10#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
