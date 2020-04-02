@@ -1078,7 +1078,7 @@ class nn_model:
                             #    break
                     #if len(alphas) >= n_test_frames:
                     #    break
-            Ds_ = np.asarray(Ds_, dtype="complex")
+            Ds_ = np.asarray(Ds_, dtype="float32")
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                 
