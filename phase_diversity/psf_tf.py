@@ -203,7 +203,10 @@ class psf_tf():
         self.mode = mode
         self.sum_over_batch = sum_over_batch
         
-        self.fltr = fltr
+        if fltr is not None:
+            self.fltr = tf.constant(fltr, dtype='complex64')
+        else:
+            self.fltr = None
         
         
 
