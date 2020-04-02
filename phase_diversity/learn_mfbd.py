@@ -536,7 +536,7 @@ class nn_model:
             #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             x = tf.concat([a3, tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             image_deconv, _ = self.psf_test.deconvolve(x)
-        return image_deconv
+            return image_deconv.numpy()
         
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
