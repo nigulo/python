@@ -528,7 +528,7 @@ class nn_model:
         num_frames = len(alphas)
         assert(num_frames == n_test_frames)
         with tf.device(gpu_id):
-            a1 = tf.reshape(alphas, [1, num_frames_input*jmax])                    
+            a1 = tf.reshape(alphas, [1, num_frames*jmax])                    
             a2 = tf.reshape(tf.transpose(diversity, [0, 3, 1, 2]), [1, 2*nx*nx])
             a3 = tf.concat([a1, a2], axis=1)
 
