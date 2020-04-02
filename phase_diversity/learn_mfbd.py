@@ -1090,10 +1090,10 @@ class nn_model:
                 diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
                 #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
-                #obj_reconstr = self.deconvolve(Ds_, alphas, diversity)
-                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
-                                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
-                obj_reconstr = fft.ifftshift(obj_reconstr)
+                obj_reconstr = self.deconvolve(Ds_, alphas, diversity)
+                #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
+                #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+                #obj_reconstr = fft.ifftshift(obj_reconstr)
 
                 if estimate_full_image:
                     cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
