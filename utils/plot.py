@@ -21,7 +21,7 @@ def create_cmap(cmap_name, reverse=True):
         return plt.get_cmap(cmap_name)
 
 def default_size(nx, ny):
-    return [nx/100, ny/100]
+    return [nx/50, ny/50]
     
 class plot:
     
