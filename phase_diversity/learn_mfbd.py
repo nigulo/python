@@ -533,7 +533,8 @@ class nn_model:
             a2 = tf.reshape(diversity, [2*nx*nx])
             a3 = tf.concat([a1, a2], axis=0)
 
-            x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])])
+            #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
+            x = tf.concat([a3, tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             image_deconv, _ = self.psf_test.deconvolve(x)
         return image_deconv
         
