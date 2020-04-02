@@ -40,8 +40,8 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 2*width*height
-        self.axis_label_font_size = 1.5*width*height
+        self.axis_title_font_size = 6*max(width, height)
+        self.axis_label_font_size = 4*max(width, height)
         
         if smart_axis:
             for row in np.arange(nrows):
@@ -207,8 +207,8 @@ class plot:
         im = ax.imshow(dat[::-1], extent=self.extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
         self.ims[ax] = im
 
-        self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
         self.post_processing(ax)
+        self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
 
     def contour(self, x, y, z, ax_index = [], levels=None):
         ax = self.get_ax(ax_index)
