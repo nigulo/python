@@ -42,6 +42,8 @@ class plot:
         self.show_colorbar = False
         self.axis_title_font_size = 6*max(width, height)
         self.axis_label_font_size = 4*max(width, height)
+        self.nrows = nrows
+        self.ncols = ncols
         
         if smart_axis:
             for row in np.arange(nrows):
@@ -153,10 +155,33 @@ class plot:
         
         if not show_colorbar:
             if ax in self.colorbars:
-                cbar_ax = self.colorbars(ax)
-                cbar_ax.remove()
+                #cbar_ax, _ = self.colorbars(ax)
+                #cbar_ax.remove()
                 del self.colorbars[ax]
         else:
+            #if colorbar_prec is None:
+            #    l_f = self.default_colorbar
+            #else:
+            #    l_f = FormatStrFormatter('%' + str(colorbar_prec) +'f')
+                    
+            #pos = ax.get_position().get_points()
+            #x0 = pos[0, 0]
+            #y0 = pos[0, 1]
+            #x1 = pos[1, 0]
+            #y1 = pos[1, 1]
+            #width = x1 - x0
+            
+            #cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
+            #self.colorbars[ax] = cbar_ax
+            self.colorbars[ax] = colorbar_prec
+            #self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
+            
+    def show_colorbar(self, ax_index):
+        ax = self.get_ax(ax_index)
+        
+        if ax in self.colorbars:
+            colorbar_prec = self.colorbars(ax)
+        
             if colorbar_prec is None:
                 l_f = self.default_colorbar
             else:
@@ -170,7 +195,6 @@ class plot:
             width = x1 - x0
             
             cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
-            self.colorbars[ax] = cbar_ax
             self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
     
     '''
@@ -207,8 +231,8 @@ class plot:
         im = ax.imshow(dat[::-1], extent=self.extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
         self.ims[ax] = im
 
-        self.post_processing(ax)
         self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
+        self.post_processing(ax)
 
     def contour(self, x, y, z, ax_index = [], levels=None):
         ax = self.get_ax(ax_index)
@@ -335,6 +359,11 @@ class plot:
         
 
     def save(self, file_name):
+        # Do some post-processing
+        for row in np.arange(self.nrows):
+            for col in np.arange(self.ncols):
+                self.show_colorbar([row, col])
+            
         self.fig.savefig(file_name)
 
 
