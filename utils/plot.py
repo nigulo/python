@@ -40,8 +40,9 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 6*max(width, height)
-        self.axis_label_font_size = 4*max(width, height)
+        self.axis_title_font_size = 5*max(width, height)
+        self.axis_label_font_size = 3*max(width, height)
+        self.axis_units_font_size = 2*max(width, height)
         self.nrows = nrows
         self.ncols = ncols
         
@@ -187,7 +188,7 @@ class plot:
             else:
                 l_f = FormatStrFormatter('%' + str(colorbar_prec) +'f')
                     
-            pos = ax.get_position().get_points()
+            pos = ax.get_position(original=True).get_points()
             x0 = pos[0, 0]
             y0 = pos[0, 1]
             x1 = pos[1, 0]
@@ -195,6 +196,7 @@ class plot:
             width = x1 - x0
             
             cbar_ax = self.fig.add_axes([x1, y0, width/20, y1-y0])
+            ax.tick_params(labelsize=self.axis_units_font_size)
             self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
     
     '''
@@ -242,6 +244,8 @@ class plot:
     def post_processing(self, ax):
         if self.title is not None:
             ax.set_title(self.title, fontsize=self.axis_title_font_size)
+            ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
+            ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
         
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
         ax = self.get_ax(ax_index)
