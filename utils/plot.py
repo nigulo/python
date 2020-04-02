@@ -20,9 +20,15 @@ def create_cmap(cmap_name, reverse=True):
     else:
         return plt.get_cmap(cmap_name)
 
+def default_size(nx, ny):
+    return [nx/100, ny/100]
+    
 class plot:
-
-    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., extent=[0., 1., 0., 1.], title=None, smart_axis=True):
+    
+    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., size=None, extent=[0., 1., 0., 1.], title=None, smart_axis=True):
+        if size is not None:
+            width = size[0]
+            height = size[1]
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
         if title is not None:
@@ -34,6 +40,8 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
+        self.axis_title_font_size = 2*width*height
+        self.axis_label_font_size = 1.5*width*height
         
         if smart_axis:
             for row in np.arange(nrows):
@@ -209,7 +217,7 @@ class plot:
         
     def post_processing(self, ax):
         if self.title is not None:
-            ax.set_title(self.title)
+            ax.set_title(self.title, fontsize=self.axis_title_font_size)
         
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
         ax = self.get_ax(ax_index)
@@ -287,8 +295,8 @@ class plot:
                     ax1.set_ylabel(None)
                 else:                    
                     if isinstance(labels, (list, tuple, np.ndarray)):
-                        ax1.set_xlabel(labels[0])
-                        ax1.set_ylabel(labels[1])
+                        ax1.set_xlabel(labels[0], fontsize=self.axis_label_font_size)
+                        ax1.set_ylabel(labels[1], fontsize=self.axis_label_font_size)
                     else:
                         raise "Identical text for both axis? Really?"
 
@@ -299,7 +307,7 @@ class plot:
             ax = self.get_ax(ax_index)
         for ax1 in self.axes.flatten():
             if ax is None or ax == ax1:               
-                ax1.set_title(title)
+                ax1.set_title(title, fontsize=self.axis_title_font_size)
     
     '''
         Plot histogram

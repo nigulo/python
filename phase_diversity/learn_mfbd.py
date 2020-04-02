@@ -1138,7 +1138,8 @@ class nn_model:
                 xs = np.arange(nf)
                 for coef_index in np.arange(alphas.shape[1]):
                     scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
-                    my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index], -1), [row, col], "r-")
+                    mean = np.mean(alphas[:, coef_index])
+                    my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
                     my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
                     col += 1
                     if col >= ncols:
@@ -1164,7 +1165,7 @@ class nn_model:
                 full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
-            my_test_plot = plot.plot(nrows=1, ncols=3)
+            my_test_plot = plot.plot(nrows=1, ncols=3, size=plot.default_size(len(full_obj), len(full_obj)))
             my_test_plot.colormap(full_obj, [0], show_colorbar=True)
             my_test_plot.colormap(full_reconstr, [1])
             my_test_plot.colormap(full_D, [2])
