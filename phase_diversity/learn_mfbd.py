@@ -1394,11 +1394,13 @@ else:
     print(max_pos)
     filtr = np.all(positions < max_pos, axis=1)
 
-    Ds = Ds[filtr, :n_test_frames]
+    random_indices = random.choice(Ds.shape[1], size=n_test_frames, replace=False)
+
+    Ds = Ds[filtr, random_indices]
     objs = objs[filtr]
     positions = positions[filtr]
     coords = coords[filtr]
-    true_coefs = true_coefs[filtr, :n_test_frames]
+    true_coefs = true_coefs[filtr, random_indices]
     
     #hanning = utils.hanning(nx, 10)
     #med = np.median(Ds, axis=(3, 4), keepdims=True)
