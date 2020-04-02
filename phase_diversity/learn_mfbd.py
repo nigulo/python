@@ -526,7 +526,7 @@ class nn_model:
     def deconvolve(self, Ds, alphas, diversity):
         assert(len(alphas) == len(Ds))
         num_frames = len(alphas)
-        assert(num_frames == n_frames_test)
+        assert(num_frames == n_test_frames)
         with tf.device(gpu_id):
             a1 = tf.reshape(alphas, [1, num_frames_input*jmax])                    
             a2 = tf.reshape(tf.transpose(diversity, [0, 3, 1, 2]), [1, 2*nx*nx])
