@@ -248,8 +248,8 @@ class plot:
     def post_processing(self, ax):
         if self.title is not None:
             ax.set_title(self.title, fontsize=self.axis_title_font_size)
-            ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
-            ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
+        ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
+        ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
         
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
         ax = self.get_ax(ax_index)
