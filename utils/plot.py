@@ -180,7 +180,7 @@ class plot:
         ax = self.get_ax(ax_index)
         
         if ax in self.colorbars:
-            colorbar_prec = self.colorbars(ax)
+            colorbar_prec = self.colorbars[ax]
         
             if colorbar_prec is None:
                 l_f = self.default_colorbar
