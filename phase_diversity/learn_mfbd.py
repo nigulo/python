@@ -992,7 +992,7 @@ class nn_model:
                             model.validation_losses = model.validation_losses[-20:]
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
-                if n_epochs_2 > 1: 
+                if n_epochs_2 > 2: 
                     n_epochs_2 -= 1
                 ###########################################################
                 # DEBUG -- REMOVE
