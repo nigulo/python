@@ -525,10 +525,14 @@ class nn_model:
 
     def deconvolve(self, Ds, alphas, diversity):
         assert(len(alphas) == len(Ds))
+        assert(Ds.shape[3] == 2) # Ds = [num_frames, nx, nx, 2]
         num_frames = len(alphas)
         assert(num_frames == n_test_frames)
-        diversity = tf.constant(diversity, dtype='float32')
         with tf.device(gpu_id):
+            diversity = tf.constant(diversity, dtype='float32')
+            Ds = tf.constant(Ds, dtype='float32')
+            Ds = tf.reshape(tf.transpose(Ds, [1, 2, 0, 3]), [nx, nx, 2*num_frames])
+
             a1 = tf.reshape(alphas, [num_frames*jmax])                    
             a2 = tf.reshape(diversity, [2*nx*nx])
             a3 = tf.concat([a1, a2], axis=0)
@@ -1070,7 +1074,7 @@ class nn_model:
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
-                            Ds_.append(np.array([D, D_d]))
+                            Ds_.append(Ds[j, :, :, 2*l:2*l+1])
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                             print("alphas", j, l, alphas[-1][0])
@@ -1078,7 +1082,7 @@ class nn_model:
                             #    break
                     #if len(alphas) >= n_test_frames:
                     #    break
-            Ds_ = np.asarray(Ds_, dtype="float32")
+            Ds_ = np.asarray(Ds_)
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                 
