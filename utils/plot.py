@@ -176,7 +176,7 @@ class plot:
             self.colorbars[ax] = colorbar_prec
             #self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
             
-    def show_colorbar(self, ax_index):
+    def process_colorbar(self, ax_index):
         ax = self.get_ax(ax_index)
         
         if ax in self.colorbars:
@@ -362,7 +362,7 @@ class plot:
         # Do some post-processing
         for row in np.arange(self.nrows):
             for col in np.arange(self.ncols):
-                self.show_colorbar([row, col])
+                self.process_colorbar([row, col])
             
         self.fig.savefig(file_name)
 
