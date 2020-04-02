@@ -355,7 +355,7 @@ class nn_model:
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
         if not train:
-            self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch)
+            self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter)
         
         num_defocus_channels = 2#self.num_frames*2
 

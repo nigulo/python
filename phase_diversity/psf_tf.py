@@ -177,7 +177,7 @@ class psf_tf():
         wavelength in Angstroms
     '''
     def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=False, 
-                 num_frames=1, batch_size=1, set_diversity=False, mode=1, sum_over_batch=True):
+                 num_frames=1, batch_size=1, set_diversity=False, mode=1, sum_over_batch=True, fltr=None):
         self.coh_trans_func = coh_trans_func
         if nx is None:
             # Everything is precalculated
@@ -202,6 +202,9 @@ class psf_tf():
         self.set_diversity = set_diversity
         self.mode = mode
         self.sum_over_batch = sum_over_batch
+        
+        self.fltr = fltr
+        
         
 
     def set_batch_size(self, batch_size):
@@ -356,6 +359,9 @@ class psf_tf():
         num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[1])
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
         F_image = tf.divide(num, den)
+        
+        if self.fltr is not None:
+            F_image = F_image * tf.constant(self.fltr)
     
         if do_fft:
             image = tf.math.real(tf.signal.ifft2d(F_image))
