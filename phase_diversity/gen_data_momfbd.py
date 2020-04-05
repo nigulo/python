@@ -11,6 +11,10 @@ import misc
 out_dir = "data_out"
 #nx = 96
 num_modes = 44
+use_zarr = False
+
+if use_zarr:
+    import zarr
 
 dir_name = "mihi/data"
 if len(sys.argv) > 1:
@@ -31,10 +35,6 @@ if len(sys.argv) > 3:
 
 if len(sys.argv) > 4:
     n_objects = int(sys.argv[4])
-
-def save_data(Ds, objs, pupil, modes, diversity, alphas, positions, coords):
-    np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
-                        alphas=alphas, positions=positions, coords=coords)
 
 def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     
@@ -121,11 +121,22 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         npy = int(npy)
         num_objects = npx*npy
 
-    Ds = np.zeros((num_objects, num_frames, 2, nx, nx)) # in real space
-    objs = np.zeros((num_objects, nx, nx)) # in real space
-    momfbd_coefs = np.zeros((num_objects, num_frames, num_modes))
-    positions = np.zeros((num_objects, 2), dtype='int')
-    coords = np.zeros((num_objects, 2), dtype='int')
+
+    if use_zarr:
+        handler = zarr.open(out_dir + '/Ds.zarr', 'w')
+        Ds = handler.create_dataset('Ds', shape=(num_objects, num_frames, 2, nx, nx), compressor=None)
+        objs = handler.create_dataset('objs', shape=(num_objects, nx, nx), compressor=None)
+        momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), compressor=None)
+        positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype=np.'int', compressor=None)
+        coords = handler.create_dataset('coords', shape=(num_objects, 2), dtype='int', compressor=None)
+    else:
+        Ds = np.zeros((num_objects, num_frames, 2, nx, nx)) # in real space
+        objs = np.zeros((num_objects, nx, nx)) # in real space
+        momfbd_coefs = np.zeros((num_objects, num_frames, num_modes))
+        positions = np.zeros((num_objects, 2), dtype='int')
+        coords = np.zeros((num_objects, 2), dtype='int')
+        handler = None
+        
 
     # Randomly extract patches and times for selecting the bursts
     # This way of extracting the patches is slightly limited because I only consider
@@ -169,7 +180,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         coords[loop, 0] = x0
         coords[loop, 1] = y0
         
-    return Ds, objs, momfbd_coefs, positions, coords
+    return Ds, objs, momfbd_coefs, positions, coords, handler
 
 
 if __name__ == '__main__':
@@ -181,7 +192,7 @@ if __name__ == '__main__':
     files.sort()
 
     # Training set
-    Ds, objs, momfbd_coefs, positions, coords = generate_set(dir_name, files, num_objects=n_objects, num_frames=n_frames, shuffle=shuffle)
+    Ds, objs, momfbd_coefs, positions, coords, handler = generate_set(dir_name, files, num_objects=n_objects, num_frames=n_frames, shuffle=shuffle)
 
     nx = Ds.shape[3]
     tmp = io.readsav(files[0])
@@ -220,4 +231,13 @@ if __name__ == '__main__':
 
     modes *= mode_scale[:, None, None]
 
-    save_data(Ds, objs, pupil, modes, diversity, momfbd_coefs, positions, coords)
+    if not use_zarr:
+        np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
+                        alphas=momfbd_coefs, positions=positions, coords=coords)
+    else:
+        pupil_zarr = handler.create_dataset('pupil', shape=pupil.shape, compressor=None)
+        modes_zarr = handler.create_dataset('modes', shape=modes.shape, compressor=None)
+        diversity_zarr = handler.create_dataset('diversity', shape=diversity.shape, compressor=None)
+        pupil_zarr[:] = pupil
+        modes_zarr[:] = modes
+        diversity_zarr[:] = diversity

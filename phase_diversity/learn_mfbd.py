@@ -17,6 +17,10 @@ from tensorflow.keras.models import Model
 
 import math
 
+import os
+os.environ['TF_DETERMINISTIC_OPS'] = '1'
+
+import zarr
 import pickle
 import os.path
 import numpy.fft as fft
@@ -27,8 +31,8 @@ import time
 
 gamma = 1.0
 
-n_epochs_2 = 1
-n_epochs_1 = 10
+n_epochs_2 = 10
+n_epochs_1 = 1
 
 n_epochs_mode_2 = 4
 
@@ -93,9 +97,9 @@ if nn_mode == MODE_1:
     n_channels = 128
 else:
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 100
     # How many objects to use in training
-    num_objs = 5#None
+    num_objs = 200#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -171,32 +175,36 @@ n_gpus = 1#len(gpus)
 if n_gpus >= 1:
     from numba import cuda
 
-def load_data(data_file="Ds.npz"):
-    data_file = dir_name + '/' + data_file
+def load_data(data_file="Ds"):
+    data_file = dir_name + '/' + data_file + ".zarr"
     if os.path.exists(data_file):
-        loaded = np.load(data_file)
-        Ds = loaded['Ds']
-        try:
-            objs = loaded['objs']
-        except:
-            objs = None
-        pupil = loaded['pupil']
-        modes = loaded['modes']
-        diversity = loaded['diversity']
-        try:
-            coefs = loaded['alphas']
-        except:
-            coefs = None
-        try:
-            positions = loaded['positions']
-        except:
-            positions = None
-        try:
-            coords = loaded['coords']
-        except:
-            coords = None
-        return Ds, objs, pupil, modes, diversity, coefs, positions, coords
-    raise "No data found"
+        loaded = zarr.open(f, 'r')
+    else:
+        data_file = dir_name + '/' + data_file + ".npz"
+        if os.path.exists(data_file):
+            loaded = np.load(data_file)
+        raise "No data found"
+    Ds = loaded['Ds']
+    try:
+        objs = loaded['objs']
+    except:
+        objs = None
+    pupil = loaded['pupil']
+    modes = loaded['modes']
+    diversity = loaded['diversity']
+    try:
+        coefs = loaded['alphas']
+    except:
+        coefs = None
+    try:
+        positions = loaded['positions']
+    except:
+        positions = None
+    try:
+        coords = loaded['coords']
+    except:
+        coords = None
+    return Ds, objs, pupil, modes, diversity, coefs, positions, coords
 
 
 def load_model():
@@ -256,8 +264,8 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     else:
         diversity_out = None
     ids = np.zeros((num_frames-num_frames_input+1)*num_objects, dtype='int')
-    positions_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
-    coords_out= np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
+    positions_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
+    coords_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
         
     k = 0
     for i in np.arange(num_objects):
@@ -312,6 +320,26 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     #assert(k == (num_frames-num_frames_input+1)*num_objects)
     return Ds_out, objs_out, diversity_out, num_frames - num_frames_input + 1, ids, positions_out, coords_out
 
+
+#import datetime
+
+class MyCustomCallback(tf.keras.callbacks.Callback):
+    
+    def __init__(self, model):
+        self.model = model
+
+    #def on_train_batch_begin(self, batch, logs=None):
+    #    print('Training: batch {} begins at {}'.format(batch, datetime.datetime.now().time()))
+
+    def on_train_batch_end(self, batch, logs=None):
+        #print('Training: batch {} ends at {}'.format(batch, datetime.datetime.now().time()))
+        save_weights(self.model)
+
+    #def on_test_batch_begin(self, batch, logs=None):
+    #    print('Evaluating: batch {} begins at {}'.format(batch, datetime.datetime.now().time()))
+
+    #def on_test_batch_end(self, batch, logs=None):
+    #    print('Evaluating: batch {} ends at {}'.format(batch, datetime.datetime.now().time()))
 
 class nn_model:       
     
@@ -712,6 +740,7 @@ class nn_model:
             #else:
             DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
         
+
  
     def train(self):
         jmax = self.jmax
@@ -749,7 +778,8 @@ class nn_model:
                             validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
                             #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                             verbose=1,
-                            steps_per_epoch=None)
+                            steps_per_epoch=None,
+                            callbacks=[MyCustomCallback(model)])
             elif self.nn_mode == MODE_2:
                 DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
                 DD_DP_PP_train = DD_DP_PP[:self.n_train]
@@ -762,7 +792,8 @@ class nn_model:
                                 validation_data=[[self.Ds_validation, self.diversities_validation, DD_DP_PP_validation], output_data_validation],
                                 #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                                 verbose=1,
-                                steps_per_epoch=None)
+                                steps_per_epoch=None,
+                                callbacks=[MyCustomCallback(model)])
     
                     self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
 
@@ -1394,11 +1425,11 @@ else:
     print(max_pos)
     filtr = np.all(positions < max_pos, axis=1)
 
-    Ds = Ds[filtr, :10*n_test_frames:10]
+    Ds = Ds[filtr, :8*n_test_frames:8]
     objs = objs[filtr]
     positions = positions[filtr]
     coords = coords[filtr]
-    true_coefs = true_coefs[filtr, :10*n_test_frames:10]
+    true_coefs = true_coefs[filtr, :8*n_test_frames:8]
     
     #hanning = utils.hanning(nx, 10)
     #med = np.median(Ds, axis=(3, 4), keepdims=True)
