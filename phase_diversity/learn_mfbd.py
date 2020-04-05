@@ -183,7 +183,8 @@ def load_data(data_file="Ds"):
         f = dir_name + '/' + data_file + ".npz"
         if os.path.exists(f):
             loaded = np.load(f)
-        raise "No data found"
+        else:
+            raise "No data found"
     Ds = loaded['Ds']
     try:
         objs = loaded['objs']
