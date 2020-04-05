@@ -176,13 +176,13 @@ if n_gpus >= 1:
     from numba import cuda
 
 def load_data(data_file="Ds"):
-    data_file = dir_name + '/' + data_file + ".zarr"
-    if os.path.exists(data_file):
+    f = dir_name + '/' + data_file + ".zarr"
+    if os.path.exists(f):
         loaded = zarr.open(f, 'r')
     else:
-        data_file = dir_name + '/' + data_file + ".npz"
-        if os.path.exists(data_file):
-            loaded = np.load(data_file)
+        f = dir_name + '/' + data_file + ".npz"
+        if os.path.exists(f):
+            loaded = np.load(f)
         raise "No data found"
     Ds = loaded['Ds']
     try:
