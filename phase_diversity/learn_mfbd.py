@@ -743,7 +743,7 @@ class nn_model:
             #if sum_over_batch:
             #    DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_size - DD_DP_PP_out[i]
             #else:
-            DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
+            DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
         
 
  
@@ -1046,7 +1046,7 @@ class nn_model:
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             for epoch in np.arange(n_epochs_mode_2):
-                print("DD_DP_PP", DD_DP_PP[0, 0, 0], DD_DP_PP[1, 0, 0], DD_DP_PP[2, 0, 0], DD_DP_PP[3, 0, 0])
+                print("DD_DP_PP", DD_DP_PP[0, 0, 0, 0], DD_DP_PP[0, 1, 0, 0], DD_DP_PP[0, 2, 0, 0], DD_DP_PP[0, 3, 0, 0])
                 pred_alphas_list.append(alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size))
                 self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids)
             pred_alphas_list.append(alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size))
