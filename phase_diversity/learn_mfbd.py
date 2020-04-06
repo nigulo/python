@@ -328,14 +328,17 @@ class MyCustomCallback(tf.keras.callbacks.Callback):
     
     def __init__(self, model):
         self.model = model
+        self.counter = 0
 
     #def on_train_batch_begin(self, batch, logs=None):
     #    print('Training: batch {} begins at {}'.format(batch, datetime.datetime.now().time()))
 
     def on_train_batch_end(self, batch, logs=None):
+        self.counter += batch*batch_size
         #print('Training: batch {} ends at {}'.format(batch, datetime.datetime.now().time()))
-        if batch*batch_size + 1 % 10000 == 0:
+        if self.counter >= 10000:
             save_weights(self.model)
+            self.counter = 0
 
     #def on_test_batch_begin(self, batch, logs=None):
     #    print('Evaluating: batch {} begins at {}'.format(batch, datetime.datetime.now().time()))
@@ -1417,7 +1420,7 @@ else:
     n_test_frames = min(Ds.shape[1], n_test_frames)
     
     print("n_test_objects, n_test_frames", n_test_objects, n_test_frames)
-    if nn_mode == MODE_2:
+    if nn_mode == MODE_2 and n_epochs_mode_2 > 0:
         assert(n_test_frames == num_frames_mode_2)
     
     max_pos = np.max(positions, axis = 0)

@@ -95,12 +95,15 @@ class phase_aberration_tf():
         #self.jmax = tf.shape(self.alphas).eval()[0]
     
             
-    def __call__(self):
+    def __call__(self, alphas=None):
         #vals = np.zeros(tf.shape(self.terms)[1:])
         #for i in np.arange(0, len(self.terms)):
         #    vals += self.terms[i] * self.alphas[i]
         nx = self.terms.shape[1]
-        alphas = tf.tile(tf.reshape(self.alphas, [self.jmax, 1, 1]), multiples=[1, nx, nx])
+        if alphas is None:
+            alphas = tf.tile(tf.reshape(self.alphas, [self.jmax, 1, 1]), multiples=[1, nx, nx])
+        else:
+            alphas = tf.tile(tf.reshape(alphas, [self.jmax, 1, 1]), multiples=[1, nx, nx])
         #alphas1 = tf.complex(alphas1, tf.zeros((self.jmax, nx, nx)))
         vals = tf.math.reduce_sum(tf.math.multiply(self.terms, alphas), 0)
         #vals = tf.math.reduce_sum(tf.math.multiply(self.terms, tf.reshape(self.alphas, [self.jmax, 1, 1])), 0)
@@ -157,12 +160,16 @@ class coh_trans_func_tf():
         self.pupil = tf.constant(pupil, dtype='float32')
         self.pupil = tf.complex(self.pupil, tf.zeros((pupil.shape[0], pupil.shape[1]), dtype='float32'))
         
-    def __call__(self):
-        self.phase = self.phase_aberr()
+    def __call__(self, alphas=None, diversity=None):
+        self.phase = self.phase_aberr(alphas)
         self.phase = tf.complex(self.phase, tf.zeros((self.phase.shape[0], self.phase.shape[1]), dtype='float32'))
 
-        focus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, self.diversity[0]))))
-        defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, self.diversity[1]))))
+        if diversity is None:
+            diversity = self.diversity
+        else:
+            diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
+        focus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[0]))))
+        defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[1]))))
 
         #return tf.concat(tf.reshape(focus_val, [1, focus_val.shape[0], focus_val.shape[1]]), tf.reshape(defocus_val, [1, defocus_val.shape[0], defocus_val.shape[1]]), 0)
         return tf.stack([focus_val, defocus_val])
@@ -232,15 +239,14 @@ class psf_tf():
         #self.otf_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         
         #@tf.contrib.eager.defun
-        def fn1(alphas):
-            nx = self.nx
+        def fn1(alphas, diversity):
             jmax = self.coh_trans_func.phase_aberr.jmax
     
             alphas = tf.slice(alphas, [0], [jmax])
 
-            self.coh_trans_func.phase_aberr.set_alphas(alphas)
+            #self.coh_trans_func.phase_aberr.set_alphas(alphas)
 
-            coh_vals = self.coh_trans_func()
+            coh_vals = self.coh_trans_func(alphas, diversity)
         
             if self.corr_or_fft:
                 corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
@@ -282,10 +288,9 @@ class psf_tf():
             alphas = tf.reshape(tf.slice(alphas_diversity, [0], [self.num_frames*jmax]), [self.num_frames, jmax])
             if self.set_diversity:
                 diversity = tf.reshape(tf.slice(alphas_diversity, [self.num_frames*jmax], [2*nx*nx]), [2, nx, nx])
-                #diversity = tf.transpose(tf.reshape(tf.slice(alphas_diversity, [jmax], [2*nx*nx]), [nx, nx, 2]), [2, 0, 1])
-                self.coh_trans_func.set_diversity(diversity)
+                #self.coh_trans_func.set_diversity(diversity)
                 
-            return tf.map_fn(fn1, alphas, dtype='complex64')
+            return tf.map_fn(lambda alphas: fn1(alphas, diversity), alphas, dtype='complex64')
             
             
         otf_vals = tf.map_fn(fn2, data, dtype='complex64')
