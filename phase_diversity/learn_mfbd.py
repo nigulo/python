@@ -1057,22 +1057,22 @@ class nn_model:
         end = time.time()
         print("Prediction time: " + str(end - start))
 
-        #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
-        #DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
-        
-        obj_ids_test = []
-        
-        cropped_Ds = []
-        cropped_objs = []
-        cropped_reconstrs = []
-        cropped_coords = []
-        
-        full_shape = np.zeros(2, dtype="int")
-        
-        #print("coords, pos", coords, positions)
-        
         alphas_index = 0
         for pred_alphas in pred_alphas_list:
+            #obj_reconstr_mean = np.zeros((self.nx-1, self.nx-1))
+            #DFs = np.zeros((len(objs), 2, 2*self.nx-1, 2*self.nx-1), dtype='complex') # in Fourier space
+            
+            obj_ids_test = []
+            
+            cropped_Ds = []
+            cropped_objs = []
+            cropped_reconstrs = []
+            cropped_coords = []
+            
+            full_shape = np.zeros(2, dtype="int")
+            
+            #print("coords, pos", coords, positions)
+        
         
             for i in np.arange(len(objs)):
                 #if len(obj_ids_test) >= n_test_objects:
