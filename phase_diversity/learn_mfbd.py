@@ -1040,13 +1040,15 @@ class nn_model:
         start = time.time()    
         #pred_alphas = intermediate_layer_model.predict([Ds, np.zeros_like(objs), np.tile(Ds, [1, 1, 1, 16])], batch_size=1)
         alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+        pred_alphas_list = []
         if self.nn_mode == MODE_1:
-            pred_alphas = alphas_layer_model.predict([Ds, diversities], batch_size=batch_size)
+            pred_alphas_list.append(alphas_layer_model.predict([Ds, diversities], batch_size=batch_size))
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             for epoch in np.arange(n_epochs_mode_2):
+                pred_alphas_list.append(alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size))
                 self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids)
-            pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
+            pred_alphas_list.append(alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size))
             
         #Ds *= std
         Ds *= med
@@ -1069,150 +1071,153 @@ class nn_model:
         
         #print("coords, pos", coords, positions)
         
-        for i in np.arange(len(objs)):
-            #if len(obj_ids_test) >= n_test_objects:
-            #    break
-            obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
-            found = False
-            ###################################################################            
-            # Just to plot results only for different objects
-            for obj_id in obj_ids_test:
-                if obj_id == obj_ids[i]:
-                    found = True
-                    break
-            if found:
-                continue
-            ###################################################################            
-            obj_ids_test.append(obj_ids[i])
-            
-            if estimate_full_image:
-                top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
-                print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
-                cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
-                cropped_objs.append(cropped_obj)
+        alphas_index = 0
+        for pred_alphas in pred_alphas_list:
+        
+            for i in np.arange(len(objs)):
+                #if len(obj_ids_test) >= n_test_objects:
+                #    break
+                obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+                found = False
+                ###################################################################            
+                # Just to plot results only for different objects
+                for obj_id in obj_ids_test:
+                    if obj_id == obj_ids[i]:
+                        found = True
+                        break
+                if found:
+                    continue
+                ###################################################################            
+                obj_ids_test.append(obj_ids[i])
                 
-                cropped_coords.append(top_left_coord)
-                cropped_Ds.append(Ds[i, :, :, 0][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
-                full_shape += cropped_obj.shape
-                print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
-
-            # Find all other realizations of the same object
-            DFs = []
-            Ds_ = []
-            alphas = []
-            if pred_alphas is not None:
-                for j in np.arange(i, len(objs)):
-                    if obj_ids[j] == obj_ids[i]:
-                        for l in np.arange(num_frames_input):
-                            D = Ds[j, :, :, 2*l]
-                            D_d = Ds[j, :, :, 2*l+1]
-                            #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
-                            #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
-                            DF = fft.fft2(D)
-                            DF_d = fft.fft2(D_d)
-                            Ds_.append(Ds[j, :, :, 2*l:2*l+2])
-                            DFs.append(np.array([DF, DF_d]))
-                            alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
-                            print("alphas", j, l, alphas[-1][0])
-                            #if n_test_frames is not None and len(alphas) >= n_test_frames:
-                            #    break
-                    #if len(alphas) >= n_test_frames:
-                    #    break
-            Ds_ = np.asarray(Ds_)
-            DFs = np.asarray(DFs, dtype="complex")
-            alphas = np.asarray(alphas)
-                
-            #print("alphas", len(alphas), len(DFs))
-            
-            #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
-            #obj_reconstr = fft.ifftshift(obj_reconstr[0])
-            #obj_reconstr_mean += obj_reconstr
-
-            if len(alphas) > 0:
-                diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
-                #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
-                self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.deconvolve(Ds_, alphas, diversity)
-                #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
-                #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
-                #obj_reconstr = fft.ifftshift(obj_reconstr)
-
                 if estimate_full_image:
-                    cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                    top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
+                    print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
+                    cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
+                    cropped_objs.append(cropped_obj)
+                    
+                    cropped_coords.append(top_left_coord)
+                    cropped_Ds.append(Ds[i, :, :, 0][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                    full_shape += cropped_obj.shape
+                    print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
+    
+                # Find all other realizations of the same object
+                DFs = []
+                Ds_ = []
+                alphas = []
+                if pred_alphas is not None:
+                    for j in np.arange(i, len(objs)):
+                        if obj_ids[j] == obj_ids[i]:
+                            for l in np.arange(num_frames_input):
+                                D = Ds[j, :, :, 2*l]
+                                D_d = Ds[j, :, :, 2*l+1]
+                                #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+                                #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
+                                DF = fft.fft2(D)
+                                DF_d = fft.fft2(D_d)
+                                Ds_.append(Ds[j, :, :, 2*l:2*l+2])
+                                DFs.append(np.array([DF, DF_d]))
+                                alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+                                print("alphas", j, l, alphas[-1][0])
+                                #if n_test_frames is not None and len(alphas) >= n_test_frames:
+                                #    break
+                        #if len(alphas) >= n_test_frames:
+                        #    break
+                Ds_ = np.asarray(Ds_)
+                DFs = np.asarray(DFs, dtype="complex")
+                alphas = np.asarray(alphas)
+                    
+                #print("alphas", len(alphas), len(DFs))
+                
+                #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                #obj_reconstr = fft.ifftshift(obj_reconstr[0])
                 #obj_reconstr_mean += obj_reconstr
     
-                #my_test_plot = plot.plot(nrows=1, ncols=2)
-                #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-                #my_test_plot.colormap(obj_reconstr, [1])
-                #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
-                #my_test_plot.close()
-            else:
-                obj_reconstr  = None
-            n_rows = 1
-            if obj_reconstr is not None:
-                n_rows += 1
-            my_test_plot = plot.plot(nrows=n_rows, ncols=2)
-            row = 0
-            if obj_reconstr is not None:
-                my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
-                my_test_plot.colormap(obj_reconstr, [row, 1])
-                row += 1
-            my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
-            my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-            my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
-            my_test_plot.close()
-
-            if true_coefs is not None:
-                true_alphas = true_coefs[obj_ids[i]]
-                nrows = int(np.sqrt(jmax))
-                ncols = int(math.ceil(jmax/nrows))
-                my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
+                if len(alphas) > 0:
+                    diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
+                    #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
+                    self.psf_check.coh_trans_func.set_diversity(diversity)
+                    obj_reconstr = self.deconvolve(Ds_, alphas, diversity)
+                    #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
+                    #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+                    #obj_reconstr = fft.ifftshift(obj_reconstr)
+    
+                    if estimate_full_image:
+                        cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                    #obj_reconstr_mean += obj_reconstr
+        
+                    #my_test_plot = plot.plot(nrows=1, ncols=2)
+                    #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+                    #my_test_plot.colormap(obj_reconstr, [1])
+                    #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+                    #my_test_plot.close()
+                else:
+                    obj_reconstr  = None
+                n_rows = 1
+                if obj_reconstr is not None:
+                    n_rows += 1
+                my_test_plot = plot.plot(nrows=n_rows, ncols=2)
                 row = 0
-                col = 0
-                #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
-                nf = min(alphas.shape[0], true_alphas.shape[0])
-                xs = np.arange(nf)
-                for coef_index in np.arange(alphas.shape[1]):
-                    scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
-                    mean = np.mean(alphas[:, coef_index])
-                    my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
-                    my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
-                    col += 1
-                    if col >= ncols:
-                        row += 1
-                        col = 0
-                my_test_plot.save(f"{dir_name}/alphas{i}.png")
+                if obj_reconstr is not None:
+                    my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
+                    my_test_plot.colormap(obj_reconstr, [row, 1])
+                    row += 1
+                my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
+                my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
+                my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
                 my_test_plot.close()
-
-        if estimate_full_image:
-            max_pos = np.max(positions, axis = 0)
-            min_coord = np.min(cropped_coords, axis = 0)
-            full_shape[0] = full_shape[0] // (max_pos[1] + 1)
-            full_shape[1] = full_shape[1] // (max_pos[0] + 1)
-            print("full_shape", full_shape)
-            full_obj = np.zeros(full_shape)
-            full_reconstr = np.zeros(full_shape)
-            full_D = np.zeros(full_shape)
-            for i in np.arange(len(cropped_objs)):
-                x = cropped_coords[i][0]-min_coord[0]
-                y = cropped_coords[i][1]-min_coord[1]
-                s = cropped_objs[i].shape
-                print(x, y, s)
-                full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
-                full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
-                full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
-            my_test_plot = plot.plot(nrows=1, ncols=3, size=plot.default_size(len(full_obj), len(full_obj)))
-            my_test_plot.colormap(full_obj, [0], show_colorbar=True)
-            my_test_plot.colormap(full_reconstr, [1])
-            my_test_plot.colormap(full_D, [2])
+    
+                if true_coefs is not None:
+                    true_alphas = true_coefs[obj_ids[i]]
+                    nrows = int(np.sqrt(jmax))
+                    ncols = int(math.ceil(jmax/nrows))
+                    my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
+                    row = 0
+                    col = 0
+                    #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
+                    nf = min(alphas.shape[0], true_alphas.shape[0])
+                    xs = np.arange(nf)
+                    for coef_index in np.arange(alphas.shape[1]):
+                        scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
+                        mean = np.mean(alphas[:, coef_index])
+                        my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
+                        my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
+                        col += 1
+                        if col >= ncols:
+                            row += 1
+                            col = 0
+                    my_test_plot.save(f"{dir_name}/alphas{alphas_index}_{i}.png")
+                    my_test_plot.close()
+    
+            if estimate_full_image:
+                max_pos = np.max(positions, axis = 0)
+                min_coord = np.min(cropped_coords, axis = 0)
+                full_shape[0] = full_shape[0] // (max_pos[1] + 1)
+                full_shape[1] = full_shape[1] // (max_pos[0] + 1)
+                print("full_shape", full_shape)
+                full_obj = np.zeros(full_shape)
+                full_reconstr = np.zeros(full_shape)
+                full_D = np.zeros(full_shape)
+                for i in np.arange(len(cropped_objs)):
+                    x = cropped_coords[i][0]-min_coord[0]
+                    y = cropped_coords[i][1]-min_coord[1]
+                    s = cropped_objs[i].shape
+                    print(x, y, s)
+                    full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
+                    full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
+                    full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
+                my_test_plot = plot.plot(nrows=1, ncols=3, size=plot.default_size(len(full_obj), len(full_obj)))
+                my_test_plot.colormap(full_obj, [0], show_colorbar=True)
+                my_test_plot.colormap(full_reconstr, [1])
+                my_test_plot.colormap(full_D, [2])
+                
+                my_test_plot.set_axis_title([0], "MOMFBD")
+                my_test_plot.set_axis_title([1], "Neural network")
+                my_test_plot.set_axis_title([2], "Raw frame")
+                my_test_plot.save(f"{dir_name}/{file_prefix}_{alphas_index}.png")
+                my_test_plot.close()
             
-            my_test_plot.set_axis_title([0], "MOMFBD")
-            my_test_plot.set_axis_title([1], "Neural network")
-            my_test_plot.set_axis_title([2], "Raw frame")
-            my_test_plot.save(f"{dir_name}/{file_prefix}.png")
-            my_test_plot.close()
-            
-
+            alphas_index += 1
 
 if train:
 
