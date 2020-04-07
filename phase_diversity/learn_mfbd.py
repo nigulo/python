@@ -554,19 +554,22 @@ class nn_model:
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
             if self.nn_mode == nn_mode == MODE_1:
-                n_epochs_1, n_epochs2, epoch = params
+                n_epochs_1_, n_epochs2_, epoch = params
             elif self.nn_mode == nn_mode == MODE_2:
-                n_epochs_1, n_epochs_2, n_epochs_mode_2, epoch, epoch_mode_2 = params
+                n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2 = params
         else:
             nn_mode_ = nn_mode
+            n_epochs_1_ = n_epochs_1
+            n_epochs_2_ = n_epochs_2
+            n_epochs_mode_2_ = n_epochs_mode_2
 
         self.nn_mode = nn_mode_
 
-        self.n_epochs_1 = n_epochs_1
-        self.n_epochs_2 = n_epochs_2
+        self.n_epochs_1 = n_epochs_1_
+        self.n_epochs_2 = n_epochs_2_
         self.epoch = epoch
         if self.nn_mode == nn_mode == MODE_2:
-            self.n_epochs_mode_2 = n_epochs_mode_2
+            self.n_epochs_mode_2 = n_epochs_mode_2_
             self.epoch_mode_2 = epoch_mode_2
             
 
