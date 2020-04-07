@@ -34,7 +34,7 @@ gamma = 1.0
 n_epochs_2 = 10
 n_epochs_1 = 1
 
-n_epochs_mode_2 = 10
+n_epochs_mode_2 = 100
 
 num_reps = 1
 shuffle = True
@@ -230,14 +230,14 @@ def load_weights(model):
         model_file = dir_name + '/weights.h5'
     if os.path.exists(model_file):
         model.load_weights(model_file)
-        nn_mode = pickle.load(open(dir_name + '/params.dat', 'rb'))
-        return nn_mode
+        nn_mode, params = pickle.load(open(dir_name + '/params.dat', 'rb'))
+        return nn_mode, params
     return None
 
-def save_weights(model):
+def save_weights(model, params):
     model.save_weights(dir_name + '/weights.tf')
     with open(dir_name + '/params.dat', 'wb') as f:
-        pickle.dump(nn_mode, f, protocol=4)
+        pickle.dump((nn_mode, params), f, protocol=4)
 
 '''
 def get_params(nx):
@@ -356,7 +356,6 @@ class nn_model:
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
         self.nx = nx
-        self.validation_losses = []
         self.hanning = utils.hanning(nx, 10)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
@@ -548,13 +547,28 @@ class nn_model:
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
 
-        nn_mode_ = load_weights(model)
+        nn_mode_, params = load_weights(model)
+        
+        epoch = 0
+        epoch_mode2 = 0
         if nn_mode_ is not None:
-            assert(nn_mode_ == nn_mode) # Model was saved with in mode
+            assert(nn_mode_ == nn_mode) # Model was saved with different mode
+            if self.nn_mode == nn_mode == MODE_1:
+                n_epochs, n_epochs2, epoch = params
+            elif self.nn_mode == nn_mode == MODE_2:
+                n_epochs, n_epochs2, n_epochs_mode2, epoch, epoch_mode2 = params
         else:
             nn_mode_ = nn_mode
 
         self.nn_mode = nn_mode_
+
+        self.n_epochs = n_epochs
+        self.n_epochs2 = n_epochs2
+        self.epoch = epoch
+        if self.nn_mode == nn_mode == MODE_2:
+            self.n_epochs_mode2 = n_epochs_mode2
+            self.epoch_mode2 = epoch_mode2
+            
 
     def deconvolve(self, Ds, alphas, diversity):
         assert(len(alphas) == len(Ds))
@@ -765,7 +779,7 @@ class nn_model:
         
 
         if self.nn_mode == MODE_1:
-            for epoch in np.arange(n_epochs_2):
+            for epoch in np.arange(self.epoch, self.n_epochs_2):
                 history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
                             epochs=n_epochs_1,
                             batch_size=batch_size,
@@ -775,14 +789,17 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None,
                             callbacks=[MyCustomCallback(model)])
-                save_weights(model)
+                save_weights(model, (self.n_epochs, self.n_epochs2, epoch))
    
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             DD_DP_PP_train = DD_DP_PP[:self.n_train]
             DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
-            for epoch_mode_2 in np.arange(n_epochs_mode_2):
-                for epoch in np.arange(n_epochs_2):
+            if self.epoch_mode2 > 0:
+                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
+            for epoch_mode_2 in np.arange(self.epoch_mode2, self.n_epochs_mode_2):
+                validation_losses = []
+                for epoch in np.arange(self.epoch, self.n_epochs_2):
                     history = model.fit(x=[self.Ds_train, self.diversities_train, DD_DP_PP_train], y=output_data_train,
                                 epochs=n_epochs_1,
                                 batch_size=batch_size,
@@ -792,13 +809,20 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None,
                                 callbacks=[MyCustomCallback(model)])
-                    save_weights(model)
+                    save_weights(model, (self.n_epochs, self.n_epochs2, self.n_epochs_mode2, epoch, epoch_mode2))
+                    
+                    validation_losses.append(history.history['val_loss'])
+                    if len(validation_losses) >= 10:
+                        print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
+                
+                        if len(validation_losses) >= 20:
+                            if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
+                                break
+                            model.validation_losses = model.validation_losses[-20:]
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
 
 
-        self.validation_losses.append(history.history['val_loss'])
-        print("Average validation loss: " + str(np.mean(self.validation_losses[-10:])))
         
         #######################################################################
         # Plot some of the training data results
@@ -1343,7 +1367,7 @@ if train:
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
-        model.validation_losses = model.validation_losses[-20:]
+        #model.validation_losses = model.validation_losses[-20:]
 else:
 
     #in_dir = "images"
