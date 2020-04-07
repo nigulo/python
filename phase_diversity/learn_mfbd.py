@@ -232,7 +232,7 @@ def load_weights(model):
         model.load_weights(model_file)
         nn_mode, params = pickle.load(open(dir_name + '/params.dat', 'rb'))
         return nn_mode, params
-    return None
+    return None, None
 
 def save_weights(model, params):
     model.save_weights(dir_name + '/weights.tf')
