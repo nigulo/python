@@ -31,11 +31,6 @@ import time
 
 gamma = 1.0
 
-n_epochs_2 = 1
-n_epochs_1 = 1
-
-n_epochs_mode_2 = 1000
-
 num_reps = 1
 shuffle = True
 
@@ -84,6 +79,9 @@ if len(sys.argv) > i:
 i +=1
 
 if nn_mode == MODE_1:
+    n_epochs_2 = 1000
+    n_epochs_1 = 1
+    
     # How many frames to use in training
     num_frames = 64
     # How many objects to use in training
@@ -96,6 +94,12 @@ if nn_mode == MODE_1:
     batch_size = 32
     n_channels = 32
 else:
+    
+    n_epochs_2 = 1
+    n_epochs_1 = 1
+    
+    n_epochs_mode_2 = 1000
+    
     # How many frames to use in training
     num_frames = 100
     # How many objects to use in training
