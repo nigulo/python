@@ -550,7 +550,7 @@ class nn_model:
         nn_mode_, params = load_weights(model)
         
         epoch = 0
-        epoch_mode2 = 0
+        epoch_mode_2 = 0
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
             if self.nn_mode == nn_mode == MODE_1:
