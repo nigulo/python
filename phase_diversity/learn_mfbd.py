@@ -567,7 +567,6 @@ class nn_model:
         # Overwrite
         n_epochs_1_ = n_epochs_1
         n_epochs_2_ = n_epochs_2
-        n_epochs_mode_2_ = n_epochs_mode_2
 
         self.nn_mode = nn_mode_
 
