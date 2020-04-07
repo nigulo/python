@@ -31,10 +31,10 @@ import time
 
 gamma = 1.0
 
-n_epochs_2 = 10
+n_epochs_2 = 1
 n_epochs_1 = 1
 
-n_epochs_mode_2 = 100
+n_epochs_mode_2 = 1000
 
 num_reps = 1
 shuffle = True
@@ -85,16 +85,16 @@ i +=1
 
 if nn_mode == MODE_1:
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 100
     # How many objects to use in training
-    num_objs = 5#None
+    num_objs = 200#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 128
+    n_channels = 32
 else:
     # How many frames to use in training
     num_frames = 100
@@ -559,9 +559,11 @@ class nn_model:
                 n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2 = params
         else:
             nn_mode_ = nn_mode
-            n_epochs_1_ = n_epochs_1
-            n_epochs_2_ = n_epochs_2
-            n_epochs_mode_2_ = n_epochs_mode_2
+
+        # Overwrite
+        n_epochs_1_ = n_epochs_1
+        n_epochs_2_ = n_epochs_2
+        n_epochs_mode_2_ = n_epochs_mode_2
 
         self.nn_mode = nn_mode_
 
