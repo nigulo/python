@@ -775,7 +775,7 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None,
                             callbacks=[MyCustomCallback(model)])
-                 save_weights(model)
+                save_weights(model)
    
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
