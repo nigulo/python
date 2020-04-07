@@ -113,7 +113,7 @@ def load(file_name):
     
     elif file_name[-5:] == '.fits':
         hdul = fits.open(file_name)
-        if state_file == 'hinode_data/inverted_atmos.fits':
+        if file_name == 'hinode_data/inverted_atmos.fits':
             print("Data.shape", hdul[0].data.shape)
             #hdul = fits.open('pi-ambiguity-test/amb_spot.fits')
             # Actually x and y axis are swapped because of how the grid is defined later
