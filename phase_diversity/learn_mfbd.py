@@ -36,7 +36,7 @@ n_epochs_1 = 1
 
 n_epochs_mode_2 = 10
 
-num_reps = 1000
+num_reps = 1
 shuffle = True
 
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
