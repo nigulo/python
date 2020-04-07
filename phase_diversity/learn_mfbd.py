@@ -798,7 +798,7 @@ class nn_model:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             DD_DP_PP_train = DD_DP_PP[:self.n_train]
             DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
-            if self.epoch_mode2 > 0:
+            if self.epoch_mode_2 > 0:
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
