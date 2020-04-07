@@ -554,20 +554,20 @@ class nn_model:
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
             if self.nn_mode == nn_mode == MODE_1:
-                n_epochs, n_epochs2, epoch = params
+                n_epochs_1, n_epochs2, epoch = params
             elif self.nn_mode == nn_mode == MODE_2:
-                n_epochs, n_epochs2, n_epochs_mode2, epoch, epoch_mode2 = params
+                n_epochs_1, n_epochs_2, n_epochs_mode_2, epoch, epoch_mode_2 = params
         else:
             nn_mode_ = nn_mode
 
         self.nn_mode = nn_mode_
 
-        self.n_epochs = n_epochs
-        self.n_epochs2 = n_epochs2
+        self.n_epochs_1 = n_epochs_1
+        self.n_epochs_2 = n_epochs_2
         self.epoch = epoch
         if self.nn_mode == nn_mode == MODE_2:
-            self.n_epochs_mode2 = n_epochs_mode2
-            self.epoch_mode2 = epoch_mode2
+            self.n_epochs_mode_2 = n_epochs_mode_2
+            self.epoch_mode_2 = epoch_mode_2
             
 
     def deconvolve(self, Ds, alphas, diversity):
@@ -781,7 +781,7 @@ class nn_model:
         if self.nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
-                            epochs=n_epochs_1,
+                            epochs=self.n_epochs_1,
                             batch_size=batch_size,
                             shuffle=True,
                             validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
@@ -789,7 +789,7 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None,
                             callbacks=[MyCustomCallback(model)])
-                save_weights(model, (self.n_epochs, self.n_epochs2, epoch))
+                save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch))
    
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
@@ -797,11 +797,11 @@ class nn_model:
             DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
             if self.epoch_mode2 > 0:
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
-            for epoch_mode_2 in np.arange(self.epoch_mode2, self.n_epochs_mode_2):
+            for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
                 for epoch in np.arange(self.epoch, self.n_epochs_2):
                     history = model.fit(x=[self.Ds_train, self.diversities_train, DD_DP_PP_train], y=output_data_train,
-                                epochs=n_epochs_1,
+                                epochs=self.n_epochs_1,
                                 batch_size=batch_size,
                                 shuffle=True,
                                 validation_data=[[self.Ds_validation, self.diversities_validation, DD_DP_PP_validation], output_data_validation],
@@ -809,7 +809,7 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None,
                                 callbacks=[MyCustomCallback(model)])
-                    save_weights(model, (self.n_epochs, self.n_epochs2, self.n_epochs_mode2, epoch, epoch_mode2))
+                    save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2))
                     
                     validation_losses.append(history.history['val_loss'])
                     if len(validation_losses) >= 10:
@@ -833,8 +833,8 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-            for epoch in np.arange(n_epochs_mode_2):
-                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
+            #for epoch in np.arange(n_epochs_mode_2):
+            #    self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities, DD_DP_PP], batch_size=batch_size)
             
         pred_Ds = None
