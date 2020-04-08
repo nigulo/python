@@ -80,13 +80,13 @@ i +=1
 if nn_mode == MODE_1:
     num_reps = 100
 
-    n_epochs_2 = 10
+    n_epochs_2 = 1
     n_epochs_1 = 1
     
     # How many frames to use in training
     num_frames = 64
     # How many objects to use in training
-    num_objs = 200#None
+    num_objs = 20#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -896,7 +896,7 @@ class nn_model:
                 diversity = np.concatenate((self.diversities[i, :, :, 0], self.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
+                obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 
                 #obj_reconstr = self.deconvolve(num_frames_input, pred_alphas[i], self.diversities[i], self.Ds[i])
@@ -1381,7 +1381,7 @@ if train:
         model.train()
 
         #if rep % 5 == 0:
-        #    model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
+        model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break

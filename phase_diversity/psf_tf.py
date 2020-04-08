@@ -289,6 +289,8 @@ class psf_tf():
             if self.set_diversity:
                 diversity = tf.reshape(tf.slice(alphas_diversity, [self.num_frames*jmax], [2*nx*nx]), [2, nx, nx])
                 #self.coh_trans_func.set_diversity(diversity)
+            else:
+                diversity = None
                 
             return tf.map_fn(lambda alphas: fn1(alphas, diversity), alphas, dtype='complex64')
             
