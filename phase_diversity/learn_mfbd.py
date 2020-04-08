@@ -78,13 +78,13 @@ i +=1
 if nn_mode == MODE_1:
     num_reps = 100
 
-    n_epochs_2 = 1
+    n_epochs_2 = 10
     n_epochs_1 = 1
     
     # How many frames to use in training
     num_frames = 64
     # How many objects to use in training
-    num_objs = 20#None
+    num_objs = 200#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -810,7 +810,7 @@ class nn_model:
                             steps_per_epoch=None,
                             callbacks=[MyCustomCallback(model)])
                 save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch))
-   
+            self.epoch = 0
         elif self.nn_mode == MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             DD_DP_PP_train = DD_DP_PP[:self.n_train]
@@ -841,7 +841,6 @@ class nn_model:
                             model.validation_losses = model.validation_losses[-20:]
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
-
 
         
         #######################################################################
