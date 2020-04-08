@@ -31,7 +31,6 @@ import time
 
 gamma = 1.0
 
-num_reps = 1
 shuffle = True
 
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
@@ -79,7 +78,9 @@ if len(sys.argv) > i:
 i +=1
 
 if nn_mode == MODE_1:
-    n_epochs_2 = 1000
+    num_reps = 100
+
+    n_epochs_2 = 10
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -92,8 +93,9 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 32
+    n_channels = 128
 else:
+    num_reps = 1
     
     n_epochs_2 = 1
     n_epochs_1 = 1
