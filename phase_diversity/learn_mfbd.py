@@ -396,8 +396,7 @@ class nn_model:
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
-        if not train:
-            self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter)
+        self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter)
         
         num_defocus_channels = 2#self.num_frames*2
 
@@ -592,7 +591,8 @@ class nn_model:
         assert(len(alphas) == len(Ds))
         assert(Ds.shape[3] == 2) # Ds = [num_frames, nx, nx, 2]
         num_frames = len(alphas)
-        assert(num_frames == n_test_frames)
+        if n_test_frames is not None:
+            assert(num_frames == n_test_frames)
         with tf.device(gpu_id):
             diversity = tf.constant(diversity, dtype='float32')
             Ds = tf.constant(Ds, dtype='float32')
@@ -1381,7 +1381,6 @@ if train:
         model.train()
 
         #if rep % 5 == 0:
-        n_test_frames = Ds_test.shape[1]
         model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
