@@ -230,13 +230,17 @@ def save_model(model):
 
 def load_weights(model):
     model_file = dir_name + '/weights.tf'
-    if not os.path.exists(model_file):
-        model_file = dir_name + '/weights.h5'
-    if os.path.exists(model_file):
+    try:
         model.load_weights(model_file)
-        nn_mode, params = pickle.load(open(dir_name + '/params.dat', 'rb'))
-        return nn_mode, params
-    return None, None
+    except:
+        model_file = dir_name + '/weights.h5'
+        try:
+            model.load_weights(model_file)
+        except:
+            print("No model weights found")
+            return None, None
+    nn_mode, params = pickle.load(open(dir_name + '/params.dat', 'rb'))
+    return nn_mode, params
 
 def save_weights(model, params):
     model.save_weights(dir_name + '/weights.tf')
@@ -411,7 +415,8 @@ class nn_model:
             if model is None:
                 print("Creating model")
                 nn_mode_ = nn_mode
-                    
+                
+                '''
                 def tile(a, num):
                     return tf.tile(a, [1, 1, 1, num])
                             
@@ -425,11 +430,11 @@ class nn_model:
                     a1 = tf.slice(a, [0, 0, 0, 0], [1, tf.shape(a)[1], tf.shape(a)[2], num])                    
                     a2 = tf.slice(a, [0, 0, 0, num], [1, tf.shape(a)[1], tf.shape(a)[2], num])
                     return tf.add(a1, a2)
-                
+                '''
                 
                 def multiply(x, num):
                     return tf.math.scalar_mul(tf.constant(num, dtype="float32"), x)
-    
+                
     
                 def conv_layer(x, n_channels, kernel=(3, 3), max_pooling=True, batch_normalization=True, num_convs=3):
                     for i in np.arange(num_convs):
