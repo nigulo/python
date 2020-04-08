@@ -37,8 +37,6 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
 
-sum_over_batch = True
-
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
 #    for x in xs:
@@ -90,10 +88,13 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 1
+    num_frames_input = 8
     
-    batch_size = 32
+    batch_size = 4
     n_channels = 128
+    
+    sum_over_batch = False
+    
 else:
     num_reps = 1
     
@@ -115,6 +116,8 @@ else:
     n_channels = 32
     
     num_frames_mode_2 = num_frames
+
+    sum_over_batch = True
     
     #n_test_frames = num_frames_mode_2
 
