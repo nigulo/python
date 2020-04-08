@@ -591,8 +591,7 @@ class nn_model:
         assert(len(alphas) == len(Ds))
         assert(Ds.shape[3] == 2) # Ds = [num_frames, nx, nx, 2]
         num_frames = len(alphas)
-        if n_test_frames is not None:
-            assert(num_frames == n_test_frames)
+        assert(num_frames == n_test_frames)
         with tf.device(gpu_id):
             diversity = tf.constant(diversity, dtype='float32')
             Ds = tf.constant(Ds, dtype='float32')
@@ -1371,6 +1370,7 @@ if train:
     my_test_plot.close()
 
     ###########################################################################
+    n_test_frames = Ds_test.shape[1] # Necessary to be set (TODO: refactor)
 
     model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
 
