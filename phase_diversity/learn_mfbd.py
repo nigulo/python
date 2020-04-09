@@ -104,15 +104,15 @@ else:
     n_epochs_mode_2 = 10
     
     # How many frames to use in training
-    num_frames = 100
+    num_frames = 320
     # How many objects to use in training
-    num_objs = 200#None
+    num_objs = 80#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 4
+    batch_size = 16
     n_channels = 32
     
     num_frames_mode_2 = num_frames
@@ -1255,10 +1255,7 @@ if train:
     n_train = int(len(Ds)*.8)
     print("n_train, n_test", n_train, len(Ds) - n_train)
     print("num_frames", Ds.shape[1])
-    
-    if nn_mode == MODE_2:
-        assert(n_train >= num_frames_mode_2)
-    
+        
     Ds_train = Ds[:n_train]
     num_frames_valid = num_frames_input
     if nn_mode == MODE_2:
