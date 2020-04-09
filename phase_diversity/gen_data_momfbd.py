@@ -127,7 +127,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         Ds = handler.create_dataset('Ds', shape=(num_objects, num_frames, 2, nx, nx), compressor=None)
         objs = handler.create_dataset('objs', shape=(num_objects, nx, nx), compressor=None)
         momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), compressor=None)
-        positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype=np.'int', compressor=None)
+        positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype='int', compressor=None)
         coords = handler.create_dataset('coords', shape=(num_objects, 2), dtype='int', compressor=None)
     else:
         Ds = np.zeros((num_objects, num_frames, 2, nx, nx)) # in real space
