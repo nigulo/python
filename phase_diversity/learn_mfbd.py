@@ -843,6 +843,8 @@ class nn_model:
                             model.validation_losses = model.validation_losses[-20:]
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids)
+                self.epoch = 0
+        self.epoch_mode_2 = 0
 
         
         #######################################################################
