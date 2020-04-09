@@ -88,12 +88,12 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 8
+    num_frames_input = 1
     
     batch_size = 4
-    n_channels = 128
+    n_channels = 32
     
-    sum_over_batch = False
+    sum_over_batch = True
     
 else:
     num_reps = 1
@@ -796,14 +796,15 @@ class nn_model:
         #ds = tf.data.Dataset.from_tensors((self.Ds_train, output_data_train)).batch(batch_size)
         #ds_val = tf.data.Dataset.from_tensors((self.Ds_validation, output_data_validation)).batch(batch_size)
         
-        
-
+        shuffle_epoch = True
+        if sum_over_batch and batch_size > 1:
+            shuffle_epoch = False
         if self.nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 history = model.fit(x=[self.Ds_train, self.diversities_train], y=output_data_train,
                             epochs=self.n_epochs_1,
                             batch_size=batch_size,
-                            shuffle=True,
+                            shuffle=shuffle_epoch,
                             validation_data=[[self.Ds_validation, self.diversities_validation], output_data_validation],
                             #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                             verbose=1,
@@ -823,7 +824,7 @@ class nn_model:
                     history = model.fit(x=[self.Ds_train, self.diversities_train, DD_DP_PP_train], y=output_data_train,
                                 epochs=self.n_epochs_1,
                                 batch_size=batch_size,
-                                shuffle=True,
+                                shuffle=shuffle_epoch,
                                 validation_data=[[self.Ds_validation, self.diversities_validation, DD_DP_PP_validation], output_data_validation],
                                 #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                                 verbose=1,
