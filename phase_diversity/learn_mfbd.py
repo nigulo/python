@@ -90,7 +90,7 @@ if nn_mode == MODE_1:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 4
+    batch_size = 32
     n_channels = 32
     
     sum_over_batch = True
@@ -662,15 +662,16 @@ class nn_model:
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                     
-        # Shuffle the data
-        random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
-        self.Ds = self.Ds[random_indices]
-        if self.objs is not None:
-            self.objs = self.objs[random_indices]
-        if self.diversities is not None:
-            self.diversities = self.diversities[random_indices]
-        self.obj_ids = self.obj_ids[random_indices]
-        self.positions = self.positions[random_indices]
+        if not sum_over_batch or batch_size == 1:
+            # Shuffle the data
+            random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
+            self.Ds = self.Ds[random_indices]
+            if self.objs is not None:
+                self.objs = self.objs[random_indices]
+            if self.diversities is not None:
+                self.diversities = self.diversities[random_indices]
+            self.obj_ids = self.obj_ids[random_indices]
+            self.positions = self.positions[random_indices]
         
         #for i in np.arange(len(self.Ds)):
         #    my_plot = plot.plot(nrows=self.Ds.shape[3]//2, ncols=2)
@@ -1251,7 +1252,7 @@ if train:
     ##Ds /= std
     #Ds /= med
     
-    n_train = int(len(Ds)*.75)
+    n_train = int(len(Ds)*.8)
     print("n_train, n_test", n_train, len(Ds) - n_train)
     print("num_frames", Ds.shape[1])
     
