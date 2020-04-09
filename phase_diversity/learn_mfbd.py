@@ -76,7 +76,7 @@ if len(sys.argv) > i:
 i +=1
 
 if nn_mode == MODE_1:
-    num_reps = 100
+    num_reps = 1000
 
     n_epochs_2 = 10
     n_epochs_1 = 1
@@ -96,17 +96,17 @@ if nn_mode == MODE_1:
     sum_over_batch = True
     
 else:
-    num_reps = 1
+    num_reps = 1000
     
     n_epochs_2 = 1
     n_epochs_1 = 1
     
-    n_epochs_mode_2 = 1000
+    n_epochs_mode_2 = 10
     
     # How many frames to use in training
     num_frames = 100
     # How many objects to use in training
-    num_objs = 20#None
+    num_objs = 200#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
