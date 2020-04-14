@@ -37,6 +37,8 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
 
+smooth_window = 4
+
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
 #    for x in xs:
@@ -1143,8 +1145,11 @@ class nn_model:
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
             
-            alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:]) / 3
-            Ds_ = Ds_[1:-1]
+            alphas1 = alphas[:-smooth_window]
+            for smooth_i in np.arange(1, smooth_window):
+                alphas1 += alphas[smooth_i:smooth_window-smooth_i]
+            alphas = alphas1/smooth_window
+            Ds_ = Ds_[smooth_window//2:-smooth_window//2]
                 
             print("alphas", alphas.shape, Ds_.shape)
             
@@ -1459,7 +1464,7 @@ else:
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
     
-    n_test_frames -= 2
+    n_test_frames -= smooth_window
     
     #hanning = utils.hanning(nx, 10)
     #med = np.median(Ds, axis=(3, 4), keepdims=True)
