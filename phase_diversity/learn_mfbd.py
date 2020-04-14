@@ -1145,11 +1145,12 @@ class nn_model:
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
             
-            alphas1 = alphas[:-smooth_window]
-            for smooth_i in np.arange(1, smooth_window):
-                alphas1 += alphas[smooth_i:-(smooth_window-smooth_i)]
-            alphas = alphas1/smooth_window
-            Ds_ = Ds_[smooth_window//2:-smooth_window//2]
+            if smooth_window > 0:
+                alphas1 = alphas[:-smooth_window]
+                for smooth_i in np.arange(1, smooth_window+1):
+                    alphas1 += alphas[smooth_i:-(smooth_window-smooth_i)]
+                alphas = alphas1/(smooth_window+1)
+                Ds_ = Ds_[smooth_window//2:-smooth_window//2]
                 
             print("alphas", alphas.shape, Ds_.shape)
             
