@@ -1142,6 +1142,9 @@ class nn_model:
             Ds_ = np.asarray(Ds_)
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
+            
+            alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:-2]) / 3
+            Ds_ = Ds_[1:-1]
                 
             #print("alphas", len(alphas), len(DFs))
             
@@ -1184,7 +1187,7 @@ class nn_model:
             my_test_plot.close()
 
             if true_coefs is not None:
-                true_alphas = true_coefs[obj_ids[i]]
+                true_alphas = true_coefs[obj_ids[i]][1:-1]
                 nrows = int(np.sqrt(jmax))
                 ncols = int(math.ceil(jmax/nrows))
                 my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
@@ -1448,7 +1451,7 @@ else:
     print(max_pos)
     filtr = np.all(positions < max_pos, axis=1)
 
-    stride = 4
+    stride = 1
     n_test_frames //= stride
     Ds = Ds[filtr, :stride*n_test_frames:stride]
     objs = objs[filtr]
