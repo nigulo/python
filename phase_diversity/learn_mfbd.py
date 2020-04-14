@@ -594,7 +594,7 @@ class nn_model:
         assert(len(alphas) == len(Ds))
         assert(Ds.shape[3] == 2) # Ds = [num_frames, nx, nx, 2]
         num_frames = len(alphas)
-        #assert(num_frames == n_test_frames)
+        assert(num_frames == n_test_frames)
         with tf.device(gpu_id):
             diversity = tf.constant(diversity, dtype='float32')
             Ds = tf.constant(Ds, dtype='float32')
@@ -1458,6 +1458,8 @@ else:
     positions = positions[filtr]
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
+    
+    n_test_frames -= 2
     
     #hanning = utils.hanning(nx, 10)
     #med = np.median(Ds, axis=(3, 4), keepdims=True)
