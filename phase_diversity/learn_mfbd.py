@@ -1146,7 +1146,7 @@ class nn_model:
             alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:]) / 3
             Ds_ = Ds_[1:-1]
                 
-            #print("alphas", len(alphas), len(DFs))
+            print("alphas", alphas.shape, Ds_.shape)
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
