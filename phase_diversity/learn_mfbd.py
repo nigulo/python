@@ -594,7 +594,7 @@ class nn_model:
         assert(len(alphas) == len(Ds))
         assert(Ds.shape[3] == 2) # Ds = [num_frames, nx, nx, 2]
         num_frames = len(alphas)
-        assert(num_frames == n_test_frames)
+        #assert(num_frames == n_test_frames)
         with tf.device(gpu_id):
             diversity = tf.constant(diversity, dtype='float32')
             Ds = tf.constant(Ds, dtype='float32')
@@ -1145,7 +1145,6 @@ class nn_model:
             
             alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:]) / 3
             Ds_ = Ds_[1:-1]
-            n_test_frames -= 2
                 
             #print("alphas", len(alphas), len(DFs))
             
