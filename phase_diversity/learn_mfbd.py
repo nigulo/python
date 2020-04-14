@@ -1147,8 +1147,9 @@ class nn_model:
             
             if smooth_window > 0:
                 alphas1 = alphas[:-smooth_window]
-                for smooth_i in np.arange(1, smooth_window+1):
+                for smooth_i in np.arange(1, smooth_window):
                     alphas1 += alphas[smooth_i:-(smooth_window-smooth_i)]
+                alphas1 += alphas[smooth_window:]
                 alphas = alphas1/(smooth_window+1)
                 Ds_ = Ds_[smooth_window//2:-smooth_window//2]
                 
