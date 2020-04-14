@@ -1145,6 +1145,7 @@ class nn_model:
             
             alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:]) / 3
             Ds_ = Ds_[1:-1]
+            n_test_frames -= 2
                 
             #print("alphas", len(alphas), len(DFs))
             
