@@ -1143,7 +1143,7 @@ class nn_model:
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
             
-            alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:-2]) / 3
+            alphas = (alphas[:-2] + alphas[1:-1] + alphas[2:]) / 3
             Ds_ = Ds_[1:-1]
                 
             #print("alphas", len(alphas), len(DFs))
