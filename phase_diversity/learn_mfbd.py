@@ -775,10 +775,6 @@ class nn_model:
     def group_per_obj(self, Ds, diversities, obj_ids):
         Ds_per_obj = dict()
         diversity_per_obj = dict()
-        #if sum_over_batch:
-        #    assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
-        #else:
-        assert(len(DD_DP_PP_out) == len(Ds))
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
             #    obj_id = obj_ids[i*batch_size]
