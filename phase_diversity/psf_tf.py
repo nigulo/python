@@ -338,8 +338,8 @@ class psf_tf():
 
     def reconstr(self, DP, PP, do_fft = True):
         DP = tf.reshape(DP, [1, self.nx, self.nx])
-        PP = tf.reshape(PP, [1, self.nx, self.nx])
-        DP = tf.math.real(tf.multiply(DP, tf.math.conj(DP)))        
+        PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]))
+        DP = tf.multiply(DP, tf.math.conj(DP))
         return self.reconstr_(DP, PP, do_fft)[0]
 
     def reconstr_(self, DP, PP, do_fft = True):
