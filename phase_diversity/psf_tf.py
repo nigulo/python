@@ -217,6 +217,9 @@ class psf_tf():
         
         
 
+    def set_num_frames(self, num_frames):
+        self.num_frames = num_frames
+
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
 
@@ -333,6 +336,19 @@ class psf_tf():
         return D
 
 
+    def reconstr(self, DP, PP, do_fft = True):
+        F_image = tf.divide(DP, PP)
+        
+        if self.fltr is not None:
+            F_image = F_image * tf.constant(self.fltr)
+    
+        if do_fft:
+            image = tf.math.real(tf.signal.ifft2d(F_image))
+        else:
+            image = F_image
+        image = tf.signal.ifftshift(image, axes=(1, 2))
+        return image
+
     def deconvolve(self, x, do_fft = True):
         nx = self.nx
         jmax = self.coh_trans_func.phase_aberr.jmax
@@ -368,16 +384,16 @@ class psf_tf():
     
         num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[1])
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
-        F_image = tf.divide(num, den)
         
-        if self.fltr is not None:
-            F_image = F_image * tf.constant(self.fltr)
-    
-        if do_fft:
-            image = tf.math.real(tf.signal.ifft2d(F_image))
-        else:
-            image = F_image
-        image = tf.signal.ifftshift(image, axes=(1, 2))
+        image = self.reconstr(num, den, do_fft)
+        #F_image = tf.divide(num, den)
+        #if self.fltr is not None:
+        #    F_image = F_image * tf.constant(self.fltr)
+        #if do_fft:
+        #    image = tf.math.real(tf.signal.ifft2d(F_image))
+        #else:
+        #    image = F_image
+        #image = tf.signal.ifftshift(image, axes=(1, 2))
         return image, Ps1
         
     def mfbd_loss(self, x):
@@ -391,7 +407,7 @@ class psf_tf():
         if self.set_diversity:
             size1 += self.batch_size*nx*nx*2
             size1a += 2*nx*nx
-        if mode == 2:
+        if mode >= 2:
             size3 = self.batch_size*nx*nx*4
 
         x = tf.reshape(x, [size1 + size2 + size3])
@@ -401,7 +417,7 @@ class psf_tf():
         alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, size1a])
         #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
         Ds = tf.transpose(tf.reshape(tf.slice(x, [size1], [size2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
-        if mode == 2:
+        if mode >= 2:
             DD_DP_PP = tf.reshape(tf.slice(x, [size1 + size2], [size3]), [self.batch_size, 4, nx, nx])
         
         Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
@@ -416,7 +432,7 @@ class psf_tf():
     
         num = tf.math.reduce_sum(tf.multiply(Ds_F_conj, Ps), axis=[1])
         
-        if mode == 2:
+        if mode >= 2:
             #if self.sum_over_batch:
             #    num = tf.reshape(num, [1, nx, nx])
             #else:
@@ -434,7 +450,7 @@ class psf_tf():
         
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
         den = tf.math.real(den)
-        if mode == 2:
+        if mode >= 2:
             PP1 = tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx])
             #if self.sum_over_batch:
             #    PP = tf.reshape(den, [1, nx, nx])
@@ -454,7 +470,7 @@ class psf_tf():
                 DD = tf.math.reduce_sum(DD, axis=[0])
             return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
-        elif mode == 2:
+        elif mode >= 2:
             DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
             #if self.sum_over_batch:
             #    DD = tf.reshape(DD, [1, nx, nx])
