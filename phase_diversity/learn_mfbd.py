@@ -836,7 +836,7 @@ class nn_model:
                     Ds_ = np.asarray(Ds_per_obj[obj_id])
                     reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
                 for i in np.arange(len(self.Ds)):
-                    reconstr[i] = reconstrs[obj_ids[i]]
+                    reconstr[i] = reconstrs[self.obj_ids[i]]
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
