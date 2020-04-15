@@ -337,7 +337,7 @@ class psf_tf():
 
 
     def reconstr(self, DP, PP, do_fft = True):
-        return self.reconstr(tf.reshape(DP, [1, self.nx, self.nx]), tf.reshape(PP, [1, self.nx, self.nx]), do_fft)[0]
+        return self.reconstr_(tf.reshape(DP, [1, self.nx, self.nx]), tf.reshape(PP, [1, self.nx, self.nx]), do_fft)[0]
 
     def reconstr_(self, DP, PP, do_fft = True):
         F_image = tf.divide(DP, PP)
