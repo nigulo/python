@@ -337,6 +337,9 @@ class psf_tf():
 
 
     def reconstr(self, DP, PP, do_fft = True):
+        return self.reconstr(tf.reshape(DP, [1, self.nx, self.nx]), tf.reshape(PP, [1, self.nx, self.nx]), do_fft)[0]
+
+    def reconstr_(self, DP, PP, do_fft = True):
         F_image = tf.divide(DP, PP)
         
         if self.fltr is not None:
@@ -385,7 +388,7 @@ class psf_tf():
         num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[1])
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
         
-        image = self.reconstr(num, den, do_fft)
+        image = self.reconstr_(num, den, do_fft)
         #F_image = tf.divide(num, den)
         #if self.fltr is not None:
         #    F_image = F_image * tf.constant(self.fltr)
