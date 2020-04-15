@@ -411,13 +411,14 @@ class nn_model:
         with tf.device(gpu_id):
 
             image_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_input')
-            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')            
+            diversity_input = keras.layers.Input((nx, nx, num_defocus_channels), name='diversity_input')
+            image_input1 = image_input
             if nn_mode >= MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
             if nn_mode == MODE_3:
                 reconstr_input = keras.layers.Input((nx, nx), name='reconstr_input')
                 reconstr_input = tf.reshape(reconstr_input, [batch_size_per_gpu, nx, nx, 1])
-                image_input = tf.concat([image_input, reconstr_input], axis=3)
+                image_input1 = tf.concat([image_input, reconstr_input], axis=3)
             #else:
             #    raise Exception("Unsupported mode")
     
@@ -458,7 +459,7 @@ class nn_model:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
                 
-                hidden_layer = conv_layer(image_input, n_channels)#, num_convs=1)
+                hidden_layer = conv_layer(image_input1, n_channels)#, num_convs=1)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
@@ -519,7 +520,7 @@ class nn_model:
                 elif nn_mode >= MODE_2:
                                                       
                     hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(num_frames_input*jmax + 2*nx*nx)]), 
-                                                             tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx]),
+                                                             tf.reshape(image_input1, [batch_size_per_gpu*num_frames_input*2*nx*nx]),
                                                              tf.reshape(DD_DP_PP_input, [batch_size_per_gpu*4*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
