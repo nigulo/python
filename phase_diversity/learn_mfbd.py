@@ -609,6 +609,7 @@ class nn_model:
             assert(num_frames == n_test_frames)
         self.psf_test.set_num_frames(num_frames)
         with tf.device(gpu_id):
+            alphas = tf.constant(alphas, dtype='float32')
             diversity = tf.constant(diversity, dtype='float32')
             Ds = tf.constant(Ds, dtype='float32')
             Ds = tf.reshape(tf.transpose(Ds, [1, 2, 0, 3]), [nx, nx, 2*num_frames])
