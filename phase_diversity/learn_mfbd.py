@@ -760,7 +760,7 @@ class nn_model:
                 DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
         if nn_mode == MODE_3:
             reconstrs = dict()
-            for obj_id in obj_ids:
+            for obj_id in np.unique(obj_ids):
                 DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
                 reconstrs[obj_id] = self.psf_test.reconstr(tf.complex(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2]), DD_DP_PP_sums_i[3])[0]
             
@@ -830,7 +830,7 @@ class nn_model:
                 reconstr_train = reconstr[:self.n_train]
                 reconstr_validation = reconstr[self.n_train:self.n_train+self.n_validation]
                 reconstrs = dict()
-                for obj_id in self.obj_ids:
+                for obj_id in np.unique(self.obj_ids):
                     print("obj_id", obj_id)
                     sys.stdout.flush()
                     Ds_ = np.asarray(Ds_per_obj[obj_id])
