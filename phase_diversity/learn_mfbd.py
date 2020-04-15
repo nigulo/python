@@ -416,7 +416,7 @@ class nn_model:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
             if nn_mode == MODE_3:
                 reconstr_input = keras.layers.Input((nx, nx), name='reconstr_input')
-                reconstr_input = tf.reshape(reconstr_input, [nx, nx, 1])
+                reconstr_input = tf.reshape(reconstr_input, [batch_size_per_gpu, nx, nx, 1])
                 image_input = tf.concat([image_input, reconstr_input], axis=2)
             #else:
             #    raise Exception("Unsupported mode")
