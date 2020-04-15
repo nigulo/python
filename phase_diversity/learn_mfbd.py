@@ -37,7 +37,7 @@ MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
 
-smooth_window = 4
+smooth_window = 0
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -100,13 +100,13 @@ if nn_mode == MODE_1:
 else:
     num_reps = 1000
     
-    n_epochs_2 = 1
+    n_epochs_2 = 2
     n_epochs_1 = 1
     
     n_epochs_mode_2 = 10
     
     # How many frames to use in training
-    num_frames = 640
+    num_frames = 160#640
     # How many objects to use in training
     num_objs = 80#None
     
@@ -1194,7 +1194,9 @@ class nn_model:
             my_test_plot.close()
 
             if true_coefs is not None:
-                true_alphas = true_coefs[obj_ids[i]][1:-1]
+                true_alphas = true_coefs[obj_ids[i]]
+                if smooth_window > 0:
+                    true_alphas = true_alphas[smooth_window//2:-smooth_window//2]
                 nrows = int(np.sqrt(jmax))
                 ncols = int(math.ceil(jmax/nrows))
                 my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
