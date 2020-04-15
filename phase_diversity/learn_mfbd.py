@@ -593,7 +593,7 @@ class nn_model:
         self.n_epochs_1 = n_epochs_1_
         self.n_epochs_2 = n_epochs_2_
         self.epoch = epoch
-        if self.nn_mode == MODE_2:
+        if self.nn_mode >= MODE_2:
             # Overwrite
             n_epochs_mode_2_ = n_epochs_mode_2
 
