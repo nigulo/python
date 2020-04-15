@@ -520,7 +520,7 @@ class nn_model:
                 elif nn_mode >= MODE_2:
                                                       
                     hidden_layer = keras.layers.concatenate([tf.reshape(a3, [batch_size_per_gpu*(num_frames_input*jmax + 2*nx*nx)]), 
-                                                             tf.reshape(image_input1, [batch_size_per_gpu*num_frames_input*2*nx*nx]),
+                                                             tf.reshape(image_input, [batch_size_per_gpu*num_frames_input*2*nx*nx]),
                                                              tf.reshape(DD_DP_PP_input, [batch_size_per_gpu*4*nx*nx])])
                     #hidden_layer = keras.layers.concatenate([tf.reshape(alphas_layer, [batch_size*jmax*num_frames_input]), tf.reshape(image_input, [batch_size*num_frames_input*2*nx*nx]), tf.reshape(diversity_input, [batch_size*num_frames_input*2*nx*nx])])
                     output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
