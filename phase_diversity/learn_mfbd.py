@@ -763,6 +763,7 @@ class nn_model:
             for obj_id in np.unique(obj_ids):
                 DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
                 reconstrs[obj_id] = self.psf_test.reconstr(tf.complex(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2]), DD_DP_PP_sums_i[3]).numpy()
+                reconstrs[obj_id] /= np.median(reconstrs[obj_id])
             
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
@@ -835,6 +836,7 @@ class nn_model:
                     sys.stdout.flush()
                     Ds_ = np.asarray(Ds_per_obj[obj_id])
                     reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
+                    reconstrs[obj_id] /= np.median(reconstrs[obj_id])
 
                 for i in np.arange(len(self.Ds)):
                     reconstr[i] = reconstrs[self.obj_ids[i]]
