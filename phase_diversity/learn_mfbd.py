@@ -908,7 +908,7 @@ class nn_model:
             if nn_mode == MODE_3:
                 #reconstr = np.empty((len(self.Ds), nx, nx))
                 #reconstrs = dict()
-                #for obj_id in self.obj_ids:
+                #for obj_id in np.unique(self.obj_ids):
                 #    Ds_ = np.asarray(Ds_per_obj[obj_id])
                 #    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
                 #for i in np.arange(len(self.Ds)):
@@ -1122,10 +1122,23 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([Ds, diversities], batch_size=batch_size)
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
+            input_data = [Ds, diversities, DD_DP_PP]
+            if nn_mode == MODE_3:
+                Ds_per_obj, diversity_per_obj = self.group_per_obj(Ds, diversities, obj_ids)
+                reconstr = np.empty((len(Ds), nx, nx))
+                reconstrs = dict()
+                for obj_id in np.unique(obj_ids):
+                    Ds_ = np.asarray(Ds_per_obj[obj_id])
+                    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
+                for i in np.arange(len(Ds)):
+                    reconstr[i] = reconstrs[obj_ids[i]]
+                for epoch in np.arange(n_epochs_mode_2):
+                    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, reconstr)
+                input_data.append(reconstr)
             #for epoch in np.arange(n_epochs_mode_2):
             #    print("DD_DP_PP", DD_DP_PP[0, 0, 0, 0], DD_DP_PP[0, 1, 0, 0], DD_DP_PP[0, 2, 0, 0], DD_DP_PP[0, 3, 0, 0])
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids)
-            pred_alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
+            pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
             
         #Ds *= std
         Ds *= med
