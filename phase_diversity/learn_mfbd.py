@@ -116,7 +116,7 @@ else:
     num_frames_input = 1
     
     batch_size = 16
-    n_channels = 32
+    n_channels = 64
     
     num_frames_mode_2 = num_frames
 
@@ -890,7 +890,7 @@ class nn_model:
                 #        my_test_plot.colormap(self.Ds[i, :, :, 0], [0], show_colorbar=True)
                 #        my_test_plot.colormap(reconstr[i], [1])
                 #        my_test_plot.save(f"{dir_name}/reconstr{i}.png")
-                #        my_test_plot.close()
+                #           my_test_plot.close()
                 ###########################################################
                     
                 self.epoch = 0
