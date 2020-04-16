@@ -762,7 +762,9 @@ class nn_model:
             reconstrs = dict()
             for obj_id in np.unique(obj_ids):
                 DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
-                reconstrs[obj_id] = self.psf_test.reconstr(tf.complex(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2]), DD_DP_PP_sums_i[3]).numpy()
+                a = self.psf_test.reconstr(tf.complex(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2]), DD_DP_PP_sums_i[3]).numpy()
+                print("a", a.shape)
+                reconstrs[obj_id] = a
             
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
