@@ -107,9 +107,9 @@ else:
     n_epochs_mode_2 = 10
     
     # How many frames to use in training
-    num_frames = 160#640
+    num_frames = 320#640
     # How many objects to use in training
-    num_objs = 8#80#None
+    num_objs = 80#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
