@@ -882,16 +882,17 @@ class nn_model:
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
                 
-                for i in np.arange(len(self.Ds)):
-                    ###########################################################
-                    # DEBUG -- REMOVE
-                    if i % 160 == 0:
-                        my_test_plot = plot.plot(nrows=1, ncols=2)
-                        my_test_plot.colormap(self.Ds[i, :, :, 0], [0], show_colorbar=True)
-                        my_test_plot.colormap(reconstr[i], [1])
-                        my_test_plot.save(f"{dir_name}/reconstr{i}.png")
-                        my_test_plot.close()
-                    ###########################################################
+                if epoch_mode_2 == self.epoch_mode_2:
+                    for i in np.arange(len(self.Ds)):
+                        ###########################################################
+                        # DEBUG -- REMOVE
+                        if i % 160 == 0:
+                            my_test_plot = plot.plot(nrows=1, ncols=2)
+                            my_test_plot.colormap(self.Ds[i, :, :, 0], [0], show_colorbar=True)
+                            my_test_plot.colormap(reconstr[i], [1])
+                            my_test_plot.save(f"{dir_name}/reconstr{i}.png")
+                            my_test_plot.close()
+                        ###########################################################
                     
                 self.epoch = 0
         self.epoch_mode_2 = 0
