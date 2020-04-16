@@ -841,11 +841,11 @@ class nn_model:
                     
                     ###########################################################
                     # DEBUG -- REMOVE
-                    my_test_plot = plot.plot(nrows=1, ncols=2)
-                    my_test_plot.colormap(reconstr[i], [0], show_colorbar=True)
-                    my_test_plot.colormap(reconstr[i], [1])
-                    my_test_plot.save(f"{dir_name}/reconstr{i}.png")
-                    my_test_plot.close()
+                    #my_test_plot = plot.plot(nrows=1, ncols=2)
+                    #my_test_plot.colormap(reconstr[i], [0], show_colorbar=True)
+                    #my_test_plot.colormap(reconstr[i], [1])
+                    #my_test_plot.save(f"{dir_name}/reconstr{i}.png")
+                    #my_test_plot.close()
                     ###########################################################
                     
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
