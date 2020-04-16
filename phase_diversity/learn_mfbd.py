@@ -838,16 +838,7 @@ class nn_model:
 
                 for i in np.arange(len(self.Ds)):
                     reconstr[i] = reconstrs[self.obj_ids[i]]
-                    
-                    ###########################################################
-                    # DEBUG -- REMOVE
-                    #my_test_plot = plot.plot(nrows=1, ncols=2)
-                    #my_test_plot.colormap(reconstr[i], [0], show_colorbar=True)
-                    #my_test_plot.colormap(reconstr[i], [1])
-                    #my_test_plot.save(f"{dir_name}/reconstr{i}.png")
-                    #my_test_plot.close()
-                    ###########################################################
-                    
+                                        
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
@@ -878,6 +869,18 @@ class nn_model:
                             model.validation_losses = model.validation_losses[-20:]
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
+                
+                for i in np.arange(len(self.Ds)):
+                    ###########################################################
+                    # DEBUG -- REMOVE
+                    if i % 160 == 0:
+                        my_test_plot = plot.plot(nrows=1, ncols=2)
+                        my_test_plot.colormap(reconstr[i], [0], show_colorbar=True)
+                        my_test_plot.colormap(reconstr[i], [1])
+                        my_test_plot.save(f"{dir_name}/reconstr{i}.png")
+                        my_test_plot.close()
+                    ###########################################################
+                    
                 self.epoch = 0
         self.epoch_mode_2 = 0
 
