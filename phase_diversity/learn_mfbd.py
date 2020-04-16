@@ -101,7 +101,7 @@ if nn_mode == MODE_1:
 else:
     num_reps = 1000
     
-    n_epochs_2 = 2
+    n_epochs_2 = 1
     n_epochs_1 = 1
     
     n_epochs_mode_2 = 10
@@ -836,16 +836,17 @@ class nn_model:
                     Ds_ = np.asarray(Ds_per_obj[obj_id])
                     reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
 
-                    ###########################################################
-                    # DEBUG -- REMOVE
-                    my_test_plot = plot.plot(nrows=1, ncols=1)
-                    my_test_plot.colormap(reconstrs[obj_id])
-                    my_test_plot.save(f"{dir_name}/reconstr{obj_id}.png")
-                    my_test_plot.close()
-                    ###########################################################
                 for i in np.arange(len(self.Ds)):
                     reconstr[i] = reconstrs[self.obj_ids[i]]
                     
+                    ###########################################################
+                    # DEBUG -- REMOVE
+                    my_test_plot = plot.plot(nrows=1, ncols=2)
+                    my_test_plot.colormap(reconstr[i], [0], show_colorbar=True)
+                    my_test_plot.colormap(reconstr[i], [1])
+                    my_test_plot.save(f"{dir_name}/reconstr{i}.png")
+                    my_test_plot.close()
+                    ###########################################################
                     
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
