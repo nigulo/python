@@ -336,10 +336,11 @@ class psf_tf():
         return D
 
 
-    def reconstr(self, DP, PP, do_fft = True):
+    def reconstr(self, DP_real, DP_imag, PP, do_fft = True):
+        DP = tf.complex(DP_real, DP_imag)
         DP = tf.reshape(DP, [1, self.nx, self.nx])
         PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
-        return self.reconstr_(DP, PP, do_fft)[0]
+        return self.reconstr_(tf.math.conj(DP), PP, do_fft)[0]
 
     def reconstr_(self, DP, PP, do_fft = True):
         F_image = tf.divide(DP, PP)

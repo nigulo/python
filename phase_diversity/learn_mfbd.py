@@ -762,7 +762,7 @@ class nn_model:
             reconstrs = dict()
             for obj_id in np.unique(obj_ids):
                 DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
-                reconstrs[obj_id] = self.psf_test.reconstr(tf.complex(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2]), DD_DP_PP_sums_i[3]).numpy()
+                reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
                 reconstrs[obj_id] /= np.median(reconstrs[obj_id])
             
         for i in np.arange(len(Ds)):
@@ -882,17 +882,16 @@ class nn_model:
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
                 
-                if epoch_mode_2 == self.epoch_mode_2:
-                    for i in np.arange(len(self.Ds)):
-                        ###########################################################
-                        # DEBUG -- REMOVE
-                        if i % 160 == 0:
-                            my_test_plot = plot.plot(nrows=1, ncols=2)
-                            my_test_plot.colormap(self.Ds[i, :, :, 0], [0], show_colorbar=True)
-                            my_test_plot.colormap(reconstr[i], [1])
-                            my_test_plot.save(f"{dir_name}/reconstr{i}.png")
-                            my_test_plot.close()
-                        ###########################################################
+                ###########################################################
+                # DEBUG -- REMOVE
+                for i in np.arange(len(self.Ds)):
+                    if i % 160 == 0:
+                        my_test_plot = plot.plot(nrows=1, ncols=2)
+                        my_test_plot.colormap(self.Ds[i, :, :, 0], [0], show_colorbar=True)
+                        my_test_plot.colormap(reconstr[i], [1])
+                        my_test_plot.save(f"{dir_name}/reconstr{i}.png")
+                        my_test_plot.close()
+                ###########################################################
                     
                 self.epoch = 0
         self.epoch_mode_2 = 0
