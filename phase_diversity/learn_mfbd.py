@@ -115,8 +115,8 @@ elif nn_mode == MODE_2:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 16
-    n_channels = 128
+    batch_size = 32
+    n_channels = 32
     
     num_frames_mode_2 = num_frames
 
