@@ -406,6 +406,8 @@ class nn_model:
 
         self.modes_orig = modes
         self.pupil_orig = pupil
+        
+        self.val_loss = float("inf")
 
          
         pa_check = psf.phase_aberration(len(modes), start_index=1)
@@ -893,8 +895,13 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None,
                                 callbacks=[MyCustomCallback(model)])
-                    save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2))
                     
+                    if self.val_loss > history.history['val_loss']:
+                        self.val_loss = history.history['val_loss']
+                        save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2))
+                    else:
+                        print("Validation loss increased", self.val_loss, history.history['val_loss'])
+                        sys.exit()
                     validation_losses.append(history.history['val_loss'])
                     if len(validation_losses) >= 10:
                         print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
