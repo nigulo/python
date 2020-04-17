@@ -1368,7 +1368,7 @@ if train:
     Ds_train = Ds[:n_train]
     num_frames_valid = num_frames_input
     if nn_mode >= MODE_2:
-        num_frames_valid = int(16/batch_size)*batch_size
+        num_frames_valid = batch_size
     Ds_test = Ds[n_train:, :num_frames_valid]
     if objs is not None:
         objs_train = objs[:n_train]
