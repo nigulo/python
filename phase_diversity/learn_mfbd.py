@@ -1557,8 +1557,8 @@ else:
     print(max_pos)
     filtr = np.all(positions < max_pos, axis=1)
 
-    stride = 1
-    n_test_frames //= stride
+    stride = Ds.shape[1] // n_test_frames
+    #n_test_frames //= stride
     Ds = Ds[filtr, :stride*n_test_frames:stride]
     objs = objs[filtr]
     positions = positions[filtr]
