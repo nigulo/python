@@ -98,6 +98,32 @@ if nn_mode == MODE_1:
     
     sum_over_batch = True
     
+elif nn_mode == MODE_2:
+    num_reps = 1000
+    
+    n_epochs_2 = 1
+    n_epochs_1 = 1
+    
+    n_epochs_mode_2 = 10
+    
+    # How many frames to use in training
+    num_frames = 320#640
+    # How many objects to use in training
+    num_objs = 80#None
+    
+    # How many frames of the same object are sent to NN input
+    # Must be power of 2
+    num_frames_input = 1
+    
+    batch_size = 16
+    n_channels = 128
+    
+    num_frames_mode_2 = num_frames
+
+    sum_over_batch = True
+    
+    #n_test_frames = num_frames_mode_2
+
 else:
     num_reps = 1000
     
@@ -116,13 +142,11 @@ else:
     num_frames_input = 1
     
     batch_size = 16
-    n_channels = 64
+    n_channels = 32
     
     num_frames_mode_2 = num_frames
 
     sum_over_batch = True
-    
-    #n_test_frames = num_frames_mode_2
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
