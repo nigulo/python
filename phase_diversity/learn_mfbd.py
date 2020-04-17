@@ -406,8 +406,6 @@ class nn_model:
 
         self.modes_orig = modes
         self.pupil_orig = pupil
-        
-        self.val_loss = float("inf")
 
          
         pa_check = psf.phase_aberration(len(modes), start_index=1)
@@ -601,12 +599,14 @@ class nn_model:
         
         epoch = 0
         epoch_mode_2 = 0
+        val_loss = float("inf")
+
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
             if nn_mode_ == MODE_1:
                 n_epochs_1_, n_epochs2_, epoch = params
             elif nn_mode_ >= MODE_2:
-                n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2 = params
+                n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2, val_loss = params
         else:
             nn_mode_ = nn_mode
 
@@ -625,6 +625,7 @@ class nn_model:
 
             self.n_epochs_mode_2 = n_epochs_mode_2_
             self.epoch_mode_2 = epoch_mode_2
+            self.val_loss = val_loss
             
 
     def deconvolve(self, Ds, alphas, diversity):
@@ -898,7 +899,7 @@ class nn_model:
                     
                     if self.val_loss > history.history['val_loss']:
                         self.val_loss = history.history['val_loss']
-                        save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2))
+                        save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss))
                     else:
                         print("Validation loss increased", self.val_loss, history.history['val_loss'])
                         sys.exit()
