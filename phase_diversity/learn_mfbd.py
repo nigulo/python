@@ -661,9 +661,9 @@ class nn_model:
         with tf.device(gpu_id):
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
             image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
-            print("image_deconv", image_deconv.numpy().shape)
             alphas = tf.constant(alphas, dtype='float32')
             return self.psf_test.Ds_reconstr2(image_deconv, alphas)
+        print("image_deconv", image_deconv.numpy().shape)
         
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
