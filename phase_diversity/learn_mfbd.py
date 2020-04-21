@@ -652,7 +652,7 @@ class nn_model:
             #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             x = tf.concat([tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]), tf.reshape(Ds, [num_objs*num_frames*2*nx*nx])], axis=0)
             image_deconv, _ = self.psf_test.deconvolve(x, do_fft=do_fft)
-            print("image_deconv", image_deconv.nupuy().shape)
+            print("image_deconv", image_deconv.numpy().shape)
             return image_deconv
         
     # Inputs should be grouped per object (first axis)
