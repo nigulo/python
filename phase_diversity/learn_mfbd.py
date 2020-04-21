@@ -657,7 +657,9 @@ class nn_model:
     # Inputs should be grouped per object (first axis)
     def Ds_reconstr(self, Ds, alphas, diversity):
         image_deconv = self.deconvolve(Ds, alphas, diversity, do_fft=False)
-        return self.psf_test.Ds_reconstr2(image_deconv, alphas)
+        with tf.device(gpu_id):
+            alphas = tf.constant(alphas, dtype='float32')
+            return self.psf_test.Ds_reconstr2(image_deconv, alphas)
         
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
@@ -889,7 +891,7 @@ class nn_model:
                 #    Ds_ = np.asarray(Ds_per_obj[obj_id])
                 #    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversities_per_obj[obj_id])
                 #    reconstrs[obj_id] /= np.median(reconstrs[obj_id])
-                Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj)
+                Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj).numpy()
                 #Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
 
                 Ds_diff = np.empty_like(Ds)
@@ -1196,7 +1198,7 @@ class nn_model:
                 #    Ds_ = np.asarray(Ds_per_obj[obj_id])
                 #    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
                 
-                Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj)
+                Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj).numpy()
 
                 Ds_diff = np.empty_like(Ds)
                 for i in np.arange(len(Ds)):
@@ -1306,7 +1308,7 @@ class nn_model:
                 diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
                 #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.deconvolve(Ds_, alphas, diversity)
+                obj_reconstr = self.deconvolve(Ds_, alphas, diversity).numpy()[0]
                 #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
                 #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
                 #obj_reconstr = fft.ifftshift(obj_reconstr)
