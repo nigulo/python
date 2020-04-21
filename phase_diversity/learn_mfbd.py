@@ -135,7 +135,7 @@ else:
     # How many frames to use in training
     num_frames = 320#640
     # How many objects to use in training
-    num_objs = 80#None
+    num_objs = 8#0#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -1188,7 +1188,7 @@ class nn_model:
             input_data = [Ds, diversities, DD_DP_PP]
             if nn_mode == MODE_3:
                 #group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None)
-                Ds_per_obj, alphas_per_obj, diversities_per_obj = self.group_per_obj(Ds, alphas=np.zeros((len(Ds), jmax)), diversities, obj_ids)
+                Ds_per_obj, alphas_per_obj, diversities_per_obj = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids)
                 #reconstr = np.empty((len(Ds), nx, nx))
                 #reconstrs = dict()
                 #for obj_id in np.unique(obj_ids):
