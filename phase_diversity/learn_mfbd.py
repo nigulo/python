@@ -638,6 +638,7 @@ class nn_model:
         if not train:
             assert(num_frames == n_test_frames)
         self.psf_test.set_num_frames(num_frames)
+        self.psf_test.set_batch_size(num_objs)
         with tf.device(gpu_id):
             alphas = tf.constant(alphas, dtype='float32')
             diversity = tf.constant(diversity, dtype='float32')
@@ -794,6 +795,7 @@ class nn_model:
             #    DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
             #    reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
             #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
+            self.psf_test.set_batch_size(Ds_per_obj.shape[0])
             Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
             
         for i in np.arange(len(Ds)):
