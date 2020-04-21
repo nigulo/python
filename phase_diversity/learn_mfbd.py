@@ -551,7 +551,7 @@ class nn_model:
                     output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
                     
                     if nn_mode == MODE_3:
-                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, d_image_input], outputs=output)
+                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, image_diff_input], outputs=output)
                     else:
                         model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input], outputs=output)
     
