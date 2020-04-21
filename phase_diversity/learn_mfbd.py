@@ -440,9 +440,10 @@ class nn_model:
             if nn_mode >= MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
             if nn_mode == MODE_3:
-                reconstr_input = keras.layers.Input((nx, nx), name='reconstr_input')
-                reconstr_input1 = tf.reshape(reconstr_input, [batch_size_per_gpu, nx, nx, 1])
-                image_input1 = tf.concat([image_input, reconstr_input1], axis=3)
+                #alphas_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='alphas_input')
+                image_diff_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='image_diff_input')
+                image_diff_input1 = tf.reshape(image_diff_input, [batch_size_per_gpu, nx, nx, num_defocus_channels*num_frames_input])
+                image_input1 = tf.concat([image_input, image_diff_input1], axis=3)
             #else:
             #    raise Exception("Unsupported mode")
     
@@ -550,7 +551,7 @@ class nn_model:
                     output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
                     
                     if nn_mode == MODE_3:
-                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, reconstr_input], outputs=output)
+                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, d_image_input], outputs=output)
                     else:
                         model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input], outputs=output)
     
@@ -628,10 +629,12 @@ class nn_model:
             self.val_loss = val_loss
             
 
-    def deconvolve(self, Ds, alphas, diversity):
-        assert(len(alphas) == len(Ds))
-        assert(Ds.shape[3] == 2) # Ds = [num_frames, nx, nx, 2]
-        num_frames = len(alphas)
+    # Inputs should be grouped per object (first axis)
+    def deconvolve(self, Ds, alphas, diversity, do_fft=True):
+        num_objs = Ds.shape[0]
+        #assert(len(alphas) == len(Ds))
+        #assert(Ds.shape[3] == 2) # Ds = [num_objs, num_frames, nx, nx, 2]
+        num_frames = Ds.shape[1]
         if not train:
             assert(num_frames == n_test_frames)
         self.psf_test.set_num_frames(num_frames)
@@ -639,16 +642,21 @@ class nn_model:
             alphas = tf.constant(alphas, dtype='float32')
             diversity = tf.constant(diversity, dtype='float32')
             Ds = tf.constant(Ds, dtype='float32')
-            Ds = tf.reshape(tf.transpose(Ds, [1, 2, 0, 3]), [nx, nx, 2*num_frames])
+            Ds = tf.reshape(tf.transpose(Ds, [0, 2, 3, 1, 4]), [num_objs, nx, nx, 2*num_frames])
 
-            a1 = tf.reshape(alphas, [num_frames*jmax])                    
-            a2 = tf.reshape(diversity, [2*nx*nx])
-            a3 = tf.concat([a1, a2], axis=0)
+            a1 = tf.reshape(alphas, [num_objs, num_frames*jmax])
+            a2 = tf.reshape(diversity, [num_objs, 2*nx*nx])
+            a3 = tf.concat([a1, a2], axis=1)
 
             #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
-            x = tf.concat([a3, tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
+            x = tf.concat([tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]), tf.reshape(Ds, [num_objs*num_frames*2*nx*nx])], axis=0)
             image_deconv, _ = self.psf_test.deconvolve(x)
-            return image_deconv.numpy()[0]
+            return image_deconv
+        
+    # Inputs should be grouped per object (first axis)
+    def Ds_reconstr(self, Ds, alphas, diversity):
+        image_deconv = self.deconvolve(Ds, alphas, diversity, do_fft=False)
+        return self.psf_test.Ds_reconstr2(image_deconv, alphas)
         
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
@@ -759,62 +767,77 @@ class nn_model:
         
 
 
-    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids, reconstr=None):
+    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids, Ds_diff=None, alphas=None):
         output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
         
         if nn_mode == MODE_3:
-            output = output_layer_model.predict([Ds, diversities, DD_DP_PP, reconstr], batch_size=batch_size)
+            output = output_layer_model.predict([Ds, diversities, DD_DP_PP, Ds_diff], batch_size=batch_size)
         else:
             output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
 
         DD_DP_PP_out = output[:, 1:, :, :]
-        DD_DP_PP_sums = dict()
-        DD_DP_PP_counts = dict()
-        #if sum_over_batch:
-        #    assert(len(DD_DP_PP_out) == len(Ds) // batch_size)
-        #else:
+        #DD_DP_PP_sums = dict()
+        #DD_DP_PP_counts = dict()
         assert(len(DD_DP_PP_out) == len(Ds))
-        for i in np.arange(len(DD_DP_PP_out)):
-            #if sum_over_batch:
-            #    obj_id = obj_ids[i*batch_size]
-            #else:
-            obj_id = obj_ids[i]
-            if not obj_id in DD_DP_PP_sums:
-                DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
-                DD_DP_PP_counts[obj_id] = 0
-            if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
-                DD_DP_PP_counts[obj_id] += 1
-                DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
+        Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(Ds, alphas, diversities, obj_ids, DD_DP_PP_out)
+        #for i in np.arange(len(DD_DP_PP_out)):
+        #    obj_id = obj_ids[i]
+        #    if not obj_id in DD_DP_PP_sums:
+        #        DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
+        #        DD_DP_PP_counts[obj_id] = 0
+        #    if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
+        #        DD_DP_PP_counts[obj_id] += 1
+        #        DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
         if nn_mode == MODE_3:
-            reconstrs = dict()
-            for obj_id in np.unique(obj_ids):
-                DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
-                reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
-                reconstrs[obj_id] /= np.median(reconstrs[obj_id])
+            #reconstrs = dict()
+            #for obj_id in np.unique(obj_ids):
+            #    DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
+            #    reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
+            #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
+            Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
             
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
             #    DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_size - DD_DP_PP_out[i]
             #else:
             #DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
-            DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i]
+            DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
             if nn_mode == MODE_3:
-                reconstr[i] = reconstrs[obj_ids[i]]
+                if i % Ds_reconstr.shape[1] == 0:
+                    Ds_diff[i:i+Ds_reconstr.shape[1]] = Ds[i:i+Ds_reconstr.shape[1]] - Ds_reconstr[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
             
-    def group_per_obj(self, Ds, diversities, obj_ids):
+    def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None):
+        unique_obj_ids = np.unique(obj_ids)
+        used_obj_ids = dict()
+
+        Ds_per_obj = np.empty((len(unique_obj_ids), Ds.shape[1], Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+        alphas_per_obj = np.empty((len(unique_obj_ids), alphas.shape[1]))
+        diversities_per_obj = np.empty((len(unique_obj_ids), diversities.shape[1], diversities.shape[2]))
+        
+        if DD_DP_PP is not None:
+            DD_DP_PP_sums_per_obj = np.zeros((len(unique_obj_ids), 4, self.nx, self.nx))
+        else:
+            DD_DP_PP_sums_per_obj = None
+
         Ds_per_obj = dict()
+        alphas_per_obj = dict()
         diversity_per_obj = dict()
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
             #    obj_id = obj_ids[i*batch_size]
             #else:
             obj_id = obj_ids[i]
-            if not obj_id in Ds_per_obj:
-                Ds_per_obj[obj_id] = []
-            Ds_per_obj[obj_id].append(Ds[i])
-            if not obj_id in diversity_per_obj:
-                diversity_per_obj[obj_id] = diversities[i]
-        return Ds_per_obj, diversity_per_obj
+            if not obj_id in used_obj_ids:
+                used_obj_ids[obj_id] = (len(used_obj_ids), 0)
+            obj_index, frame_index = used_obj_ids[obj_id]
+            Ds_per_obj[obj_index, frame_index] = Ds[i]
+            alphas_per_obj[obj_index, frame_index] = alphas[i]
+            used_obj_ids[obj_id] = (obj_index, frame_index + 1)
+            diversities_per_obj[obj_index] = diversities[i]
+            if DD_DP_PP is not None:
+                DD_DP_PP_sums_per_obj[obj_id] += DD_DP_PP[i]
+
+        return Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj
 
  
     def train(self):
@@ -853,20 +876,27 @@ class nn_model:
             DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
             reconstr = None
             if nn_mode == MODE_3:
-                Ds_per_obj, diversity_per_obj = self.group_per_obj(self.Ds, self.diversities, self.obj_ids)
-                reconstr = np.empty((len(self.Ds), nx, nx))
-                reconstr_train = reconstr[:self.n_train]
-                reconstr_validation = reconstr[self.n_train:self.n_train+self.n_validation]
-                reconstrs = dict()
-                for obj_id in np.unique(self.obj_ids):
-                    print("obj_id", obj_id)
-                    sys.stdout.flush()
-                    Ds_ = np.asarray(Ds_per_obj[obj_id])
-                    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
-                    reconstrs[obj_id] /= np.median(reconstrs[obj_id])
+                Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(self.Ds, np.zeros((len(self.Ds), jmax)), self.diversities, self.obj_ids, DD_DP_PP)
+                #Ds_per_obj, diversity_per_obj = self.group_per_obj(self.Ds, self.diversities, self.obj_ids)
+                #reconstr = np.empty((len(self.Ds), nx, nx))
+                #reconstr_train = reconstr[:self.n_train]
+                #reconstr_validation = reconstr[self.n_train:self.n_train+self.n_validation]
+                #reconstrs = dict()
+                #for obj_id in np.unique(self.obj_ids):
+                #    print("obj_id", obj_id)
+                #    sys.stdout.flush()
+                #    Ds_ = np.asarray(Ds_per_obj[obj_id])
+                #    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversities_per_obj[obj_id])
+                #    reconstrs[obj_id] /= np.median(reconstrs[obj_id])
+                Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj)
+                #Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
 
+                Ds_diff = np.empty_like(Ds)
+                Ds_diff_train = Ds_diff[:self.n_train]
+                Ds_diff_validation = Ds_diff[self.n_train:self.n_train+self.n_validation]
                 for i in np.arange(len(self.Ds)):
-                    reconstr[i] = reconstrs[self.obj_ids[i]]
+                    if i % Ds_reconstrs_per_obj.shape[1] == 0:
+                        Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
 
                     ###########################################################
                     # DEBUG -- REMOVE
@@ -884,8 +914,8 @@ class nn_model:
                 input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train]
                 input_data_validation = [self.Ds_validation, self.diversities_validation, DD_DP_PP_validation]
                 if nn_mode == MODE_3:
-                    input_data_train.append(reconstr_train)
-                    input_data_validation.append(reconstr_validation)
+                    input_data_train.append(Ds_diff_train)
+                    input_data_validation.append(Ds_diff_validation)
                 for epoch in np.arange(self.epoch, self.n_epochs_2):
                     history = model.fit(x=input_data_train, y=output_data_train,
                                 epochs=self.n_epochs_1,
@@ -896,7 +926,6 @@ class nn_model:
                                 verbose=1,
                                 steps_per_epoch=None,
                                 callbacks=[MyCustomCallback(model)])
-                    print(history.history['val_loss'])
                     if self.val_loss > history.history['val_loss'][-1]:
                         self.val_loss = history.history['val_loss'][-1]
                         save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss))
@@ -1158,17 +1187,26 @@ class nn_model:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             input_data = [Ds, diversities, DD_DP_PP]
             if nn_mode == MODE_3:
-                Ds_per_obj, diversity_per_obj = self.group_per_obj(Ds, diversities, obj_ids)
-                reconstr = np.empty((len(Ds), nx, nx))
-                reconstrs = dict()
-                for obj_id in np.unique(obj_ids):
-                    Ds_ = np.asarray(Ds_per_obj[obj_id])
-                    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
+                #group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None)
+                Ds_per_obj, alphas_per_obj, diversities_per_obj = self.group_per_obj(Ds, alphas=np.zeros((len(Ds), jmax)), diversities, obj_ids)
+                #reconstr = np.empty((len(Ds), nx, nx))
+                #reconstrs = dict()
+                #for obj_id in np.unique(obj_ids):
+                #    Ds_ = np.asarray(Ds_per_obj[obj_id])
+                #    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
+                
+                Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj)
+
+                Ds_diff = np.empty_like(Ds)
                 for i in np.arange(len(Ds)):
-                    reconstr[i] = reconstrs[obj_ids[i]]
+                    if i % Ds_reconstrs_per_obj.shape[1] == 0:
+                        Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
+                                
+                #for i in np.arange(len(Ds)):
+                #    reconstr[i] = reconstrs[obj_ids[i]]
                 for epoch in np.arange(n_epochs_mode_2):
-                    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, reconstr)
-                input_data.append(reconstr)
+                    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, Ds_diff)
+                input_data.append(Ds_diff)
             #for epoch in np.arange(n_epochs_mode_2):
             #    print("DD_DP_PP", DD_DP_PP[0, 0, 0, 0], DD_DP_PP[0, 1, 0, 0], DD_DP_PP[0, 2, 0, 0], DD_DP_PP[0, 3, 0, 0])
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids)

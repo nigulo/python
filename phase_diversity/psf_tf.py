@@ -335,12 +335,42 @@ class psf_tf():
         #D = tf.transpose(tf.reshape(obj, [1, self.num_frames*2, self.nx, self.nx]), [0, 2, 3, 1])
         return D
 
+    # For numpy inputs
+    def Ds_reconstr(self, DP_real, DP_imag, PP, alphas):
+        reconstr = self.reconstr(DP_real, DP_imag, PP, do_fft = False)
+        DF = self.multiply(reconstr, alphas)
+        DF = tf.signal.ifftshift(DF, axes = (2, 3))
+        D = tf.math.real(tf.signal.ifft2d(DF))
+        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.transpose(D, (0, 2, 3, 1))
+        return D
 
+    def Ds_reconstr2(self, reconstr, alphas):
+        DF = self.multiply(reconstr, alphas)
+        DF = tf.signal.ifftshift(DF, axes = (2, 3))
+        D = tf.math.real(tf.signal.ifft2d(DF))
+        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.transpose(D, (0, 2, 3, 1))
+        return D
+
+    # For numpy inputs
     def reconstr(self, DP_real, DP_imag, PP, do_fft = True):
+        one_obj = False
+        if len(DP_real.shape) == 2:
+            one_obj = True
+            DP_real = np.reshape(DP_real, [1, self.nx, self.nx])
+            DP_imag = np.reshape(DP_imag, [1, self.nx, self.nx])
+            PP = np.reshape(PP, [1, self.nx, self.nx])
         DP = tf.complex(DP_real, DP_imag)
-        DP = tf.reshape(DP, [1, self.nx, self.nx])
-        PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
-        return self.reconstr_(tf.math.conj(DP), PP, do_fft)[0]
+        #DP = tf.reshape(DP, [1, self.nx, self.nx])
+        #PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
+        PP = tf.complex(PP, tf.zeros((1, self.nx, self.nx)))
+        
+        obj = self.reconstr_(tf.math.conj(DP), PP, do_fft)
+        if one_obj:
+            return obj[0]
+        else:
+            return obj
 
     def reconstr_(self, DP, PP, do_fft = True):
         F_image = tf.divide(DP, PP)
