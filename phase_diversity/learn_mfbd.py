@@ -812,7 +812,7 @@ class nn_model:
         
         num_frames = Ds.shape[0]//len(unique_obj_ids)
 
-        Ds_per_obj = np.empty((len(unique_obj_ids), Ds.shape[1], Ds.shape[2], Ds.shape[3]))
+        Ds_per_obj = np.empty((len(unique_obj_ids), num_frames, Ds.shape[1], Ds.shape[2], Ds.shape[3]))
         alphas_per_obj = np.empty((len(unique_obj_ids), alphas.shape[1]))
         diversities_per_obj = np.empty((len(unique_obj_ids), diversities.shape[1], diversities.shape[2], diversities.shape[3]))
         
