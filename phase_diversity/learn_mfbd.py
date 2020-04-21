@@ -660,7 +660,7 @@ class nn_model:
         image_deconv = self.deconvolve(Ds, alphas, diversity, do_fft=False)
         with tf.device(gpu_id):
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
-            image_deconv = tf.tile(image_deconv, [1, alphas.shape[1], 1, 1])
+            image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
             alphas = tf.constant(alphas, dtype='float32')
             return self.psf_test.Ds_reconstr2(image_deconv, alphas)
         
