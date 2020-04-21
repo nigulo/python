@@ -810,7 +810,7 @@ class nn_model:
         unique_obj_ids = np.unique(obj_ids)
         used_obj_ids = dict()
 
-        Ds_per_obj = np.empty((len(unique_obj_ids), Ds.shape[1], Ds.shape[2], Ds.shape[3], Ds.shape[4]))
+        Ds_per_obj = np.empty((len(unique_obj_ids), Ds.shape[1], Ds.shape[2], Ds.shape[3]))
         alphas_per_obj = np.empty((len(unique_obj_ids), alphas.shape[1]))
         diversities_per_obj = np.empty((len(unique_obj_ids), diversities.shape[1], diversities.shape[2]))
         
