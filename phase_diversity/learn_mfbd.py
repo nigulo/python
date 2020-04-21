@@ -809,6 +809,8 @@ class nn_model:
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None):
         unique_obj_ids = np.unique(obj_ids)
         used_obj_ids = dict()
+        
+        num_frames = Ds.shape[0]//len(unique_obj_ids)
 
         Ds_per_obj = np.empty((len(unique_obj_ids), Ds.shape[1], Ds.shape[2], Ds.shape[3]))
         alphas_per_obj = np.empty((len(unique_obj_ids), alphas.shape[1]))
