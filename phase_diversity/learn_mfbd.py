@@ -812,16 +812,13 @@ class nn_model:
 
         Ds_per_obj = np.empty((len(unique_obj_ids), Ds.shape[1], Ds.shape[2], Ds.shape[3]))
         alphas_per_obj = np.empty((len(unique_obj_ids), alphas.shape[1]))
-        diversities_per_obj = np.empty((len(unique_obj_ids), diversities.shape[1], diversities.shape[2]))
+        diversities_per_obj = np.empty((len(unique_obj_ids), diversities.shape[1], diversities.shape[2], diversities.shape[3]))
         
         if DD_DP_PP is not None:
             DD_DP_PP_sums_per_obj = np.zeros((len(unique_obj_ids), 4, self.nx, self.nx))
         else:
             DD_DP_PP_sums_per_obj = None
 
-        Ds_per_obj = dict()
-        alphas_per_obj = dict()
-        diversity_per_obj = dict()
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
             #    obj_id = obj_ids[i*batch_size]
