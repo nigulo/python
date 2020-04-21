@@ -1313,7 +1313,7 @@ class nn_model:
                 diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
                 #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.deconvolve(Ds_, alphas, diversity).numpy()[0]
+                obj_reconstr = self.deconvolve(Ds_[None,], alphas, diversity).numpy()[0]
                 #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
                 #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
                 #obj_reconstr = fft.ifftshift(obj_reconstr)
