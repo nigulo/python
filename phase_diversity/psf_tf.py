@@ -361,7 +361,7 @@ class psf_tf():
             DP_real = np.reshape(DP_real, [1, self.nx, self.nx])
             DP_imag = np.reshape(DP_imag, [1, self.nx, self.nx])
             PP = np.reshape(PP, [1, self.nx, self.nx])
-        DP = tf.complex(DP_real, DP_imag)
+        DP = tf.complex(tf.constant(DP_real, dtype='float32'), tf.constant(DP_imag, dtype='float32'))
         #DP = tf.reshape(DP, [1, self.nx, self.nx])
         #PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
         PP = tf.complex(tf.constant(PP, dtype='float32'), tf.zeros((1, self.nx, self.nx), dtype='float32'))
