@@ -807,6 +807,8 @@ class nn_model:
             #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
             self.psf_test.set_batch_size(Ds_per_obj.shape[0])
             Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
+            Ds_reconstrs_per_obj = np.reshape(Ds_reconstrs_per_obj, (Ds_reconstrs_per_obj.shape[0], Ds_reconstrs_per_obj.shape[1], Ds_reconstrs_per_obj.shape[2], Ds_reconstrs_per_obj.shape[3]//2, 2))
+            Ds_reconstrs_per_obj = np.transpose(Ds_reconstrs_per_obj, (0, 3, 1, 2, 4))
             
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
