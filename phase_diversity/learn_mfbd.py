@@ -815,8 +815,8 @@ class nn_model:
             #DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
             DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
             if nn_mode == MODE_3:
-                if i % Ds_reconstr.shape[1] == 0:
-                    Ds_diff[i:i+Ds_reconstr.shape[1]] = Ds[i:i+Ds_reconstr.shape[1]] - Ds_reconstr[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
+                if i % Ds_reconstr_per_obj.shape[1] == 0:
+                    Ds_diff[i:i+Ds_reconstr_per_obj.shape[1]] = Ds[i:i+Ds_reconstr_per_obj.shape[1]] - Ds_reconstr_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
             
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None):
         unique_obj_ids = np.unique(obj_ids)
