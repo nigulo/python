@@ -961,7 +961,7 @@ class nn_model:
                                 break
                             model.validation_losses = model.validation_losses[-20:]
 
-                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
+                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
                 
                 ###########################################################
                 # DEBUG -- REMOVE
