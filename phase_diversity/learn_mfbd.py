@@ -822,7 +822,10 @@ class nn_model:
         num_frames = Ds.shape[0]//len(unique_obj_ids)
 
         Ds_per_obj = np.empty((len(unique_obj_ids), num_frames, Ds.shape[1], Ds.shape[2], Ds.shape[3]))
-        alphas_per_obj = np.empty((len(unique_obj_ids), num_frames, alphas.shape[1]))
+        if alphas is not None:
+            alphas_per_obj = np.empty((len(unique_obj_ids), num_frames, alphas.shape[1]))
+        else:
+            alphas_per_obj = None
         diversities_per_obj = np.empty((len(unique_obj_ids), diversities.shape[1], diversities.shape[2], diversities.shape[3]))
         
         if DD_DP_PP is not None:
@@ -839,7 +842,8 @@ class nn_model:
                 used_obj_ids[obj_id] = (len(used_obj_ids), 0)
             obj_index, frame_index = used_obj_ids[obj_id]
             Ds_per_obj[obj_index, frame_index] = Ds[i]
-            alphas_per_obj[obj_index, frame_index] = alphas[i]
+            if alpas is not None:
+                alphas_per_obj[obj_index, frame_index] = alphas[i]
             used_obj_ids[obj_id] = (obj_index, frame_index + 1)
             diversities_per_obj[obj_index] = diversities[i]
             if DD_DP_PP is not None:
