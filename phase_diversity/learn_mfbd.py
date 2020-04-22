@@ -904,6 +904,7 @@ class nn_model:
                 Ds_diff_validation = Ds_diff[self.n_train:self.n_train+self.n_validation]
                 for i in np.arange(len(self.Ds)):
                     if i % Ds_reconstrs_per_obj.shape[1] == 0:
+                        print("Data shapes", Ds[i:i+Ds_reconstrs_per_obj.shape[1]].shape, Ds_reconstrs_per_obj[self.obj_ids[i]].shape)
                         Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[self.obj_ids[i]]#, i % Ds_reconstr.shape[1]]
 
                     ###########################################################
