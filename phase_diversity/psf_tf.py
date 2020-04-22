@@ -364,7 +364,7 @@ class psf_tf():
         DP = tf.complex(DP_real, DP_imag)
         #DP = tf.reshape(DP, [1, self.nx, self.nx])
         #PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
-        PP = tf.complex(PP, tf.zeros((1, self.nx, self.nx)))
+        PP = tf.complex(PP, tf.zeros((1, self.nx, self.nx), dtype='float32'))
         
         obj = self.reconstr_(tf.math.conj(DP), PP, do_fft)
         if one_obj:
