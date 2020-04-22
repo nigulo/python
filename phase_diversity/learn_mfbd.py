@@ -1208,7 +1208,7 @@ class nn_model:
             input_data = [Ds, diversities, DD_DP_PP]
             if nn_mode == MODE_3:
                 #group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None)
-                Ds_per_obj, alphas_per_obj, diversities_per_obj = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids)
+                Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids, DD_DP_PP)
                 #reconstr = np.empty((len(Ds), nx, nx))
                 #reconstrs = dict()
                 #for obj_id in np.unique(obj_ids):
