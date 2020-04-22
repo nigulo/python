@@ -806,7 +806,7 @@ class nn_model:
             #    reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
             #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
             self.psf_test.set_batch_size(Ds_per_obj.shape[0])
-            Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
+            Ds_reconstrs_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
             Ds_reconstrs_per_obj = np.reshape(Ds_reconstrs_per_obj, (Ds_reconstrs_per_obj.shape[0], Ds_reconstrs_per_obj.shape[1], Ds_reconstrs_per_obj.shape[2], Ds_reconstrs_per_obj.shape[3]//2, 2))
             Ds_reconstrs_per_obj = np.transpose(Ds_reconstrs_per_obj, (0, 3, 1, 2, 4))
             
@@ -817,8 +817,8 @@ class nn_model:
             #DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
             DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
             if nn_mode == MODE_3:
-                if i % Ds_reconstr_per_obj.shape[1] == 0:
-                    Ds_diff[i:i+Ds_reconstr_per_obj.shape[1]] = Ds[i:i+Ds_reconstr_per_obj.shape[1]] - Ds_reconstr_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
+                if i % Ds_reconstrs_per_obj.shape[1] == 0:
+                    Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
             
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None):
         unique_obj_ids = np.unique(obj_ids)
