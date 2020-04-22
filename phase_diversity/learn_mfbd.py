@@ -842,7 +842,7 @@ class nn_model:
                 used_obj_ids[obj_id] = (len(used_obj_ids), 0)
             obj_index, frame_index = used_obj_ids[obj_id]
             Ds_per_obj[obj_index, frame_index] = Ds[i]
-            if alpas is not None:
+            if alphas is not None:
                 alphas_per_obj[obj_index, frame_index] = alphas[i]
             used_obj_ids[obj_id] = (obj_index, frame_index + 1)
             diversities_per_obj[obj_index] = diversities[i]
