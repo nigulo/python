@@ -898,6 +898,8 @@ class nn_model:
                 #    reconstrs[obj_id] /= np.median(reconstrs[obj_id])
                 Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj).numpy()
                 #Ds_reconstr_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
+                Ds_reconstrs_per_obj = np.reshape(Ds_reconstrs_per_obj, (Ds_reconstrs_per_obj.shape[0], Ds_reconstrs_per_obj.shape[1], Ds_reconstrs_per_obj.shape[2]//2, 2))
+                Ds_reconstrs_per_obj = np.transpose(Ds_reconstrs_per_obj, (2, 0, 1, 3))
 
                 Ds_diff = np.empty_like(self.Ds)
                 Ds_diff_train = Ds_diff[:self.n_train]
