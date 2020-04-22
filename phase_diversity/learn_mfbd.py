@@ -441,7 +441,7 @@ class nn_model:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
             if nn_mode == MODE_3:
                 #alphas_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='alphas_input')
-                image_diff_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='image_diff_input')
+                image_diff_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_diff_input')
                 image_diff_input1 = tf.reshape(image_diff_input, [batch_size_per_gpu, nx, nx, num_defocus_channels*num_frames_input])
                 image_input1 = tf.concat([image_input, image_diff_input1], axis=3)
             #else:
