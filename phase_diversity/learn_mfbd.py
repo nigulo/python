@@ -882,7 +882,7 @@ class nn_model:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             DD_DP_PP_train = DD_DP_PP[:self.n_train]
             DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
-            reconstr = None
+            Ds_diff = None
             if nn_mode == MODE_3:
                 Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(self.Ds, np.zeros((len(self.Ds), jmax)), self.diversities, self.obj_ids, DD_DP_PP)
                 #Ds_per_obj, diversity_per_obj = self.group_per_obj(self.Ds, self.diversities, self.obj_ids)
@@ -919,7 +919,7 @@ class nn_model:
                     #    my_test_plot.close()
                     ###########################################################
                                         
-            self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
+            self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
                 input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train]
