@@ -338,6 +338,8 @@ class psf_tf():
     # For numpy inputs
     def Ds_reconstr(self, DP_real, DP_imag, PP, alphas):
         reconstr = self.reconstr(DP_real, DP_imag, PP, do_fft = False)
+        reconstr = tf.reshape(reconstr, [alphas.shape[0], 1, self.nx, self.nx])
+        reconstr = tf.tile(reconstr, [1, 2*alphas.shape[1], 1, 1])
         DF = self.multiply(reconstr, alphas)
         DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
