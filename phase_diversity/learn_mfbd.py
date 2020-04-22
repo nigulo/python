@@ -1216,6 +1216,8 @@ class nn_model:
                 #    reconstrs[obj_id] = self.deconvolve(Ds_, np.zeros((len(Ds_), jmax)), diversity_per_obj[obj_id])
                 
                 Ds_reconstrs_per_obj = self.Ds_reconstr(Ds_per_obj, alphas_per_obj, diversities_per_obj).numpy()
+                Ds_reconstrs_per_obj = np.reshape(Ds_reconstrs_per_obj, (Ds_reconstrs_per_obj.shape[0], Ds_reconstrs_per_obj.shape[1], Ds_reconstrs_per_obj.shape[2], Ds_reconstrs_per_obj.shape[3]//2, 2))
+                Ds_reconstrs_per_obj = np.transpose(Ds_reconstrs_per_obj, (0, 3, 1, 2, 4))
 
                 Ds_diff = np.empty_like(Ds)
                 for i in np.arange(len(Ds)):
