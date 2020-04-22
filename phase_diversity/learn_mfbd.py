@@ -775,13 +775,16 @@ class nn_model:
         
 
 
-    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids, Ds_diff=None, alphas=None):
+    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids, Ds_diff=None):
         output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
         
         if nn_mode == MODE_3:
             output = output_layer_model.predict([Ds, diversities, DD_DP_PP, Ds_diff], batch_size=batch_size)
+            alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
+            alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP, Ds_diff], batch_size=batch_size)
         else:
             output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
+            alphas = None
 
         DD_DP_PP_out = output[:, 1:, :, :]
         #DD_DP_PP_sums = dict()
