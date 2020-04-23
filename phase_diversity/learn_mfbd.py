@@ -63,6 +63,12 @@ if len(sys.argv) > i:
         train = False
 i +=1
 
+if train:
+    data_file = "Ds"
+else:
+    data_file = "Ds_test"
+i +=1
+
 n_test_frames = None
 if len(sys.argv) > i:
     n_test_frames = int(sys.argv[i])
@@ -73,10 +79,9 @@ if len(sys.argv) > i:
     n_test_objects = int(sys.argv[i])
 i +=1
 
-test_data_file = "Ds_test.npz"
 if len(sys.argv) > i:
-    test_data_file = sys.argv[i]
-i +=1
+    data_file = sys.argv[i]
+
 
 if nn_mode == MODE_1:
     num_reps = 1000
@@ -211,7 +216,7 @@ n_gpus = 1#len(gpus)
 if n_gpus >= 1:
     from numba import cuda
 
-def load_data(data_file="Ds"):
+def load_data(data_file):
     f = dir_name + '/' + data_file + ".zarr"
     if os.path.exists(f):
         loaded = zarr.open(f, 'r')
@@ -1412,7 +1417,7 @@ class nn_model:
 
 if train:
 
-    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data()
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
 
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -1580,7 +1585,7 @@ else:
     #Ds, images, pupil, modes, diversity, true_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
 
     
-    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(test_data_file)
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
 
     nx = Ds.shape[3]
     jmax = len(modes)
