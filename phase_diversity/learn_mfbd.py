@@ -67,6 +67,9 @@ if train:
     data_file = "Ds"
 else:
     data_file = "Ds_test"
+
+if len(sys.argv) > i:
+    data_file = sys.argv[i]
 i +=1
 
 n_test_frames = None
@@ -77,10 +80,6 @@ i +=1
 n_test_objects = None
 if len(sys.argv) > i:
     n_test_objects = int(sys.argv[i])
-i +=1
-
-if len(sys.argv) > i:
-    data_file = sys.argv[i]
 
 
 if nn_mode == MODE_1:
