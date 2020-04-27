@@ -1232,8 +1232,8 @@ class nn_model:
                 for i in np.arange(len(Ds)):
                     if i % Ds_reconstrs_per_obj.shape[1] == 0:
                         Ds_reconstr_i = Ds_reconstrs_per_obj[obj_ids[i]]
-                        med = np.median(Ds_reconstr_i, axis=(1, 2), keepdims=True)
-                        Ds_reconstr_i /= med
+                        med1 = np.median(Ds_reconstr_i, axis=(1, 2), keepdims=True)
+                        Ds_reconstr_i /= med1
 
                         Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstr_i#, i % Ds_reconstr.shape[1]]
                                 
