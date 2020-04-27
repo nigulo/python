@@ -488,7 +488,7 @@ class nn_model:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
                 
-                hidden_layer = conv_layer(image_input1, n_channels, num_convs=2)
+                hidden_layer = conv_layer(image_input1, n_channels, num_convs=1)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
@@ -920,7 +920,12 @@ class nn_model:
                 for i in np.arange(len(self.Ds)):
                     if i % Ds_reconstrs_per_obj.shape[1] == 0:
                         print("Data shapes", self.Ds[i:i+Ds_reconstrs_per_obj.shape[1]].shape, Ds_reconstrs_per_obj[self.obj_ids[i]].shape)
-                        Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = self.Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[self.obj_ids[i]]#, i % Ds_reconstr.shape[1]]
+                        
+                        Ds_reconstr_i = Ds_reconstrs_per_obj[self.obj_ids[i]]
+                        med = np.median(Ds_reconstr_i, axis=(1, 2), keepdims=True)
+                        Ds_reconstr_i /= med
+                        
+                        Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = self.Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstr_i#, i % Ds_reconstr.shape[1]]
 
                     ###########################################################
                     # DEBUG -- REMOVE
@@ -1002,7 +1007,7 @@ class nn_model:
                 #    reconstr[i] = reconstrs[obj_ids[i]]
                 #for epoch in np.arange(n_epochs_mode_2):
                 #    self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, reconstr)
-                input_data.append(reconstr)
+                input_data.append(Ds_diff)
             pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
             
         pred_Ds = None
@@ -1226,7 +1231,11 @@ class nn_model:
                 Ds_diff = np.empty_like(Ds)
                 for i in np.arange(len(Ds)):
                     if i % Ds_reconstrs_per_obj.shape[1] == 0:
-                        Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
+                        Ds_reconstr_i = Ds_reconstrs_per_obj[obj_ids[i]]
+                        med = np.median(Ds_reconstr_i, axis=(1, 2), keepdims=True)
+                        Ds_reconstr_i /= med
+
+                        Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstr_i#, i % Ds_reconstr.shape[1]]
                                 
                 #for i in np.arange(len(Ds)):
                 #    reconstr[i] = reconstrs[obj_ids[i]]
