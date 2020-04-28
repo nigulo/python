@@ -821,6 +821,8 @@ class nn_model:
             #DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
             if sum_over_batch:
                 if i % batch_size == 0:
+                    for j in np.arange(i, i+batch_size):
+                        assert(obj_ids[j] == obj_ids[i])
                     DD_DP_PP_out_batch_sum = np.sum(DD_DP_PP_out[i:i+batch_size], axis=0)
                     DD_DP_PP[i:i+batch_size] = (DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out_batch_sum)/batch_size
             else:
