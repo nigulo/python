@@ -819,7 +819,12 @@ class nn_model:
             #    DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_size - DD_DP_PP_out[i]
             #else:
             #DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
-            DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
+            if sum_over_batch:
+                if i % batch_size == 0:
+                    DD_DP_PP_out_batch_sum = np.sum(DD_DP_PP_out[i:i+batch_size], axis=0)
+                    DD_DP_PP[i:i+batch_size] = (DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out_batch_sum)/batch_size
+            else:
+                DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
             if nn_mode == MODE_3:
                 if i % Ds_reconstrs_per_obj.shape[1] == 0:
                     Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
