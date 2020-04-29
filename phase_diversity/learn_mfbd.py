@@ -835,14 +835,13 @@ class nn_model:
                     if not train and i == 0:
                         ###########################################################
                         # DEBUG -- REMOVE
-                        for ii in np.arange(len(Ds_reconstrs_per_obj[obj_ids[i]])):
-                            my_test_plot = plot.plot(nrows=2, ncols=2)
-                            my_test_plot.colormap(Ds[i, :, :, 0], [0, 0], show_colorbar=True)
-                            my_test_plot.colormap(Ds[i, :, :, 1], [0, 1])
-                            my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][i, :, :, 0], [1, 0])
-                            my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][i, :, :, 1], [1, 1])
-                            my_test_plot.save(f"{dir_name}/reconstr{i}.png")
-                            my_test_plot.close()
+                        my_test_plot = plot.plot(nrows=2, ncols=2)
+                        my_test_plot.colormap(Ds[i, :, :, 0], [0, 0], show_colorbar=True)
+                        my_test_plot.colormap(Ds[i, :, :, 1], [0, 1])
+                        my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][i, :, :, 0], [1, 0])
+                        my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][i, :, :, 1], [1, 1])
+                        my_test_plot.save(f"{dir_name}/reconstr{i}.png")
+                        my_test_plot.close()
                         ###########################################################
             
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None):
@@ -1257,7 +1256,19 @@ class nn_model:
                         Ds_reconstr_i /= med1
 
                         Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstr_i#, i % Ds_reconstr.shape[1]]
-                                
+                              
+                        if i == 0:
+                            ###########################################################
+                            # DEBUG -- REMOVE
+                            my_test_plot = plot.plot(nrows=2, ncols=2)
+                            my_test_plot.colormap(Ds[i, :, :, 0], [0, 0], show_colorbar=True)
+                            my_test_plot.colormap(Ds[i, :, :, 1], [0, 1])
+                            my_test_plot.colormap(Ds_reconstr_i[i, :, :, 0], [1, 0])
+                            my_test_plot.colormap(Ds_reconstr_i[i, :, :, 1], [1, 1])
+                            my_test_plot.save(f"{dir_name}/reconstr_a{i}.png")
+                            my_test_plot.close()
+                            ###########################################################
+                        
                 #for i in np.arange(len(Ds)):
                 #    reconstr[i] = reconstrs[obj_ids[i]]
                 for epoch in np.arange(n_epochs_mode_2):
