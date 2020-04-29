@@ -839,8 +839,8 @@ class nn_model:
                             my_test_plot = plot.plot(nrows=2, ncols=2)
                             my_test_plot.colormap(Ds[i, :, :, 0], [0, 0], show_colorbar=True)
                             my_test_plot.colormap(Ds[i, :, :, 1], [0, 1])
-                            my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][:, :, 0], [1, 0])
-                            my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][:, :, 1], [1, 1])
+                            my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][i, :, :, 0], [1, 0])
+                            my_test_plot.colormap(Ds_reconstrs_per_obj[obj_ids[i]][i, :, :, 1], [1, 1])
                             my_test_plot.save(f"{dir_name}/reconstr{i}.png")
                             my_test_plot.close()
                         ###########################################################
