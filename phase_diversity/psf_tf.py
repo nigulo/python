@@ -343,7 +343,7 @@ class psf_tf():
         DF = self.multiply(reconstr, alphas)
         DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
-        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
         D = tf.transpose(D, (0, 2, 3, 1))
         return D
 
@@ -351,7 +351,7 @@ class psf_tf():
         DF = self.multiply(reconstr, alphas)
         DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
-        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
         D = tf.transpose(D, (0, 2, 3, 1))
         return D
 
