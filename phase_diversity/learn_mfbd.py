@@ -134,7 +134,7 @@ else:
     n_epochs_2 = 4
     n_epochs_1 = 1
     
-    n_epochs_mode_2 = 2
+    n_epochs_mode_2 = 10
     
     # How many frames to use in training
     num_frames = 640
@@ -958,6 +958,7 @@ class nn_model:
                     ###########################################################
                                         
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
+            n_epochs_2 = self.n_epochs_2
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
                 input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train]
@@ -965,7 +966,7 @@ class nn_model:
                 if nn_mode == MODE_3:
                     input_data_train.append(Ds_diff_train)
                     input_data_validation.append(Ds_diff_validation)
-                for epoch in np.arange(self.epoch, self.n_epochs_2):
+                for epoch in np.arange(self.epoch, n_epochs_2):
                     history = model.fit(x=input_data_train, y=output_data_train,
                                 epochs=self.n_epochs_1,
                                 batch_size=batch_size,
@@ -991,7 +992,8 @@ class nn_model:
                             model.validation_losses = model.validation_losses[-20:]
 
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
-                
+                if n_epochs_2 > 1: 
+                    n_epochs_2 -= 1
                 ###########################################################
                 # DEBUG -- REMOVE
                 #for i in np.arange(len(self.Ds)):

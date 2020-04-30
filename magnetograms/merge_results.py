@@ -22,7 +22,7 @@ results = None
 #n3 = 3
 for root, dirs, files in os.walk("."):
     for file in files:
-        if file[:7] != "result_":
+        if file[:7] != "result_" or file[-4:] != ".pkl":
             continue
         (n1_, n2_, n3_, num_x_, num_y_, x_no, y_no, field_y) = misc.load(file)
         if results is None:
