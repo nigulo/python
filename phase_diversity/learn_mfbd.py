@@ -677,7 +677,7 @@ class nn_model:
             
             self.psf_test.set_batch_size(num_objs)
             self.psf_test.set_num_frames(num_frames)
-            ret_val = self.psf_test.Ds_reconstr2(image_deconv, tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
+            ret_val = self.psf_test.Ds_reconstr2(image_deconv, a3)#tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
         #print("image_deconv", image_deconv.numpy().shape)
         return ret_val
         
@@ -830,7 +830,7 @@ class nn_model:
             a2 = tf.reshape(tf.constant(diversities_per_obj, dtype='float32'), [num_objs, 2*nx*nx])
             a3 = tf.concat([a1, a2], axis=1)
             
-            Ds_reconstrs_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
+            Ds_reconstrs_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], a3)#tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
             Ds_reconstrs_per_obj = np.reshape(Ds_reconstrs_per_obj, (Ds_reconstrs_per_obj.shape[0], Ds_reconstrs_per_obj.shape[1], Ds_reconstrs_per_obj.shape[2], Ds_reconstrs_per_obj.shape[3]//2, 2))
             Ds_reconstrs_per_obj = np.transpose(Ds_reconstrs_per_obj, (0, 3, 1, 2, 4))
 
