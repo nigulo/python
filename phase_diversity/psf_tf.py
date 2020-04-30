@@ -308,9 +308,9 @@ class psf_tf():
     dat_F.shape = [l, 2, nx, nx]
     alphas.shape = [l, jmax]
     '''
-    def multiply(self, dat_F, alphas):
-        if alphas is not None or self.otf_vals is None:
-            self.calc(data=alphas)
+    def multiply(self, dat_F, alphas_diversity):
+        if alphas_diversity is not None or self.otf_vals is None:
+            self.calc(data=alphas_diversity)
         return tf.math.multiply(dat_F, self.otf_vals)
 
 
@@ -336,19 +336,19 @@ class psf_tf():
         return D
 
     # For numpy inputs
-    def Ds_reconstr(self, DP_real, DP_imag, PP, alphas):
+    def Ds_reconstr(self, DP_real, DP_imag, PP, alphas_diversity):
         reconstr = self.reconstr(DP_real, DP_imag, PP, do_fft = False)
-        reconstr = tf.reshape(reconstr, [alphas.shape[0], 1, self.nx, self.nx])
-        reconstr = tf.tile(reconstr, [1, 2*alphas.shape[1], 1, 1])
-        DF = self.multiply(reconstr, alphas)
+        reconstr = tf.reshape(reconstr, [self.batch_size, 1, self.nx, self.nx])
+        reconstr = tf.tile(reconstr, [1, 2*self.num_frames, 1, 1])
+        DF = self.multiply(reconstr, alphas_diversity)
         DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
         D = tf.signal.fftshift(D, axes = (2, 3))
         D = tf.transpose(D, (0, 2, 3, 1))
         return D
 
-    def Ds_reconstr2(self, reconstr, alphas):
-        DF = self.multiply(reconstr, alphas)
+    def Ds_reconstr2(self, reconstr, alphas_diversity):
+        DF = self.multiply(reconstr, alphas_diversity)
         DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))
         D = tf.signal.fftshift(D, axes = (2, 3))

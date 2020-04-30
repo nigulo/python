@@ -666,9 +666,17 @@ class nn_model:
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
             image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
             alphas = tf.constant(alphas, dtype='float32')
-            self.psf_test.set_batch_size(alphas.shape[0])
-            self.psf_test.set_num_frames(alphas.shape[1])
-            ret_val = self.psf_test.Ds_reconstr2(image_deconv, alphas)
+            
+            num_frames = alphas.shape[1]
+            num_objs = alphas.shape[0]
+            
+            a1 = tf.reshape(alphas, [num_objs, num_frames*jmax])
+            a2 = tf.reshape(diversity, [num_objs, 2*nx*nx])
+            a3 = tf.concat([a1, a2], axis=1)
+            
+            self.psf_test.set_batch_size(num_objs)
+            self.psf_test.set_num_frames(num_frames)
+            ret_val = self.psf_test.Ds_reconstr2(image_deconv, tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
         #print("image_deconv", image_deconv.numpy().shape)
         return ret_val
         
@@ -811,8 +819,17 @@ class nn_model:
             #    DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
             #    reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
             #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
-            self.psf_test.set_batch_size(Ds_per_obj.shape[0])
-            Ds_reconstrs_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], alphas_per_obj)
+            num_frames = alphas_per_obj.shape[1]
+            num_objs = alphas_per_obj.shape[0]
+            
+            self.psf_test.set_num_frames(num_frames)
+            self.psf_test.set_batch_size(num_objs)
+
+            a1 = tf.reshape(alphas_per_obj, [num_objs, num_frames*jmax])
+            a2 = tf.reshape(diversities_per_obj, [num_objs, 2*nx*nx])
+            a3 = tf.concat([a1, a2], axis=1)
+            
+            Ds_reconstrs_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
             Ds_reconstrs_per_obj = np.reshape(Ds_reconstrs_per_obj, (Ds_reconstrs_per_obj.shape[0], Ds_reconstrs_per_obj.shape[1], Ds_reconstrs_per_obj.shape[2], Ds_reconstrs_per_obj.shape[3]//2, 2))
             Ds_reconstrs_per_obj = np.transpose(Ds_reconstrs_per_obj, (0, 3, 1, 2, 4))
 
