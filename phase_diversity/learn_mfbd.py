@@ -1454,6 +1454,17 @@ class nn_model:
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
+            max_obj = np.max(full_obj)
+            min_obj = np.min(full_obj)
+            c1_obj = (max_obj-min_obj)/(max_obj+min_obj)
+
+            max_reconstr = np.max(full_reconstr)
+            min_reconstr = np.min(full_reconstr)
+            c1_reconstr = (max_reconstr-min_reconstr)/(max_reconstr+min_reconstr)
+
+            print("Contrasts 1", c1_obj, c1_reconstr)
+            print("Contrasts 2", np.std(full_obj), np.std(full_reconstr))
+            
 
 if train:
 
