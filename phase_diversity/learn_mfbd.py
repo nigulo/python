@@ -666,6 +666,7 @@ class nn_model:
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
             image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
             alphas = tf.constant(alphas, dtype='float32')
+            diversity = tf.constant(diversity, dtype='float32')
             
             num_frames = alphas.shape[1]
             num_objs = alphas.shape[0]
@@ -825,8 +826,8 @@ class nn_model:
             self.psf_test.set_num_frames(num_frames)
             self.psf_test.set_batch_size(num_objs)
 
-            a1 = tf.reshape(alphas_per_obj, [num_objs, num_frames*jmax])
-            a2 = tf.reshape(diversities_per_obj, [num_objs, 2*nx*nx])
+            a1 = tf.reshape(tf.constant(alphas_per_obj, dtype='float32'), [num_objs, num_frames*jmax])
+            a2 = tf.reshape(tf.constant(diversities_per_obj, dtype='float32'), [num_objs, 2*nx*nx])
             a3 = tf.concat([a1, a2], axis=1)
             
             Ds_reconstrs_per_obj = self.psf_test.Ds_reconstr(DD_DP_PP_sums_per_obj[:, 1, :, :], DD_DP_PP_sums_per_obj[:, 2, :, :], DD_DP_PP_sums_per_obj[:, 3, :, :], tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]))
