@@ -309,7 +309,7 @@ class psf_tf():
     alphas.shape = [l, jmax]
     '''
     def multiply(self, dat_F, alphas):
-        if self.otf_vals is None:
+        if alphas is not None or self.otf_vals is None:
             self.calc(data=alphas)
         return tf.math.multiply(dat_F, self.otf_vals)
 
