@@ -214,6 +214,8 @@ class psf_tf():
             self.fltr = tf.constant(fltr, dtype='complex64')
         else:
             self.fltr = None
+            
+        self.jmax_used = None
         
         
 
@@ -222,6 +224,9 @@ class psf_tf():
 
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
+
+    def set_jmax_used(self, jmax_used):
+        self.jmax_used = jmax_used
 
     '''
         vals = fft.ifft2(coh_vals, axes=(-2, -1))
@@ -246,6 +251,11 @@ class psf_tf():
             jmax = self.coh_trans_func.phase_aberr.jmax
     
             alphas = tf.slice(alphas, [0], [jmax])
+            if self.jmax_used is not None and self.jmax_used < jmax:
+                mask1 = tf.ones(self.jmax_used)
+                mask2 = tf.zeros(jmax - self.jmax_used)
+                mask = tf.concat([mask1, mask2], axis=0)
+                alphas = alphas * mask
 
             #self.coh_trans_func.phase_aberr.set_alphas(alphas)
 

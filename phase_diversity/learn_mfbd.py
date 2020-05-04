@@ -1504,6 +1504,7 @@ if train:
 
     nx = Ds.shape[3]
     jmax = len(modes)
+    jmax_to_use = 4
 
     random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
     Ds = Ds[:, random_indices]
@@ -1645,7 +1646,14 @@ if train:
         model.set_data(Ds_train, objs_train, diversity, positions_train)
         print("Rep no: " + str(rep))
     
+        model.psf.set_jmax_used(jmax_to_use)
         model.train()
+        
+        if jmax_to_use <= jmax//2:
+            jmax_to_use *= 2
+        else:
+            jmax_to_use = jmax
+            
 
         #if rep % 5 == 0:
         model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
