@@ -1646,7 +1646,7 @@ if train:
         model.set_data(Ds_train, objs_train, diversity, positions_train)
         print("Rep no: " + str(rep))
     
-        model.psf.set_jmax_used(jmax_to_use)
+        #model.psf.set_jmax_used(jmax_to_use)
         model.train()
         
         if jmax_to_use <= jmax//2:
