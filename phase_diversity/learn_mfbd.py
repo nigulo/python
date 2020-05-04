@@ -87,13 +87,13 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 1
+    n_epochs_2 = 10
     n_epochs_1 = 1
     
     # How many frames to use in training
     num_frames = 320
     # How many objects to use in training
-    num_objs = 8#0#None
+    num_objs = 80#0#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
