@@ -256,6 +256,7 @@ class psf_tf():
                 mask2 = tf.zeros(jmax - self.jmax_used)
                 mask = tf.concat([mask1, mask2], axis=0)
                 alphas = alphas * mask
+                print("jmax_used ", self.jmax_used)
 
             #self.coh_trans_func.phase_aberr.set_alphas(alphas)
 
