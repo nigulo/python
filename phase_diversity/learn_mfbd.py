@@ -82,7 +82,7 @@ if len(sys.argv) > i:
 
 if nn_mode == MODE_1:
     
-    shuffle = False
+    shuffle = True
     shuffle2 = False
     
     num_reps = 1000
@@ -97,10 +97,10 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 8
+    num_frames_input = 1
     
-    batch_size = 8
-    n_channels = 256
+    batch_size = 32
+    n_channels = 32
     
     sum_over_batch = True
     
