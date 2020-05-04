@@ -31,8 +31,6 @@ import time
 
 gamma = 1.0
 
-shuffle = True
-
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 MODE_3 = 3 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
@@ -83,6 +81,10 @@ if len(sys.argv) > i:
 
 
 if nn_mode == MODE_1:
+    
+    shuffle = False
+    shuffle2 = False
+    
     num_reps = 1000
 
     n_epochs_2 = 10
@@ -95,14 +97,18 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 1
+    num_frames_input = 8
     
-    batch_size = 32
-    n_channels = 32
+    batch_size = 8
+    n_channels = 256
     
     sum_over_batch = True
     
 elif nn_mode == MODE_2:
+
+    shuffle = True
+    shuffle2 = False
+    
     num_reps = 1000
     
     n_epochs_2 = 4
@@ -129,6 +135,10 @@ elif nn_mode == MODE_2:
     #n_test_frames = num_frames_mode_2
 
 else:
+    
+    shuffle = True
+    shuffle2 = False
+    
     num_reps = 1000
     
     n_epochs_2 = 4
@@ -734,7 +744,7 @@ class nn_model:
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
         #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
                     
-        if not sum_over_batch or batch_size == 1:
+        if shuffle2 and (not sum_over_batch or batch_size == 1):
             # Shuffle the data
             random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
             self.Ds = self.Ds[random_indices]
