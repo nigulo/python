@@ -526,8 +526,8 @@ class nn_model:
                 alphas_layer = keras.layers.Flatten()(alphas_layer)
                 #alphas_layer = keras.layers.Dense(2048, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(1024, activation='relu')(alphas_layer)
-                #alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
-                #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
+                alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
+                alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
