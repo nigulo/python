@@ -443,11 +443,11 @@ class nn_model:
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, 
-                                 mode=nn_mode, sum_over_batch=sum_over_batch, zero_avg_tiptilt=zero_avg_tiptilt)
+                                 mode=nn_mode, sum_over_batch=sum_over_batch)#, zero_avg_tiptilt=zero_avg_tiptilt)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
         self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, 
-                                      mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, zero_avg_tiptilt=zero_avg_tiptilt)
+                                      mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter)#, zero_avg_tiptilt=zero_avg_tiptilt)
         
         num_defocus_channels = 2#self.num_frames*2
 
