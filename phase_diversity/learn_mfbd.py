@@ -539,7 +539,7 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
+                #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
                 
                 
                 alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input, jmax])
@@ -552,6 +552,7 @@ class nn_model:
                     zeros = tf.zeros([batch_size_per_gpu, num_frames_input, jmax - 2])
                     tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
                     alphas_layer = alphas_layer - tiptilt_means
+                alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax], name='alphas_layer')
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
                 #obj_layer = keras.layers.Dense(64)(obj_layer)
@@ -561,7 +562,7 @@ class nn_model:
                 #obj_layer = keras.layers.Dense(1152)(obj_layer)
                
                 
-                a1 = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax])                    
+                a1 = alphas_layer#tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax])
                 a2 = tf.reshape(tf.transpose(diversity_input, [0, 3, 1, 2]), [batch_size_per_gpu, 2*nx*nx])
                 a3 = tf.concat([a1, a2], axis=1)
 
