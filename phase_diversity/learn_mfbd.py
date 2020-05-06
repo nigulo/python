@@ -99,7 +99,7 @@ if nn_mode == MODE_1:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
+    batch_size = 64
     n_channels = 32
     
     sum_over_batch = True
@@ -1546,9 +1546,7 @@ if train:
     print("num_frames", Ds.shape[1])
         
     Ds_train = Ds[:n_train]
-    num_frames_valid = num_frames_input
-    if nn_mode >= MODE_2:
-        num_frames_valid = batch_size
+    num_frames_valid = num_frames_input*batch_size
     Ds_test = Ds[n_train:, :num_frames_valid]
     if objs is not None:
         objs_train = objs[:n_train]
