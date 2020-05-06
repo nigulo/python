@@ -539,20 +539,23 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                #alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
                 
-                
-                alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input, jmax])
                 if zero_avg_tiptilt:
-                    if sum_over_batch:
-                        alpha_means = tf.tile(tf.math.reduce_mean(alphas_layer, axis=[0, 1], keepdims=True), [batch_size_per_gpu, num_frames_input, 1])
-                    else:
-                        alpha_means = tf.tile(tf.math.reduce_mean(alphas_layer, axis=1, keepdims=True), [1, num_frames_input, 1])
-                    tiptilt_means = tf.slice(alpha_means, [0, 0, 0], [batch_size_per_gpu, num_frames_input, 2])
-                    zeros = tf.zeros([batch_size_per_gpu, num_frames_input, jmax - 2])
-                    tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
-                    alphas_layer = alphas_layer - tiptilt_means
-                alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, num_frames_input*jmax], name='alphas_layer')
+                    def zero_avg(alphas):
+                        alphas = tf.reshape(alphas, [batch_size_per_gpu, num_frames_input, jmax])
+                        if sum_over_batch:
+                            alpha_means = tf.tile(tf.math.reduce_mean(alphas, axis=[0, 1], keepdims=True), [batch_size_per_gpu, num_frames_input, 1])
+                        else:
+                            alpha_means = tf.tile(tf.math.reduce_mean(alphas, axis=1, keepdims=True), [1, num_frames_input, 1])
+                        tiptilt_means = tf.slice(alpha_means, [0, 0, 0], [batch_size_per_gpu, num_frames_input, 2])
+                        zeros = tf.zeros([batch_size_per_gpu, num_frames_input, jmax - 2])
+                        tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
+                        alphas = alphas - tiptilt_means
+                        return tf.reshape(alphas, [batch_size_per_gpu, num_frames_input*jmax])
+                    alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(alphas_layer)
+                else:
+                    alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
+                    
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
                 #obj_layer = keras.layers.Dense(64)(obj_layer)
