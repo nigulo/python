@@ -300,7 +300,7 @@ class psf_tf():
         
             alphas = tf.reshape(tf.slice(alphas_diversity, [0], [self.num_frames*jmax]), [self.num_frames, jmax])
             if self.zero_avg_tiptilt:
-                alpha_means = tf.math.reduce_mean(alphas, axis=0, keepdims=True)
+                alpha_means = tf.tile(tf.math.reduce_mean(alphas, axis=0, keepdims=True), [self.num_frames, 1])
                 tiptilt_means = tf.slice(alpha_means, [0, 0], [self.num_frames, 2])
                 zeros = tf.zeros([self.num_frames, jmax - 2])
                 tiptilt_means = tf.concat([tiptilt_means, zeros], axis=1)
