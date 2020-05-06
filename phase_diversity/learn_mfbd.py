@@ -104,6 +104,8 @@ if nn_mode == MODE_1:
     
     sum_over_batch = True
     
+    zero_avg_tiptilt = True
+    
 elif nn_mode == MODE_2:
 
     shuffle = True
@@ -132,6 +134,7 @@ elif nn_mode == MODE_2:
 
     sum_over_batch = True
     
+    zero_avg_tiptilt = True
     #n_test_frames = num_frames_mode_2
 
 else:
@@ -161,6 +164,8 @@ else:
     num_frames_mode_2 = num_frames
 
     sum_over_batch = True
+
+    zero_avg_tiptilt = True
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
@@ -437,10 +442,12 @@ class nn_model:
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
-        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch)
+        self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, 
+                                 mode=nn_mode, sum_over_batch=sum_over_batch, zero_avg_tiptilt=zero_avg_tiptilt)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
-        self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter)
+        self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, 
+                                      mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, zero_avg_tiptilt=zero_avg_tiptilt)
         
         num_defocus_channels = 2#self.num_frames*2
 
@@ -526,8 +533,8 @@ class nn_model:
                 alphas_layer = keras.layers.Flatten()(alphas_layer)
                 #alphas_layer = keras.layers.Dense(2048, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(1024, activation='relu')(alphas_layer)
-                alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
-                alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
+                #alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
+                #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 

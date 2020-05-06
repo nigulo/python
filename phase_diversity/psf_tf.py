@@ -184,7 +184,7 @@ class psf_tf():
         wavelength in Angstroms
     '''
     def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=False, 
-                 num_frames=1, batch_size=1, set_diversity=False, mode=1, sum_over_batch=True, fltr=None):
+                 num_frames=1, batch_size=1, set_diversity=False, mode=1, sum_over_batch=True, fltr=None, zero_avg_tiptilt=True):
         self.coh_trans_func = coh_trans_func
         if nx is None:
             # Everything is precalculated
@@ -216,7 +216,7 @@ class psf_tf():
             self.fltr = None
             
         self.jmax_used = None
-        
+        self.zero_avg_tiptilt = zero_avg_tiptilt
         
 
     def set_num_frames(self, num_frames):
@@ -299,6 +299,12 @@ class psf_tf():
             jmax = self.coh_trans_func.phase_aberr.jmax
         
             alphas = tf.reshape(tf.slice(alphas_diversity, [0], [self.num_frames*jmax]), [self.num_frames, jmax])
+            if self.zero_avg_tiptilt:
+                alpha_means = tf.math.reduce_mean(alphas, axis=0, keepdims=True)
+                tiptilt_means = tf.slice(alpha_means, [0, 0], [self.num_frames, 2])
+                zeros = tf.zeros([self.num_frames, jmax - 2])
+                tiptilt_means = tf.concat([tiptilt_means, zeros], axis=1)
+                alphas = alphas - tiptilt_means
             if self.set_diversity:
                 diversity = tf.reshape(tf.slice(alphas_diversity, [self.num_frames*jmax], [2*nx*nx]), [2, nx, nx])
                 #self.coh_trans_func.set_diversity(diversity)
