@@ -460,6 +460,7 @@ class nn_model:
             image_input1 = image_input
             if nn_mode >= MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
+                tt_sums_input = keras.layers.Input((2), name='tt_sums_input')
             if nn_mode == MODE_3:
                 #alphas_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='alphas_input')
                 image_diff_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_diff_input')
@@ -544,10 +545,14 @@ class nn_model:
                     def zero_avg(alphas):
                         alphas = tf.reshape(alphas, [batch_size_per_gpu, num_frames_input, jmax])
                         if sum_over_batch:
-                            alpha_means = tf.tile(tf.math.reduce_mean(alphas, axis=[0, 1], keepdims=True), [batch_size_per_gpu, num_frames_input, 1])
+                            alpha_sums = tf.tile(tf.math.reduce_sum(alphas, axis=[0, 1], keepdims=True), [batch_size_per_gpu, num_frames_input, 1])
                         else:
-                            alpha_means = tf.tile(tf.math.reduce_mean(alphas, axis=1, keepdims=True), [1, num_frames_input, 1])
-                        tiptilt_means = tf.slice(alpha_means, [0, 0, 0], [batch_size_per_gpu, num_frames_input, 2])
+                            alpha_sums = tf.tile(tf.math.reduce_sum(alphas, axis=1, keepdims=True), [1, num_frames_input, 1])
+                        tiptilt_sums = tf.slice(alpha_sums, [0, 0, 0], [batch_size_per_gpu, num_frames_input, 2])
+                        if nn_mode >= MODE_2:
+                            tt_sums = tf.tile(tf.reshape(tt_sums_input, [batch_size_per_gpu, 1, 2]), [1, num_frames_input, 1])
+                            tiptilt_sums = tiptilt_sums + tt_sums
+                        tiptilt_sums = tiptilt_sums / tf.constant(self.num_frames, dtype="float32")
                         zeros = tf.zeros([batch_size_per_gpu, num_frames_input, jmax - 2])
                         tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
                         alphas = alphas - tiptilt_means
@@ -588,9 +593,9 @@ class nn_model:
                     output = keras.layers.Lambda(self.psf.mfbd_loss, name='output_layer')(hidden_layer)
                     
                     if nn_mode == MODE_3:
-                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, image_diff_input], outputs=output)
+                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, tt_sums_input, image_diff_input], outputs=output)
                     else:
-                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input], outputs=output)
+                        model = keras.models.Model(inputs=[image_input, diversity_input, DD_DP_PP_input, tt_sums_input], outputs=output)
     
                #optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
                 
@@ -823,22 +828,25 @@ class nn_model:
         
 
 
-    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids, Ds_diff=None):
+    def predict_mode2(self, Ds, diversities, DD_DP_PP, obj_ids, tt_sums, Ds_diff=None):
         output_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("output_layer").output)
         
         if nn_mode == MODE_3:
-            output = output_layer_model.predict([Ds, diversities, DD_DP_PP, Ds_diff], batch_size=batch_size)
+            output = output_layer_model.predict([Ds, diversities, DD_DP_PP, tt_sums, Ds_diff], batch_size=batch_size)
             alphas_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("alphas_layer").output)
-            alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP, Ds_diff], batch_size=batch_size)
+            alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP, tt_sums, Ds_diff], batch_size=batch_size)
         else:
-            output = output_layer_model.predict([Ds, diversities, DD_DP_PP], batch_size=batch_size)
-            alphas = None
+            output = output_layer_model.predict([Ds, diversities, DD_DP_PP, tt_sums], batch_size=batch_size)
+            alphas_layer_model = Model(inputs=self.model.input, outputs=self.model.get_layer("alphas_layer").output)
+            alphas = alphas_layer_model.predict([Ds, diversities, DD_DP_PP, tt_sums], batch_size=batch_size)
+            #alphas = None
 
         DD_DP_PP_out = output[:, 1:, :, :]
         #DD_DP_PP_sums = dict()
         #DD_DP_PP_counts = dict()
         assert(len(DD_DP_PP_out) == len(Ds))
-        Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(Ds, alphas, diversities, obj_ids, DD_DP_PP_out)
+        tt = alphas[:, :2]
+        Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, tt_sums_per_obj = self.group_per_obj(Ds, alphas, diversities, obj_ids, DD_DP_PP_out, tt)
         #for i in np.arange(len(DD_DP_PP_out)):
         #    obj_id = obj_ids[i]
         #    if not obj_id in DD_DP_PP_sums:
@@ -847,13 +855,14 @@ class nn_model:
         #    if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
         #        DD_DP_PP_counts[obj_id] += 1
         #        DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
+        num_frames = alphas_per_obj.shape[1]
+        assert(num_frames == self.num_frames)
         if nn_mode == MODE_3:
             #reconstrs = dict()
             #for obj_id in np.unique(obj_ids):
             #    DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
             #    reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
             #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
-            num_frames = alphas_per_obj.shape[1]
             num_objs = alphas_per_obj.shape[0]
             
             self.psf_test.set_num_frames(num_frames)
@@ -881,6 +890,11 @@ class nn_model:
                     DD_DP_PP[i:i+batch_size] = (DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out_batch_sum)/batch_size
             else:
                 DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
+            if i % batch_size*num_frames_input == 0:
+                for j in np.arange(i, i+batch_size*num_frames_input):
+                    assert(obj_ids[j] == obj_ids[i])
+                tt_batch_sum = np.sum(tt[i:i+batch_size*num_frames_input], axis=0)
+                tt_sums[i:i+batch_size] = tt_sums_per_obj[obj_ids[i]] - tt_batch_sum
             if nn_mode == MODE_3:
                 if i % Ds_reconstrs_per_obj.shape[1] == 0:
                     Ds_diff[i:i+Ds_reconstrs_per_obj.shape[1]] = Ds[i:i+Ds_reconstrs_per_obj.shape[1]] - Ds_reconstrs_per_obj[obj_ids[i]]#, i % Ds_reconstr.shape[1]]
@@ -897,7 +911,7 @@ class nn_model:
                         my_test_plot.close()
                         ###########################################################
             
-    def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None):
+    def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None, tt=None):
         unique_obj_ids = np.unique(obj_ids)
         used_obj_ids = dict()
         
@@ -915,6 +929,11 @@ class nn_model:
         else:
             DD_DP_PP_sums_per_obj = None
 
+        if tt is not None:
+            tt_sums_per_obj = np.zeros((len(unique_obj_ids), 2))
+        else:
+            tt_sums_per_obj = None
+
         for i in np.arange(len(Ds)):
             #if sum_over_batch:
             #    obj_id = obj_ids[i*batch_size]
@@ -930,8 +949,10 @@ class nn_model:
             diversities_per_obj[obj_index] = diversities[i]
             if DD_DP_PP is not None:
                 DD_DP_PP_sums_per_obj[obj_id] += DD_DP_PP[i]
+            if tt is not None:
+                tt_sums_per_obj[obj_id] += tt[i]
 
-        return Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj
+        return Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, tt_sums_per_obj
 
  
     def train(self):
@@ -968,9 +989,12 @@ class nn_model:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             DD_DP_PP_train = DD_DP_PP[:self.n_train]
             DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
+            tt_sums = np.zeros((len(self.Ds), 2))
+            tt_sums_train = tt_sums[:self.n_train]
+            tt_sums_validation = tt_sums[self.n_train:self.n_train+self.n_validation]
             Ds_diff = None
             if nn_mode == MODE_3:
-                Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(self.Ds, np.zeros((len(self.Ds), jmax)), self.diversities, self.obj_ids, DD_DP_PP)
+                Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, _ = self.group_per_obj(self.Ds, np.zeros((len(self.Ds), jmax)), self.diversities, self.obj_ids, DD_DP_PP)
                 #Ds_per_obj, diversity_per_obj = self.group_per_obj(self.Ds, self.diversities, self.obj_ids)
                 #reconstr = np.empty((len(self.Ds), nx, nx))
                 #reconstr_train = reconstr[:self.n_train]
@@ -1010,12 +1034,12 @@ class nn_model:
                     #    my_test_plot.close()
                     ###########################################################
                                         
-            self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
+            self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, Ds_diff)
             n_epochs_2 = self.n_epochs_2
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
-                input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train]
-                input_data_validation = [self.Ds_validation, self.diversities_validation, DD_DP_PP_validation]
+                input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train, tt_sums_train]
+                input_data_validation = [self.Ds_validation, self.diversities_validation, DD_DP_PP_validation, tt_sums_validation]
                 if nn_mode == MODE_3:
                     input_data_train.append(Ds_diff_train)
                     input_data_validation.append(Ds_diff_validation)
@@ -1044,7 +1068,7 @@ class nn_model:
                                 break
                             model.validation_losses = model.validation_losses[-20:]
 
-                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, Ds_diff)
+                self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, Ds_diff)
                 if n_epochs_2 > 2: 
                     n_epochs_2 -= 1
                 ###########################################################
@@ -1289,10 +1313,11 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([Ds, diversities], batch_size=batch_size)
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
+            tt_sums = np.zeros((len(Ds), 2))
             input_data = [Ds, diversities, DD_DP_PP]
             if nn_mode == MODE_3:
                 #group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None)
-                Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids, DD_DP_PP)
+                Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, _ = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids, DD_DP_PP)
                 #reconstr = np.empty((len(Ds), nx, nx))
                 #reconstrs = dict()
                 #for obj_id in np.unique(obj_ids):
@@ -1327,7 +1352,7 @@ class nn_model:
                 #for i in np.arange(len(Ds)):
                 #    reconstr[i] = reconstrs[obj_ids[i]]
                 for epoch in np.arange(n_epochs_mode_2):
-                    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, Ds_diff)
+                    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, Ds_diff)
                 input_data.append(Ds_diff)
             #for epoch in np.arange(n_epochs_mode_2):
             #    print("DD_DP_PP", DD_DP_PP[0, 0, 0, 0], DD_DP_PP[0, 1, 0, 0], DD_DP_PP[0, 2, 0, 0], DD_DP_PP[0, 3, 0, 0])
