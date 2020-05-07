@@ -461,11 +461,11 @@ class nn_model:
             if nn_mode >= MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
                 tt_sums_input = keras.layers.Input((2), name='tt_sums_input')
-            if nn_mode == MODE_3:
-                #alphas_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='alphas_input')
-                image_diff_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_diff_input')
-                image_diff_input1 = tf.reshape(image_diff_input, [batch_size_per_gpu, nx, nx, num_defocus_channels*num_frames_input])
-                image_input1 = tf.concat([image_input, image_diff_input1], axis=3)
+                if nn_mode == MODE_3:
+                    #alphas_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='alphas_input')
+                    image_diff_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_diff_input')
+                    image_diff_input1 = tf.reshape(image_diff_input, [batch_size_per_gpu, nx, nx, num_defocus_channels*num_frames_input])
+                    image_input1 = tf.concat([image_input, image_diff_input1], axis=3)
             #else:
             #    raise Exception("Unsupported mode")
     
@@ -542,7 +542,7 @@ class nn_model:
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
                 if zero_avg_tiptilt:
-                    def zero_avg(alphas):
+                    def zero_avg(alphas, tt_sums):
                         alphas = tf.reshape(alphas, [batch_size_per_gpu, num_frames_input, jmax])
                         if sum_over_batch:
                             alpha_sums = tf.tile(tf.math.reduce_sum(alphas, axis=[0, 1], keepdims=True), [batch_size_per_gpu, num_frames_input, 1])
@@ -550,16 +550,16 @@ class nn_model:
                             alpha_sums = tf.tile(tf.math.reduce_sum(alphas, axis=1, keepdims=True), [1, num_frames_input, 1])
                         tiptilt_sums = tf.slice(alpha_sums, [0, 0, 0], [batch_size_per_gpu, num_frames_input, 2])
                         if nn_mode >= MODE_2:
-                            tt_sums = tf.tile(tf.reshape(tt_sums_input, [batch_size_per_gpu, 1, 2]), [1, num_frames_input, 1])
+                            tt_sums = tf.tile(tf.reshape(tt_sums, [batch_size_per_gpu, 1, 2]), [1, num_frames_input, 1])
                             tiptilt_sums = tiptilt_sums + tt_sums
                         tiptilt_means = tiptilt_sums / tf.constant(self.num_frames, dtype="float32")
                         zeros = tf.zeros([batch_size_per_gpu, num_frames_input, jmax - 2])
                         tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
                         alphas = alphas - tiptilt_means
                         return tf.reshape(alphas, [batch_size_per_gpu, num_frames_input*jmax])
-                    alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(alphas_layer)
+                    alphas_layer = keras.layers.Lambda(lambda alphas: zero_avg(alphas, tt_sums_input), name='alphas_layer')(alphas_layer)
                 else:
-                    alphas_layer = keras.layers.Lambda(lambda x : multiply(x, 1.), name='alphas_layer')(alphas_layer)
+                    alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 1.), name='alphas_layer')(alphas_layer)
                     
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
