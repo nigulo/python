@@ -560,7 +560,7 @@ class nn_model:
                         alphas = alphas - tiptilt_means
                         return tf.reshape(alphas, [batch_size_per_gpu, num_frames_input*jmax])
                     if nn_mode >= MODE_2:
-                        x = tf.concat([alphas_layer, tf.reshape(tt_sums_input, [batch_size_per_gpu*2])])
+                        x = tf.concat([alphas_layer, tf.reshape(tt_sums_input, [batch_size_per_gpu*2])], axis=[0])
                     else:
                         x = alphas_layer
                     alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(x)
