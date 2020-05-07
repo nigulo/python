@@ -561,7 +561,7 @@ class nn_model:
                         return tf.reshape(alphas, [batch_size_per_gpu, num_frames_input*jmax])
                     x = tf.reshape(alphas_layer, [batch_size_per_gpu*num_frames_input*jmax])
                     if nn_mode >= MODE_2:
-                        x = tf.concat([x, tf.reshape(tt_sums_input, [batch_size_per_gpu*2])], axis=[0])
+                        x = tf.concat([x, tf.reshape(tt_sums_input, [batch_size_per_gpu*2])], axis=0)
                     alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(x)
                 else:
                     alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 1.), name='alphas_layer')(alphas_layer)
