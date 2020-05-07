@@ -542,7 +542,8 @@ class nn_model:
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 
                 if zero_avg_tiptilt:
-                    def zero_avg(alphas, tt_sums):
+                    def zero_avg(x):
+                        alphas = tf.slice(x, [0], [batch_size_per_gpu*num_frames_input*jmax])
                         alphas = tf.reshape(alphas, [batch_size_per_gpu, num_frames_input, jmax])
                         if sum_over_batch:
                             alpha_sums = tf.tile(tf.math.reduce_sum(alphas, axis=[0, 1], keepdims=True), [batch_size_per_gpu, num_frames_input, 1])
@@ -550,6 +551,7 @@ class nn_model:
                             alpha_sums = tf.tile(tf.math.reduce_sum(alphas, axis=1, keepdims=True), [1, num_frames_input, 1])
                         tiptilt_sums = tf.slice(alpha_sums, [0, 0, 0], [batch_size_per_gpu, num_frames_input, 2])
                         if nn_mode >= MODE_2:
+                            tt_sums = tf.slice(x, [batch_size_per_gpu*num_frames_input*jmax], [batch_size_per_gpu*2])
                             tt_sums = tf.tile(tf.reshape(tt_sums, [batch_size_per_gpu, 1, 2]), [1, num_frames_input, 1])
                             tiptilt_sums = tiptilt_sums + tt_sums
                         tiptilt_means = tiptilt_sums / tf.constant(self.num_frames, dtype="float32")
@@ -557,7 +559,11 @@ class nn_model:
                         tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
                         alphas = alphas - tiptilt_means
                         return tf.reshape(alphas, [batch_size_per_gpu, num_frames_input*jmax])
-                    alphas_layer = keras.layers.Lambda(lambda alphas: zero_avg(alphas, tt_sums_input), name='alphas_layer')(alphas_layer)
+                    if nn_mode >= MODE_2:
+                        x = tf.concatenate(alphas_layer, tf.reshape(tt_sums_input, [batch_size_per_gpu*2]))
+                    else:
+                        x = alphas_layer
+                    alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(x)
                 else:
                     alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 1.), name='alphas_layer')(alphas_layer)
                     
