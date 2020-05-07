@@ -552,7 +552,7 @@ class nn_model:
                         if nn_mode >= MODE_2:
                             tt_sums = tf.tile(tf.reshape(tt_sums_input, [batch_size_per_gpu, 1, 2]), [1, num_frames_input, 1])
                             tiptilt_sums = tiptilt_sums + tt_sums
-                        tiptilt_sums = tiptilt_sums / tf.constant(self.num_frames, dtype="float32")
+                        tiptilt_means = tiptilt_sums / tf.constant(self.num_frames, dtype="float32")
                         zeros = tf.zeros([batch_size_per_gpu, num_frames_input, jmax - 2])
                         tiptilt_means = tf.concat([tiptilt_means, zeros], axis=2)
                         alphas = alphas - tiptilt_means
