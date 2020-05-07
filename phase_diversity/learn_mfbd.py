@@ -100,7 +100,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 64
-    n_channels = 32
+    n_channels = 8
     
     sum_over_batch = True
     
@@ -128,7 +128,7 @@ elif nn_mode == MODE_2:
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 32
+    n_channels = 8
     
     num_frames_mode_2 = num_frames
 
@@ -159,7 +159,7 @@ else:
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 32
+    n_channels = 8
     
     num_frames_mode_2 = num_frames
 
