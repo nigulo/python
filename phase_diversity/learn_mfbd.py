@@ -1319,7 +1319,7 @@ class nn_model:
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             tt_sums = np.zeros((len(Ds), 2))
-            input_data = [Ds, diversities, DD_DP_PP]
+            input_data = [Ds, diversities, DD_DP_PP, tt_sums]
             if nn_mode == MODE_3:
                 #group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None)
                 Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, _ = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids, DD_DP_PP)
