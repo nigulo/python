@@ -1099,8 +1099,8 @@ class nn_model:
         if self.nn_mode == MODE_1:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
         elif self.nn_mode >= MODE_2:
-            DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-            tt_sums = np.zeros((len(self.Ds), 2))
+            #DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
+            #tt_sums = np.zeros((len(self.Ds), 2))
             input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums]
             if nn_mode == MODE_3:
                 #reconstr = np.empty((len(self.Ds), nx, nx))
@@ -1321,6 +1321,7 @@ class nn_model:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             tt_sums = np.zeros((len(Ds), 2))
             input_data = [Ds, diversities, DD_DP_PP, tt_sums]
+            Ds_diff = None
             if nn_mode == MODE_3:
                 #group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None)
                 Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, _ = self.group_per_obj(Ds, np.zeros((len(Ds), jmax)), diversities, obj_ids, DD_DP_PP)
@@ -1357,9 +1358,9 @@ class nn_model:
                         
                 #for i in np.arange(len(Ds)):
                 #    reconstr[i] = reconstrs[obj_ids[i]]
-                for epoch in np.arange(n_epochs_mode_2):
-                    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, Ds_diff)
                 input_data.append(Ds_diff)
+            for epoch in np.arange(n_epochs_mode_2):
+                self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, Ds_diff)
             #for epoch in np.arange(n_epochs_mode_2):
             #    print("DD_DP_PP", DD_DP_PP[0, 0, 0, 0], DD_DP_PP[0, 1, 0, 0], DD_DP_PP[0, 2, 0, 0], DD_DP_PP[0, 3, 0, 0])
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids)
