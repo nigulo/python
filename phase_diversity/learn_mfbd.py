@@ -36,7 +36,8 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 MODE_3 = 3 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
 
-smooth_window = 0
+# Meant for smoothing alpha curves (seems useless)
+smooth_window = 0 
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -726,9 +727,7 @@ class nn_model:
         
 
     def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
-        if self.num_frames is None or self.num_frames <= 0:
-            self.num_frames = Ds.shape[1]
-        self.num_frames = min(self.num_frames, Ds.shape[1])
+        assert(Ds.shape[1] >= self.num_frames)
         #assert(self.num_frames <= Ds.shape[1])
         if self.num_objs is None or self.num_objs <= 0:
             self.num_objs = Ds.shape[0]
@@ -861,8 +860,7 @@ class nn_model:
         #        DD_DP_PP_counts[obj_id] += 1
         #        DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
         num_frames = alphas_per_obj.shape[1]
-        if train:
-            assert(num_frames == self.num_frames)
+        assert(num_frames == self.num_frames)
         if nn_mode == MODE_3:
             #reconstrs = dict()
             #for obj_id in np.unique(obj_ids):
@@ -1710,7 +1708,7 @@ if train:
             
 
         #if rep % 5 == 0:
-        model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
+        #model.test(Ds_test, objs_test, diversity, positions_test, coords_test, "validation")
         
         #if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
         #    break
@@ -1803,7 +1801,7 @@ else:
     #Ds -= mean
     #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
 
-    model = nn_model(jmax, nx, num_frames, num_objs, pupil, modes)
+    model = nn_model(jmax, nx, n_test_frames, num_objs, pupil, modes)
     
     model.test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
 
