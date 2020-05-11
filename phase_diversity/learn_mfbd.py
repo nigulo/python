@@ -861,7 +861,8 @@ class nn_model:
         #        DD_DP_PP_counts[obj_id] += 1
         #        DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
         num_frames = alphas_per_obj.shape[1]
-        assert(num_frames == self.num_frames)
+        if train:
+            assert(num_frames == self.num_frames)
         if nn_mode == MODE_3:
             #reconstrs = dict()
             #for obj_id in np.unique(obj_ids):
