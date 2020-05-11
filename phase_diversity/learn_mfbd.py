@@ -1100,7 +1100,8 @@ class nn_model:
             pred_alphas = alphas_layer_model.predict([self.Ds, self.diversities], batch_size=batch_size)
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-            input_data = [self.Ds, self.diversities, DD_DP_PP]
+            tt_sums = np.zeros((len(self.Ds), 2))
+            input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums]
             if nn_mode == MODE_3:
                 #reconstr = np.empty((len(self.Ds), nx, nx))
                 #reconstrs = dict()
