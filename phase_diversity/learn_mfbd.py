@@ -1123,7 +1123,7 @@ class nn_model:
         elif self.nn_mode >= MODE_2:
             #DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
             #tt_sums = np.zeros((len(self.Ds), 2))
-            input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums]
+            input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
             if nn_mode == MODE_3:
                 #reconstr = np.empty((len(self.Ds), nx, nx))
                 #reconstrs = dict()
