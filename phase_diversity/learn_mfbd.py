@@ -953,8 +953,8 @@ class nn_model:
                 alphas_in[i] = alphas[i]
             else:
                 # Use alphas of previous frame
-                if i % num_frames == 0:
-                    alphas_in[i, :jmax] = 0.
+                if i % (num_frames/num_frames_input) == 0:
+                    alphas_in[i, :jmax] = alphas[i, :jmax]
                 else:
                     alphas_in[i, :jmax] = alphas[i - 1, jmax*(num_frames_input-1):jmax*num_frames_input]
                 if num_frames_input > 0:
