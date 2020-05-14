@@ -546,7 +546,8 @@ class nn_model:
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if nn_mode >= MODE_2:
-                    alphas_layer = keras.layers.add([alphas_layer, alphas_input])
+                    alphas_layer1 = keras.layers.Dense(jmax*num_frames_input, activation='relu')(alphas_input)
+                    alphas_layer = keras.layers.add([alphas_layer, alphas_layer1])
                 
                 if zero_avg_tiptilt:
                     def zero_avg(x):
@@ -948,10 +949,7 @@ class nn_model:
                     assert(obj_ids[j] == obj_ids[i])
                 tt_batch_sum = np.sum(tt[i:i+batch_size*num_frames_input], axis=0)
                 tt_sums[i:i+batch_size] = tt_sums_per_obj[obj_ids[i]] - tt_batch_sum
-            if shuffle0 or shuffle1 or shuffle2:
-                # Use alphas of the same frame
-                alphas_in[i] = alphas[i]
-            else:
+            if not shuffle0 and not shuffle1 and not shuffle2:
                 # Use alphas of previous frame
                 if i % (num_frames/num_frames_input) == 0:
                     alphas_in[i, :jmax] = alphas[i, :jmax]
