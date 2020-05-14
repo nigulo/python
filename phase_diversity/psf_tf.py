@@ -476,6 +476,9 @@ class psf_tf():
         
         Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
         Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
+        if self.fltr is not None:
+            Ds_F = Ds_F * tf.tile(tf.reshape(tf.constant(self.fltr), [1, 1, nx, nx]), self.batch_size, self.num_frames*2)
+            
         Ds_F_conj = tf.math.conj(Ds_F)
 
         self.calc(data=alphas_diversity, normalize = False)
