@@ -1499,7 +1499,7 @@ class nn_model:
             n_rows = 1
             if obj_reconstr is not None:
                 n_rows += 1
-            my_test_plot = plot.plot(nrows=n_rows, ncols=2)
+            my_test_plot = plot.plot(nrows=n_rows, ncols=2, width=8, height=6)
             row = 0
             if obj_reconstr is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True)

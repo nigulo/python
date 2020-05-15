@@ -476,8 +476,8 @@ class psf_tf():
         
         Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
         Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
-        if self.fltr is not None:
-            Ds_F = Ds_F * tf.tile(tf.reshape(self.fltr, [1, 1, nx, nx]), [self.batch_size, self.num_frames*2, 1, 1])
+        #if self.fltr is not None:
+        #    Ds_F = Ds_F * tf.tile(tf.reshape(self.fltr, [1, 1, nx, nx]), [self.batch_size, self.num_frames*2, 1, 1])
             
         Ds_F_conj = tf.math.conj(Ds_F)
 
