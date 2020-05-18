@@ -116,7 +116,7 @@ elif nn_mode == MODE_2:
     
     num_reps = 1000
     
-    n_epochs_2 = 4
+    n_epochs_2 = 1
     n_epochs_1 = 1
     
     n_epochs_mode_2 = 10
@@ -139,6 +139,7 @@ elif nn_mode == MODE_2:
     
     zero_avg_tiptilt = True
     #n_test_frames = num_frames_mode_2
+    num_alphas_input = 10
 
 else:
     
@@ -170,6 +171,8 @@ else:
     sum_over_batch = True
 
     zero_avg_tiptilt = True
+    num_alphas_input = 10
+    
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
@@ -465,7 +468,7 @@ class nn_model:
             if nn_mode >= MODE_2:
                 DD_DP_PP_input = keras.layers.Input((4, nx, nx), name='DD_DP_PP_input')
                 tt_sums_input = keras.layers.Input((2), name='tt_sums_input')
-                alphas_input = keras.layers.Input((num_frames_input*jmax), name='alphas_input')
+                alphas_input = keras.layers.Input((num_alphas_input*num_frames_input*jmax), name='alphas_input')
                 if nn_mode == MODE_3:
                     #alphas_input = keras.layers.Input((nx, num_defocus_channels*num_frames_input), name='alphas_input')
                     image_diff_input = keras.layers.Input((nx, nx, num_defocus_channels*num_frames_input), name='image_diff_input')
@@ -952,12 +955,18 @@ class nn_model:
                 tt_sums[i:i+batch_size] = tt_sums_per_obj[obj_ids[i]] - tt_batch_sum
             if not shuffle0 and not shuffle1 and not shuffle2:
                 # Use alphas of previous frame
-                if i % (num_frames/num_frames_input) == 0:
-                    alphas_in[i, :jmax] = alphas[i, :jmax]
-                else:
-                    alphas_in[i, :jmax] = alphas[i - 1, jmax*(num_frames_input-1):jmax*num_frames_input]
-                if num_frames_input > 0:
-                    alphas_in[i, jmax:jmax*num_frames_input] = alphas[i, :jmax*(num_frames_input-1)]
+                for j in np.arange(0, num_alphas_input):
+                    if (i + j) % (num_frames/num_frames_input) < num_alphas_input:
+                        alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = np.zeros_like(alphas[i])
+                    else:
+                        alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = alphas[i-num_alphas_input+j]
+                        
+                #if i % (num_frames/num_frames_input) < 0:
+                #    alphas_in[i, :jmax*num_frames_input] = alphas[i]
+                #else:
+                #    alphas_in[i, :jmax] = alphas[i - 1, jmax*(num_frames_input-1):jmax*num_frames_input]
+                #if num_frames_input > 0:
+                #    alphas_in[i, jmax:jmax*num_frames_input] = alphas[i, :jmax*(num_frames_input-1)]
                     
                 
             if nn_mode == MODE_3:
@@ -1797,7 +1806,10 @@ else:
     print(max_pos)
     filtr = np.all(positions < max_pos, axis=1)
 
-    stride = Ds.shape[1] // n_test_frames
+    if shuffle0 or shuffle1 or shuffle2:
+        stride = Ds.shape[1] // n_test_frames
+    else:
+        stride = 1
     #n_test_frames //= stride
     Ds = Ds[filtr, :stride*n_test_frames:stride]
     objs = objs[filtr]
