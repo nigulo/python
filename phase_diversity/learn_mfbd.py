@@ -1024,7 +1024,7 @@ class nn_model:
             tt_sums = np.zeros((len(self.Ds), 2))
             tt_sums_train = tt_sums[:self.n_train]
             tt_sums_validation = tt_sums[self.n_train:self.n_train+self.n_validation]
-            alphas = np.zeros((len(self.Ds), num_frames_input*jmax))
+            alphas = np.zeros((len(self.Ds), num_alphas_input*num_frames_input*jmax))
             alphas_train = alphas[:self.n_train]
             alphas_validation = alphas[self.n_train:self.n_train+self.n_validation]
             Ds_diff = None
@@ -1350,7 +1350,7 @@ class nn_model:
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             tt_sums = np.zeros((len(Ds), 2))
-            alphas = np.zeros((len(Ds), num_frames_input*jmax))
+            alphas = np.zeros((len(Ds), num_alphas_input*num_frames_input*jmax))
             input_data = [Ds, diversities, DD_DP_PP, tt_sums, alphas]
             Ds_diff = None
             if nn_mode == MODE_3:
