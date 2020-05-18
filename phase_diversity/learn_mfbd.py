@@ -546,7 +546,8 @@ class nn_model:
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if nn_mode >= MODE_2:
-                    alphas_layer1 = keras.layers.Dense(jmax*num_frames_input, activation='relu')(alphas_input)
+                    alphas_layer1 = keras.layers.Dense(1024, activation='relu')(alphas_input)
+                    alphas_layer1 = keras.layers.Dense(jmax*num_frames_input, activation='relu')(alphas_layer1)
                     alphas_layer = keras.layers.add([alphas_layer, alphas_layer1])
                 
                 if zero_avg_tiptilt:
