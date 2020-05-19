@@ -98,10 +98,10 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 8
+    num_frames_input = 1
     
-    batch_size = 32
-    n_channels = 64
+    batch_size = 64
+    n_channels = 8
     
     sum_over_batch = True
     
@@ -514,6 +514,17 @@ class nn_model:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
                 
+                #def seq_block(x):
+                #    alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
+                #    for i in np.arange(batch_size):
+                #        if i == 0:
+                #            alphas_layer = keras.layers.Dense(jmax, activation='linear')(x_i)
+                #        else:
+                #            x_i = keras.layers.Dense(1024, activation='relu')(x)
+                            
+                def tile(x):
+                    return tf.tile(tf.reshape(tf.reshape(x, [batch_size_per_gpu*1024]), [1, batch_size_per_gpu*1024]), [batch_size_per_gpu, 1])
+                
                 hidden_layer = conv_layer(image_input1, n_channels, num_convs=1)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
                 hidden_layer = conv_layer(hidden_layer, 4*n_channels)
@@ -546,6 +557,7 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
+                alphas_layer = keras.layers.Lambda(tile)(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if nn_mode >= MODE_2:
