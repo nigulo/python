@@ -517,8 +517,8 @@ class nn_model:
                 def seq_block(x):
                     x_out = tf.slice(x, [0, 0], [1, 1024])
                     x_i = x_out
-                    for i in np.arange(1, batch_size):
-                        x_i1 = tf.concat([tf.slice(x, [i, 0], [1, 1024]), x_i], axis=0)
+                    for i in np.arange(1, batch_size_per_gpu):
+                        x_i1 = tf.concat([tf.slice(x, [i, 0], [1, 1024]), x_i], axis=1)
                         x_i = keras.layers.Dense(1024, activation='relu')(x_i1)
                         x_out = tf.concat([x_out, x_i], axis=0)
                     return x_out
