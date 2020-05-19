@@ -80,11 +80,10 @@ n_test_objects = None
 if len(sys.argv) > i:
     n_test_objects = int(sys.argv[i])
 
-
 if nn_mode == MODE_1:
     
-    shuffle0 = True
-    shuffle1 = True
+    shuffle0 = False
+    shuffle1 = False
     shuffle2 = False
     
     num_reps = 1000
@@ -99,10 +98,10 @@ if nn_mode == MODE_1:
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
-    num_frames_input = 1
+    num_frames_input = 8
     
-    batch_size = 64
-    n_channels = 8
+    batch_size = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -116,7 +115,7 @@ elif nn_mode == MODE_2:
     
     num_reps = 1000
     
-    n_epochs_2 = 1
+    n_epochs_2 = 5
     n_epochs_1 = 1
     
     n_epochs_mode_2 = 10
@@ -124,7 +123,7 @@ elif nn_mode == MODE_2:
     # How many frames to use in training
     num_frames = 320#640
     # How many objects to use in training
-    num_objs = 80#None
+    num_objs = 8#0#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -176,7 +175,8 @@ else:
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
-    assert((num_frames // num_frames_input) % batch_size == 0)
+    if not train:
+        assert((n_test_frames // num_frames_input) % batch_size == 0)
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -758,7 +758,6 @@ class nn_model:
         objs = objs[i1:i1+self.num_objs]
         if positions is not None:
             positions = positions[i1:i1+self.num_objs]
-        num_objects = Ds.shape[1]
         
         self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
         
@@ -817,6 +816,9 @@ class nn_model:
         
         self.n_train = n_train
         self.n_validation = n_validation
+
+        if sum_over_batch:
+            assert((self.n_train // self.num_objs) % batch_size == 0)
 
         self.Ds_train = self.Ds[:n_train]
         self.Ds_validation = self.Ds[n_train:n_train+n_validation]
