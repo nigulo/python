@@ -514,16 +514,17 @@ class nn_model:
                         x = keras.layers.MaxPooling2D()(x)
                     return x
                 
-                #def seq_block(x):
-                #    alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                #    for i in np.arange(batch_size):
-                #        if i == 0:
-                #            alphas_layer = keras.layers.Dense(jmax, activation='linear')(x_i)
-                #        else:
-                #            x_i = keras.layers.Dense(1024, activation='relu')(x)
+                def seq_block(x):
+                    x_out = tf.slice(x, [0, 0], [1, 1024])
+                    x_i = x_out
+                    for i in np.arange(1, batch_size):
+                        x_i1 = tf.concat([tf.slice(x, [i, 0], [1, 1024]), x_i], axis=0)
+                        x_i = keras.layers.Dense(1024, activation='relu')(x_i1)
+                        x_out = tf.concat([x_out, x_i], axis=0)
+                    return x_out
                             
-                def tile(x):
-                    return tf.tile(tf.reshape(tf.reshape(x, [batch_size_per_gpu*1024]), [1, batch_size_per_gpu*1024]), [batch_size_per_gpu, 1])
+                #def tile(x):
+                #    return tf.tile(tf.reshape(tf.reshape(x, [batch_size_per_gpu*1024]), [1, batch_size_per_gpu*1024]), [batch_size_per_gpu, 1])
                 
                 hidden_layer = conv_layer(image_input1, n_channels, num_convs=1)
                 hidden_layer = conv_layer(hidden_layer, 2*n_channels)
@@ -557,7 +558,8 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = keras.layers.Lambda(tile)(alphas_layer)
+                alphas_layer = seq_block(alphas_layer)
+                #alphas_layer = keras.layers.Lambda(tile)(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if nn_mode >= MODE_2:
