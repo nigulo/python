@@ -1827,10 +1827,10 @@ else:
     print(max_pos)
     filtr = np.all(positions < max_pos, axis=1)
 
-    if shuffle0 or shuffle1 or shuffle2:
-        stride = Ds.shape[1] // n_test_frames
-    else:
+    if no_shuffle:
         stride = 1
+    else:
+        stride = Ds.shape[1] // n_test_frames
     #n_test_frames //= stride
     Ds = Ds[filtr, :stride*n_test_frames:stride]
     objs = objs[filtr]
