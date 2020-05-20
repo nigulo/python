@@ -562,9 +562,9 @@ class nn_model:
                 if no_shuffle:
                     alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
                     lstm = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True)#, activation="relu")#, return_state=True)
-                    lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
+                    #lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
                     alphas_layer = lstm(alphas_layer)
-                    alphas_layer = lstm2(alphas_layer)
+                    #alphas_layer = lstm2(alphas_layer)
                     alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
                 #alphas_layer = seq_block(alphas_layer)
                 
