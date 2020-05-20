@@ -171,7 +171,8 @@ else:
 
     zero_avg_tiptilt = True
     num_alphas_input = 10
-    
+
+no_shuffle = not shuffle0 and not shuffle1 and not shuffle2
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
@@ -558,10 +559,11 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
-                lstm = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True)#, return_state=True)
-                alphas_layer = lstm(alphas_layer)
-                alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
+                if no_shuffle:
+                    alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
+                    lstm = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True)#, return_state=True)
+                    alphas_layer = lstm(alphas_layer)
+                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
                 #alphas_layer = seq_block(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
@@ -972,7 +974,7 @@ class nn_model:
                     assert(obj_ids[j] == obj_ids[i])
                 tt_batch_sum = np.sum(tt[i:i+batch_size*num_frames_input], axis=0)
                 tt_sums[i:i+batch_size] = tt_sums_per_obj[obj_ids[i]] - tt_batch_sum
-            if not shuffle0 and not shuffle1 and not shuffle2:
+            if no_shuffle:#not shuffle0 and not shuffle1 and not shuffle2:
                 # Use alphas of previous frame
                 for j in np.arange(0, num_alphas_input):
                     if (i + j) % (num_frames/num_frames_input) < num_alphas_input:
