@@ -558,8 +558,11 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = seq_block(alphas_layer)
-                #alphas_layer = keras.layers.Lambda(tile)(alphas_layer)
+                alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
+                lstm = tf.keras.layers.LSTM(512, return_sequences=True)#, return_state=True)
+                alphas_layer = lstm(alphas_layer)
+                alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
+                #alphas_layer = seq_block(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if nn_mode >= MODE_2:
