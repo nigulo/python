@@ -561,7 +561,7 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if no_shuffle:
                     alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
-                    lstm = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True)#, return_state=True)
+                    lstm = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, activation="relu")#, return_state=True)
                     alphas_layer = lstm(alphas_layer)
                     alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
                 #alphas_layer = seq_block(alphas_layer)
