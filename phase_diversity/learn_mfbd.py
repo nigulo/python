@@ -564,7 +564,7 @@ class nn_model:
                     lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
                     #lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
                     alphas_layer = lstm(alphas_layer)
-                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 1024])
+                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 512])
                     alphas_layer1 = tf.slice(alphas_layer, [0, 0], [batch_size_per_gpu, 512])
                     alphas_layer2 = tf.slice(alphas_layer, [batch_size_per_gpu, 0], [batch_size_per_gpu, 512])
                     alphas_layer = tf.concat([alphas_layer1, alphas_layer2], axis=1)
