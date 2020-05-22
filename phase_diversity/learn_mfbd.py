@@ -123,7 +123,7 @@ elif nn_mode == MODE_2:
     # How many frames to use in training
     num_frames = 320#640
     # How many objects to use in training
-    num_objs = 8#0#None
+    num_objs = 80#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -132,12 +132,10 @@ elif nn_mode == MODE_2:
     batch_size = 32
     n_channels = 8
     
-    num_frames_mode_2 = num_frames
-
     sum_over_batch = True
     
     zero_avg_tiptilt = True
-    #n_test_frames = num_frames_mode_2
+
     num_alphas_input = 10
 
 else:
@@ -165,8 +163,6 @@ else:
     batch_size = 32
     n_channels = 8
     
-    num_frames_mode_2 = num_frames
-
     sum_over_batch = True
 
     zero_avg_tiptilt = True
@@ -933,22 +929,10 @@ class nn_model:
         assert(len(DD_DP_PP_out) == len(Ds))
         tt = alphas[:, :2]
         Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, tt_sums_per_obj = self.group_per_obj(Ds, alphas, diversities, obj_ids, DD_DP_PP_out, tt)
-        #for i in np.arange(len(DD_DP_PP_out)):
-        #    obj_id = obj_ids[i]
-        #    if not obj_id in DD_DP_PP_sums:
-        #        DD_DP_PP_sums[obj_id] = np.zeros_like(DD_DP_PP_out[0])
-        #        DD_DP_PP_counts[obj_id] = 0
-        #    if DD_DP_PP_counts[obj_id] < num_frames_mode_2:
-        #        DD_DP_PP_counts[obj_id] += 1
-        #        DD_DP_PP_sums[obj_id] += DD_DP_PP_out[i]
+
         num_frames = alphas_per_obj.shape[1]
         assert(num_frames == self.num_frames)
         if nn_mode == MODE_3:
-            #reconstrs = dict()
-            #for obj_id in np.unique(obj_ids):
-            #    DD_DP_PP_sums_i = DD_DP_PP_sums[obj_id]
-            #    reconstrs[obj_id] = self.psf_test.reconstr(DD_DP_PP_sums_i[1], DD_DP_PP_sums_i[2], DD_DP_PP_sums_i[3]).numpy()
-            #    #reconstrs[obj_id] /= np.median(reconstrs[obj_id])
             num_objs = alphas_per_obj.shape[0]
             
             self.psf_test.set_num_frames(num_frames)
@@ -964,10 +948,6 @@ class nn_model:
 
             
         for i in np.arange(len(Ds)):
-            #if sum_over_batch:
-            #    DD_DP_PP[i] = DD_DP_PP_sums[obj_ids[i]]/batch_size - DD_DP_PP_out[i]
-            #else:
-            #DD_DP_PP[i] = (DD_DP_PP_sums[obj_ids[i]] - DD_DP_PP_out[i])/DD_DP_PP_counts[obj_ids[i]]
             if sum_over_batch:
                 if i % batch_size == 0:
                     for j in np.arange(i, i+batch_size):
