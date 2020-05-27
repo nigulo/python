@@ -115,10 +115,10 @@ elif nn_mode == MODE_2:
     
     num_reps = 1000
     
-    n_epochs_2 = 5
+    n_epochs_2 = 10
     n_epochs_1 = 1
     
-    n_epochs_mode_2 = 10
+    n_epochs_mode_2 = 3
     
     # How many frames to use in training
     num_frames = 320#640
