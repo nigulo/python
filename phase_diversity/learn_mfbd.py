@@ -118,7 +118,8 @@ elif nn_mode == MODE_2:
     n_epochs_2 = 10
     n_epochs_1 = 1
     
-    n_epochs_mode_2 = 3
+    n_epochs_mode_2 = 10
+    mode_2_index = 1
     
     # How many frames to use in training
     num_frames = 320#640
@@ -682,13 +683,15 @@ class nn_model:
         epoch = 0
         epoch_mode_2 = 0
         val_loss = float("inf")
+        
+        mode_2_index_ = mode_2_index
 
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
             if nn_mode_ == MODE_1:
                 n_epochs_1_, n_epochs2_, epoch = params
             elif nn_mode_ >= MODE_2:
-                n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2, val_loss = params
+                n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2, val_loss, mode_2_index_ = params
         else:
             nn_mode_ = nn_mode
 
@@ -709,6 +712,7 @@ class nn_model:
             self.epoch_mode_2 = epoch_mode_2
             self.val_loss = val_loss
             
+            self.mode_2_index = mode_2_index_
 
     # Inputs should be grouped per object (first axis)
     def deconvolve(self, Ds, alphas, diversity, do_fft=True):
@@ -1078,7 +1082,6 @@ class nn_model:
                     ###########################################################
                                         
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, alphas, Ds_diff)
-            n_epochs_2 = self.n_epochs_2
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
                 input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train, tt_sums_train, alphas_train]
@@ -1086,7 +1089,13 @@ class nn_model:
                 if nn_mode == MODE_3:
                     input_data_train.append(Ds_diff_train)
                     input_data_validation.append(Ds_diff_validation)
-                for epoch in np.arange(self.epoch, n_epochs_2):
+                start_epoch = 0
+                end_epoch = 1
+                if epoch_mode_2 == self.mode_2_index:
+                    start_epoch = self.epoch
+                    end_epoch = self.n_epochs_2
+                    
+                for epoch in np.arange(start_epoch, end_epoch):
                     history = model.fit(x=input_data_train, y=output_data_train,
                                 epochs=self.n_epochs_1,
                                 batch_size=batch_size,
@@ -1098,7 +1107,7 @@ class nn_model:
                                 callbacks=[MyCustomCallback(model)])
                     if True:#self.val_loss > history.history['val_loss'][-1]:
                         self.val_loss = history.history['val_loss'][-1]
-                        save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss))
+                        save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss, self.mode_2_index))
                     else:
                         print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
                         sys.exit()
@@ -1110,10 +1119,8 @@ class nn_model:
                             if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
                                 break
                             model.validation_losses = model.validation_losses[-20:]
-
+                    
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, alphas, Ds_diff)
-                if n_epochs_2 > 2: 
-                    n_epochs_2 -= 1
                 ###########################################################
                 # DEBUG -- REMOVE
                 #for i in np.arange(len(self.Ds)):
@@ -1127,6 +1134,11 @@ class nn_model:
                     
                 self.epoch = 0
         self.epoch_mode_2 = 0
+        self.mode_2_index += 1
+        if self.mode_2_index >= self.n_epochs_mode_2:
+            self.mode_2_index = 0
+        if self.n_epochs_2 > 1: 
+            self.n_epochs_2 //= 2
 
         
         #######################################################################
