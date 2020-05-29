@@ -122,7 +122,7 @@ elif nn_mode == MODE_2:
     mode_2_index = 1
     
     # How many frames to use in training
-    num_frames = 320#640
+    num_frames = 640
     # How many objects to use in training
     num_objs = 80#None
     
@@ -1082,6 +1082,7 @@ class nn_model:
                     ###########################################################
                                         
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, alphas, Ds_diff)
+            print("Index, num epochs:", self.mode_2_index, self.n_epochs_2)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
                 input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train, tt_sums_train, alphas_train]
@@ -1090,10 +1091,10 @@ class nn_model:
                     input_data_train.append(Ds_diff_train)
                     input_data_validation.append(Ds_diff_validation)
                 start_epoch = 0
-                end_epoch = 1
-                if epoch_mode_2 == self.mode_2_index:
-                    start_epoch = self.epoch
-                    end_epoch = self.n_epochs_2
+                end_epoch = 1000#1
+                #if epoch_mode_2 == self.mode_2_index:
+                #    start_epoch = self.epoch
+                #    end_epoch = self.n_epochs_2
                     
                 for epoch in np.arange(start_epoch, end_epoch):
                     history = model.fit(x=input_data_train, y=output_data_train,
@@ -1134,12 +1135,13 @@ class nn_model:
                 ###########################################################
                     
                 self.epoch = 0
+        sys.exit()
         self.epoch_mode_2 = 0
         self.mode_2_index += 1
-        if self.mode_2_index >= self.n_epochs_mode_2:
-            self.mode_2_index = 0
-        if self.n_epochs_2 > 1: 
-            self.n_epochs_2 //= 2
+        #if self.mode_2_index >= self.n_epochs_mode_2:
+        #    self.mode_2_index = 0
+        #if self.n_epochs_2 > 1: 
+        #    self.n_epochs_2 //= 2
 
         
         #######################################################################
