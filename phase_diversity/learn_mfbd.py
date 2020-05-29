@@ -1082,7 +1082,7 @@ class nn_model:
                     ###########################################################
                                         
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, alphas, Ds_diff)
-            print("Index, num epochs:", self.mode_2_index, self.n_epochs_2)
+            print("Index, num epochs, epoch_mode_2:", self.mode_2_index, self.n_epochs_2, self.epoch_mode_2)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
                 validation_losses = []
                 input_data_train = [self.Ds_train, self.diversities_train, DD_DP_PP_train, tt_sums_train, alphas_train]
@@ -1135,13 +1135,13 @@ class nn_model:
                 ###########################################################
                     
                 self.epoch = 0
-        sys.exit()
-        self.epoch_mode_2 = 0
-        self.mode_2_index += 1
-        #if self.mode_2_index >= self.n_epochs_mode_2:
-        #    self.mode_2_index = 0
-        #if self.n_epochs_2 > 1: 
-        #    self.n_epochs_2 //= 2
+            sys.exit()
+            self.epoch_mode_2 = 0
+            self.mode_2_index += 1
+            #if self.mode_2_index >= self.n_epochs_mode_2:
+            #    self.mode_2_index = 0
+            #if self.n_epochs_2 > 1: 
+            #    self.n_epochs_2 //= 2
 
         
         #######################################################################
