@@ -115,7 +115,7 @@ elif nn_mode == MODE_2:
     
     num_reps = 1000
     
-    n_epochs_2 = 10
+    n_epochs_2 = 20
     n_epochs_1 = 1
     
     n_epochs_mode_2 = 10
@@ -1111,14 +1111,14 @@ class nn_model:
                     else:
                         print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
                         sys.exit()
-                    validation_losses.append(history.history['val_loss'])
-                    if len(validation_losses) >= 10:
-                        print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
+                    #validation_losses.append(history.history['val_loss'])
+                    #if len(validation_losses) >= 10:
+                    #    print("Average validation loss: " + str(np.mean(validation_losses[-10:])))
                 
-                        if len(validation_losses) >= 20:
-                            if np.mean(model.validation_losses[-10:]) > np.mean(model.validation_losses[-20:-10]):
-                                break
-                            model.validation_losses = model.validation_losses[-20:]
+                    #    if len(validation_losses) >= 20:
+                    #        if np.mean(validation_losses[-10:]) > np.mean(validation_losses[-20:-10]):
+                    #            break
+                    #        validation_losses = validation_losses[-20:]
                     
                 self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, alphas, Ds_diff)
                 ###########################################################
