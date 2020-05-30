@@ -909,7 +909,7 @@ class nn_model:
             if DD_DP_PP is not None:
                 DD_DP_PP_sums_per_obj[obj_id] += DD_DP_PP[i]
             if tt is not None:
-                tt_sums_per_obj[obj_id] += tt[i]
+                tt_sums_per_obj[obj_id] += np.sum(tt[i], axis=0)
 
         return Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, tt_sums_per_obj
 
