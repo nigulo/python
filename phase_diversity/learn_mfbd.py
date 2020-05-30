@@ -1093,7 +1093,7 @@ class nn_model:
                     input_data_train.append(Ds_diff_train)
                     input_data_validation.append(Ds_diff_validation)
                 start_epoch = 0
-                end_epoch = 1000#1
+                end_epoch = 10#1
                 #if epoch_mode_2 == self.mode_2_index:
                 #    start_epoch = self.epoch
                 #    end_epoch = self.n_epochs_2
@@ -1114,6 +1114,7 @@ class nn_model:
                     else:
                         print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
                         self.val_loss = float("inf")
+                        load_weights(model)
                         break
                     #validation_losses.append(history.history['val_loss'])
                     #if len(validation_losses) >= 10:
