@@ -931,7 +931,9 @@ class nn_model:
         #DD_DP_PP_sums = dict()
         #DD_DP_PP_counts = dict()
         assert(len(DD_DP_PP_out) == len(Ds))
-        tt = alphas[:, :2]
+        tt = np.empty((len(alphas), num_frames_input, 2))
+        for frame in np.arange(num_frames_input):
+            tt[:, frame] = alphas[:, frame*jmax:frame*jmax+2]
         Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, tt_sums_per_obj = self.group_per_obj(Ds, alphas, diversities, obj_ids, DD_DP_PP_out, tt)
 
         num_frames = alphas_per_obj.shape[1]
@@ -963,7 +965,7 @@ class nn_model:
             if i % batch_size*num_frames_input == 0:
                 for j in np.arange(i, i+batch_size*num_frames_input):
                     assert(obj_ids[j] == obj_ids[i])
-                tt_batch_sum = np.sum(tt[i:i+batch_size*num_frames_input], axis=0)
+                tt_batch_sum = np.sum(tt[i:i+batch_size], axis=(0, 1))
                 tt_sums[i:i+batch_size] = tt_sums_per_obj[obj_ids[i]] - tt_batch_sum
             if no_shuffle:#not shuffle0 and not shuffle1 and not shuffle2:
                 # Use alphas of previous frame
