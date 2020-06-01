@@ -1139,8 +1139,8 @@ class nn_model:
                     
                 self.epoch = 0
                 print("epoch_mode_2, n_epochs_mode_2", epoch_mode_2, self.n_epochs_mode_2)
-            print("Exiting")
-            sys.exit()
+            #print("Exiting")
+            #sys.exit()
             self.epoch_mode_2 = 0
             self.mode_2_index += 1
             #if self.mode_2_index >= self.n_epochs_mode_2:
