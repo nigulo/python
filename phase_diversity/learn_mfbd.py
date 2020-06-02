@@ -77,6 +77,8 @@ n_test_objects = None
 if len(sys.argv) > i:
     n_test_objects = int(sys.argv[i])
 
+train_perc = 0.8
+
 if nn_mode == MODE_1:
     
     shuffle0 = False
@@ -766,7 +768,7 @@ class nn_model:
         return ret_val
         
 
-    def set_data(self, Ds, objs, diversity, positions, train_perc=.8):
+    def set_data(self, Ds, objs, diversity, positions, train_perc=train_perc):
         assert(Ds.shape[1] >= self.num_frames)
         #assert(self.num_frames <= Ds.shape[1])
         if self.num_objs is None or self.num_objs <= 0:
@@ -846,10 +848,11 @@ class nn_model:
         self.n_train = n_train
         self.n_validation = n_validation
 
+        assert(int(self.num_objs*train_perc)/train_perc == self.num_objs)
         if sum_over_batch:
-            assert((self.n_train // self.num_objs) % batch_size == 0)
+            assert((self.n_train // (self.num_objs*train_perc)) % batch_size == 0)
 
-        assert((self.n_train // self.num_objs) % self.num_frames == 0)
+        assert((self.n_train // (self.num_objs*train_perc)) % self.num_frames == 0)
 
         self.Ds_train = self.Ds[:n_train]
         self.Ds_validation = self.Ds[n_train:n_train+n_validation]
