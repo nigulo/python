@@ -36,9 +36,6 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 MODE_3 = 3 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_2
 
-# Meant for smoothing alpha curves (seems useless)
-smooth_window = 0 
-
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
 #    for x in xs:
@@ -138,6 +135,9 @@ elif nn_mode == MODE_2:
     zero_avg_tiptilt = True
 
     num_alphas_input = 10
+    
+    if zero_avg_tiptilt:
+        n_test_frames = num_frames
 
 else:
     
@@ -168,6 +168,9 @@ else:
 
     zero_avg_tiptilt = True
     num_alphas_input = 10
+
+    if zero_avg_tiptilt:
+        n_test_frames = num_frames
 
 no_shuffle = not shuffle0 and not shuffle1 and not shuffle2
 
@@ -1501,15 +1504,7 @@ class nn_model:
             Ds_ = np.asarray(Ds_)
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
-            
-            if smooth_window > 0:
-                alphas1 = alphas[:-smooth_window]
-                for smooth_i in np.arange(1, smooth_window):
-                    alphas1 += alphas[smooth_i:-(smooth_window-smooth_i)]
-                alphas1 += alphas[smooth_window:]
-                alphas = alphas1/(smooth_window+1)
-                Ds_ = Ds_[smooth_window//2:-smooth_window//2]
-                
+                            
             print("alphas", alphas.shape, Ds_.shape)
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
@@ -1552,8 +1547,6 @@ class nn_model:
 
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_ids[i]]
-                if smooth_window > 0:
-                    true_alphas = true_alphas[smooth_window//2:-smooth_window//2]
                 nrows = int(np.sqrt(jmax))
                 ncols = int(math.ceil(jmax/nrows))
                 my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
@@ -1823,7 +1816,8 @@ else:
     if n_test_frames is None:
         n_test_frames = Ds.shape[1]
     n_test_objects = min(Ds.shape[0], n_test_objects)
-    n_test_frames = min(Ds.shape[1], n_test_frames)
+    
+    assert(n_test_frames <= Ds.shape[1])
     
     print("n_test_objects, n_test_frames", n_test_objects, n_test_frames)
     #if nn_mode == MODE_2 and n_epochs_mode_2 > 0:
@@ -1846,9 +1840,7 @@ else:
     positions = positions[filtr]
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
-    
-    n_test_frames -= smooth_window
-    
+        
     #hanning = utils.hanning(nx, 10)
     #med = np.median(Ds, axis=(3, 4), keepdims=True)
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
