@@ -122,7 +122,7 @@ elif nn_mode == MODE_2:
     mode_2_index = 1
     
     # How many frames to use in training
-    num_frames = 640
+    num_frames = 256
     # How many objects to use in training
     num_objs = 80#None
     
@@ -845,6 +845,8 @@ class nn_model:
 
         if sum_over_batch:
             assert((self.n_train // self.num_objs) % batch_size == 0)
+
+        assert((self.n_train // self.num_objs) % self.num_frames == 0)
 
         self.Ds_train = self.Ds[:n_train]
         self.Ds_validation = self.Ds[n_train:n_train+n_validation]
