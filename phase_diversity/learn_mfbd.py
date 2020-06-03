@@ -530,11 +530,11 @@ class nn_model:
                 #def tile(x):
                 #    return tf.tile(tf.reshape(tf.reshape(x, [batch_size_per_gpu*1024]), [1, batch_size_per_gpu*1024]), [batch_size_per_gpu, 1])
                 
-                hidden_layer = conv_layer(image_input1, kernel=(9, 9), n_channels, num_convs=1)
-                hidden_layer = conv_layer(hidden_layer, kernel=(7, 7), 2*n_channels)
-                hidden_layer = conv_layer(hidden_layer, kernel=(5, 5), 4*n_channels)
-                hidden_layer = conv_layer(hidden_layer, 4*n_channels)
-                hidden_layer = conv_layer(hidden_layer, 4*n_channels)
+                hidden_layer = conv_layer(image_input1, kernel=(9, 9), n_channels=n_channels, num_convs=1)
+                hidden_layer = conv_layer(hidden_layer, kernel=(7, 7), n_channels=2*n_channels)
+                hidden_layer = conv_layer(hidden_layer, kernel=(5, 5), n_channels=4*n_channels)
+                hidden_layer = conv_layer(hidden_layer, n_channels=4*n_channels)
+                hidden_layer = conv_layer(hidden_layer, n_channels=4*n_channels)
     
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
                 hidden_layer = keras.layers.Dense(36*n_channels, activation=activation_fn)(hidden_layer)
