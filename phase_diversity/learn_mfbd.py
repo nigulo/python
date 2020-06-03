@@ -690,8 +690,6 @@ class nn_model:
         epoch_mode_2 = 0
         val_loss = float("inf")
         
-        if nn_mode_ >= MODE_2:
-            mode_2_index_ = mode_2_index
 
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
@@ -701,6 +699,9 @@ class nn_model:
                 n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2, val_loss, mode_2_index_ = params
         else:
             nn_mode_ = nn_mode
+            if nn_mode_ >= MODE_2:
+                mode_2_index_ = mode_2_index
+
 
         # Overwrite
         n_epochs_1_ = n_epochs_1
