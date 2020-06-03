@@ -1040,7 +1040,14 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None,
                             callbacks=[MyCustomCallback(model)])
-                save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch))
+                if self.val_loss > history.history['val_loss'][-1]:
+                    self.val_loss = history.history['val_loss'][-1]
+                    save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch))
+                else:
+                    print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
+                    self.val_loss = float("inf")
+                    load_weights(model)
+                    break
             self.epoch = 0
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
@@ -1511,7 +1518,8 @@ class nn_model:
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                             
-            print("alphas", alphas.shape, Ds_.shape)
+            #print("alphas", alphas.shape, Ds_.shape)
+            print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             #obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=np.array([pred_alphas[i]]), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False)
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
