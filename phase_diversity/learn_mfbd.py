@@ -694,7 +694,7 @@ class nn_model:
         if nn_mode_ is not None:
             assert(nn_mode_ == nn_mode) # Model was saved with different mode
             if nn_mode_ == MODE_1:
-                n_epochs_1_, n_epochs2_, epoch = params
+                n_epochs_1_, n_epochs2_, epoch, val_loss = params
             elif nn_mode_ >= MODE_2:
                 n_epochs_1_, n_epochs_2_, n_epochs_mode_2_, epoch, epoch_mode_2, val_loss, mode_2_index_ = params
         else:
@@ -712,13 +712,13 @@ class nn_model:
         self.n_epochs_1 = n_epochs_1_
         self.n_epochs_2 = n_epochs_2_
         self.epoch = epoch
+        self.val_loss = val_loss
         if self.nn_mode >= MODE_2:
             # Overwrite
             n_epochs_mode_2_ = n_epochs_mode_2
 
             self.n_epochs_mode_2 = n_epochs_mode_2_
             self.epoch_mode_2 = epoch_mode_2
-            self.val_loss = val_loss
             
             self.mode_2_index = mode_2_index_
 
@@ -1042,7 +1042,7 @@ class nn_model:
                             callbacks=[MyCustomCallback(model)])
                 if self.val_loss > history.history['val_loss'][-1]:
                     self.val_loss = history.history['val_loss'][-1]
-                    save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch))
+                    save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch, self.val_loss))
                 else:
                     print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
                     self.val_loss = float("inf")
