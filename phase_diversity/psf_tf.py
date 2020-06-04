@@ -201,6 +201,10 @@ def do_fltr(F_image, threshold=1e-3):
             my_plot.colormap((F_image*F_image.conj()).real)
             my_plot.save("filtered.png")
             my_plot.close()
+            my_plot = plot.plot()
+            my_plot.colormap(mask)
+            my_plot.save("mask.png")
+            my_plot.close()
         return tf.constant(F_image, dtype='complex64')
     return tf.map_fn(lambda F_image: fn(F_image), F_image, dtype='complex64')
 
