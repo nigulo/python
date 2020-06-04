@@ -8,7 +8,7 @@ class floodfill:
         self.closedRegions = set()
         self.labels = np.zeros_like(mat)
         self.label = 1
-        self.neighbours = dict()
+        self.neighbous = dict()
         self.regionAreas = dict()
         self.regionExtents = dict()
         self.compFunc = compFunc
