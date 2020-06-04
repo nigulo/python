@@ -186,20 +186,23 @@ class coh_trans_func_tf():
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
 
 def do_fltr(F_image, threshold=1e-3):
-    F_image = F_image.numpy()
-    modulus = F_image*F_image.conj()
-    max_modulus = np.max(modulus)
-    mask = np.zeros_like(modulus)
-    mask[modulus > max_modulus*threshold] = 1
-    ff = floodfill.floodfill(mask)
-    ff.fill(mask.shape[0]//2, mask.shape[1]//2)
-    F_image[ff.labels == 0] = 0
-    if __DEBUG__:
-        my_plot = plot.plot()
-        my_plot.colormap(F_image*F_image.conj())
-        my_plot.save("filtered.png")
-        my_plot.close()
-    return tf.constant(F_image, dtype='float32')
+    
+    def fn(F_image):
+        F_image = F_image.numpy()
+        modulus = F_image*F_image.conj()
+        max_modulus = np.max(modulus)
+        mask = np.zeros_like(modulus)
+        mask[modulus > max_modulus*threshold] = 1
+        ff = floodfill.floodfill(mask)
+        ff.fill(mask.shape[0]//2, mask.shape[1]//2)
+        F_image[ff.labels == 0] = 0
+        if __DEBUG__:
+            my_plot = plot.plot()
+            my_plot.colormap(F_image*F_image.conj())
+            my_plot.save("filtered.png")
+            my_plot.close()
+        return tf.constant(F_image, dtype='complex64')
+    return tf.map_fn(lambda F_image: fn(F_image), F_image, dtype='complex64')
 
 class psf_tf():
 
