@@ -205,6 +205,10 @@ def do_fltr(F_image, threshold=1e-5):
             my_plot.colormap(mask)
             my_plot.save("mask.png")
             my_plot.close()
+            my_plot = plot.plot()
+            my_plot.colormap(ff.labels)
+            my_plot.save("floodfill.png")
+            my_plot.close()
         return tf.constant(np.fft.fftshift(F_image), dtype='complex64')
     return tf.map_fn(lambda F_image: fn(F_image), F_image, dtype='complex64')
 
