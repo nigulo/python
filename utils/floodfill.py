@@ -53,7 +53,7 @@ class floodfill:
                     self.fillConnectedRegion(row - 1, col1)
                 else:
                     self.updateClosedRegions(neighborValue)
-            if row < self.mat.rows - 1 and self.labels[row + 1, col1] == 0:
+            if row < self.mat.shape[0] - 1 and self.labels[row + 1, col1] == 0:
                 neighborValue = self.mat[row + 1, col1]
                 if self.checkMask(row + 1, col1) and self.compFunc(neighborValue, value):
                     self.fillConnectedRegion(row + 1, col1)
