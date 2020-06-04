@@ -6,7 +6,15 @@ import tensorflow as tf
 
 import utils
 import zernike
+
 import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+import floodfill
+
+__DEBUG__ = True
+if __DEBUG__:
+    import plot
 
 
 def _centered(arr, newshape):
@@ -350,6 +358,21 @@ class psf_tf():
 
         #D = tf.transpose(tf.reshape(obj, [1, self.num_frames*2, self.nx, self.nx]), [0, 2, 3, 1])
         return D
+
+    # For numpy input
+    def fltr(F_image, threshold=1e-3):
+        modulus = F_image*F_image.conj()
+        max_modulus = np.max(modulus)
+        mask = np.zeros_like(modulus)
+        mask[modulus > max_modulus*threshold] = 1
+        ff = floodfill.floodfill(mask)
+        ff.fill(mask.shape[0]//2, mask.shape[1]//2)
+        F_image[ff.labels == 0] = 0
+        if __DEBUG__:
+            my_plot = plot.plot()
+            my_plot.colormap(F_image*F_image.conj())
+            my_plot.save("filtered.png")
+            my_plot.close()
 
     # For numpy inputs
     def Ds_reconstr(self, DP_real, DP_imag, PP, alphas_diversity):
