@@ -18,14 +18,14 @@ class floodfill:
         if self.labels[row, col] == 0:
             if self.mask is not None:
                 self.maskValue = self.mask[row, col]
-            area = 0
+            self.area = 0
             self.minRow = row
             self.maxRow = row
             self.minCol = col
             self.maxCol = col
             self.closedRegions.add(self.label)
             self.fillConnectedRegion(row, col)
-            self.regionAreas[self.label] = area
+            self.regionAreas[self.label] = self.area
             self.label += 1
             self.regionExtents[self.label] = [self.minRow, self.maxRow, self.minCol, self.maxCol]
 
