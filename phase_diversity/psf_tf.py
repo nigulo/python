@@ -189,7 +189,7 @@ def do_fltr(F_image, threshold=1e-3):
     
     def fn(F_image):
         F_image = F_image.numpy()
-        modulus = F_image*F_image.conj()
+        modulus = (F_image*F_image.conj()).real
         max_modulus = np.max(modulus)
         mask = np.zeros_like(modulus)
         mask[modulus > max_modulus*threshold] = 1
@@ -198,7 +198,7 @@ def do_fltr(F_image, threshold=1e-3):
         F_image[ff.labels == 0] = 0
         if __DEBUG__:
             my_plot = plot.plot()
-            my_plot.colormap(F_image*F_image.conj())
+            my_plot.colormap((F_image*F_image.conj()).real)
             my_plot.save("filtered.png")
             my_plot.close()
         return tf.constant(F_image, dtype='complex64')
