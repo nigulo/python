@@ -11,6 +11,7 @@ class floodfill:
         self.neighbours = dict()
         self.regionAreas = dict()
         self.regionExtents = dict()
+        self.compFunc = compFunc
         self.mask = mask
 
     def fill(self, row, col):
