@@ -78,7 +78,7 @@ if len(sys.argv) > i:
     n_test_objects = int(sys.argv[i])
 
 train_perc = 0.8
-activation_fn = "elu"
+activation_fn = "relu"
 
 if nn_mode == MODE_1:
     
@@ -564,14 +564,14 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if no_shuffle:
                     alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
-                    lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences=True, stateful=True), merge_mode='sum')#, activation="relu")#, return_state=True)
+                    lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
                     #lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
                     alphas_layer = lstm(alphas_layer)
-                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
-                    #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 512])
-                    #alphas_layer1 = tf.slice(alphas_layer, [0, 0], [batch_size_per_gpu, 512])
-                    #alphas_layer2 = tf.slice(alphas_layer, [batch_size_per_gpu, 0], [batch_size_per_gpu, 512])
-                    #alphas_layer = tf.concat([alphas_layer1, tf.reverse(alphas_layer2, axis=[0])], axis=1)
+                    #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
+                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 512])
+                    alphas_layer1 = tf.slice(alphas_layer, [0, 0], [batch_size_per_gpu, 512])
+                    alphas_layer2 = tf.slice(alphas_layer, [batch_size_per_gpu, 0], [batch_size_per_gpu, 512])
+                    alphas_layer = tf.concat([alphas_layer1, tf.reverse(alphas_layer2, axis=[0])], axis=1)
                     #alphas_layer = lstm2(alphas_layer)
                 #alphas_layer = seq_block(alphas_layer)
                 
