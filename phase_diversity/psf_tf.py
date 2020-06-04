@@ -185,10 +185,10 @@ class coh_trans_func_tf():
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
 
-def do_fltr(F_image, threshold=1e-3):
+def do_fltr(F_image, threshold=1e-5):
     
     def fn(F_image):
-        F_image = F_image.numpy()
+        F_image = np.fft.fftshift(F_image.numpy())
         modulus = (F_image*F_image.conj()).real
         max_modulus = np.max(modulus)
         mask = np.zeros_like(modulus)
@@ -205,7 +205,7 @@ def do_fltr(F_image, threshold=1e-3):
             my_plot.colormap(mask)
             my_plot.save("mask.png")
             my_plot.close()
-        return tf.constant(F_image, dtype='complex64')
+        return tf.constant(np.fft.fftshift(F_image), dtype='complex64')
     return tf.map_fn(lambda F_image: fn(F_image), F_image, dtype='complex64')
 
 class psf_tf():
