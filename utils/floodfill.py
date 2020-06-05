@@ -93,7 +93,7 @@ class floodfill:
         if self.label not in self.neighbors.keys():
             self.neighbors[self.label] = neighborValue
         elif self.neighbors[self.label] != neighborValue:
-            self.closedRegions.remove(self.label);
+            self.closedRegions.discard(self.label);
     
     def checkMask(self, row, col):
         return self.mask is None or self.mask[row, col] == self.maskValue
