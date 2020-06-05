@@ -14,6 +14,9 @@ class floodfill:
         self.compFunc = compFunc
         self.mask = mask
 
+    def setCompFunc(self, compFunc):
+        self.compFunc = compFunc
+
     def fill(self, row, col):
         if self.labels[row, col] == 0:
             if self.mask is not None:
