@@ -92,7 +92,7 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 320
+    num_frames = 512
     # How many objects to use in training
     num_objs = 80#0#None
     
@@ -105,7 +105,7 @@ if nn_mode == MODE_1:
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = True
+    zero_avg_tiptilt = False
     
 elif nn_mode == MODE_2:
 
@@ -1394,6 +1394,7 @@ class nn_model:
         alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
 
         if self.nn_mode == MODE_1:
+            alphas_layer_model.predict([Ds[:batch_size], diversities[:batch_size]], batch_size=batch_size)
             pred_alphas = alphas_layer_model.predict([Ds, diversities], batch_size=batch_size)
         elif self.nn_mode >= MODE_2:
             DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
