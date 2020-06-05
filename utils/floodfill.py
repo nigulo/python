@@ -67,6 +67,7 @@ class floodfill:
         self.labels[row, col] = self.label
         initialValue = self.mat[row, col]
         value = initialValue
+        startCol = col - 1
         for startCol in np.arange(col - 1, -1, -1):# col - 1; startCol >= 0; startCol--):
             neighborValue = self.mat[row, startCol]
             if self.checkMask(row, startCol) and self.compFunc(neighborValue, value):
@@ -76,6 +77,7 @@ class floodfill:
                 self.updateClosedRegions(neighborValue)
                 break
         value = initialValue
+        endCol = col + 1
         for endCol in np.arange(col + 1, self.mat.shape[1]):# (endCol = col + 1; endCol < mat.cols; endCol++):
             neighborValue = self.mat[row, endCol]
             if self.checkMask(row, endCol) and self.compFunc(neighborValue, value):
