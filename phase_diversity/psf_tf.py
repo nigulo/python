@@ -223,7 +223,7 @@ class psf_tf():
         wavelength in Angstroms
     '''
     def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=False, 
-                 num_frames=1, batch_size=1, set_diversity=False, mode=1, sum_over_batch=True, fltr=None):#, zero_avg_tiptilt=True):
+                 num_frames=1, batch_size=1, set_diversity=False, mode=1, sum_over_batch=True, fltr=None, tt_weight=1.0):#, zero_avg_tiptilt=True):
         self.coh_trans_func = coh_trans_func
         if nx is None:
             # Everything is precalculated
@@ -255,6 +255,7 @@ class psf_tf():
             self.fltr = None
             
         self.jmax_used = None
+        self.tt_weight = tf.constant(tt_weight, dtype="float32")
         #self.zero_avg_tiptilt = zero_avg_tiptilt
         
 
@@ -356,7 +357,7 @@ class psf_tf():
         otf_vals = tf.map_fn(fn2, data, dtype='complex64')
         self.otf_vals = tf.reshape(otf_vals, [self.batch_size, self.num_frames*2, self.nx, self.nx])
             
-        return self.incoh_vals
+        #return self.incoh_vals
 
 
     '''
@@ -509,6 +510,20 @@ class psf_tf():
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
         alphas_diversity = tf.reshape(tf.slice(x, [0], [size1]), [self.batch_size, size1a])
+        alphas = tf.reshape(tf.slice(alphas_diversity, [0, 0], [self.batch_size, self.num_frames*jmax]), [self.batch_size, self.num_frames, jmax])
+        tt = tf.slice(alphas, [0, 0, 0], [self.batch_size, self.num_frames, 2])
+        if self.sum_over_batch:
+            tt_sum = tf.reduce_sum(tt, axis=[0, 1])
+            tt_sum = tt_sum * tt_sum
+            tt_sum = tf.reduce_sum(tt_sum)
+            tt_sum = tf.tile(tf.reshape(tt_sum, [1, 1]), [nx, nx])
+        else:
+            tt_sum = tf.reduce_sum(tt, axis=[1])
+            tt_sum = tt_sum * tt_sum
+            tt_sum = tf.reduce_sum(tt_sum, axis=[1])
+            tt_sum = tf.tile(tf.reshape(tt_sum, [self.batch_size, 1, 1]), [1, nx, nx])
+            
+        
         #Ds = tf.reshape(tf.slice(x, [jmax*self.num_frames], [nx*nx*self.num_frames*2]), [self.num_frames*2, nx, nx])
         Ds = tf.transpose(tf.reshape(tf.slice(x, [size1], [size2]), [self.batch_size, nx, nx, self.num_frames*2]), [0, 3, 1, 2])
         if mode >= 2:
@@ -565,7 +580,7 @@ class psf_tf():
         if mode == 1:
             if self.sum_over_batch:
                 DD = tf.math.reduce_sum(DD, axis=[0])
-            return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
+            return DD - tf.math.add(num, eps)/tf.math.add(den, eps) + self.tt_weight * tt_sum
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])

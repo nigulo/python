@@ -79,6 +79,7 @@ if len(sys.argv) > i:
 
 train_perc = 0.8
 activation_fn = "relu"
+tt_weight = 1.0
 
 if nn_mode == MODE_1:
     
@@ -92,7 +93,7 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 320
+    num_frames = 512
     # How many objects to use in training
     num_objs = 80#0#None
     
@@ -105,7 +106,7 @@ if nn_mode == MODE_1:
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = True
+    zero_avg_tiptilt = False
     
 elif nn_mode == MODE_2:
 
@@ -454,7 +455,7 @@ class nn_model:
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
         self.psf = psf_tf.psf_tf(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, 
-                                 mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter)
+                                 mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, tt_weight=tt_weight)
         print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
         
         self.psf_test = psf_tf.psf_tf(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, 
@@ -1257,7 +1258,7 @@ class nn_model:
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                 
-            print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))                
+            print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             if pred_alphas is not None:
                 diversity = np.concatenate((self.diversities[i, :, :, 0], self.diversities[i, :, :, 1]))
