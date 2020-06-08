@@ -1235,15 +1235,15 @@ class nn_model:
             alphas = []
             if pred_alphas is not None:
                 for j in np.arange(i, len(objs)):
-                    if obj_ids[j] == obj_ids[i]:
+                    if self.obj_ids[j] == self.obj_ids[i]:
                         for l in np.arange(num_frames_input):
-                            D = Ds[j, :, :, 2*l]
-                            D_d = Ds[j, :, :, 2*l+1]
+                            D = self.Ds[j, :, :, 2*l]
+                            D_d = self.Ds[j, :, :, 2*l+1]
                             #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
-                            Ds_.append(Ds[j, :, :, 2*l:2*l+2])
+                            Ds_.append(self.Ds[j, :, :, 2*l:2*l+2])
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                             if len(alphas) > 32:
