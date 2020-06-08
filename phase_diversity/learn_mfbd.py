@@ -92,7 +92,7 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 512
+    num_frames = 320
     # How many objects to use in training
     num_objs = 80#0#None
     
@@ -105,7 +105,7 @@ if nn_mode == MODE_1:
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = False
+    zero_avg_tiptilt = True
     
 elif nn_mode == MODE_2:
 
@@ -1220,27 +1220,58 @@ class nn_model:
             ###################################################################            
             obj_ids_used.append(self.obj_ids[i])
 
-            DF = np.zeros((num_frames_input, 2, self.nx, self.nx), dtype="complex")
-            #DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
-            for l in np.arange(num_frames_input):
-                D = self.Ds[i, :, :, 2*l]
-                D_d = self.Ds[i, :, :, 2*l+1]
-                #D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
-                #D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
-                DF[l, 0] = fft.fft2(D)
-                DF[l, 1] = fft.fft2(D_d)
+            #DF = np.zeros((num_frames_input, 2, self.nx, self.nx), dtype="complex")
+            ##DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
+            #for l in np.arange(num_frames_input):
+            #    D = self.Ds[i, :, :, 2*l]
+            #    D_d = self.Ds[i, :, :, 2*l+1]
+            #    #D = misc.sample_image(self.Ds[i, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+            #    #D_d = misc.sample_image(self.Ds[i, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
+            #    DF[l, 0] = fft.fft2(D)
+            #    DF[l, 1] = fft.fft2(D_d)
+                
+            DFs = []
+            Ds_ = []
+            alphas = []
+            if pred_alphas is not None:
+                for j in np.arange(i, len(objs)):
+                    if obj_ids[j] == obj_ids[i]:
+                        for l in np.arange(num_frames_input):
+                            D = Ds[j, :, :, 2*l]
+                            D_d = Ds[j, :, :, 2*l+1]
+                            #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
+                            #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
+                            DF = fft.fft2(D)
+                            DF_d = fft.fft2(D_d)
+                            Ds_.append(Ds[j, :, :, 2*l:2*l+2])
+                            DFs.append(np.array([DF, DF_d]))
+                            alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+                            if len(alphas) > 32:
+                                break
+                            #print("alphas", j, l, alphas[-1][0])
+                            #if n_test_frames is not None and len(alphas) >= n_test_frames:
+                            #    break
+                    #if len(alphas) >= n_test_frames:
+                    #    break
+            Ds_ = np.asarray(Ds_)
+            DFs = np.asarray(DFs, dtype="complex")
+            alphas = np.asarray(alphas)
+                
+            print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))                
             
             if pred_alphas is not None:
                 diversity = np.concatenate((self.diversities[i, :, :, 0], self.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+                #obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
                 obj_reconstr = fft.ifftshift(obj_reconstr)
                 
                 #obj_reconstr = self.deconvolve(num_frames_input, pred_alphas[i], self.diversities[i], self.Ds[i])
                 
                 objs_reconstr.append(obj_reconstr)
-                pred_Ds = self.psf_check.convolve(obj, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
+                #pred_Ds = self.psf_check.convolve(obj, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
+                pred_Ds = self.psf_check.convolve(obj, alphas=alphas)
                 #pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
                 pred_Ds  = np.transpose(pred_Ds, (0, 2, 3, 1))
             #print("pred_alphas", i, pred_alphas[i])
@@ -1475,6 +1506,7 @@ class nn_model:
             found = False
             ###################################################################            
             # Just to plot results only for different objects
+            # TODO: use set for obj_ids_test, instead of list
             for obj_id in obj_ids_test:
                 if obj_id == obj_ids[i]:
                     found = True
@@ -1512,7 +1544,7 @@ class nn_model:
                             Ds_.append(Ds[j, :, :, 2*l:2*l+2])
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
-                            print("alphas", j, l, alphas[-1][0])
+                            #print("alphas", j, l, alphas[-1][0])
                             #if n_test_frames is not None and len(alphas) >= n_test_frames:
                             #    break
                     #if len(alphas) >= n_test_frames:
@@ -1581,7 +1613,7 @@ class nn_model:
                     if col >= ncols:
                         row += 1
                         col = 0
-                my_test_plot.save(f"{dir_name}/alphas{i}.png")
+                my_test_plot.save(f"{dir_name}/alphas{i // num_frames_test}.png")
                 my_test_plot.close()
 
         if estimate_full_image:
