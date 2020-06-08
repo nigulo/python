@@ -1234,7 +1234,7 @@ class nn_model:
             Ds_ = []
             alphas = []
             if pred_alphas is not None:
-                for j in np.arange(i, len(objs)):
+                for j in np.arange(i, len(self.objs)):
                     if self.obj_ids[j] == self.obj_ids[i]:
                         for l in np.arange(num_frames_input):
                             D = self.Ds[j, :, :, 2*l]
