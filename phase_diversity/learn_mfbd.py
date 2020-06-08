@@ -1614,7 +1614,7 @@ class nn_model:
                     if col >= ncols:
                         row += 1
                         col = 0
-                my_test_plot.save(f"{dir_name}/alphas{i // num_frames_test}.png")
+                my_test_plot.save(f"{dir_name}/alphas{i // n_test_frames}.png")
                 my_test_plot.close()
 
         if estimate_full_image:
