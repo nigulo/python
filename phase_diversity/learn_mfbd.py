@@ -1637,10 +1637,11 @@ class nn_model:
 if train:
 
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
-    if False:
+    if True:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file+"3")
         Ds = np.concatenate((Ds, Ds3))
         objs = np.concatenate((objs, objs3))
+        positions = np.concatenate((positions, positions3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
