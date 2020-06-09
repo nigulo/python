@@ -774,114 +774,91 @@ class nn_model:
         return ret_val
         
 
-    def set_data(self, Ds, objs, diversity, positions, train_perc=train_perc):
-        assert(Ds.shape[1] >= self.num_frames)
-        #assert(self.num_frames <= Ds.shape[1])
-        if self.num_objs is None or self.num_objs <= 0:
-            self.num_objs = Ds.shape[0]
-        self.num_objs = min(self.num_objs, Ds.shape[0])
-        #assert(self.num_objs <= Ds.shape[0])
-        assert(Ds.shape[2] == 2)
-        if objs is None:
-            # Just generate dummy array in case we don't have true object data
-            objs = np.zeros((Ds.shape[0], Ds.shape[3], Ds.shape[4]))
-        if shuffle1:
-            i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
-            i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
-        else:
-            i1 = 0
-            i2 = 0
-        Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
-        objs = objs[i1:i1+self.num_objs]
-        if positions is not None:
-            positions = positions[i1:i1+self.num_objs]
+    def set_data(self, Ds, objs, diversity, positions, train_perc=train_perc, train_data=True):
+        if train_data:
+            assert(Ds.shape[1] >= self.num_frames)
+            #assert(self.num_frames <= Ds.shape[1])
+            if self.num_objs is None or self.num_objs <= 0:
+                self.num_objs = Ds.shape[0]
+            self.num_objs = min(self.num_objs, Ds.shape[0])
+            #assert(self.num_objs <= Ds.shape[0])
+            assert(Ds.shape[2] == 2)
+            if objs is None:
+                # Just generate dummy array in case we don't have true object data
+                objs = np.zeros((Ds.shape[0], Ds.shape[3], Ds.shape[4]))
+            if shuffle1:
+                i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
+                i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
+            else:
+                i1 = 0
+                i2 = 0
+            Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
+            objs = objs[i1:i1+self.num_objs]
+            if positions is not None:
+                positions = positions[i1:i1+self.num_objs]
         
-        self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
-        
-        med = np.median(self.Ds, axis=(1, 2), keepdims=True)
-        #std = np.std(Ds, axis=(1, 2), keepdims=True)
-        self.Ds -= med
-        self.Ds = self.hanning.multiply(self.Ds, axis=1)
-        self.Ds += med
-        ##Ds /= std
-        self.Ds /= med
-        
-        #self.Ds = np.transpose(np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4])), (0, 2, 3, 1))
-        #
-        #self.Ds = np.reshape(Ds, (self.num_frames*num_objects, Ds.shape[2], Ds.shape[3], Ds.shape[4]))
-        #self.Ds = np.zeros((num_objects, 2*self.num_frames, Ds.shape[3], Ds.shape[4]))
-        #for i in np.arange(num_objects):
-        #    for j in np.arange(self.num_frames):
-        #        self.Ds[i, 2*j] = Ds[j, i, 0]
-        #        self.Ds[i, 2*j+1] = Ds[j, i, 1]
-        #self.objs = np.zeros((len(objs), self.nx+1, self.nx+1))
-        #for i in np.arange(len(objs)):
-        #    self.objs[i] = misc.sample_image(objs[i], 1.01010101)
-        #print("objs", self.objs.shape, self.num_objs, num_objects)
-        #self.objs = np.reshape(np.repeat(self.objs, num_frames, axis=0), (num_frames*self.objs.shape[0], self.objs.shape[1], self.objs.shape[2]))
+            self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
+            
+            med = np.median(self.Ds, axis=(1, 2), keepdims=True)
+            #std = np.std(Ds, axis=(1, 2), keepdims=True)
+            self.Ds -= med
+            self.Ds = self.hanning.multiply(self.Ds, axis=1)
+            self.Ds += med
+            ##Ds /= std
+            self.Ds /= med
+            
+                        
+            if shuffle2 and (not sum_over_batch or batch_size == 1):
+                # Shuffle the data
+                random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
+                self.Ds = self.Ds[random_indices]
+                if self.objs is not None:
+                    self.objs = self.objs[random_indices]
+                if self.diversities is not None:
+                    self.diversities = self.diversities[random_indices]
+                self.obj_ids = self.obj_ids[random_indices]
+                self.positions = self.positions[random_indices]
 
-        #self.objs = np.reshape(self.objs, (len(self.objs), -1))
-        #self.objs = np.reshape(np.tile(objs, (1, num_frames)), (num_objects*num_frames, objs.shape[1]))
-                    
-        if shuffle2 and (not sum_over_batch or batch_size == 1):
-            # Shuffle the data
-            random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
-            self.Ds = self.Ds[random_indices]
+            self.Ds_train = self.Ds
+            self.objs_train = self.objs
+            self.diversities_train = self.diversities
+            self.obj_ids_train = self.obj_ids
+
+            '''                            
+            n_train = int(math.ceil(len(self.Ds)*train_perc))
+            n_train -= n_train % batch_size
+            
+            n_validation = len(self.Ds) - n_train
+            n_validation -= n_validation % batch_size
+            
+            print("n_train, n_validation", n_train, n_validation)
+            
+            self.n_train = n_train
+            self.n_validation = n_validation
+    
+            assert(int(self.num_objs*train_perc)/train_perc == self.num_objs)
+            if sum_over_batch:
+                assert((self.n_train // (self.num_objs*train_perc)) % batch_size == 0)
+    
+            assert((self.n_train // (self.num_objs*train_perc)) % self.num_frames == 0)
+    
+            self.Ds_train = self.Ds[:n_train]
+            self.Ds_validation = self.Ds[n_train:n_train+n_validation]
+    
             if self.objs is not None:
-                self.objs = self.objs[random_indices]
+                self.objs_train = self.objs[:n_train]
+                self.objs_validation = self.objs[n_train:n_train+n_validation]
+    
             if self.diversities is not None:
-                self.diversities = self.diversities[random_indices]
-            self.obj_ids = self.obj_ids[random_indices]
-            self.positions = self.positions[random_indices]
-        
-        #for i in np.arange(len(self.Ds)):
-        #    my_plot = plot.plot(nrows=self.Ds.shape[3]//2, ncols=2)
-        #    for j in np.arange(self.Ds.shape[3]//2):
-        #        my_plot.colormap(self.Ds[i, :, :, 2*j], [j, 0], show_colorbar=True, colorbar_prec=2)
-        #        my_plot.colormap(self.Ds[i, :, :, 2*j+1], [j, 1], show_colorbar=True, colorbar_prec=2)
+                self.diversities_train = self.diversities[:n_train]
+                self.diversities_validation = self.diversities[n_train:n_train+n_validation]
     
-        #    my_plot.save(dir_name + "/Ds" + str(i) + ".png")
-        #    my_plot.close()
-                
-        n_train = int(math.ceil(len(self.Ds)*train_perc))
-        n_train -= n_train % batch_size
-        
-        n_validation = len(self.Ds) - n_train
-        n_validation -= n_validation % batch_size
-        
-        print("n_train, n_validation", n_train, n_validation)
-        
-        self.n_train = n_train
-        self.n_validation = n_validation
-
-        assert(int(self.num_objs*train_perc)/train_perc == self.num_objs)
-        if sum_over_batch:
-            assert((self.n_train // (self.num_objs*train_perc)) % batch_size == 0)
-
-        assert((self.n_train // (self.num_objs*train_perc)) % self.num_frames == 0)
-
-        self.Ds_train = self.Ds[:n_train]
-        self.Ds_validation = self.Ds[n_train:n_train+n_validation]
-
-        if self.objs is not None:
-            self.objs_train = self.objs[:n_train]
-            self.objs_validation = self.objs[n_train:n_train+n_validation]
-
-        if self.diversities is not None:
-            self.diversities_train = self.diversities[:n_train]
-            self.diversities_validation = self.diversities[n_train:n_train+n_validation]
-
-        self.obj_ids_train = self.obj_ids[:n_train]
-        self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
-        
-        #for i in np.arange(len(self.objs)):
-        #    my_test_plot = plot.plot(nrows=3, ncols=1)
-        #    my_test_plot.colormap(self.objs[i], [0, 0], show_colorbar=True, colorbar_prec=2)
-        #    my_test_plot.colormap(self.Ds[i, :, :, 0], [1, 0])
-        #    my_test_plot.colormap(self.Ds[i, :, :, 1], [2, 0])
-    
-        #    my_test_plot.save(dir_name + "/data_check" + str(i) + ".png")
-        #    my_test_plot.close()
+            self.obj_ids_train = self.obj_ids[:n_train]
+            self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
+            '''
+        else:
+            self.Ds_validation, self.objs_validation, self.diversities_validation, _, self.obj_ids_validation, _, _s = convert_data(Ds, objs, diversity, positions)
+            
         
 
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None, tt=None):
@@ -1678,7 +1655,7 @@ if train:
     ##Ds /= std
     #Ds /= med
     
-    n_train = int(len(Ds)*.8)
+    n_train = int(len(Ds)*train_perc)
     print("n_train, n_test", n_train, len(Ds) - n_train)
     print("num_frames", Ds.shape[1])
         
@@ -1800,8 +1777,9 @@ if train:
 
     sys.stdout.flush()
 
+    model.set_data(Ds_test, objs_test, diversity, positions_test, train_data=False)
     for rep in np.arange(0, num_reps):
-        model.set_data(Ds_train, objs_train, diversity, positions_train)
+        model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True)
         print("Rep no: " + str(rep))
     
         #model.psf.set_jmax_used(jmax_to_use)
