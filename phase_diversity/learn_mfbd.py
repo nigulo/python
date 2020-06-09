@@ -858,6 +858,13 @@ class nn_model:
             '''
         else:
             self.Ds_validation, self.objs_validation, self.diversities_validation, _, self.obj_ids_validation, _, _s = convert_data(Ds, objs, diversity, positions)
+            med = np.median(self.Ds_validation, axis=(1, 2), keepdims=True)
+            #std = np.std(Ds, axis=(1, 2), keepdims=True)
+            self.Ds_validation -= med
+            self.Ds_validation = self.hanning.multiply(self.Ds_validation, axis=1)
+            self.Ds_validation += med
+            ##Ds /= std
+            self.Ds_validation /= med
             
         
 
