@@ -1149,7 +1149,7 @@ class nn_model:
         
         #######################################################################
         # Plot some of the training data results
-        n_test = min(num_objs, 5)
+        n_test = min(num_objs, 1)
 
         alphas_layer_model = Model(inputs=model.input, outputs=model.get_layer("alphas_layer").output)
         if self.nn_mode == MODE_1:
@@ -1637,6 +1637,10 @@ class nn_model:
 if train:
 
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
+    if True:
+        Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file+"3")
+        Ds = np.concatenate((Ds, Ds3))
+        objs = np.concatenate((objs, objs3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
