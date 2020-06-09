@@ -1665,8 +1665,8 @@ if train:
     print("num_frames", Ds.shape[1])
         
     Ds_train = Ds[:n_train]
-    num_frames_valid = num_frames_input*batch_size
-    Ds_test = Ds[n_train:, :num_frames_valid]
+    #num_frames_valid = num_frames_input*batch_size
+    Ds_test = Ds[n_train:]#, :num_frames_valid]
     if objs is not None:
         objs_train = objs[:n_train]
         objs_test = objs[n_train:]
