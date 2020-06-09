@@ -89,7 +89,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 10
+    n_epochs_2 = 2
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -1641,6 +1641,7 @@ if train:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file+"3")
         Ds = np.concatenate((Ds, Ds3))
         objs = np.concatenate((objs, objs3))
+        diversity = np.concatenate((diversity, diversity3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
