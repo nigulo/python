@@ -1032,7 +1032,7 @@ class nn_model:
                     save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch, self.val_loss))
                 else:
                     print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
-                    self.val_loss = float("inf")
+                    #self.val_loss = float("inf")
                     load_weights(model)
                     break
             self.epoch = 0
@@ -1118,7 +1118,7 @@ class nn_model:
                         save_weights(model, (self.n_epochs_1, self.n_epochs_2, self.n_epochs_mode_2, epoch, epoch_mode_2, self.val_loss, self.mode_2_index))
                     else:
                         print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
-                        self.val_loss = float("inf")
+                        #self.val_loss = float("inf")
                         load_weights(model)
                         break
                     #validation_losses.append(history.history['val_loss'])
