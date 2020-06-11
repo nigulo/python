@@ -1582,7 +1582,7 @@ class nn_model:
                 obj_reconstr_true, Ps_true = self.deconvolve(Ds_[None,], true_alphas, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
-                psf_true = fft.ifftshift((fft.ifft2d(psf_true)).real)
+                psf_true = fft.ifftshift((fft.ifft2(psf_true)).real)
                 my_test_plot = plot.plot(nrows=1, ncols=3)
                 my_test_plot.colormap(psf_true, [0], show_colorbar=True)
                 my_test_plot.colormap(psf, [1], show_colorbar=True)
