@@ -1579,16 +1579,21 @@ class nn_model:
 
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_ids[i]]
+
+                nf = min(alphas.shape[0], true_alphas.shape[0])
+
                 obj_reconstr_true, psf_true = self.deconvolve(Ds_[None,], true_alphas, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
-                psf_true = fft.ifftshift((fft.ifft2(psf_true)).real)
-                my_test_plot = plot.plot(nrows=1, ncols=3)
-                my_test_plot.colormap(psf_true, [0], show_colorbar=True)
-                my_test_plot.colormap(psf, [1], show_colorbar=True)
-                my_test_plot.colormap(np.abs(psf_true-psf), [1], show_colorbar=True)
-                my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}.png")
-                my_test_plot.close()
+                psf_true = fft.ifftshift((fft.ifft2(psf_true), axis=(1, 2)).real)
+                for j in np.arange(nf):
+                    if j % 100 == 0
+                        my_test_plot = plot.plot(nrows=1, ncols=3)
+                        my_test_plot.colormap(psf_true[j], [0], show_colorbar=True)
+                        my_test_plot.colormap(psf[j], [1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(psf_true-psf), [1], show_colorbar=True)
+                        my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
+                        my_test_plot.close()
 
                 
                 nrows = int(np.sqrt(jmax))
@@ -1597,7 +1602,6 @@ class nn_model:
                 row = 0
                 col = 0
                 #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
-                nf = min(alphas.shape[0], true_alphas.shape[0])
                 xs = np.arange(nf)
                 for coef_index in np.arange(alphas.shape[1]):
                     scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
