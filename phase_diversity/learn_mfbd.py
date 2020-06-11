@@ -79,7 +79,7 @@ if len(sys.argv) > i:
 
 train_perc = 0.8
 activation_fn = "relu"
-tt_weight = 0.01
+tt_weight = 0.001
 
 if nn_mode == MODE_1:
     
@@ -1591,10 +1591,10 @@ class nn_model:
                         print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                         print("psf[j]", np.max(psf[j]), np.min(psf[j]))
                         print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
-                        my_test_plot = plot.plot(nrows=1, ncols=3)
+                        my_test_plot = plot.plot(nrows=1, ncols=4)
                         my_test_plot.colormap(utils.trunc(psf_true[j], 1e-3), [0], show_colorbar=True)
                         my_test_plot.colormap(utils.trunc(psf[j], 1e-3), [1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [2], show_colorbar=True)
                         my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
                         my_test_plot.close()
 
