@@ -1587,7 +1587,7 @@ class nn_model:
                 psf_true = psf_true.numpy()[0]
                 psf_true = fft.ifftshift(fft.ifft2(psf_true), axis=(1, 2)).real
                 for j in np.arange(nf):
-                    if j % 100 == 0
+                    if j % 100 == 0:
                         my_test_plot = plot.plot(nrows=1, ncols=3)
                         my_test_plot.colormap(psf_true[j], [0], show_colorbar=True)
                         my_test_plot.colormap(psf[j], [1], show_colorbar=True)
