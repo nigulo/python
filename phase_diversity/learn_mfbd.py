@@ -79,7 +79,7 @@ if len(sys.argv) > i:
 
 train_perc = 0.8
 activation_fn = "relu"
-tt_weight = 0.1
+tt_weight = 0.01
 
 if nn_mode == MODE_1:
     
@@ -89,7 +89,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 2
+    n_epochs_2 = 5
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -102,7 +102,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 8
+    n_channels = 16
     
     sum_over_batch = True
     
