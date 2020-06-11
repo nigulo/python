@@ -1585,7 +1585,7 @@ class nn_model:
                 obj_reconstr_true, psf_true = self.deconvolve(Ds_[None,], true_alphas, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
-                psf_true = fft.ifftshift((fft.ifft2(psf_true), axis=(1, 2)).real)
+                psf_true = fft.ifftshift(fft.ifft2(psf_true), axis=(1, 2)).real
                 for j in np.arange(nf):
                     if j % 100 == 0
                         my_test_plot = plot.plot(nrows=1, ncols=3)
