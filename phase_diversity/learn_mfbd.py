@@ -1588,8 +1588,8 @@ class nn_model:
                 psf_true = fft.ifftshift(fft.ifft2(psf_true), axes=(1, 2)).real
                 for j in np.arange(nf):
                     if j % 100 == 0:
-                        print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j])
-                        print("psf[j]", np.max(psf[j]), np.min(psf[j])
+                        print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
+                        print("psf[j]", np.max(psf[j]), np.min(psf[j]))
                         print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
                         my_test_plot = plot.plot(nrows=1, ncols=3)
                         my_test_plot.colormap(np.log(psf_true[j]+np.min(psf_true[j])), [0], show_colorbar=True)
