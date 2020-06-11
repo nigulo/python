@@ -1591,7 +1591,7 @@ class nn_model:
                         my_test_plot = plot.plot(nrows=1, ncols=3)
                         my_test_plot.colormap(psf_true[j], [0], show_colorbar=True)
                         my_test_plot.colormap(psf[j], [1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(psf_true-psf), [1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [1], show_colorbar=True)
                         my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
                         my_test_plot.close()
 
