@@ -747,13 +747,13 @@ class nn_model:
 
             #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             x = tf.concat([tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]), tf.reshape(Ds, [num_objs*num_frames*2*nx*nx])], axis=0)
-            image_deconv, _ = self.psf_test.deconvolve(x, do_fft=do_fft)
+            image_deconv, Ps = self.psf_test.deconvolve(x, do_fft=do_fft)
             print("image_deconv", image_deconv.numpy().shape)
-            return image_deconv
+            return image_deconv, Ps
         
     # Inputs should be grouped per object (first axis)
     def Ds_reconstr(self, Ds, alphas, diversity):
-        image_deconv = self.deconvolve(Ds, alphas, diversity, do_fft=False)
+        image_deconv, _ = self.deconvolve(Ds, alphas, diversity, do_fft=False)
         with tf.device(gpu_id):
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
             image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
@@ -1545,35 +1545,33 @@ class nn_model:
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
             #obj_reconstr_mean += obj_reconstr
 
-            if len(alphas) > 0:
-                diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
-                #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
-                self.psf_check.coh_trans_func.set_diversity(diversity)
-                obj_reconstr = self.deconvolve(Ds_[None,], alphas, diversity).numpy()[0]
-                #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
-                #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
-                #obj_reconstr = fft.ifftshift(obj_reconstr)
+            diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
+            #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
+            self.psf_check.coh_trans_func.set_diversity(diversity)
+            obj_reconstr, psf = self.deconvolve(Ds_[None,], alphas, diversity)
+            obj_reconstr = obj_reconstr.numpy()[0]
+            psf = psf.numpy()[0]
+            psf = fft.ifftshift((fft.ifft2d(psf)).real)
+            
+            #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
+            #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+            #obj_reconstr = fft.ifftshift(obj_reconstr)
 
-                if estimate_full_image:
-                    cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
-                #obj_reconstr_mean += obj_reconstr
-    
-                #my_test_plot = plot.plot(nrows=1, ncols=2)
-                #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-                #my_test_plot.colormap(obj_reconstr, [1])
-                #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
-                #my_test_plot.close()
-            else:
-                obj_reconstr  = None
-            n_rows = 1
-            if obj_reconstr is not None:
-                n_rows += 1
-            my_test_plot = plot.plot(nrows=n_rows, ncols=2, width=8, height=6)
+            if estimate_full_image:
+                cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+            #obj_reconstr_mean += obj_reconstr
+
+            #my_test_plot = plot.plot(nrows=1, ncols=2)
+            #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
+            #my_test_plot.colormap(obj_reconstr, [1])
+            #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+            #my_test_plot.close()
+
+            my_test_plot = plot.plot(nrows=2, ncols=2, width=8, height=6)
             row = 0
-            if obj_reconstr is not None:
-                my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
-                my_test_plot.colormap(obj_reconstr, [row, 1])
-                row += 1
+            my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
+            my_test_plot.colormap(obj_reconstr, [row, 1])
+            row += 1
             my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
             my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
             my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
@@ -1581,6 +1579,18 @@ class nn_model:
 
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_ids[i]]
+                obj_reconstr_true, Ps_true = self.deconvolve(Ds_[None,], true_alphas, diversity)
+                obj_reconstr_true = obj_reconstr_true.numpy()[0]
+                psf_true = psf_true.numpy()[0]
+                psf_true = fft.ifftshift((fft.ifft2d(psf_true)).real)
+                my_test_plot = plot.plot(nrows=1, ncols=3)
+                my_test_plot.colormap(psf_true, [0], show_colorbar=True)
+                my_test_plot.colormap(psf, [1], show_colorbar=True)
+                my_test_plot.colormap(np.abs(psf_true-psf), [1], show_colorbar=True)
+                my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}.png")
+                my_test_plot.close()
+
+                
                 nrows = int(np.sqrt(jmax))
                 ncols = int(math.ceil(jmax/nrows))
                 my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
