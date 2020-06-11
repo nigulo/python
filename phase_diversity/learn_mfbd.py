@@ -1551,7 +1551,7 @@ class nn_model:
             obj_reconstr, psf = self.deconvolve(Ds_[None,], alphas, diversity)
             obj_reconstr = obj_reconstr.numpy()[0]
             psf = psf.numpy()[0]
-            psf = fft.ifftshift((fft.ifft2d(psf)).real)
+            psf = fft.ifftshift((fft.ifft2(psf)).real)
             
             #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
             #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
