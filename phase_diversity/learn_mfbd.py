@@ -1579,7 +1579,7 @@ class nn_model:
 
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_ids[i]]
-                obj_reconstr_true, Ps_true = self.deconvolve(Ds_[None,], true_alphas, diversity)
+                obj_reconstr_true, psf_true = self.deconvolve(Ds_[None,], true_alphas, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
                 psf_true = fft.ifftshift((fft.ifft2(psf_true)).real)
