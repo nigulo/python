@@ -204,19 +204,19 @@ if __name__ == '__main__':
     if diversity.shape[-1] != nx:
         assert(diversity.shape[-1] == nx // 2)
         pad_nx = nx // 4
-        diversity = misc.sample_image(diversity, 2)
-        #diversity2 = np.zeros((diversity.shape[0], diversity.shape[1], diversity.shape[2], nx, nx))
-        #for i in np.arange(diversity.shape[2]):
-        #    diversity2[:, :, i] = np.pad(diversity[:, :, i, :, :], ((0, 0), (0, 0), (pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
-        #diversity = diversity2
+        #diversity = misc.sample_image(diversity, 2)
+        diversity2 = np.zeros((diversity.shape[0], diversity.shape[1], diversity.shape[2], nx, nx))
+        for i in np.arange(diversity.shape[2]):
+            diversity2[:, :, i] = np.pad(diversity[:, :, i, :, :], ((0, 0), (0, 0), (pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
+        diversity = diversity2
     if pupil.shape[-1] != nx:
         assert(pupil.shape[-1] == nx // 2)
-        pupil = misc.sample_image(pupil, 2)
-        #pupil = np.pad(pupil, ((pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
+        #pupil = misc.sample_image(pupil, 2)
+        pupil = np.pad(pupil, ((pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
     if modes.shape[-1] != nx:
         assert(modes.shape[-1] == nx // 2)
-        modes = misc.sample_image(modes, 2)
-        #modes = np.pad(modes, ((0, 0), (pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
+        #modes = misc.sample_image(modes, 2)
+        modes = np.pad(modes, ((0, 0), (pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
 
     modes *= utils.mode_scale[:, None, None]
 
