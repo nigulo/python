@@ -102,7 +102,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 16
+    n_channels = 8
     
     sum_over_batch = True
     
