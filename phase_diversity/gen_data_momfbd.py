@@ -8,6 +8,7 @@ import os
 import sys
 sys.path.append('../utils')
 import misc
+import utils
 out_dir = "data_out"
 #nx = 96
 num_modes = 44
@@ -217,19 +218,7 @@ if __name__ == '__main__':
         modes = misc.sample_image(modes, 2)
         #modes = np.pad(modes, ((0, 0), (pad_nx, pad_nx), (pad_nx, pad_nx)), mode='constant', constant_values=0.0)
 
-    mode_scale = np.array([3.4211644e-07, 2.9869247e-07, 1.2330536e-07, 1.2948983e-07,\
-        1.3634113e-07, 6.2635998e-08, 6.0679490e-08, 6.1960371e-08,\
-        6.2712253e-08, 4.1066169e-08, 4.8136709e-08, 4.3251813e-08,\
-        4.8604090e-08, 4.6081762e-08, 3.6688341e-08, 4.7021366e-08,\
-        4.4507608e-08, 4.7089408e-08, 3.8737561e-08, 3.7861817e-08,\
-        5.0583559e-08, 5.0688101e-08, 4.7258556e-08, 4.9367131e-08,\
-        4.6206999e-08, 3.9753179e-08, 3.9710063e-08, 4.7511332e-08,\
-        3.4647051e-08, 4.4375597e-08, 3.8252473e-08, 3.7187508e-08,\
-        3.6801211e-08, 3.1744438e-08, 3.1704403e-08, 4.5903555e-08,\
-        2.5063319e-08, 2.7119935e-08, 2.6932595e-08, 2.9540985e-08,\
-        2.2285006e-08, 2.0293584e-08, 2.1038879e-08, 1.8963931e-08])
-
-    modes *= mode_scale[:, None, None]
+    modes *= utils.mode_scale[:, None, None]
 
     if not use_zarr:
         np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 

@@ -1582,7 +1582,7 @@ class nn_model:
 
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
-                obj_reconstr_true, psf_true = self.deconvolve(Ds_[None,], true_alphas*10., diversity)
+                obj_reconstr_true, psf_true = self.deconvolve(Ds_[None,], true_alphas*utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
                 psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
