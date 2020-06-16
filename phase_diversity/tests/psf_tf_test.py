@@ -79,12 +79,12 @@ class test_psf_tf(unittest.TestCase):
             
             my_plot = plot.plot(nrows=3, ncols=2)
             print(D.shape)
-            my_plot.colormap(D[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.3)
+            my_plot.colormap(D[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.6)
             my_plot.colormap(D[0, :, :, 2*l+1], [0, 1])
             my_plot.colormap(D_expected_0, [1, 0])
             my_plot.colormap(D_expected_1, [1, 1])
     
-            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.3)
+            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.6)
             my_plot.colormap(np.abs(D_expected_1 - D[0, :, :, 2*l+1]), [2, 1])
                 
             my_plot.save("test_psf_tf_aberrate" + str(l) + ".png")
@@ -143,12 +143,12 @@ class test_psf_tf(unittest.TestCase):
             
             my_plot = plot.plot(nrows=3, ncols=2)
             print(D.shape)
-            my_plot.colormap(D_reconstr[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.3)
+            my_plot.colormap(D_reconstr[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.6)
             my_plot.colormap(D_reconstr[0, :, :, 2*l+1], [0, 1])
             my_plot.colormap(D_expected_0, [1, 0])
             my_plot.colormap(D_expected_1, [1, 1])
     
-            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.3)
+            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.6)
             my_plot.colormap(np.abs(D_expected_1 - D[0, :, :, 2*l+1]), [2, 1])
                 
             my_plot.save("test_psf_tf_deconvolve_aberrate" + str(l) + ".png")

@@ -110,6 +110,8 @@ class coh_trans_func():
             self.pupil = self.pupil_func(xs)
         if self.defocus_func is not None:
             self.defocus = self.defocus_func(xs)
+            if np.isscalar(self.defocus):
+                self.defocus = np.tile(self.defocus, (xs.shape[0], xs.shape[1]))
             self.diversity = np.zeros((2, self.defocus.shape[0], self.defocus.shape[1]))
             self.diversity[1] = self.defocus;
         else:
@@ -243,6 +245,7 @@ class psf():
                 corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
     
             if normalize:
+                corr /= np.sum(self.coh_trans_func.pupil)
                 norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
                 vals /= norm
             self.incoh_vals[i] = vals
@@ -284,7 +287,7 @@ class psf():
             alphas = np.array([alphas])
             
         dat_F = fft.fftshift(fft.fft2(dat), axes=(-2, -1))
-        dat_F= self.multiply(dat_F, alphas, a)
+        dat_F = self.multiply(dat_F, alphas, a)
         
         return fft.ifft2(fft.ifftshift(dat_F, axes=(-2, -1))).real
         
@@ -368,8 +371,8 @@ class psf():
         
         self.calc(alphas=alphas)
         
-        S = self.otf_vals[:,0,:,:]
-        S_d = self.otf_vals[:,1,:,:]
+        S = self.otf_vals[:,0,:,:]*np.sum(self.coh_trans_func.pupil)
+        S_d = self.otf_vals[:,1,:,:]*np.sum(self.coh_trans_func.pupil)
         
         nzi = np.nonzero(np.abs(S)+np.abs(S_d))
         S_nzi = S[nzi]

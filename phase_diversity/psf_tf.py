@@ -185,7 +185,7 @@ class coh_trans_func_tf():
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
 
-def do_fltr(F_image, threshold=1e-6):
+def smart_fltr(F_image, threshold=1e-6):
     
     def fn(F_image):
         F_image = np.fft.fftshift(F_image.numpy())
@@ -282,7 +282,7 @@ class psf_tf():
         vals /= norm
     '''
 
-    def calc(self, data=None, normalize=True):
+    def calc(self, data=None, normalize=True, calc_psf=False):
         #self.incoh_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         #self.otf_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         
@@ -308,8 +308,8 @@ class psf_tf():
             else:
                 
                 vals = tf.signal.ifft2d(coh_vals)
-                vals = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
-                vals = tf.signal.ifftshift(vals, axes=(1, 2))
+                vals1 = tf.math.real(tf.multiply(vals, tf.math.conj(vals)))
+                vals1 = tf.cast(vals1, dtype='complex64')
                 
                 ###################################################################
                 #vals = tf.transpose(vals, (1, 2, 0))
@@ -320,12 +320,17 @@ class psf_tf():
                 ###################################################################
                 # In principle there shouldn't be negative values, but ...
                 #vals[vals < 0] = 0. # Set negative values to zero
-                vals = tf.cast(vals, dtype='complex64')
-                corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
+                #corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
+                corr = tf.signal.fftshift(tf.signal.fft2d(vals1), axes=(1, 2))
+                if normalize:
+                    corr /= tf.reduce_sum(self.coh_trans_func.pupil)
 
-            if normalize:
-                norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
-                vals = tf.divide(vals, norm)
+            if calc_psf:
+                # This block is currently not used (needed for more direct psf calculation)
+                vals = tf.signal.ifftshift(vals1, axes=(1, 2))
+                if normalize:
+                    norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
+                    vals = tf.divide(vals, norm)
             #self.incoh_vals[2*i].assign(vals[0, :, :])
             #self.incoh_vals[2*i+1].assign(vals[1, :, :])
             #self.otf_vals[2*i].assign(corr[0, :, :])
@@ -434,7 +439,7 @@ class psf_tf():
         F_image = tf.divide(DP, PP)
         
         if self.fltr is not None:
-            #F_image = do_fltr(F_image)
+            #F_image = smart_fltr(F_image)
             F_image = F_image * self.fltr
     
         if do_fft:

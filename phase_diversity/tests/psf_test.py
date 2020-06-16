@@ -1,4 +1,6 @@
 import sys
+sys.path.append('../../utils')
+import misc
 sys.path.append('..')
 sys.path.append('../..')
 import numpy as np
@@ -9,9 +11,7 @@ import numpy.fft as fft
 import scipy.signal as signal
 import unittest
 import utils
-sys.path.append('../../utils')
 import plot
-import misc
 import tip_tilt
 
 image10x10 = np.array([[0.41960785, 0.38039216, 0.36862746, 0.38039216, 0.40784314, 0.40392157,
@@ -366,9 +366,9 @@ class test_psf(unittest.TestCase):
         
         pa.set_alphas(coefs[0])
         coh_vals = ctf()        
-        corr = signal.correlate2d(coh_vals[0], coh_vals[0], mode='full')/size/size
+        corr = signal.correlate2d(coh_vals[0], coh_vals[0], mode='full')/size/size/np.sum(ctf.pupil)
         np.testing.assert_almost_equal(otf_vals[0], corr)
-        corr_d = signal.correlate2d(coh_vals[1], coh_vals[1], mode='full')/size/size
+        corr_d = signal.correlate2d(coh_vals[1], coh_vals[1], mode='full')/size/size/np.sum(ctf.pupil)
         np.testing.assert_almost_equal(otf_vals[1], corr_d)
 
 
@@ -397,7 +397,7 @@ class test_psf(unittest.TestCase):
         D = Ds[0, 0]
         D_d = Ds[0, 1]
         np.testing.assert_almost_equal(D, D_d, 8)
-        np.testing.assert_almost_equal(D, flat_field, 8)
+        np.testing.assert_almost_equal(D, flat_field/np.sum(ctf.pupil), 8)
 
 
         #######################################################################
@@ -423,7 +423,7 @@ class test_psf(unittest.TestCase):
 
 
         threshold = np.ones_like(D)*0.01
-        np.testing.assert_array_less((D - image1)**2, threshold)
+        np.testing.assert_array_less((D - image1/np.sum(ctf.pupil))**2, threshold)
         
     def test_deconvolve(self):
         arcsec_per_px = 0.055
