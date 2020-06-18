@@ -145,9 +145,8 @@ class coh_trans_func_tf():
     #    self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
 
     def set_diversity(self, diversity):
-        #self.diversity = tf.complex(tf.constant(diversity, dtype='float32'), tf.zeros_like(diversity, dtype='float32'))
-        # diversity is already a tensor
-        self.diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
+        #self.diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
+        self.diversity = diversity
 
     def calc(self, xs):
         if self.phase_aberr is not None:
@@ -160,7 +159,8 @@ class coh_trans_func_tf():
             diversity = np.zeros((2, defocus.shape[0], defocus.shape[1]))
             diversity[1] = defocus
             
-            self.diversity = tf.complex(tf.constant(diversity, dtype='float32'), tf.zeros_like(diversity, dtype='float32'))
+            self.diversity = tf.constant(diversity, dtype='float32')
+            #self.diversity = tf.complex(tf.constant(diversity, dtype='float32'), tf.zeros_like(diversity, dtype='float32'))
         else:
             assert(False)
         
@@ -170,14 +170,20 @@ class coh_trans_func_tf():
         
     def __call__(self, alphas=None, diversity=None):
         self.phase = self.phase_aberr(alphas)
-        self.phase = tf.complex(self.phase, tf.zeros((self.phase.shape[0], self.phase.shape[1]), dtype='float32'))
+        #self.phase = tf.complex(self.phase, tf.zeros((self.phase.shape[0], self.phase.shape[1]), dtype='float32'))
 
         if diversity is None:
             diversity = self.diversity
-        else:
-            diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
-        focus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[0]))))
-        defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[1]))))
+        #else:
+        #    diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
+        
+        phase = self.phase + diversity[0]
+        focus_val = self.pupil * tf.complex(tf.math.cos(-phase), tf.math.sin(-phase))
+        phase = self.phase + diversity[1]
+        defocus_val = self.pupil * tf.complex(tf.math.cos(-phase), tf.math.sin(-phase))
+        
+        #focus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[0]))))
+        #defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[1]))))
 
         #return tf.concat(tf.reshape(focus_val, [1, focus_val.shape[0], focus_val.shape[1]]), tf.reshape(defocus_val, [1, defocus_val.shape[0], defocus_val.shape[1]]), 0)
         return tf.stack([focus_val, defocus_val])
