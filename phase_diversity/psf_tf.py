@@ -369,7 +369,9 @@ class psf_tf():
         otf_vals_wf = tf.map_fn(fn2, data, dtype='complex64')
         otf_vals_wf = tf.reshape(otf_vals_wf, [self.batch_size, self.num_frames, 3, self.nx, self.nx])
         self.otf_vals = tf.reshape(tf.slice(otf_vals_wf, [0, 0, 0, 0, 0], [self.batch_size, self.num_frames, 2, self.nx, self.nx]), [self.batch_size, self.num_frames*2, self.nx, self.nx])
-        self.wf = tf.reshape(tf.slice(otf_vals_wf, [0, 0, 2, 0, 0], [self.batch_size, self.num_frames, 1, self.nx, self.nx]), [self.batch_size, self.num_frames, self.nx, self.nx])
+        
+        # We take real part as it was converted to complex for concatenating purposes
+        self.wf = tf.math.real(tf.reshape(tf.slice(otf_vals_wf, [0, 0, 2, 0, 0], [self.batch_size, self.num_frames, 1, self.nx, self.nx]), [self.batch_size, self.num_frames, self.nx, self.nx]))
             
         #return self.incoh_vals
 
