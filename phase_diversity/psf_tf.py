@@ -306,7 +306,7 @@ class psf_tf():
             #self.coh_trans_func.phase_aberr.set_alphas(alphas)
 
             coh_vals = self.coh_trans_func(alphas, diversity)
-            wf = self.coh_trans_func.phase
+            wf = tf.complex(self.coh_trans_func.phase, tf.zeros((tf.shape(self.coh_trans_func.phase)[0], tf.shape(self.coh_trans_func.phase)[1]), dtype='float32'))
         
             if self.corr_or_fft:
                 corr = fftconv(coh_vals, tf.math.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
