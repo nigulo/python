@@ -343,7 +343,7 @@ class psf_tf():
             #self.otf_vals[2*i].assign(corr[0, :, :])
             #self.otf_vals[2*i+1].assign(corr[1, :, :])
             
-            return tf.concat([corr, wf], axis=1)
+            return tf.concat([corr, tf.reshape(wf, [1, tf.shape(wf)[0], tf.shape(wf)[1]])], axis=0)
 
         #@tf.contrib.eager.defun
         def fn2(alphas_diversity):
@@ -367,9 +367,9 @@ class psf_tf():
             
             
         otf_vals_wf = tf.map_fn(fn2, data, dtype='complex64')
-        otf_vals_wf = tf.reshape(otf_vals_wf, [self.batch_size, self.num_frames*2, 2, self.nx, self.nx])
-        self.otf_vals = tf.slice(otf_vals_wf, [0, 0, 0, 0, 0], [self.batch_size, self.num_frames*2, 1, self.nx, self.nx])
-        self.wf = tf.slice(otf_vals_wf, [0, 0, 1, 0, 0], [self.batch_size, self.num_frames*2, 2, self.nx, self.nx])
+        otf_vals_wf = tf.reshape(otf_vals_wf, [self.batch_size, self.num_frames, 3, self.nx, self.nx])
+        self.otf_vals = tf.reshape(tf.slice(otf_vals_wf, [0, 0, 0, 0, 0], [self.batch_size, self.num_frames, 2, self.nx, self.nx]), [self.batch_size, self.num_frames*2, self.nx, self.nx])
+        self.wf = tf.reshape(tf.slice(otf_vals_wf, [0, 0, 2, 0, 0], [self.batch_size, self.num_frames, 3, self.nx, self.nx]), [self.batch_size, self.num_frames, self.nx, self.nx])
             
         #return self.incoh_vals
 
