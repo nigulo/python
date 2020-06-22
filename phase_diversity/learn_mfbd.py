@@ -1580,7 +1580,6 @@ class nn_model:
 
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_ids[i]]
-
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
                 obj_reconstr_true, psf_true, wf_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
