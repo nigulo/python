@@ -747,13 +747,13 @@ class nn_model:
 
             #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             x = tf.concat([tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]), tf.reshape(Ds, [num_objs*num_frames*2*nx*nx])], axis=0)
-            image_deconv, Ps = self.psf_test.deconvolve(x, do_fft=do_fft)
+            image_deconv, Ps, wf = self.psf_test.deconvolve(x, do_fft=do_fft)
             print("image_deconv", image_deconv.numpy().shape)
-            return image_deconv, Ps
+            return image_deconv, Ps, wf
         
     # Inputs should be grouped per object (first axis)
     def Ds_reconstr(self, Ds, alphas, diversity):
-        image_deconv, _ = self.deconvolve(Ds, alphas, diversity, do_fft=False)
+        image_deconv, _, _ = self.deconvolve(Ds, alphas, diversity, do_fft=False)
         with tf.device(gpu_id):
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
             image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
@@ -1548,7 +1548,7 @@ class nn_model:
             diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
             self.psf_check.coh_trans_func.set_diversity(diversity)
-            obj_reconstr, psf = self.deconvolve(Ds_[None,], alphas, diversity)
+            obj_reconstr, psf, wf = self.deconvolve(Ds_[None,], alphas, diversity)
             obj_reconstr = obj_reconstr.numpy()[0]
             psf = psf.numpy()[0]
             psf = fft.ifftshift(fft.ifft2(fft.ifftshift(psf, axes=(1, 2))), axes=(1, 2)).real
@@ -1582,7 +1582,7 @@ class nn_model:
 
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
-                obj_reconstr_true, psf_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
+                obj_reconstr_true, psf_true, wf_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
                 psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
@@ -1591,12 +1591,15 @@ class nn_model:
                         print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                         print("psf[j]", np.max(psf[j]), np.min(psf[j]))
                         print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
-                        my_test_plot = plot.plot(nrows=1, ncols=5)
-                        my_test_plot.colormap(utils.trunc(psf_true[j], 1e-3), [0], show_colorbar=True)
-                        my_test_plot.colormap(utils.trunc(psf[j], 1e-3), [1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [2], show_colorbar=True)
-                        my_test_plot.colormap(obj_reconstr_true, [3], show_colorbar=True)
-                        my_test_plot.colormap(obj_reconstr, [4], show_colorbar=True)
+                        my_test_plot = plot.plot(nrows=2, ncols=5)
+                        my_test_plot.colormap(utils.trunc(psf_true[j], 1e-3), [0, 0], show_colorbar=True)
+                        my_test_plot.colormap(utils.trunc(psf[j], 1e-3), [0, 1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [0, 2], show_colorbar=True)
+                        my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
+                        my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
+                        my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
+                        my_test_plot.colormap(wf[j], [1, 1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(wf_true[j]-wf[j]), [1, 2], show_colorbar=True)
                         my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
                         my_test_plot.close()
 
