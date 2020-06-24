@@ -259,6 +259,7 @@ def load_data(data_file):
         objs = None
     pupil = loaded['pupil']
     modes = loaded['modes']
+    #modes = modes/utils.mode_scale[:, None, None]
     diversity = loaded['diversity']
     try:
         coefs = loaded['alphas']
@@ -560,15 +561,16 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(2048, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(1024, activation=activation_fn)(alphas_layer)
                 #alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
-                #alphas_layer = keras.layers.Dense(256, activation='relu')(alphas_layer)
+                alphas_layer = keras.layers.Dense(256, activation=activation_fn)(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
+                size = 256
                 if no_shuffle:
-                    alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, 1024])
-                    lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
+                    alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, size])
+                    lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(size//2, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
                     #lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
                     alphas_layer = lstm(alphas_layer)
-                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 1024])
+                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, size])
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 512])
                     #alphas_layer1 = tf.slice(alphas_layer, [0, 0, 0], [1, batch_size_per_gpu, 512])
@@ -578,7 +580,7 @@ class nn_model:
                     #alphas_layer = lstm2(alphas_layer)
                 #alphas_layer = seq_block(alphas_layer)
                 
-                alphas_layer = keras.layers.Dense(512, activation=activation_fn)(alphas_layer)
+                alphas_layer = keras.layers.Dense(size, activation=activation_fn)(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 #if nn_mode >= MODE_2:
                 #    alphas_layer1 = keras.layers.Dense(1024, activation='relu')(alphas_input)
@@ -608,7 +610,7 @@ class nn_model:
                         x = tf.concat([x, tf.reshape(tt_sums_input, [batch_size_per_gpu*2])], axis=0)
                     alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(x)
                 else:
-                    alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 1.), name='alphas_layer')(alphas_layer)
+                    alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 10.), name='alphas_layer')(alphas_layer)
                     
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
@@ -1548,10 +1550,11 @@ class nn_model:
             diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
             self.psf_check.coh_trans_func.set_diversity(diversity)
+            #alphas = np.random.normal(size=(alphas.shape[0], alphas.shape[1]))#np.ones_like(alphas)
             obj_reconstr, psf, wf = self.deconvolve(Ds_[None,], alphas, diversity)
             obj_reconstr = obj_reconstr.numpy()[0]
             psf = psf.numpy()[0]
-            wf = wf.numpy()[0]
+            wf = wf.numpy()[0]*self.pupil
             psf = fft.ifftshift(fft.ifft2(fft.ifftshift(psf, axes=(1, 2))), axes=(1, 2)).real
             
             #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
@@ -1585,7 +1588,7 @@ class nn_model:
                 obj_reconstr_true, psf_true, wf_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 psf_true = psf_true.numpy()[0]
-                wf_true = wf_true.numpy()[0]
+                wf_true = wf_true.numpy()[0]*self.pupil
                 psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
                 for j in np.arange(nf):
                     if j % 100 == 0:
@@ -1668,7 +1671,7 @@ class nn_model:
 if train:
 
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
-    if True:
+    if False:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file+"3")
         Ds = np.concatenate((Ds, Ds3))
         objs = np.concatenate((objs, objs3))
@@ -1897,6 +1900,8 @@ else:
     if no_shuffle:
         stride = 1
     else:
+        #random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
+        #Ds = Ds[:, random_indices]
         stride = Ds.shape[1] // n_test_frames
     #n_test_frames //= stride
     Ds = Ds[filtr, :stride*n_test_frames:stride]
