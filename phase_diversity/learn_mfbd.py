@@ -259,7 +259,6 @@ def load_data(data_file):
         objs = None
     pupil = loaded['pupil']
     modes = loaded['modes']
-    #modes = modes/utils.mode_scale[:, None, None]
     diversity = loaded['diversity']
     try:
         coefs = loaded['alphas']
@@ -435,6 +434,11 @@ class nn_model:
 
         self.pupil = pupil
         self.modes = modes
+        
+        self.modes_orig = self.modes/utils.mode_scale[:, None, None]
+        #normalization = np.max(np.abs(modes), axis=(1, 2))
+        #self.modes = self.modes / normalization[:, None, None]
+        
 
         self.modes_orig = modes
         self.pupil_orig = pupil
@@ -561,10 +565,10 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(2048, activation='relu')(alphas_layer)
                 alphas_layer = keras.layers.Dense(1024, activation=activation_fn)(alphas_layer)
                 #alphas_layer = keras.layers.Dense(512, activation='relu')(alphas_layer)
-                alphas_layer = keras.layers.Dense(256, activation=activation_fn)(alphas_layer)
+                size = 256
+                alphas_layer = keras.layers.Dense(size, activation=activation_fn)(alphas_layer)
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                size = 256
                 if no_shuffle:
                     alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, size])
                     lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(size//2, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
@@ -1753,7 +1757,7 @@ if train:
 
     my_test_plot = plot.plot()
     my_test_plot.colormap(pupil, show_colorbar=True)
-    my_test_plot.save(dir_name + "/pupil.png")
+    my_test_plot.save(dir_name + "/pupil_train.png")
     my_test_plot.close()
     
     #for i in np.arange(len(modes)):
@@ -1875,7 +1879,7 @@ else:
         my_test_plot.save(f"{dir_name}/critical_sampling{i}.png")
         my_test_plot.close()
         ###############################################################
-    print("Critical sampling tetśt")
+    print("Critical sampling tests")
     '''
 
     if n_test_objects is None:
@@ -1927,6 +1931,11 @@ else:
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
     #Ds -= mean
     #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
+
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(pupil, show_colorbar=True)
+    my_test_plot.save(dir_name + "/pupil_test.png")
+    my_test_plot.close()
 
     model = nn_model(jmax, nx, n_test_frames, num_objs, pupil, modes)
     
