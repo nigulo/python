@@ -448,7 +448,7 @@ class psf_tf():
 
     def reconstr_(self, DP, PP, do_fft = True):
         eps = tf.constant(1e-10)
-        F_image = tf.divide(DP + eps, PP + eps)
+        F_image = tf.divide(DP + tf.complex(eps, 0), PP + eps)
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
