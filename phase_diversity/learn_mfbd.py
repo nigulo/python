@@ -1731,12 +1731,12 @@ if train:
     
     my_test_plot = plot.plot()
     my_test_plot.colormap(Ds[0, 0, 0], show_colorbar=True)
-    my_test_plot.save(dir_name + "/D0.png")
+    my_test_plot.save(dir_name + "/D0_train.png")
     my_test_plot.close()
     
     my_test_plot = plot.plot()
     my_test_plot.colormap(Ds[0, 0, 1])
-    my_test_plot.save(dir_name + "/D0_d.png")
+    my_test_plot.save(dir_name + "/D0_d_train.png")
     my_test_plot.close()
     
     pupil_check = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
@@ -1932,10 +1932,23 @@ else:
     #Ds -= mean
     #Ds /= np.median(Ds, axis=(3, 4), keepdims=True)
 
+    ###########################################################################
+    # Some plots for test purposes
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(Ds[0, 0, 0], show_colorbar=True)
+    my_test_plot.save(dir_name + "/D0_test.png")
+    my_test_plot.close()
+    
+    my_test_plot = plot.plot()
+    my_test_plot.colormap(Ds[0, 0, 1])
+    my_test_plot.save(dir_name + "/D0_d_test.png")
+    my_test_plot.close()
+
     my_test_plot = plot.plot()
     my_test_plot.colormap(pupil, show_colorbar=True)
     my_test_plot.save(dir_name + "/pupil_test.png")
     my_test_plot.close()
+    ###########################################################################
 
     model = nn_model(jmax, nx, n_test_frames, num_objs, pupil, modes)
     
