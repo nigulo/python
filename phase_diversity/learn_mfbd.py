@@ -1605,9 +1605,9 @@ class nn_model:
                         my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [0, 2], show_colorbar=True)
                         my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
                         my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
-                        my_test_plot.colormap(wf_true[j, 20:-20, 20:-20], [1, 0], show_colorbar=True)
-                        my_test_plot.colormap(wf[j, 20:-20, 20:-20], [1, 1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(wf_true[j, 20:-20, 20:-20]-wf[j, 20:-20, 20:-20]), [1, 2], show_colorbar=True)
+                        my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
+                        my_test_plot.colormap(wf[j], [1, 1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(wf_true[j]-wf[j]), [1, 2], show_colorbar=True)
                         my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
                         my_test_plot.close()
 
