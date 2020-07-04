@@ -1483,6 +1483,7 @@ class nn_model:
         cropped_Ds = []
         cropped_objs = []
         cropped_reconstrs = []
+        cropped_reconstrs_true = []
         cropped_coords = []
         
         full_shape = np.zeros(2, dtype="int")
@@ -1591,6 +1592,10 @@ class nn_model:
 
                 obj_reconstr_true, psf_true, wf_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
+                
+                if estimate_full_image:
+                    cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                
                 psf_true = psf_true.numpy()[0]
                 wf_true = wf_true.numpy()[0]*self.pupil
                 psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
@@ -1640,6 +1645,7 @@ class nn_model:
             print("full_shape", full_shape)
             full_obj = np.zeros(full_shape)
             full_reconstr = np.zeros(full_shape)
+            full_reconstr_true = np.zeros(full_shape)
             full_D = np.zeros(full_shape)
             for i in np.arange(len(cropped_objs)):
                 x = cropped_coords[i][0]-min_coord[0]
@@ -1648,15 +1654,18 @@ class nn_model:
                 print(x, y, s)
                 full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
+                full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
-            my_test_plot = plot.plot(nrows=1, ncols=3, size=plot.default_size(len(full_obj), len(full_obj)))
-            my_test_plot.colormap(full_obj, [0], show_colorbar=True)
-            my_test_plot.colormap(full_reconstr, [1])
-            my_test_plot.colormap(full_D, [2])
+            my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
+            my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
+            my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [1])
+            my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [2])
+            my_test_plot.colormap(full_D, [3])
             
-            my_test_plot.set_axis_title([0], "MOMFBD")
-            my_test_plot.set_axis_title([1], "Neural network")
-            my_test_plot.set_axis_title([2], "Raw frame")
+            my_test_plot.set_axis_title([0], "MOMFBD filtered")
+            my_test_plot.set_axis_title([1], "MOMFBD")
+            my_test_plot.set_axis_title([2], "Neural network")
+            my_test_plot.set_axis_title([3], "Raw frame")
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
