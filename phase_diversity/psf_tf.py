@@ -329,8 +329,9 @@ class psf_tf():
                 #vals[vals < 0] = 0. # Set negative values to zero
                 #corr = tf.signal.fftshift(tf.signal.fft2d(tf.signal.ifftshift(vals, axes=(1, 2))), axes=(1, 2))
                 corr = tf.signal.fftshift(tf.signal.fft2d(vals1), axes=(1, 2))
-                if normalize:
-                    corr /= tf.reduce_sum(self.coh_trans_func.pupil)
+                
+                #if normalize:
+                #    corr /= tf.reduce_sum(self.coh_trans_func.pupil)
 
             if calc_psf:
                 # This block is currently not used (needed for more direct psf calculation)
