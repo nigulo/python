@@ -1625,8 +1625,8 @@ class nn_model:
                 #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
                 xs = np.arange(nf)
                 for coef_index in np.arange(alphas.shape[1]):
-                    #scale = 1.//utils.mode_scale[coef_index]
-                    scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
+                    scale = 1.//utils.mode_scale[coef_index]
+                    #scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
                     mean = np.mean(alphas[:, coef_index])
                     my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
                     my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
