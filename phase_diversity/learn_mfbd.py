@@ -102,7 +102,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 8
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -570,11 +570,11 @@ class nn_model:
                 #alphas_layer = keras.layers.Dense(128, activation='relu')(alphas_layer)
                 #alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
                 if no_shuffle:
-                    alphas_layer = tf.reshape(alphas_layer, [1, batch_size_per_gpu, size])
+                    alphas_layer1 = tf.reshape(alphas_layer, [1, batch_size_per_gpu, size])
                     lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(size//2, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
                     #lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
-                    alphas_layer = lstm(alphas_layer)
-                    alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, size])
+                    alphas_layer1 = lstm(alphas_layer1)
+                    alphas_layer1 = tf.reshape(alphas_layer1, [batch_size_per_gpu, size])
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 512])
                     #alphas_layer1 = tf.slice(alphas_layer, [0, 0, 0], [1, batch_size_per_gpu, 512])
@@ -582,6 +582,7 @@ class nn_model:
                     #alphas_layer = tf.concat([alphas_layer1, tf.reverse(alphas_layer2, axis=[1])], axis=2)
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 1024])
                     #alphas_layer = lstm2(alphas_layer)
+                    alphas_layer = keras.layers.add([alphas_layer, alphas_layer1])
                 #alphas_layer = seq_block(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(size, activation=activation_fn)(alphas_layer)
