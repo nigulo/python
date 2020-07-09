@@ -417,6 +417,15 @@ class MyCustomCallback(tf.keras.callbacks.Callback):
     #def on_test_batch_end(self, batch, logs=None):
     #    print('Evaluating: batch {} ends at {}'.format(batch, datetime.datetime.now().time()))
 
+
+class ScaleLayer(tf.keras.layers.Layer):
+    def init(self): 
+        super(ScaleLayer, self).init() 
+        self.scale = tf.Variable(1.)
+        
+    def call(self, inputs):
+        return inputs * self.scale
+
 class nn_model:       
     
     
@@ -582,7 +591,8 @@ class nn_model:
                     #alphas_layer = tf.concat([alphas_layer1, tf.reverse(alphas_layer2, axis=[1])], axis=2)
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 1024])
                     #alphas_layer = lstm2(alphas_layer)
-                    alphas_layer = keras.layers.add([alphas_layer, alphas_layer1])
+                    alphas_layer = ScaleLayer()(alphas_layer1)
+                    #alphas_layer = keras.layers.add([alphas_layer, alphas_layer1])
                 #alphas_layer = seq_block(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(size, activation=activation_fn)(alphas_layer)
