@@ -591,12 +591,12 @@ class nn_model:
                     #alphas_layer = tf.concat([alphas_layer1, tf.reverse(alphas_layer2, axis=[1])], axis=2)
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 1024])
                     #alphas_layer = lstm2(alphas_layer)
-                    alphas_layer = ScaleLayer()(alphas_layer1)
                     #alphas_layer = keras.layers.add([alphas_layer, alphas_layer1])
                 #alphas_layer = seq_block(alphas_layer)
                 
                 alphas_layer = keras.layers.Dense(size, activation=activation_fn)(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
+                alphas_layer = ScaleLayer()(alphas_layer)
                 #if nn_mode >= MODE_2:
                 #    alphas_layer1 = keras.layers.Dense(1024, activation='relu')(alphas_input)
                 #    alphas_layer1 = keras.layers.Dense(jmax*num_frames_input, activation='relu')(alphas_layer1)
@@ -625,7 +625,7 @@ class nn_model:
                         x = tf.concat([x, tf.reshape(tt_sums_input, [batch_size_per_gpu*2])], axis=0)
                     alphas_layer = keras.layers.Lambda(zero_avg, name='alphas_layer')(x)
                 else:
-                    alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 10.), name='alphas_layer')(alphas_layer)
+                    alphas_layer = keras.layers.Lambda(lambda alphas: multiply(alphas, 1.), name='alphas_layer')(alphas_layer)
                     
                 #obj_layer = keras.layers.Dense(256)(obj_layer)
                 #obj_layer = keras.layers.Dense(128)(obj_layer)
