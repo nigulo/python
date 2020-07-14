@@ -583,7 +583,8 @@ class nn_model:
                     lstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(size//2, return_sequences=True, stateful=True))#, merge_mode='sum')#, activation="relu")#, return_state=True)
                     #lstm2 = tf.keras.layers.LSTM(512, return_sequences=True, stateful=True, go_backwards=True)#, activation="relu")#, return_state=True)
                     alphas_layer1 = lstm(alphas_layer1)
-                    alphas_layer = tf.reshape(alphas_layer1, [batch_size_per_gpu, size])
+                    alphas_layer1 = tf.reshape(alphas_layer1, [batch_size_per_gpu, size])
+                    alphas_layer = ScaleLayer()(alphas_layer1)
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu, 512])
                     #alphas_layer = tf.reshape(alphas_layer, [batch_size_per_gpu*2, 512])
                     #alphas_layer1 = tf.slice(alphas_layer, [0, 0, 0], [1, batch_size_per_gpu, 512])
@@ -596,7 +597,6 @@ class nn_model:
                 
                 alphas_layer = keras.layers.Dense(size, activation=activation_fn)(alphas_layer)
                 alphas_layer = keras.layers.Dense(jmax*num_frames_input, activation='linear')(alphas_layer)
-                alphas_layer = ScaleLayer()(alphas_layer)
                 #if nn_mode >= MODE_2:
                 #    alphas_layer1 = keras.layers.Dense(1024, activation='relu')(alphas_input)
                 #    alphas_layer1 = keras.layers.Dense(jmax*num_frames_input, activation='relu')(alphas_layer1)
