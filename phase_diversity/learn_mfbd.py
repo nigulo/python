@@ -102,7 +102,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 64
+    n_channels = 128
     
     sum_over_batch = True
     
@@ -764,13 +764,13 @@ class nn_model:
 
             #x = tf.concat([tf.reshape(a3, [num_frames*jmax+2*nx*nx]), tf.reshape(Ds, [num_frames*2*nx*nx])], axis=0)
             x = tf.concat([tf.reshape(a3, [num_objs*(num_frames*jmax+2*nx*nx)]), tf.reshape(Ds, [num_objs*num_frames*2*nx*nx])], axis=0)
-            image_deconv, Ps, wf = self.psf_test.deconvolve(x, do_fft=do_fft)
+            image_deconv, Ps, wf, loss = self.psf_test.deconvolve(x, do_fft=do_fft)
             print("image_deconv", image_deconv.numpy().shape)
-            return image_deconv, Ps, wf
+            return image_deconv, Ps, wf, loss
         
     # Inputs should be grouped per object (first axis)
     def Ds_reconstr(self, Ds, alphas, diversity):
-        image_deconv, _, _ = self.deconvolve(Ds, alphas, diversity, do_fft=False)
+        image_deconv, _, _, _ = self.deconvolve(Ds, alphas, diversity, do_fft=False)
         with tf.device(gpu_id):
             image_deconv = tf.reshape(image_deconv, [alphas.shape[0], 1, self.nx, self.nx])
             image_deconv = tf.tile(image_deconv, [1, 2*alphas.shape[1], 1, 1])
@@ -1567,7 +1567,7 @@ class nn_model:
             #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
             self.psf_check.coh_trans_func.set_diversity(diversity)
             #alphas = np.random.normal(size=(alphas.shape[0], alphas.shape[1]))#np.ones_like(alphas)
-            obj_reconstr, psf, wf = self.deconvolve(Ds_[None,], alphas, diversity)
+            obj_reconstr, psf, wf, loss = self.deconvolve(Ds_[None,], alphas, diversity)
             obj_reconstr = obj_reconstr.numpy()[0]
             psf = psf.numpy()[0]
             wf = wf.numpy()[0]*self.pupil
@@ -1601,8 +1601,10 @@ class nn_model:
                 true_alphas = true_coefs[obj_ids[i]]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
-                obj_reconstr_true, psf_true, wf_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
+                obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
+                
+                print("Losses", loss, loss_true)
                 
                 if estimate_full_image:
                     cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])

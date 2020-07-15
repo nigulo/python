@@ -441,7 +441,7 @@ class psf_tf():
         #PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
         PP = tf.complex(tf.constant(PP, dtype='float32'), tf.zeros((1, self.nx, self.nx), dtype='float32'))
         
-        obj = self.reconstr_(tf.math.conj(DP), PP, do_fft)
+        obj, loss = self.reconstr_(tf.math.conj(DP), PP, do_fft)
         if one_obj:
             return obj[0]
         else:
@@ -450,6 +450,7 @@ class psf_tf():
     def reconstr_(self, DP, PP, do_fft = True):
         eps = tf.complex(tf.constant(1e-10), tf.constant(0.))
         F_image = tf.divide(DP + eps, PP + eps)
+        loss = -tf.math.reduce_sum(tf.math.real(tf.math.conj(F_image))) # Without DD part
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
@@ -460,7 +461,7 @@ class psf_tf():
         else:
             image = F_image
         image = tf.signal.ifftshift(image, axes=(1, 2))
-        return image
+        return image, loss
 
     def deconvolve(self, x, do_fft = True):
         nx = self.nx
@@ -498,7 +499,7 @@ class psf_tf():
         num = tf.math.reduce_sum(tf.multiply(Ds_F, Ps_conj), axis=[1])
         den = tf.math.reduce_sum(tf.multiply(Ps, Ps_conj), axis=[1])
         
-        image = self.reconstr_(num, den, do_fft)
+        image, loss = self.reconstr_(num, den, do_fft)
         #F_image = tf.divide(num, den)
         #if self.fltr is not None:
         #    F_image = F_image * tf.constant(self.fltr)
@@ -507,7 +508,7 @@ class psf_tf():
         #else:
         #    image = F_image
         #image = tf.signal.ifftshift(image, axes=(1, 2))
-        return image, Ps1, self.wf
+        return image, Ps1, self.wf, loss
         
     def mfbd_loss(self, x):
         nx = self.nx
