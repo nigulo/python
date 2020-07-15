@@ -1604,7 +1604,7 @@ class nn_model:
                 obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 
-                print("Losses", loss.numpy(), loss_true.numpy())
+                print("Loss difference", loss.numpy() - loss_true.numpy())
                 
                 if estimate_full_image:
                     cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
