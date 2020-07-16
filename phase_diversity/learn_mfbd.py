@@ -1497,6 +1497,8 @@ class nn_model:
         cropped_reconstrs_true = []
         cropped_coords = []
         
+        loss_diffs = []
+        
         full_shape = np.zeros(2, dtype="int")
         
         #print("coords, pos", coords, positions)
@@ -1604,7 +1606,7 @@ class nn_model:
                 obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 
-                print("Loss difference", loss.numpy() - loss_true.numpy())
+                loss_diffs.append((loss.numpy() - loss_true.numpy())/nx/nx)
                 
                 if estimate_full_image:
                     cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
@@ -1660,6 +1662,7 @@ class nn_model:
             full_reconstr = np.zeros(full_shape)
             full_reconstr_true = np.zeros(full_shape)
             full_D = np.zeros(full_shape)
+            
             for i in np.arange(len(cropped_objs)):
                 x = cropped_coords[i][0]-min_coord[0]
                 y = cropped_coords[i][1]-min_coord[1]
@@ -1669,16 +1672,23 @@ class nn_model:
                 full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
                 full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
+
+            loss_diffs = np.reshape(np.repeat(np.asarray(loss_diffs), 10), (10*(max_pos[1] + 1), 10*(max_pos[0] + 1)))
+                
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
-            my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
-            my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [1])
-            my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [2])
-            my_test_plot.colormap(full_D, [3])
+            my_test_plot.set_default_cmap(cmap_name="greys")
+            #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
+            my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
+            my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
+            my_test_plot.colormap(full_D, [2])
+            my_test_plot.set_default_cmap(cmap_name="bwr")
+            my_test_plot.colormap(loss_diffs, [3])
             
-            my_test_plot.set_axis_title([0], "MOMFBD filtered")
-            my_test_plot.set_axis_title([1], "MOMFBD")
-            my_test_plot.set_axis_title([2], "Neural network")
-            my_test_plot.set_axis_title([3], "Raw frame")
+            #my_test_plot.set_axis_title([0], "MOMFBD filtered")
+            my_test_plot.set_axis_title([0], "MOMFBD")
+            my_test_plot.set_axis_title([1], "Neural network")
+            my_test_plot.set_axis_title([2], "Raw frame")
+            my_test_plot.set_axis_title([3], "Losses")
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
