@@ -1676,7 +1676,7 @@ class nn_model:
             loss_diffs = np.reshape(np.repeat(np.asarray(loss_diffs), 10*10), (10*(max_pos[1] + 1), 10*(max_pos[0] + 1)))
                 
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
-            my_test_plot.set_default_cmap(cmap_name="greys")
+            my_test_plot.set_default_cmap(cmap_name="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
             my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
             my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
