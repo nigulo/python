@@ -1673,7 +1673,8 @@ class nn_model:
                 full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
 
-            loss_diffs = np.reshape(np.repeat(np.asarray(loss_diffs), 10*10), (10*(max_pos[1] + 1), 10*(max_pos[0] + 1)))
+            loss_diffs = np.reshape(np.asarray(loss_diffs), (max_pos[1] + 1, max_pos[0] + 1))
+            loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
             my_test_plot.set_default_cmap(cmap_name="Greys")
