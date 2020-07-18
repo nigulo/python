@@ -850,7 +850,7 @@ class nn_model:
             self.diversities_train = self.diversities[:len(diversities)]
             self.diversities_validation = self.diversities[len(diversities):]
 
-            self.obj_ids = np.concatenate([obj_ids, self.obj_ids_validation])
+            self.obj_ids = np.concatenate([obj_ids, self.obj_ids_validation + (np.max(obj_ids) + 1)])
             self.obj_ids_train = self.obj_ids[:len(obj_ids)]
             self.obj_ids_validation = self.obj_ids[len(obj_ids):]
 
