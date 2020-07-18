@@ -1061,7 +1061,7 @@ class nn_model:
         elif self.nn_mode >= MODE_2:
             n_train = len(self.Ds_train)
             n_validation = len(self.Ds_validation)
-            DD_DP_PP = np.zeros(n_train + n_validation, 4, nx, nx))
+            DD_DP_PP = np.zeros((n_train + n_validation, 4, nx, nx))
             DD_DP_PP_train = DD_DP_PP[:n_train]
             DD_DP_PP_validation = DD_DP_PP[n_train:n_train+n_validation]
             tt_sums = np.zeros((n_train + n_validation, 2))
