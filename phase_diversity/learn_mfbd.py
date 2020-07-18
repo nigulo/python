@@ -814,21 +814,21 @@ class nn_model:
             if positions is not None:
                 positions = positions[i1:i1+self.num_objs]
         
-            self.Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
+            Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
             
-            med = np.median(self.Ds, axis=(1, 2), keepdims=True)
+            med = np.median(Ds, axis=(1, 2), keepdims=True)
             #std = np.std(Ds, axis=(1, 2), keepdims=True)
-            self.Ds -= med
-            self.Ds = self.hanning.multiply(self.Ds, axis=1)
-            self.Ds += med
+            Ds -= med
+            Ds = self.hanning.multiply(Ds, axis=1)
+            Ds += med
             ##Ds /= std
-            self.Ds /= med
+            Ds /= med
             
                         
             if shuffle2 and (not sum_over_batch or batch_size == 1):
                 # Shuffle the data
-                random_indices = random.choice(len(self.Ds), size=len(self.Ds), replace=False)
-                self.Ds = self.Ds[random_indices]
+                random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
+                Ds = Ds[random_indices]
                 if self.objs is not None:
                     self.objs = self.objs[random_indices]
                 if self.diversities is not None:
@@ -836,7 +836,12 @@ class nn_model:
                 self.obj_ids = self.obj_ids[random_indices]
                 self.positions = self.positions[random_indices]
 
-            self.Ds_train = self.Ds
+            # Validation data has to be set first
+            self.Ds = np.concatenate([Ds, self.Ds_validation])
+            # Create new views
+            self.Ds_train = self.Ds[:len(Ds)]
+            self.Ds_validation = self.Ds[len(Ds):]
+            
             self.objs_train = self.objs
             self.diversities_train = self.diversities
             self.obj_ids_train = self.obj_ids
@@ -1054,15 +1059,17 @@ class nn_model:
                     break
             self.epoch = 0
         elif self.nn_mode >= MODE_2:
-            DD_DP_PP = np.zeros((len(self.Ds), 4, nx, nx))
-            DD_DP_PP_train = DD_DP_PP[:self.n_train]
-            DD_DP_PP_validation = DD_DP_PP[self.n_train:self.n_train+self.n_validation]
-            tt_sums = np.zeros((len(self.Ds), 2))
-            tt_sums_train = tt_sums[:self.n_train]
-            tt_sums_validation = tt_sums[self.n_train:self.n_train+self.n_validation]
-            alphas = np.zeros((len(self.Ds), num_alphas_input*num_frames_input*jmax))
-            alphas_train = alphas[:self.n_train]
-            alphas_validation = alphas[self.n_train:self.n_train+self.n_validation]
+            n_train = len(self.Ds_train)
+            n_validation = len(self.Ds_validation)
+            DD_DP_PP = np.zeros(n_train + n_validation, 4, nx, nx))
+            DD_DP_PP_train = DD_DP_PP[:n_train]
+            DD_DP_PP_validation = DD_DP_PP[n_train:n_train+n_validation]
+            tt_sums = np.zeros((n_train + n_validation, 2))
+            tt_sums_train = tt_sums[:n_train]
+            tt_sums_validation = tt_sums[n_train:n_train+n_validation]
+            alphas = np.zeros((n_train + n_validation, num_alphas_input*num_frames_input*jmax))
+            alphas_train = alphas[:n_train]
+            alphas_validation = alphas[n_train:n_train+n_validation]
             Ds_diff = None
             if nn_mode == MODE_3:
                 Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, _ = self.group_per_obj(self.Ds, np.zeros((len(self.Ds), jmax)), self.diversities, self.obj_ids, DD_DP_PP)
