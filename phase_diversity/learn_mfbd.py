@@ -101,8 +101,8 @@ if nn_mode == MODE_1:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 128
-    n_channels = 128
+    batch_size = 32
+    n_channels = 256
     
     sum_over_batch = True
     
@@ -123,7 +123,7 @@ elif nn_mode == MODE_2:
     mode_2_index = 1
     
     # How many frames to use in training
-    num_frames = 256
+    num_frames = 512
     # How many objects to use in training
     num_objs = 80#None
     
@@ -132,7 +132,7 @@ elif nn_mode == MODE_2:
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 8
+    n_channels = 256
     
     sum_over_batch = True
     
