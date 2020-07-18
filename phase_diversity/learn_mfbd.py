@@ -1112,6 +1112,7 @@ class nn_model:
                     #    my_test_plot.close()
                     ###########################################################
                                         
+            print(self.Ds.shape, DD_DP_PP.shape)
             self.predict_mode2(self.Ds, self.diversities, DD_DP_PP, self.obj_ids, tt_sums, alphas, Ds_diff)
             print("Index, num epochs, epoch_mode_2:", self.mode_2_index, self.n_epochs_2, self.epoch_mode_2)
             for epoch_mode_2 in np.arange(self.epoch_mode_2, self.n_epochs_mode_2):
