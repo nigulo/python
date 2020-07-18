@@ -814,7 +814,7 @@ class nn_model:
             if positions is not None:
                 positions = positions[i1:i1+self.num_objs]
         
-            Ds, self.objs, self.diversities, num_frames, self.obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
+            Ds, objs, diversities, num_frames, obj_ids, self.positions, _s = convert_data(Ds, objs, diversity, positions)
             
             med = np.median(Ds, axis=(1, 2), keepdims=True)
             #std = np.std(Ds, axis=(1, 2), keepdims=True)
@@ -829,11 +829,11 @@ class nn_model:
                 # Shuffle the data
                 random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
                 Ds = Ds[random_indices]
-                if self.objs is not None:
-                    self.objs = self.objs[random_indices]
-                if self.diversities is not None:
-                    self.diversities = self.diversities[random_indices]
-                self.obj_ids = self.obj_ids[random_indices]
+                if objs is not None:
+                    objs = objs[random_indices]
+                if diversities is not None:
+                    diversities = diversities[random_indices]
+                obj_ids = obj_ids[random_indices]
                 self.positions = self.positions[random_indices]
 
             # Validation data has to be set first
@@ -842,9 +842,17 @@ class nn_model:
             self.Ds_train = self.Ds[:len(Ds)]
             self.Ds_validation = self.Ds[len(Ds):]
             
-            self.objs_train = self.objs
-            self.diversities_train = self.diversities
-            self.obj_ids_train = self.obj_ids
+            self.objs = np.concatenate([objs, self.objs_validation])
+            self.objs_train = self.objs[:len(objs)]
+            self.objs_validation = self.objs[len(objs):]
+
+            self.diversities = np.concatenate([diversities, self.diversities_validation])
+            self.diversities_train = self.diversities[:len(diversities)]
+            self.diversities_validation = self.diversities[len(diversities):]
+
+            self.obj_ids = np.concatenate([obj_ids, self.obj_ids_validation])
+            self.obj_ids_train = self.obj_ids[:len(obj_ids)]
+            self.obj_ids_validation = self.obj_ids[len(obj_ids):]
 
             '''                            
             n_train = int(math.ceil(len(self.Ds)*train_perc))
