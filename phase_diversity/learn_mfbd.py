@@ -123,7 +123,7 @@ elif nn_mode == MODE_2:
     mode_2_index = 1
     
     # How many frames to use in training
-    num_frames = 512
+    num_frames = 256
     # How many objects to use in training
     num_objs = 80#None
     
@@ -132,7 +132,7 @@ elif nn_mode == MODE_2:
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 256
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -887,6 +887,7 @@ class nn_model:
             self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
             '''
         else:
+            Ds = Ds[:, :self.num_frames]
             self.Ds_validation, self.objs_validation, self.diversities_validation, _, self.obj_ids_validation, _, _s = convert_data(Ds, objs, diversity, positions)
             med = np.median(self.Ds_validation, axis=(1, 2), keepdims=True)
             #std = np.std(Ds, axis=(1, 2), keepdims=True)
