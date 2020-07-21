@@ -852,6 +852,7 @@ class nn_model:
 
             if np.max(obj_ids) >= np.min(self.obj_ids_validation):
                 self.obj_ids_validation += np.max(obj_ids) + 1
+            assert(np.max(obj_ids) + 1 == np.min(self.obj_ids_validation))
             self.obj_ids = np.concatenate([obj_ids, self.obj_ids_validation])
             self.obj_ids_train = self.obj_ids[:len(obj_ids)]
             self.obj_ids_validation = self.obj_ids[len(obj_ids):]
