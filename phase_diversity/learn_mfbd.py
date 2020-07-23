@@ -1683,7 +1683,8 @@ class nn_model:
             my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
             my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
             my_test_plot.colormap(full_D, [2])
-            my_test_plot.set_default_cmap(cmap_name="bwr")
+            max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
+            my_test_plot.set_default_cmap(cmap_name="bwr", vmin = -max_val, vmax=max_val)
             my_test_plot.colormap(loss_diffs, [3])
             
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")

@@ -450,7 +450,9 @@ class psf_tf():
     def reconstr_(self, DP, PP, do_fft = True):
         eps = tf.complex(tf.constant(1e-10), tf.constant(0.))
         F_image = tf.divide(DP + eps, PP + eps)
-        loss = -tf.math.reduce_sum(tf.math.real(tf.math.conj(F_image))) # Without DD part
+        
+        
+        loss = -tf.math.reduce_sum(tf.math.real(F_image * tf.math.conj(DP))) # Without DD part
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
