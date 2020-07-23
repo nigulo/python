@@ -1553,7 +1553,7 @@ class nn_model:
                 print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
 
             # Find all other realizations of the same object
-            DFs = []
+            #DFs = []
             Ds_ = []
             alphas = []
             if pred_alphas is not None:
@@ -1562,20 +1562,13 @@ class nn_model:
                         for l in np.arange(num_frames_input):
                             D = Ds[j, :, :, 2*l]
                             D_d = Ds[j, :, :, 2*l+1]
-                            #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
-                            #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
-                            DF = fft.fft2(D)
-                            DF_d = fft.fft2(D_d)
+                            #DF = fft.fft2(D)
+                            #DF_d = fft.fft2(D_d)
                             Ds_.append(Ds[j, :, :, 2*l:2*l+2])
-                            DFs.append(np.array([DF, DF_d]))
+                            #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
-                            #print("alphas", j, l, alphas[-1][0])
-                            #if n_test_frames is not None and len(alphas) >= n_test_frames:
-                            #    break
-                    #if len(alphas) >= n_test_frames:
-                    #    break
             Ds_ = np.asarray(Ds_)
-            DFs = np.asarray(DFs, dtype="complex")
+            #DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                             
             #print("alphas", alphas.shape, Ds_.shape)
@@ -1586,38 +1579,26 @@ class nn_model:
             #obj_reconstr_mean += obj_reconstr
 
             diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
-            #diversity = np.concatenate((diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
             self.psf_check.coh_trans_func.set_diversity(diversity)
-            #alphas = np.random.normal(size=(alphas.shape[0], alphas.shape[1]))#np.ones_like(alphas)
             obj_reconstr, psf, wf, loss = self.deconvolve(Ds_[None,], alphas, diversity)
             obj_reconstr = obj_reconstr.numpy()[0]
             psf = psf.numpy()[0]
             wf = wf.numpy()[0]*self.pupil
             psf = fft.ifftshift(fft.ifft2(fft.ifftshift(psf, axes=(1, 2))), axes=(1, 2)).real
             
-            #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, 
-            #                                         ret_all=False, a_est=None, normalize = False, fltr=self.filter)
-            #obj_reconstr = fft.ifftshift(obj_reconstr)
 
             if estimate_full_image:
                 cropped_reconstrs.append(obj_reconstr[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
-            #obj_reconstr_mean += obj_reconstr
 
-            #my_test_plot = plot.plot(nrows=1, ncols=2)
-            #my_test_plot.colormap(np.reshape(objs[i], (self.nx, self.nx)), [0])
-            #my_test_plot.colormap(obj_reconstr, [1])
-            #my_test_plot.save("test_results_mode" + str(nn_mode) + "_" + str(i) + ".png")
+            #my_test_plot = plot.plot(nrows=2, ncols=2, width=8, height=6)
+            #row = 0
+            #my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
+            #my_test_plot.colormap(obj_reconstr, [row, 1])
+            #row += 1
+            #my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
+            #my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
+            #my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
             #my_test_plot.close()
-
-            my_test_plot = plot.plot(nrows=2, ncols=2, width=8, height=6)
-            row = 0
-            my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
-            my_test_plot.colormap(obj_reconstr, [row, 1])
-            row += 1
-            my_test_plot.colormap(Ds[i, :, :, 0], [row, 0])
-            my_test_plot.colormap(Ds[i, :, :, 1], [row, 1])
-            my_test_plot.save(f"{dir_name}/{file_prefix}{i}.png")
-            my_test_plot.close()
 
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_ids[i]]
