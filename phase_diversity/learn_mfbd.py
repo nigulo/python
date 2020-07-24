@@ -1950,8 +1950,8 @@ else:
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
 
     # TODO: Comment out #######################################################
-    np.savez_compressed(dir_name + '/Ds_tmp', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
-                    alphas=true_coefs, positions=positions, coords=coords)
+    #np.savez_compressed(dir_name + '/Ds_tmp', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
+    #                alphas=true_coefs, positions=positions, coords=coords)
     ###########################################################################
     
     #hanning = utils.hanning(nx, 10)
