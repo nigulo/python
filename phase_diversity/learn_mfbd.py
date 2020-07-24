@@ -101,8 +101,8 @@ if nn_mode == MODE_1:
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
-    n_channels = 256
+    batch_size = 128
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -1674,7 +1674,7 @@ class nn_model:
                 full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
 
-            loss_diffs = np.reshape(np.asarray(loss_diffs), (max_pos[1] + 1, max_pos[0] + 1))
+            loss_diffs = np.reshape(np.asarray(loss_diffs), (max_pos[0] + 1, max_pos[1] + 1)).T
             loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
@@ -1948,7 +1948,12 @@ else:
     positions = positions[filtr]
     coords = coords[filtr]
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
-        
+
+    # TODO: Comment out #######################################################
+    np.savez_compressed(dir_name + '/Ds_tmp', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
+                    alphas=true_coefs, positions=positions, coords=coords)
+    ###########################################################################
+    
     #hanning = utils.hanning(nx, 10)
     #med = np.median(Ds, axis=(3, 4), keepdims=True)
     #std = np.std(Ds, axis=(3, 4), keepdims=True)
