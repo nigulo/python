@@ -79,7 +79,7 @@ if len(sys.argv) > i:
 
 train_perc = 0.8
 activation_fn = "relu"
-tt_weight = 0.001
+tt_weight = 0#0.001
 
 if nn_mode == MODE_1:
     
@@ -93,7 +93,7 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 512
+    num_frames = 256
     # How many objects to use in training
     num_objs = 80#0#None
     
@@ -102,7 +102,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 64
+    n_channels = 128
     
     sum_over_batch = True
     
@@ -545,11 +545,14 @@ class nn_model:
                 #def tile(x):
                 #    return tf.tile(tf.reshape(tf.reshape(x, [batch_size_per_gpu*1024]), [1, batch_size_per_gpu*1024]), [batch_size_per_gpu, 1])
                 
+                #hidden_layer = conv_layer(image_input1, kernel=(17, 17), n_channels=n_channels, num_convs=1)
+                #hidden_layer = conv_layer(hidden_layer, kernel=(9, 9), n_channels=2*n_channels)
+                #hidden_layer = conv_layer(hidden_layer, kernel=(5, 5), n_channels=4*n_channels)
                 hidden_layer = conv_layer(image_input1, kernel=(9, 9), n_channels=n_channels, num_convs=1)
                 hidden_layer = conv_layer(hidden_layer, kernel=(7, 7), n_channels=2*n_channels)
                 hidden_layer = conv_layer(hidden_layer, kernel=(5, 5), n_channels=4*n_channels)
                 hidden_layer = conv_layer(hidden_layer, n_channels=4*n_channels)
-                hidden_layer = conv_layer(hidden_layer, n_channels=4*n_channels)
+                #hidden_layer = conv_layer(hidden_layer, n_channels=4*n_channels)
     
                 hidden_layer = keras.layers.Flatten()(hidden_layer)
                 hidden_layer = keras.layers.Dense(36*n_channels, activation=activation_fn)(hidden_layer)
@@ -1061,7 +1064,7 @@ class nn_model:
                             verbose=1,
                             steps_per_epoch=None,
                             callbacks=[MyCustomCallback(model)])
-                if self.val_loss > history.history['val_loss'][-1]:
+                if True:#self.val_loss > history.history['val_loss'][-1]:
                     self.val_loss = history.history['val_loss'][-1]
                     save_weights(model, (self.n_epochs_1, self.n_epochs_2, epoch, self.val_loss))
                 else:
@@ -1680,8 +1683,12 @@ class nn_model:
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
             my_test_plot.set_default_cmap(cmap_name="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
-            my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
-            my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
+            min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
+            max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
+            #my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
+            #my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
+            my_test_plot.colormap(full_reconstr_true, [0], vmin=min_val, vmax=max_val)
+            my_test_plot.colormap(full_reconstr, [1], vmin=min_val, vmax=max_val)
             my_test_plot.colormap(full_D, [2])
             max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
             my_test_plot.set_default_cmap(cmap_name="bwr")
