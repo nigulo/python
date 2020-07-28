@@ -79,7 +79,7 @@ if len(sys.argv) > i:
 
 train_perc = 0.8
 activation_fn = "relu"
-tt_weight = 0#0.001
+tt_weight = 0.0#0.001
 
 if nn_mode == MODE_1:
     
