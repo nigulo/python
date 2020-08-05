@@ -1772,17 +1772,20 @@ if train:
     ##Ds /= std
     #Ds /= med
     
-    if os.path.exists(data_file+"_valid"):
+    try:
         Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_file+"_valid")
-        
         Ds_train = Ds
+
         objs_train = objs
         positions_train = positions
-    else:
-    
+
+        n_train = int(len(Ds))
+        print("validation set: ", data_file+"_valid")
+        print("n_train, n_test", len(Ds), len(Ds_test))
+    except:
+        
         n_train = int(len(Ds)*train_perc)
         print("n_train, n_test", n_train, len(Ds) - n_train)
-        print("num_frames", Ds.shape[1])
             
         Ds_train = Ds[:n_train]
         #num_frames_valid = num_frames_input*batch_size
@@ -1800,6 +1803,8 @@ if train:
         else:
             positions_train = None
             positions_test = None
+
+    print("num_frames", Ds.shape[1])
 
     #if coords is not None:
     #    coords_test = coords[n_train:]
