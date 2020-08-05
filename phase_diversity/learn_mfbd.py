@@ -102,7 +102,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 128
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -1526,6 +1526,12 @@ class nn_model:
         
         #print("coords, pos", coords, positions)
     
+        min_loss_diff = float("inf")
+        max_loss_diff = -min_loss_diff
+        
+        min_loss_plot = None
+        max_loss_plot = None
+
     
         for i in np.arange(len(objs)):
             #if len(obj_ids_test) >= n_test_objects:
@@ -1563,8 +1569,8 @@ class nn_model:
                 for j in np.arange(i, len(objs)):
                     if obj_ids[j] == obj_ids[i]:
                         for l in np.arange(num_frames_input):
-                            D = Ds[j, :, :, 2*l]
-                            D_d = Ds[j, :, :, 2*l+1]
+                            #D = Ds[j, :, :, 2*l]
+                            #D_d = Ds[j, :, :, 2*l+1]
                             #DF = fft.fft2(D)
                             #DF_d = fft.fft2(D_d)
                             Ds_.append(Ds[j, :, :, 2*l:2*l+2])
@@ -1610,7 +1616,8 @@ class nn_model:
                 obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                 obj_reconstr_true = obj_reconstr_true.numpy()[0]
                 
-                loss_diffs.append((loss.numpy() - loss_true.numpy())/nx/nx)
+                loss_diff = (loss.numpy() - loss_true.numpy())/nx/nx
+                loss_diffs.append(loss_diff)
                 
                 if estimate_full_image:
                     cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
@@ -1654,7 +1661,32 @@ class nn_model:
                         row += 1
                         col = 0
                 my_test_plot.save(f"{dir_name}/alphas{i // n_test_frames}.png")
-                my_test_plot.close()
+                
+                if loss_diff > max_loss_diff or loss_diff < min_loss_diff:
+                    if loss_diff > max_loss_diff:
+                        if max_loss_plot is not None:
+                            max_loss_plot.close()
+                        max_loss_diff = loss_diff
+                        max_loss_plot = my_test_plot
+    
+                    if loss_diff < min_loss_diff:
+                        if min_loss_plot is not None:
+                            min_loss_plot.close()
+                        min_loss_diff = loss_diff
+                        min_loss_plot = my_test_plot
+                else:
+                    my_test_plot.close()
+                    
+                
+        if max_loss_plot is not None:
+            max_loss_plot.save(f"{dir_name}/alphas_max.png")
+            max_loss_plot.close()
+
+        if min_loss_plot is not None:
+            min_loss_plot.save(f"{dir_name}/alphas_min.png")
+            min_loss_plot.close()
+
+                
 
         if estimate_full_image:
             max_pos = np.max(positions, axis = 0)
@@ -1677,7 +1709,7 @@ class nn_model:
                 full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
 
-            loss_diffs = np.reshape(np.asarray(loss_diffs), (max_pos[0] + 1, max_pos[1] + 1)).T
+            loss_diffs = np.reshape(loss_diffs, (max_pos[0] + 1, max_pos[1] + 1)).T
             loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
@@ -1740,26 +1772,34 @@ if train:
     ##Ds /= std
     #Ds /= med
     
-    n_train = int(len(Ds)*train_perc)
-    print("n_train, n_test", n_train, len(Ds) - n_train)
-    print("num_frames", Ds.shape[1])
+    if os.path.exists(data_file+"_valid"):
+        Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_file+"_valid")
         
-    Ds_train = Ds[:n_train]
-    #num_frames_valid = num_frames_input*batch_size
-    Ds_test = Ds[n_train:]#, :num_frames_valid]
-    if objs is not None:
-        objs_train = objs[:n_train]
-        objs_test = objs[n_train:]
+        Ds_train = Ds
+        objs_train = objs
+        positions_train = positions
     else:
-        objs_train = None
-        objs_test = None
     
-    if positions is not None:
-        positions_train = positions[:n_train]
-        positions_test = positions[n_train:]
-    else:
-        positions_train = None
-        positions_test = None
+        n_train = int(len(Ds)*train_perc)
+        print("n_train, n_test", n_train, len(Ds) - n_train)
+        print("num_frames", Ds.shape[1])
+            
+        Ds_train = Ds[:n_train]
+        #num_frames_valid = num_frames_input*batch_size
+        Ds_test = Ds[n_train:]#, :num_frames_valid]
+        if objs is not None:
+            objs_train = objs[:n_train]
+            objs_test = objs[n_train:]
+        else:
+            objs_train = None
+            objs_test = None
+        
+        if positions is not None:
+            positions_train = positions[:n_train]
+            positions_test = positions[n_train:]
+        else:
+            positions_train = None
+            positions_test = None
 
     #if coords is not None:
     #    coords_test = coords[n_train:]
