@@ -1984,7 +1984,7 @@ else:
     max_pos = np.max(positions, axis = 0)
 
     print(max_pos)
-    max_pos = np.round(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
+    max_pos = np.floor(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
     print(max_pos)
     filtr = np.all(positions <= max_pos, axis=1)
 
