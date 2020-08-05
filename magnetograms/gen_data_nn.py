@@ -45,8 +45,8 @@ state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
 #state_file = 'pi-ambiguity-test/amb_turb.fits'
 
-num_train = 3
-num_test = 2
+num_train = 5000
+num_test = None
 
 num_x = 1
 num_y = 1
@@ -278,11 +278,11 @@ def convert(b, phi, theta):
                 bx = bxy*np.cos(phi1)
                 by = bxy*np.sin(phi1)
                 
-                bx = np.reshape(bx, n)
-                by = np.reshape(by, n)
-                bz = np.reshape(bz, n)
+                #bx = np.reshape(bx, n)
+                #by = np.reshape(by, n)
+                #bz = np.reshape(bz, n)
                 
-                y = np.column_stack((bx, by, bz))
+                y = np.array([bx, by, bz])
                 ys.append(y)
             
     return x, ys, n1, n2, n3
@@ -376,7 +376,7 @@ class data_generator():
 
         if num_data is None:
             num_data = len(self.ys)
-        ret_data = np.empty((num_data, np.shape(self.ys[0])[0], np.shape(self.ys[0])[1]))
+        ret_data = np.empty((num_data, np.shape(self.ys[0])[0], np.shape(self.ys[0])[1], np.shape(self.ys[0])[2], np.shape(self.ys[0])[3]))
         ret_loglik = np.empty(num_data)
         
         for i in tqdm(np.arange(num_data)):
@@ -386,10 +386,8 @@ class data_generator():
                 index = i
             y = np.array(self.ys[index])
             if train:
-                for j in np.arange(n):
-                    if np.random.uniform() < 0.5:
-                        y[j, :2] *= -1
-            
+                r = np.random.uniform(size=y[0].shape)
+                y[:2, r < 0.5] *= -1
             
             loglik = self.loglik(y)
         
