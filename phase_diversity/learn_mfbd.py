@@ -1986,7 +1986,7 @@ else:
     print(max_pos)
     max_pos = np.round(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
     print(max_pos)
-    filtr = np.all(positions < max_pos, axis=1)
+    filtr = np.all(positions <= max_pos, axis=1)
 
     if no_shuffle:
         stride = 1
