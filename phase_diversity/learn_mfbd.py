@@ -829,10 +829,10 @@ class nn_model:
                 i1 = self.i1
                 i2 = self.i2
                 self.i2 += self.num_frames
-                if self.i2 >= Ds.shape[1]:
+                if self.i2 > Ds.shape[1] - self.num_frames:
                     self.i2 = 0
                     self.i1 += self.num_objs
-                    if self.i1 >= Ds.shape[0]:
+                    if self.i1 > Ds.shape[0] - self.num_objs:
                         self.i1 = 0
                 
             Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
