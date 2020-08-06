@@ -441,8 +441,8 @@ class nn_model:
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
         
-        self.i1 = 0 # See set_data method for meaning
-        self.i2 = 0 # See set_data method for meaning
+        self.i1 = None # See set_data method for meaning
+        self.i2 = None # See set_data method for meaning
         
         self.nx = nx
         self.hanning = utils.hanning(nx, 10)
@@ -819,6 +819,11 @@ class nn_model:
                 i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
                 i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
             else:
+                if self.i1 is None:
+                    self.i1 = self.num_objs * random.randint(0, Ds.shape[0]//self.num_objs)
+                if self.i2 is None:
+                    self.i2 = self.num_frames * random.randint(0, Ds.shape[1]//self.num_frames)
+                print("i1, i2", i1, i2)
                 # No shuffleing, but shift the used data window
                 # along frames and objects
                 i1 = self.i1
