@@ -89,12 +89,12 @@ tt_weight = 0.0#0.001
 if nn_mode == MODE_1:
     
     shuffle0 = False
-    shuffle1 = False
+    shuffle1 = True
     shuffle2 = False
     
     num_reps = 1000
 
-    n_epochs_2 = 10
+    n_epochs_2 = 5
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -181,7 +181,7 @@ else:
     if zero_avg_tiptilt:
         n_test_frames = num_frames
 
-no_shuffle = not shuffle0 and not shuffle1 and not shuffle2
+no_shuffle = not shuffle0 and not shuffle2
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
