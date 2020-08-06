@@ -1775,6 +1775,7 @@ if train:
     
     for data_file in data_files[1:]:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
+        Ds3 = Ds3[:,:Ds.shape[1]]
         Ds = np.concatenate((Ds, Ds3))
         objs = np.concatenate((objs, objs3))
         positions = np.concatenate((positions, positions3))
