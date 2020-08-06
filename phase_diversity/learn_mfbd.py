@@ -60,12 +60,17 @@ if len(sys.argv) > i:
 i +=1
 
 if train:
-    data_file = "Ds"
+    data_files = "Ds_alt"
 else:
-    data_file = "Ds_test"
+    data_files = "Ds_test_alt"
 
 if len(sys.argv) > i:
-    data_file = sys.argv[i]
+    data_files = sys.argv[i]
+
+data_files = data_files.split(',')
+assert(len(data_files) > 0)
+
+
 i +=1
 
 n_test_frames = None
@@ -102,7 +107,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -435,6 +440,10 @@ class nn_model:
         self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
         self.num_objs = num_objs
+        
+        self.i1 = 0 # See set_data method for meaning
+        self.i2 = 0 # See set_data method for meaning
+        
         self.nx = nx
         self.hanning = utils.hanning(nx, 10)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
@@ -810,8 +819,17 @@ class nn_model:
                 i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
                 i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
             else:
-                i1 = 0
-                i2 = 0
+                # No shuffleing, but shift the used data window
+                # along frames and objects
+                i1 = self.i1
+                i2 = self.i2
+                self.i2 += self.num_frames
+                if self.i2 >= Ds.shape[1]:
+                    self.i2 = 0
+                    self.i1 += self.num_objs
+                    if self.i1 >= Ds.shape[0]:
+                        self.i1 = 0
+                
             Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
             objs = objs[i1:i1+self.num_objs]
             if positions is not None:
@@ -1748,9 +1766,10 @@ class nn_model:
 
 if train:
 
-    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
-    if False:
-        Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file+"3")
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
+    
+    for data_file in data_files[1:]:
+        Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
         Ds = np.concatenate((Ds, Ds3))
         objs = np.concatenate((objs, objs3))
         positions = np.concatenate((positions, positions3))
@@ -1773,14 +1792,14 @@ if train:
     #Ds /= med
     
     try:
-        Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_file+"_valid")
+        Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_files[0]+"_valid")
         Ds_train = Ds
 
         objs_train = objs
         positions_train = positions
 
         n_train = int(len(Ds))
-        print("validation set: ", data_file+"_valid")
+        print("validation set: ", data_files[0]+"_valid")
         print("n_train, n_test", len(Ds), len(Ds_test))
     except:
         
@@ -1942,7 +1961,7 @@ else:
     #Ds, images, pupil, modes, diversity, true_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
 
     
-    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_file)
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
 
     nx = Ds.shape[3]
     jmax = len(modes)

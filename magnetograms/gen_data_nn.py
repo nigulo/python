@@ -409,3 +409,5 @@ dat, loglik = generator.generate(num_data=num_train, train=True)
 dat_test, loglik_test = generator.generate(num_data=num_test)
 
 np.savez_compressed('data_nn', data_train=dat, loglik_train=loglik, data_test=dat_test, loglik_test=loglik_test)
+
+print("Done")
