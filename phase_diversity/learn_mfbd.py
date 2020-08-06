@@ -823,7 +823,7 @@ class nn_model:
                     self.i1 = self.num_objs * random.randint(0, Ds.shape[0]//self.num_objs)
                 if self.i2 is None:
                     self.i2 = self.num_frames * random.randint(0, Ds.shape[1]//self.num_frames)
-                print("i1, i2", i1, i2)
+                print("i1, i2", self.i1, self.i2)
                 # No shuffleing, but shift the used data window
                 # along frames and objects
                 i1 = self.i1
