@@ -94,7 +94,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 20
+    n_epochs_2 = 10
     n_epochs_1 = 1
     
     # How many frames to use in training
