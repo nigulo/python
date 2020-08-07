@@ -45,23 +45,26 @@ state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
 #state_file = 'pi-ambiguity-test/amb_turb.fits'
 
-num_train = 5000
-num_test = None
+num_train = 10000
+num_test = 27*27
 
-num_x = 1
-num_y = 1
+
+n1 = 27
+n2 = 27
 
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
 if len(sys.argv) > 2:
-    num_x = int(sys.argv[2])
+    n1 = int(sys.argv[2])
 if len(sys.argv) > 3:
-    num_y = int(sys.argv[3])
+    n2 = int(sys.argv[3])
 
 subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
+
 num_layers = 3
+n3 = num_layers
 
 m_kiss = 13
 
@@ -230,62 +233,56 @@ def load(file_name):
         sys.exit(1)
     return b, phi, theta
 
-def convert(b, phi, theta):
+def get_patches(b, phi, theta, num_patches, rnd=True):
     
-    n1 = b.shape[0]//num_x
-    n2 = b.shape[1]//num_y
-    n3 = num_layers
-
-    n = n1*n2*n3
-
-    x1_range = 1.0
-    x2_range = 1.0
-    x3_range = x1_range*n3/n1
-
-
-    x1 = np.linspace(0, x1_range, n1)
-    x2 = np.linspace(0, x2_range, n2)
-    x3 = np.linspace(0, x3_range, n3)
-    
-    x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
-    print("x1_mesh", x1_mesh[:,0,0])
-    print("x2_mesh", x2_mesh[0,:,0])
-    print("x3_mesh", x3_mesh[0,0,:])
-    x_grid = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
-    x = x_grid.reshape(-1, 3)
-    x_flat = np.reshape(x, (3*n, -1))
     
     ys = []
-    for x_no in np.arange(num_x):
-        for y_no in np.arange(num_y):
     
-            x_start = n1*x_no
-            x_end = min(x_start + n1, b.shape[0])
-            y_start = n2*y_no
-            y_end = min(y_start + n1, b.shape[1])
+    
+    x_start = 0
+    y_start = 0
+    for i in np.arange(num_patches):
+        
+        if rnd:
+
+            x_start = random.randint(0, b.shape[0] + 1 - n1)
+            y_start = random.randint(0, b.shape[1] + 1 - n2)
             
-            if x_start < x_end and y_start < y_end:
+    
+        #x_start = n1*x_no
+        x_end = min(x_start + n1, b.shape[0])
+        #y_start = n2*y_no
+        y_end = min(y_start + n1, b.shape[1])
+        
+        if x_start < x_end and y_start < y_end:
+        
+            b1 = b[x_start:x_end, y_start:y_end, :num_layers]
+            phi1 = phi[x_start:x_end, y_start:y_end, :num_layers]
+            theta1 = theta[x_start:x_end, y_start:y_end, :num_layers]
+    ###########################################################################
             
-                b1 = b[x_start:x_end, y_start:y_end, :num_layers]
-                phi1 = phi[x_start:x_end, y_start:y_end, :num_layers]
-                theta1 = theta[x_start:x_end, y_start:y_end, :num_layers]
-                ###########################################################################
-                
-                
-                
-                bz = b1*np.cos(theta1)
-                bxy = b1*np.sin(theta1)
-                bx = bxy*np.cos(phi1)
-                by = bxy*np.sin(phi1)
-                
-                #bx = np.reshape(bx, n)
-                #by = np.reshape(by, n)
-                #bz = np.reshape(bz, n)
-                
-                y = np.array([bx, by, bz])
-                ys.append(y)
             
-    return x, ys, n1, n2, n3
+            
+            bz = b1*np.cos(theta1)
+            bxy = b1*np.sin(theta1)
+            bx = bxy*np.cos(phi1)
+            by = bxy*np.sin(phi1)
+            
+            #bx = np.reshape(bx, n)
+            #by = np.reshape(by, n)
+            #bz = np.reshape(bz, n)
+            
+            y = np.array([bx, by, bz])
+            ys.append(y)
+        if not rnd:
+            x_start += n1
+            if x_start > b.shape[0] - n1:
+                x_start = 0
+                y_start += n2
+                if y_start > b.shape[0] - n2:
+                    break
+            
+    return ys
     ###########################################################################
 
 b, phi, theta = load(state_file)
@@ -294,8 +291,26 @@ n1_orig = b.shape[0]
 n2_orig = b.shape[1]
 n3_orig = num_layers
 
-x, ys, n1, n2, n3 = convert(b, phi, theta)
 n = n1*n2*n3
+
+x1_range = 1.0
+x2_range = 1.0
+x3_range = x1_range*n3/n1
+
+
+x1 = np.linspace(0, x1_range, n1)
+x2 = np.linspace(0, x2_range, n2)
+x3 = np.linspace(0, x3_range, n3)
+
+x1_mesh, x2_mesh, x3_mesh = np.meshgrid(x1, x2, x3, indexing='ij')
+print("x1_mesh", x1_mesh[:,0,0])
+print("x2_mesh", x2_mesh[0,:,0])
+print("x3_mesh", x3_mesh[0,0,:])
+x_grid = np.stack((x1_mesh, x2_mesh, x3_mesh), axis=3)
+x = x_grid.reshape(-1, 3)
+x_flat = np.reshape(x, (3*n, -1))
+
+
 
 m1 = max(m_kiss, n1//10)
 m2 = max(m_kiss, n2//10)
@@ -309,14 +324,6 @@ u1 = np.linspace(0, u1_range, m1)
 u2 = np.linspace(0, u2_range, m2)
 u3 = np.linspace(0, u3_range, m3)
 u_mesh = np.meshgrid(u1, u2, u3, indexing='ij')
-
-
-
-grid_density = (np.max(x[:,0])-np.min(x[:,0]))/n1 +(np.max(x[:,1])-np.min(x[:,1]))/n2 + (np.max(x[:,2])-np.min(x[:,2]))/n3
-grid_density /= 3
-max_grid_size = max((np.max(x[:,0])-np.min(x[:,0])), (np.max(x[:,1])-np.min(x[:,1])) + (np.max(x[:,2])-np.min(x[:,2])))
-print("grid_density:", grid_density)
-print("max_grid_size:", max_grid_size)
 
 
 
@@ -372,16 +379,15 @@ class data_generator():
     
 
 
-    def generate(self, num_data=None, train=False):#, best_loglik = sys.float_info.min):
+    def generate(self, train=False):#, best_loglik = sys.float_info.min):
 
-        if num_data is None:
-            num_data = len(self.ys)
+        num_data = len(self.ys)
         ret_data = np.empty((num_data, np.shape(self.ys[0])[0], np.shape(self.ys[0])[1], np.shape(self.ys[0])[2], np.shape(self.ys[0])[3]))
         ret_loglik = np.empty(num_data)
         
         for i in tqdm(np.arange(num_data)):
             if train:
-                index = np.random.randint(len(self.ys))
+                index = np.random.randint(num_data)
             else:
                 index = i
             y = np.array(self.ys[index])
@@ -397,16 +403,28 @@ class data_generator():
     
 
 sig_var=1.
-#length_scale=.03*n1_orig/n1
-length_scale=.1*n1_orig/n1
+length_scale=.2
 noise_var=0.01
 
-print("Num patches", len(ys))
+print("length_scale", length_scale)
+print("x", np.min(x), np.max(x))
 
+ys = get_patches(b, phi, theta, num_train)
+ys -= np.mean(ys, axis = 0)
+ys /= np.std(ys, axis = 0)
 
+print("Num train patches", len(ys))
 generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
-dat, loglik = generator.generate(num_data=num_train, train=True)
-dat_test, loglik_test = generator.generate(num_data=num_test)
+dat, loglik = generator.generate(train=True)
+
+
+ys = get_patches(b, phi, theta, num_test, rnd=False)
+ys -= np.mean(ys, axis = 0)
+ys /= np.std(ys, axis = 0)
+
+print("Num test patches", len(ys))
+generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
+dat_test, loglik_test = generator.generate()
 
 np.savez_compressed('data_nn_out', data_train=dat, loglik_train=loglik, data_test=dat_test, loglik_test=loglik_test)
 
