@@ -5,7 +5,8 @@ import sys
 np.set_printoptions(threshold=sys.maxsize)
 import numpy.random as random
 sys.setrecursionlimit(10000)
-import tensorflow.keras as keras
+import keras
+#import tensorflow.keras as keras
 keras.backend.set_image_data_format('channels_last')
 #from keras import backend as K
 import tensorflow as tf
@@ -46,32 +47,23 @@ i +=1
 if train:
     data_file = "data_nn"
 else:
-    data_file = "data_nn_test"
+    data_file = "data_nn"
 
 if len(sys.argv) > i:
     data_file = sys.argv[i]
 i +=1
 
-n_test_frames = None
-if len(sys.argv) > i:
-    n_test_frames = int(sys.argv[i])
-i +=1
-
-n_test_objects = None
-if len(sys.argv) > i:
-    n_test_objects = int(sys.argv[i])
-
 activation_fn = "relu"
 
    
-train_perc = .8 
+#train_perc = .8 
 num_reps = 1000
 
 n_epochs_2 = 20
 n_epochs_1 = 1
 
 # How many objects to use in training
-num_objs = 80#0#None
+#num_objs = 80#0#None
 
 
 batch_size = 32
@@ -327,12 +319,15 @@ class nn_model:
         model = self.model
         
 
-        pred_logliks = model.predict([data_test], batch_size=batch_size)
+        pred_logliks = model.predict([data_test], batch_size=batch_size)[:,0]
         
+        print(pred_logliks.shape, loglik_test.shape)
         x = np.arange(len(pred_logliks))
-        my_plot = utils.plot()
-        my_plot.plot(self, x, pred_logliks, ax_index=None, params="r-")
-        my_plot.plot(self, x, loglik_test, ax_index=None, params="b--")
+        my_plot = plot.plot(nrows=1, ncols=3, smart_axis=False)
+        my_plot.plot(x=x, y=pred_logliks, ax_index=0, params="k-")
+        my_plot.plot(x=x, y=loglik_test, ax_index=1, params="k-")
+        my_plot.plot(x=x, y=np.abs(pred_logliks-loglik_test), ax_index=2, params="k-")
+        #my_plot.plot(x=x, y=loglik_test, ax_index=None, params="b--")
         my_plot.save("nn_results.png")
         my_plot.close()
         
@@ -343,7 +338,17 @@ if train:
 
     data_train, loglik_train, data_test, loglik_test = load_data(data_file)
     
+    data_train -= np.mean(data_train, axis = 0)
+    data_train /= np.std(data_train, axis = 0)
+
+    data_test -= np.mean(data_test, axis = 0)
+    data_test /= np.std(data_test, axis = 0)
+    
+    
     print("data", data_train.shape)
+    loglik_train /= 1e8
+    loglik_test /= 1e8
+    print(loglik_test.shape)
 
     # Data shape (N, 3, nx, ny, nz)
     # Data[:, 0]: bx
@@ -352,6 +357,7 @@ if train:
     
     # Transpose 2nd index to last index (we use channels last)
     data_train = np.transpose(data_train, (0, 2, 3, 4, 1))
+    data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     
     nx = data_train.shape[1]
     ny = data_train.shape[2]
@@ -361,7 +367,6 @@ if train:
     model = nn_model(nx, ny, nz, num_input_channels)
 
     for rep in np.arange(0, num_reps):
-        model.set_data()
         print("Rep no: " + str(rep))
     
         model.train(data_train, loglik_train, data_test, loglik_test)
@@ -370,6 +375,12 @@ else:
 
     
     _, _, data_test, loglik_test = load_data(data_file)
+
+    data_test -= np.mean(data_test, axis = 0)
+    data_test /= np.std(data_test, axis = 0)
+    loglik_test /= 1e8
+
+    data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     
     nx = data_test.shape[1]
     ny = data_test.shape[2]
