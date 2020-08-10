@@ -410,8 +410,8 @@ print("length_scale", length_scale)
 print("x", np.min(x), np.max(x))
 
 ys = get_patches(b, phi, theta, num_train)
-ys -= np.mean(ys, axis = 0)
-ys /= np.std(ys, axis = 0)
+#ys -= np.mean(ys, axis = 0)
+#ys /= np.std(ys, axis = 0)
 
 print("Num train patches", len(ys))
 generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
@@ -419,8 +419,8 @@ dat, loglik = generator.generate(train=True)
 
 
 ys = get_patches(b, phi, theta, num_test, rnd=False)
-ys -= np.mean(ys, axis = 0)
-ys /= np.std(ys, axis = 0)
+#ys -= np.mean(ys, axis = 0)
+#ys /= np.std(ys, axis = 0)
 
 print("Num test patches", len(ys))
 generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)

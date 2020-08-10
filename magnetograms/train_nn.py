@@ -264,8 +264,10 @@ class nn_model:
             
         self.model = model
         
+        optimizer = keras.optimizers.Adam(
+            learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
             
-        self.model.compile(optimizer='adadelta', loss='mse')
+        self.model.compile(optimizer=optimizer, loss='mse')#'adadelta', loss='mse')
 
         params = load_weights(model)
         
@@ -336,18 +338,27 @@ class nn_model:
 
 if train:
 
-    data_train, loglik_train, data_test, loglik_test = load_data(data_file)
+    data_train, loglik_train, _, _ = load_data(data_file)#data_test, loglik_test = load_data(data_file)
     
-    data_train -= np.mean(data_train, axis = 0)
-    data_train /= np.std(data_train, axis = 0)
+    mean = np.mean(data_train, axis = 0)
+    data_train -= mean
+    std = np.std(data_train, axis = 0)
+    data_train /= std
 
-    data_test -= np.mean(data_test, axis = 0)
-    data_test /= np.std(data_test, axis = 0)
+    num_train = int(len(data_train)*.8)
+    data_test = data_train[num_train:]
+    data_train = data_train[:num_train]
+
+    loglik_test = loglik_train[num_train:]
+    loglik_train = loglik_train[:num_train]
+
+    #data_test -= mean#np.mean(data_test, axis = 0)
+    #data_test /= std#np.std(data_test, axis = 0)
     
     
     print("data", data_train.shape)
-    loglik_train /= 1e8
-    loglik_test /= 1e8
+    loglik_train /= 1e5
+    loglik_test /= 1e5
     print(loglik_test.shape)
 
     # Data shape (N, 3, nx, ny, nz)
@@ -374,11 +385,20 @@ if train:
 else:
 
     
-    _, _, data_test, loglik_test = load_data(data_file)
+    data_train, loglik_train, data_test, loglik_test = load_data(data_file)
 
-    data_test -= np.mean(data_test, axis = 0)
-    data_test /= np.std(data_test, axis = 0)
-    loglik_test /= 1e8
+    mean = np.mean(data_train, axis = 0)
+    data_train -= mean
+    std = np.std(data_train, axis = 0)
+    data_train /= std
+
+    num_train = int(len(data_train)*.8)
+    data_test = data_train[num_train:]
+    loglik_test = loglik_train[num_train:]
+
+    #data_test -= np.mean(data_test, axis = 0)
+    #data_test /= np.std(data_test, axis = 0)
+    loglik_test /= 1e5
 
     data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     

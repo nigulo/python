@@ -712,9 +712,12 @@ class nn_model:
                     else:
                         loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
                         return tf.math.reduce_sum(loss, axis=[1, 2, 3])/(nx*nx)
+
+            optimizer = keras.optimizers.Adam(
+                learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
-            self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
+            self.model.compile(optimizer=optimizer, loss=mfbd_loss)#'mse')
 
         nn_mode_, params = load_weights(model)
         
