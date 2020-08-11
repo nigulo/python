@@ -266,7 +266,7 @@ class psf_torch():
             self.fltr = None
             
         self.jmax_used = None
-        self.tt_weight = torch.from_numpy(tt_weight).to(self.device, dtype=torch.float32)
+        self.tt_weight = torch.tensor(tt_weight).to(self.device, dtype=torch.float32)
         #self.zero_avg_tiptilt = zero_avg_tiptilt
         
 
@@ -348,7 +348,7 @@ class psf_torch():
         return dat_F * otf_vals
 
 
-    def aberrate(self, obj, alphas, diversity):
+    def aberrate(self, obj, alphas, diversity=None):
         #nx = self.nx
         #jmax = self.coh_trans_func.phase_aberr.jmax
 
@@ -422,7 +422,7 @@ class psf_torch():
         #image = tf.signal.ifftshift(image, axes=(1, 2))
         return image, loss
 
-    def deconvolve(self, alphas, diversity, Ds, do_fft = True):
+    def deconvolve(self, Ds, alphas, diversity = None, do_fft = True):
         #nx = self.nx
         #jmax = self.coh_trans_func.phase_aberr.jmax
         
@@ -463,21 +463,24 @@ class psf_torch():
         #image = tf.signal.ifftshift(image, axes=(1, 2))
         return image, Ps1, self.wf, loss
         
-    def mfbd_loss(self, alphas, diversity, Ds, tt, DD_DP_PP):
+    def mfbd_loss(self, Ds, alphas, diversity, tt=None, DD_DP_PP=None):
         nx = self.nx
         mode = self.mode
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
-        if self.sum_over_batch:
-            tt_sum = tf.reduce_sum(tt, axis=[0, 1])
-            tt_sum = tt_sum * tt_sum
-            tt_sum = tf.reduce_sum(tt_sum)
-            tt_sum = tf.tile(tf.reshape(tt_sum, [1, 1]), [nx, nx])
+        if tt is not None:
+            if self.sum_over_batch:
+                tt_sum = torch.sum(tt, axis=[0, 1])
+                tt_sum = tt_sum * tt_sum
+                tt_sum = torch.sum(tt_sum)
+                tt_sum = tt_sum.view(1, 1).repeat(nx, nx)
+            else:
+                tt_sum = torch.sum(tt, axis=1)
+                tt_sum = tt_sum * tt_sum
+                tt_sum = torch.sum(tt_sum, axis=1)
+                tt_sum = tt_sum.view(self.batch_size, 1, 1).repeat(1, nx, nx)
         else:
-            tt_sum = tf.reduce_sum(tt, axis=[1])
-            tt_sum = tt_sum * tt_sum
-            tt_sum = tf.reduce_sum(tt_sum, axis=[1])
-            tt_sum = tf.tile(tf.reshape(tt_sum, [self.batch_size, 1, 1]), [1, nx, nx])
+            tt_sum = torch.tensor(0., dtype=torch.float32)
             
         
         #Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
