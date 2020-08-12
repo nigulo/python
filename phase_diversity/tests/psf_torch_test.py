@@ -61,32 +61,34 @@ class test_psf_torch(unittest.TestCase):
 
         alphas = np.random.normal(size=(jmax*num_frames))*500.
         alphas = alphas.astype("float32")
-        alphas1 = np.reshape(alphas, (num_frames, jmax))
-        D_expected = psf_.convolve(image1, alphas = alphas1)
+        alphas = np.reshape(alphas, (num_frames, jmax))
+        #alphas1 = np.reshape(alphas, (num_frames, jmax))
+        D_expected = psf_.convolve(image1, alphas = alphas)
         
         alphas_torch = torch.from_numpy(alphas)
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
         
         image_torch = torch.from_numpy(image)
         D = psf_torch_.aberrate(image_torch, alphas_torch)
+        D_np = D.numpy()
 
-        D_expected_ds = np.zeros((nx, nx, 2*num_frames))
+        #D_expected_ds = np.zeros((nx, nx, 2*num_frames))
         for l in np.arange(num_frames):
 
             D_expected_0 = misc.sample_image(D_expected[l, 0], 0.5)
             D_expected_1 = misc.sample_image(D_expected[l, 1], 0.5)
-            D_expected_ds[:, :, 2*l] = D_expected_0
-            D_expected_ds[:, :, 2*l+1] = D_expected_1
+            #D_expected_ds[:, :, 2*l] = D_expected_0
+            #D_expected_ds[:, :, 2*l+1] = D_expected_1
             
             my_plot = plot.plot(nrows=3, ncols=2)
-            print(D.shape)
-            my_plot.colormap(D[0, :, :, 2*l], [0, 0], show_colorbar=True, colorbar_prec=.6)
-            my_plot.colormap(D[0, :, :, 2*l+1], [0, 1])
+            print("D", D.shape)
+            my_plot.colormap(D_np[l, 0, :, :], [0, 0], show_colorbar=True, colorbar_prec=.6)
+            my_plot.colormap(D_np[l, 1, :, :], [0, 1])
             my_plot.colormap(D_expected_0, [1, 0])
             my_plot.colormap(D_expected_1, [1, 1])
     
-            my_plot.colormap(np.abs(D_expected_0 - D[0, :, :, 2*l]), [2, 0], colorbar_prec=.6)
-            my_plot.colormap(np.abs(D_expected_1 - D[0, :, :, 2*l+1]), [2, 1])
+            my_plot.colormap(np.abs(D_expected_0 - D_np[l, 0, :, :]), [2, 0], colorbar_prec=.6)
+            my_plot.colormap(np.abs(D_expected_1 - D_np[l, 1, :, :]), [2, 1])
                 
             my_plot.save("test_psf_torch_aberrate" + str(l) + ".png")
             my_plot.close()
@@ -94,17 +96,18 @@ class test_psf_torch(unittest.TestCase):
         #######################################################################
 
         dat_F = fft.fftshift(fft.fft2(image1), axes=(-2, -1))
-        dat_F = psf_.multiply(dat_F, alphas = alphas1)
+        dat_F = psf_.multiply(dat_F, alphas = alphas)
 
-        image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
+        image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
 
-        image_deconv, _ = psf_torch_.deconvolve(D, alphas_torch)
+        print("D", D.size())
+        image_deconv, _, _, _ = psf_torch_.deconvolve(D, alphas_torch)
 
         my_plot = plot.plot(nrows=2, ncols=2)
         my_plot.colormap(image, [0, 0], show_colorbar=True, colorbar_prec=.3)
         my_plot.colormap(image_deconv_expected, [0, 1])
         my_plot.colormap(image, [1, 0])
-        my_plot.colormap(image_deconv[0], [1, 1])
+        my_plot.colormap(image_deconv.numpy()[0], [1, 1])
 
             
         my_plot.save("test_psf_torch_deconvolve.png")

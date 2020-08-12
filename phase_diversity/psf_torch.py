@@ -17,12 +17,37 @@ if __DEBUG__:
     import plot
 
 
-def _centered(arr, newshape):
-    # Return the center newshape portion of the array.
-    currshape = tf.shape(arr)[-2:]
-    startind = (currshape - newshape) // 2
-    endind = startind + newshape
-    return arr[..., startind[0]:endind[0], startind[1]:endind[1]]
+from typing import Optional
+
+def fftshift(x):
+    return torch.roll(x, [x.size()[-1]//2, x.size()[-2]//2], [-1, -2])#roll(roll(x, x.size()[-1]//2, -1), x.size()[-2]//2, -2)
+
+def ifftshift(x):
+    return torch.roll(x, [-x.size()[-1]//2, -x.size()[-2]//2], [-1, -2])#roll(roll(x, x.size()[-1]//2, -1), x.size()[-2]//2, -2)
+
+
+def fft(x):
+    x_real = torch.real(x)
+    x_imag = torch.imag(x)
+    x_real = torch.unsqueeze(x_real, -1)# + 0.j
+    x_imag = torch.unsqueeze(x_imag, -1)# + 0.j
+    x = torch.cat([x_real, x_imag], -1)
+        
+    fx = torch.fft(x, 2)
+    
+    return fx[..., 0] + fx[..., 1]*1.j
+
+def ifft(x):
+    x_real = torch.real(x)
+    x_imag = torch.imag(x)
+    x_real = torch.unsqueeze(x_real, -1)# + 0.j
+    x_imag = torch.unsqueeze(x_imag, -1)# + 0.j
+    x = torch.cat([x_real, x_imag], -1)
+        
+    fx = torch.ifft(x, 2)
+    
+    return fx[..., 0] + fx[..., 1]*1.j
+
 
 def fftconv(in1, in2, mode="full", reorder_channels_before=True, reorder_channels_after=True):
     # Reorder channels to come second (needed for fft)
@@ -111,11 +136,17 @@ class phase_aberration_torch():
         nx = self.terms.size()[1]
         if alphas is None:
             alphas = self.alphas
+        if len(alphas.size()) == 2:
+            # We have multiple atmospheric frames
+            dim = 1
+        else:
+            # We have single atmospheric frame
+            dim = 0
         shape1 = list(alphas.size()) + [1, 1]
         shape2 = [1]*len(alphas.size()) + [nx, nx]
         alphas = alphas.view(shape1).repeat(shape2)
         #alphas1 = tf.complex(alphas1, tf.zeros((self.jmax, nx, nx)))
-        vals = torch.sum(alphas * self.terms, dim=0)
+        vals = torch.sum(alphas * self.terms, dim=dim)
         #vals = tf.math.reduce_sum(tf.math.multiply(self.terms, tf.reshape(self.alphas, [self.jmax, 1, 1])), 0)
         return vals
     
@@ -187,7 +218,7 @@ class coh_trans_func_torch():
         #defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[1]))))
 
         #return tf.concat(tf.reshape(focus_val, [1, focus_val.shape[0], focus_val.shape[1]]), tf.reshape(defocus_val, [1, defocus_val.shape[0], defocus_val.shape[1]]), 0)
-        return torch.cat([focus_val.unsqueeze(0), defocus_val.unsqueese(0)])
+        return torch.cat([focus_val.unsqueeze(0), defocus_val.unsqueeze(0)])
 
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
@@ -307,22 +338,24 @@ class psf_torch():
 
         #self.coh_trans_func.phase_aberr.set_alphas(alphas)
 
+        print("alphas", alphas.size())
         coh_vals = self.coh_trans_func(alphas, diversity)
+        print("coh_vals", coh_vals.size())
         wf = self.coh_trans_func.phase
         #wf = tf.complex(self.coh_trans_func.phase, tf.zeros((tf.shape(self.coh_trans_func.phase)[0], tf.shape(self.coh_trans_func.phase)[1]), dtype='float32'))
     
         if self.corr_or_fft:
             corr = fftconv(coh_vals, torch.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
             #vals = torch.real(tf.signal.fftshift(torch.ifft2d(torch.ifftshift(corr, axes=(1, 2))), axes=(1, 2)))
-            vals = torch.real(torch.ifft(corr, 2))
+            vals = torch.real(fftshift(ifft(ifftshift(corr))))
             #vals = tf.transpose(vals, (2, 0, 1))
         else:
             
-            vals = torch.ifft(coh_vals, 2)
+            vals = ifft(coh_vals)
             vals1 = torch.real(vals * torch.conj(vals)) + 0.j
 
             #corr = tf.signal.fftshift(tf.signal.fft2d(vals1), axes=(1, 2))
-            corr = torch.fft(vals1, 2)
+            corr = fftshift(fft(vals1))
             
             #if normalize:
             #    corr /= tf.reduce_sum(self.coh_trans_func.pupil)
@@ -333,8 +366,9 @@ class psf_torch():
         #    if normalize:
         #        norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
         #        vals = tf.divide(vals, norm)
+        print("corr", corr.size())
         
-        return corr, torch.view(wf, [1, wf.size()[0], wf.size()[1]])
+        return corr, wf#wf.view(1, wf.size()[0], wf.size()[1])
 
             
 
@@ -345,6 +379,7 @@ class psf_torch():
     '''
     def multiply(self, dat_F, alphas, diversity):
         otf_vals, _ = self.calc(alphas, diversity)
+        print("dat_F, otf_vals", dat_F.size(), otf_vals.size())
         return dat_F * otf_vals
 
 
@@ -352,15 +387,14 @@ class psf_torch():
         #nx = self.nx
         #jmax = self.coh_trans_func.phase_aberr.jmax
 
-        obj = obj.repeat(1, self.num_frames*2, 1, 1) + 0.j
+        obj = obj.repeat(2, self.num_frames, 1, 1) + 0.j
         
-        fobj = torch.fft(obj, 2)
-        #fobj = tf.signal.fftshift(fobj, axes = (2, 3))
+        fobj = fft(obj)
+        fobj = fftshift(fobj)
     
         DF = self.multiply(fobj, alphas, diversity)
-        #DF = tf.signal.ifftshift(DF, axes = (2, 3))
-        D = torch.real(torch.ifft(DF, 2))
-        #D = tf.signal.fftshift(D, axes = (1, 2)) # Is it needed?
+        DF = ifftshift(DF)
+        D = torch.real(ifft(DF))
         
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
@@ -372,7 +406,7 @@ class psf_torch():
         reconstr = reconstr.repeat(1, 2*self.num_frames, 1, 1)
         DF = self.multiply(reconstr, alphas, diversity)
         #DF = tf.signal.ifftshift(DF, axes = (2, 3))
-        D = torch.real(torch.ifft(DF, 2))
+        D = torch.real(ifft(DF))
         #D = tf.signal.fftshift(D, axes = (2, 3))
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
@@ -380,7 +414,7 @@ class psf_torch():
     def Ds_reconstr2(self, reconstr, alphas, diversity):
         DF = self.multiply(reconstr, alphas, diversity)
         #DF = tf.signal.ifftshift(DF, axes = (2, 3))
-        D = torch.real(torch.ifft(DF, 2))
+        D = torch.real(ifft(DF))
         #D = tf.signal.fftshift(D, axes = (2, 3))
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
@@ -416,7 +450,7 @@ class psf_torch():
             F_image = F_image * self.fltr
     
         if do_fft:
-            image = torch.real(torch.ifft(F_image, 2))
+            image = torch.real(ifft(F_image))
         else:
             image = F_image
         #image = tf.signal.ifftshift(image, axes=(1, 2))
@@ -442,9 +476,10 @@ class psf_torch():
         #Ds = tf.complex(Ds, tf.zeros((self.batch_size, self.num_frames*2, nx, nx)))
         
         #Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
-        Ds_F = torch.fft(Ds + 0.j, 2)
+        print("Ds", Ds.size())
+        Ds_F = fft(Ds + 0.j)
 
-        Ps1, _ = self.calc(alphas, diversity)
+        Ps1, wf = self.calc(alphas, diversity)
         
         Ps = Ps1#tf.signal.ifftshift(Ps1, axes=(2, 3))
         Ps_conj = torch.conj(Ps)
@@ -461,7 +496,7 @@ class psf_torch():
         #else:
         #    image = F_image
         #image = tf.signal.ifftshift(image, axes=(1, 2))
-        return image, Ps1, self.wf, loss
+        return image, Ps1, wf, loss
         
     def mfbd_loss(self, Ds, alphas, diversity, tt=None, DD_DP_PP=None):
         nx = self.nx
@@ -484,7 +519,7 @@ class psf_torch():
             
         
         #Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
-        Ds_F = torch.fft(Ds + 0.j, 2)
+        Ds_F = fft(Ds + 0.j)
             
         Ds_F_conj = torch.conj(Ds_F)
 
