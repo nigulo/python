@@ -139,27 +139,31 @@ def load_data(data_file):
 
 if train:
 
-    data_train, loglik_train, _, _ = load_data(data_file)#data_test, loglik_test = load_data(data_file)
+    data_train, loglik_train, data_test, loglik_test = load_data(data_file)#data_test, loglik_test = load_data(data_file)
+
+    # Transpose 2nd index to last index (we use channels last)
+    data_train = np.transpose(data_train, (0, 2, 3, 4, 1))
+    data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     
     mean = np.mean(data_train, axis = 0)
     data_train -= mean
     std = np.std(data_train, axis = 0)
     data_train /= std
 
-    num_train = int(len(data_train)*.8)
-    data_test = data_train[num_train:]
-    data_train = data_train[:num_train]
+    #num_train = int(len(data_train)*.8)
+    #data_test = data_train[num_train:]
+    #data_train = data_train[:num_train]
 
-    loglik_test = loglik_train[num_train:]
-    loglik_train = loglik_train[:num_train]
+    #loglik_test = loglik_train[num_train:]
+    #loglik_train = loglik_train[:num_train]
 
-    #data_test -= mean#np.mean(data_test, axis = 0)
-    #data_test /= std#np.std(data_test, axis = 0)
+    data_test -= mean#np.mean(data_test, axis = 0)
+    data_test /= std#np.std(data_test, axis = 0)
     
     
     print("data", data_train.shape)
-    loglik_train /= 1e5
-    loglik_test /= 1e5
+    loglik_train /= 1e7
+    loglik_test /= 1e7
     print(loglik_test.shape)
 
     # Data shape (N, 3, nx, ny, nz)
@@ -167,16 +171,16 @@ if train:
     # Data[:, 1]: by
     # Data[:, 2]: bz
     
-    # Transpose 2nd index to last index (we use channels last)
-    data_train = np.transpose(data_train, (0, 2, 3, 4, 1))
-    data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     
     nx = data_train.shape[1]
     ny = data_train.shape[2]
     nz = data_train.shape[3]
     num_input_channels = data_train.shape[4]
 
-    model = nn_model.nn_model(nx, ny, nz, num_input_channels, dir_name, batch_size, n_gpus, gpu_id, activation_fn, n_channels, n_epochs_1, n_epochs_2)
+    model = nn_model.nn_model(dir_name, n_gpus, gpu_id)
+    if not model.load():
+        model.init(nx, ny, nz, num_input_channels, batch_size, activation_fn, n_channels, n_epochs_1, n_epochs_2, mean, std)
+    model.create()
 
     for rep in np.arange(0, num_reps):
         print("Rep no: " + str(rep))
@@ -193,13 +197,13 @@ else:
     std = np.std(data_train, axis = 0)
     data_train /= std
 
-    num_train = int(len(data_train)*.8)
-    data_test = data_train[num_train:]
-    loglik_test = loglik_train[num_train:]
+    #num_train = int(len(data_train)*.8)
+    #data_test = data_train[num_train:]
+    #loglik_test = loglik_train[num_train:]
 
-    #data_test -= np.mean(data_test, axis = 0)
-    #data_test /= np.std(data_test, axis = 0)
-    loglik_test /= 1e5
+    #data_test -= mean#np.mean(data_test, axis = 0)
+    #data_test /= std#np.std(data_test, axis = 0)
+    loglik_test /= 1e7
 
     data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     
@@ -209,7 +213,8 @@ else:
     num_input_channels = data_test.shape[4]
 
 
-
-    model = nn_model.nn_model(nx, ny, nz, num_input_channels, dir_name, batch_size, n_gpus, gpu_id, activation_fn, n_channels)
+    model = nn_model.nn_model(dir_name, n_gpus, gpu_id)
+    model.load()
+    model.create()
     
     model.test(data_test, loglik_test)

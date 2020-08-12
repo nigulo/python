@@ -72,7 +72,7 @@ subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
 num_layers = 3
-inference = True
+inference = False
 infer_z_scale = True
 sample_or_optimize = False
 num_chains = 4
@@ -82,6 +82,8 @@ total_num_tries = 1000
 num_tries_without_progress = 100
 
 m_kiss = 13
+
+gp_or_nn = True
 
 def load(file_name):
     
@@ -134,6 +136,7 @@ def load(file_name):
             phi = dat[2]
         hdul.close()
     elif file_name == 'MURaM':
+        
         hdul = fits.open(file_name+'/result_5.100000.fits')
         print("Data.shape", hdul[0].data.shape)
         bx = hdul[0].data
@@ -657,8 +660,6 @@ def sample(x, y, infer_z_scale=False, known_params=dict(), num_samples=None):
     return sampling_result
         
 
-
-
 def reverse(y, y_sign, ii):
     #y_old = np.array(y)
     y[ii,:2] *= -1
@@ -700,6 +701,13 @@ class disambiguator():
             self.length_scale = length_scale
             self.noise_var = noise_var
             self.init()
+            
+        if not gp_or_nn:
+            import nn_model
+            self.nn_model = nn_model.nn_model(".")
+            self.nn_model.load()
+            self.nn_model.create()
+            
         
     def init(self):    
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
@@ -722,23 +730,33 @@ class disambiguator():
             self.true_loglik = gp.calc_loglik(self.x, np.reshape(y_orig, (3*self.n, -1)))
 
     def loglik(self):
-        gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
-        if (self.approx_type == 'd2'):
-            loglik = 0.
-            for i in np.arange(0, num_subsample_reps):
-                loglik += gp.calc_loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
-                #if (best_loglik is None or loglik > best_loglik):
-                #    best_loglik = loglik
-            return loglik/num_subsample_reps
-        elif self.approx_type == 'kiss-gp':
-            U = gp.calc_cov(self.u, self.u, data_or_test=True)
-            W = utils.calc_W(self.u_mesh, self.x, us=self.u, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-            (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(self.y, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
-            L = la.cholesky(U)
-            v = la.solve(L, x)
-            return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+        if gp_or_nn:
+            gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+            if (self.approx_type == 'd2'):
+                loglik = 0.
+                for i in np.arange(0, num_subsample_reps):
+                    loglik += gp.calc_loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
+                    #if (best_loglik is None or loglik > best_loglik):
+                    #    best_loglik = loglik
+                return loglik/num_subsample_reps
+            elif self.approx_type == 'kiss-gp':
+                U = gp.calc_cov(self.u, self.u, data_or_test=True)
+                W = utils.calc_W(self.u_mesh, self.x, us=self.u, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+                (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(self.y, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+                L = la.cholesky(U)
+                v = la.solve(L, x)
+                return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+            else:
+                return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
         else:
-            return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+            bx = np.reshape(self.y[:, 0], [n1, n2, n3])
+            by = np.reshape(self.y[:, 1], [n1, n2, n3])
+            bz = np.reshape(self.y[:, 2], [n1, n2, n3])
+            
+            y = np.array([[bx, by, bz]])
+            y = np.transpose(y, [0, 2, 3, 4, 1])
+            return self.nn_model.test(y)
+            
     
     def estimate_z_scale(self):
         #known_params={"ell": avg_length_scale, "sig_var": avg_sig_var, "noise_var": avg_noise_var}
@@ -846,7 +864,7 @@ class disambiguator():
         #probs = np.zeros(self.n)
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         in_or_out = np.random.choice([True, False])
-        num_indices = np.random.randint(low=1, high=12)
+        num_indices = np.random.randint(low=1, high=2)
         num_train_sets = 10
         #inds_train_all = self.get_random_indices(try_no, num_indices = num_indices*num_train_sets)#, length_scale=self.length_scale, in_or_out = in_or_out)
 
@@ -1127,10 +1145,14 @@ length_scale = None
 noise_var = None
 z_scale = None
 if not inference:
+    
     sig_var=1.
-    #length_scale=.03*n1_orig/n1
-    length_scale=.1*n1_orig/n1
+    length_scale=.2
     noise_var=0.01
+
+    #sig_var=1.
+    #length_scale=.1*n1_orig/n1
+    #noise_var=0.01
     z_scale = 1.
     
 best_loglik = float("-inf")
@@ -1146,12 +1168,14 @@ if inference:
 
 
 y = np.array(y_orig)
+
 if true_input is None:
     # Align all the transverse components either randomly or identically
     for i in np.arange(0, n):
         if np.random.uniform() < 0.5:
-            y[i, :2] *= -1
-        #y[i, :2] = np.abs(y[i, :2])
+            #y[i, :2] *= -1
+            y[i, :2] = np.abs(y[i, :2])
+
 
 for i in np.arange(0, total_num_tries):
     
