@@ -18,7 +18,7 @@ jmax = 50
 diameter = 100.0
 wavelength = 5250.0
 
-num_frames = 2
+num_frames = 3
 
 
 def get_params(nx):
@@ -82,13 +82,13 @@ class test_psf_torch(unittest.TestCase):
             
             my_plot = plot.plot(nrows=3, ncols=2)
             print("D", D.shape)
-            my_plot.colormap(D_np[l, 0, :, :], [0, 0], show_colorbar=True, colorbar_prec=.6)
-            my_plot.colormap(D_np[l, 1, :, :], [0, 1])
+            my_plot.colormap(D_np[0, l, :, :], [0, 0], show_colorbar=True, colorbar_prec=.6)
+            my_plot.colormap(D_np[1, l, :, :], [0, 1])
             my_plot.colormap(D_expected_0, [1, 0])
             my_plot.colormap(D_expected_1, [1, 1])
     
-            my_plot.colormap(np.abs(D_expected_0 - D_np[l, 0, :, :]), [2, 0], colorbar_prec=.6)
-            my_plot.colormap(np.abs(D_expected_1 - D_np[l, 1, :, :]), [2, 1])
+            my_plot.colormap(np.abs(D_expected_0 - D_np[0, l, :, :]), [2, 0], colorbar_prec=.6)
+            my_plot.colormap(np.abs(D_expected_1 - D_np[1, l, :, :]), [2, 1])
                 
             my_plot.save("test_psf_torch_aberrate" + str(l) + ".png")
             my_plot.close()

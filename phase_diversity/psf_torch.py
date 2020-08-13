@@ -10,7 +10,6 @@ import zernike
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
-import floodfill
 
 __DEBUG__ = True
 if __DEBUG__:
@@ -20,10 +19,10 @@ if __DEBUG__:
 from typing import Optional
 
 def fftshift(x):
-    return torch.roll(x, [x.size()[-1]//2, x.size()[-2]//2], [-1, -2])#roll(roll(x, x.size()[-1]//2, -1), x.size()[-2]//2, -2)
+    return torch.roll(x, [x.size()[-1]//2, x.size()[-2]//2], [-1, -2])
 
 def ifftshift(x):
-    return torch.roll(x, [-x.size()[-1]//2, -x.size()[-2]//2], [-1, -2])#roll(roll(x, x.size()[-1]//2, -1), x.size()[-2]//2, -2)
+    return torch.roll(x, [-x.size()[-1]//2, -x.size()[-2]//2], [-1, -2])
 
 
 def fft(x):
@@ -136,6 +135,7 @@ class phase_aberration_torch():
         nx = self.terms.size()[1]
         if alphas is None:
             alphas = self.alphas
+        print("alphas.size", alphas.size())
         if len(alphas.size()) == 2:
             # We have multiple atmospheric frames
             dim = 1
@@ -145,6 +145,7 @@ class phase_aberration_torch():
         shape1 = list(alphas.size()) + [1, 1]
         shape2 = [1]*len(alphas.size()) + [nx, nx]
         alphas = alphas.view(shape1).repeat(shape2)
+        print("alphas.size", alphas.size(), self.terms.size())
         #alphas1 = tf.complex(alphas1, tf.zeros((self.jmax, nx, nx)))
         vals = torch.sum(alphas * self.terms, dim=dim)
         #vals = tf.math.reduce_sum(tf.math.multiply(self.terms, tf.reshape(self.alphas, [self.jmax, 1, 1])), 0)
@@ -223,38 +224,6 @@ class coh_trans_func_torch():
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
 
-'''
-def smart_fltr(F_image, threshold=1e-6):
-    
-    def fn(F_image):
-        F_image = np.fft.fftshift(F_image.numpy())
-        modulus = (F_image*F_image.conj()).real
-        max_modulus = np.max(modulus)
-        mask = np.zeros_like(modulus)
-        mask[modulus > max_modulus*threshold] = 1
-        ff = floodfill.floodfill(mask)
-        ff.fill(mask.shape[0]//2, mask.shape[1]//2)
-        ff = floodfill.floodfill(ff.labels)#, compFunc = lambda x, y: x>=y)
-        ff.fill(0, 0)
-        ff = floodfill.floodfill(ff.labels, compFunc = lambda x, y: x<=y)
-        ff.fill(mask.shape[0]//2, mask.shape[1]//2)
-        F_image[ff.labels == 0] = 0
-        if __DEBUG__:
-            my_plot = plot.plot()
-            my_plot.colormap(np.log((F_image*F_image.conj()).real+1))
-            my_plot.save("filtered.png")
-            my_plot.close()
-            my_plot = plot.plot()
-            my_plot.colormap(mask)
-            my_plot.save("mask.png")
-            my_plot.close()
-            my_plot = plot.plot()
-            my_plot.colormap(ff.labels)
-            my_plot.save("floodfill.png")
-            my_plot.close()
-        return tf.constant(np.fft.fftshift(F_image), dtype='complex64')
-    return tf.map_fn(lambda F_image: fn(F_image), F_image, dtype='complex64')
-'''
 
 class psf_torch():
 
@@ -355,7 +324,8 @@ class psf_torch():
             vals1 = torch.real(vals * torch.conj(vals)) + 0.j
 
             #corr = tf.signal.fftshift(tf.signal.fft2d(vals1), axes=(1, 2))
-            corr = fftshift(fft(vals1))
+            #corr = fftshift(fft(vals1))
+            corr = fft(vals1)
             
             #if normalize:
             #    corr /= tf.reduce_sum(self.coh_trans_func.pupil)
@@ -366,7 +336,7 @@ class psf_torch():
         #    if normalize:
         #        norm = tf.tile(tf.math.reduce_sum(vals, axis = (1, 2), keepdims=True), [1, tf.shape(vals)[1], tf.shape(vals)[1]])
         #        vals = tf.divide(vals, norm)
-        print("corr", corr.size())
+        #print("corr", corr.size())
         
         return corr, wf#wf.view(1, wf.size()[0], wf.size()[1])
 
@@ -390,14 +360,15 @@ class psf_torch():
         obj = obj.repeat(2, self.num_frames, 1, 1) + 0.j
         
         fobj = fft(obj)
-        fobj = fftshift(fobj)
+        #fobj = fftshift(fobj)
     
         DF = self.multiply(fobj, alphas, diversity)
-        DF = ifftshift(DF)
+        #DF = ifftshift(DF)
         D = torch.real(ifft(DF))
+        #D = ifftshift(D)
         
         #D = tf.transpose(D, (0, 2, 3, 1))
-        return D
+        return D/(D.size()[2]*D.size()[3])
 
     # For numpy inputs
     def Ds_reconstr(self, DP_real, DP_imag, PP, alphas, diversity):
