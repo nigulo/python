@@ -62,8 +62,8 @@ class test_psf_torch(unittest.TestCase):
         alphas = np.random.normal(size=(jmax*num_frames))*500.
         alphas = alphas.astype("float32")
         alphas = np.reshape(alphas, (num_frames, jmax))
-        #alphas1 = np.reshape(alphas, (num_frames, jmax))
-        D_expected = psf_.convolve(image1, alphas = alphas)
+        alphas1 = np.array(np.reshape(alphas, (num_frames, jmax)))
+        D_expected = psf_.convolve(image1, alphas = alphas1)
         
         alphas_torch = torch.from_numpy(alphas)
         #self.objs = np.reshape(self.objs, (len(self.objs), -1))
@@ -82,13 +82,13 @@ class test_psf_torch(unittest.TestCase):
             
             my_plot = plot.plot(nrows=3, ncols=2)
             print("D", D.shape)
-            my_plot.colormap(D_np[0, l, :, :], [0, 0], show_colorbar=True, colorbar_prec=.6)
-            my_plot.colormap(D_np[1, l, :, :], [0, 1])
+            my_plot.colormap(D_np[l, 0, :, :], [0, 0], show_colorbar=True, colorbar_prec=.6)
+            my_plot.colormap(D_np[l, 1, :, :], [0, 1])
             my_plot.colormap(D_expected_0, [1, 0])
             my_plot.colormap(D_expected_1, [1, 1])
     
-            my_plot.colormap(np.abs(D_expected_0 - D_np[0, l, :, :]), [2, 0], colorbar_prec=.6)
-            my_plot.colormap(np.abs(D_expected_1 - D_np[1, l, :, :]), [2, 1])
+            my_plot.colormap(np.abs(D_expected_0 - D_np[l, 0, :, :]), [2, 0], colorbar_prec=.6)
+            my_plot.colormap(np.abs(D_expected_1 - D_np[l, 1, :, :]), [2, 1])
                 
             my_plot.save("test_psf_torch_aberrate" + str(l) + ".png")
             my_plot.close()
@@ -98,7 +98,7 @@ class test_psf_torch(unittest.TestCase):
         dat_F = fft.fftshift(fft.fft2(image1), axes=(-2, -1))
         dat_F = psf_.multiply(dat_F, alphas = alphas)
 
-        image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
+        image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
 
         print("D", D.size())
         image_deconv, _, _, _ = psf_torch_.deconvolve(D, alphas_torch)
@@ -121,14 +121,14 @@ class test_psf_torch(unittest.TestCase):
 
 
         psf_torch_.set_diversity = True
-        mfbd_loss = psf_torch_.mfbd_loss(D, alphas_torch.view(1, num_frames*jmax), diversity_torch.view(1, 2*nx*nx))
+        mfbd_loss = psf_torch_.mfbd_loss(D, alphas_torch, diversity_torch).numpy()
 
         my_plot = plot.plot(nrows=1, ncols=1)
         my_plot.colormap(mfbd_loss, [0], show_colorbar=True, colorbar_prec=.3)
             
         my_plot.save("test_psf_torch_mfbd_loss.png")
         my_plot.close()
-        print("mfbd_loss", np.sum(mfbd_loss)/nx/nx)
+        print("mfbd_loss", np.sum(mfbd_loss))
 
         np.testing.assert_almost_equal(D, D_expected, 15)
 

@@ -150,7 +150,7 @@ class coh_trans_func():
             my_plot.save("aperture_test.png")
             my_plot.close()
 
-        return np.array([self.pupil*np.exp(1.j * self.phase + self.diversity[0]), self.pupil*np.exp(1.j * (self.phase + self.diversity[1]))])
+        return np.array([self.pupil*np.exp(-1.j * self.phase - self.diversity[0]), self.pupil*np.exp(-1.j * (self.phase + self.diversity[1]))])
 
     '''
         Returns the coefficients for given expansion
