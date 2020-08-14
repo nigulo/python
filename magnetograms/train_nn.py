@@ -34,9 +34,9 @@ import nn_model
    
 i = 1
 dir_name = "."
-#if len(sys.argv) > i:
-#    dir_name = sys.argv[i]
-#i +=1
+if len(sys.argv) > i:
+    dir_name = sys.argv[i]
+i +=1
 
 
 train = True
@@ -177,7 +177,7 @@ if train:
     nz = data_train.shape[3]
     num_input_channels = data_train.shape[4]
 
-    model = nn_model.nn_model(dir_name, n_gpus, gpu_id)
+    model = nn_model.nn_model(data_file, dir_name, n_gpus, gpu_id)
     if not model.load():
         model.init(nx, ny, nz, num_input_channels, batch_size, activation_fn, n_channels, n_epochs_1, n_epochs_2, mean, std)
     model.create()
@@ -213,7 +213,7 @@ else:
     num_input_channels = data_test.shape[4]
 
 
-    model = nn_model.nn_model(dir_name, n_gpus, gpu_id)
+    model = nn_model.nn_model(data_file, dir_name, n_gpus, gpu_id)
     model.load()
     model.create()
     

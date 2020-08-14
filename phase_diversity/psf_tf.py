@@ -624,7 +624,7 @@ class psf_tf():
 
     
     def deconvolve_aberrate(self, x):
-        fobj, Ps = self.deconvolve(x, do_fft=False)
+        fobj, Ps, _, _ = self.deconvolve(x, do_fft=False)
         DF = tf.math.multiply(fobj, Ps)
         DF = tf.signal.ifftshift(DF, axes = (2, 3))
         D = tf.math.real(tf.signal.ifft2d(DF))

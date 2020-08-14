@@ -175,7 +175,7 @@ class psf():
         diameter in centimeters
         wavelength in Angstroms
     '''
-    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=True, tip_tilt=None):
+    def __init__(self, coh_trans_func, nx=None, arcsec_per_px=None, diameter=None, wavelength=None, corr_or_fft=True, tip_tilt=None, normalize=True):
         self.coh_trans_func = coh_trans_func
         if nx is None:
             # Everything is precalculated
@@ -210,9 +210,10 @@ class psf():
         self.corr = dict() # only for testing purposes
         self.corr_or_fft = corr_or_fft
         self.tip_tilt = tip_tilt
+        self.normalize = normalize
         
         
-    def calc(self, alphas=None, normalize = True):
+    def calc(self, alphas=None):
         if alphas is None:
             l = 1
         else:
@@ -244,7 +245,7 @@ class psf():
                 vals[vals < 0] = 0. # Set negative values to zero
                 corr = fft.fftshift(fft.fft2(fft.ifftshift(vals, axes=(-2, -1))), axes=(-2, -1))
     
-            if normalize:
+            if self.normalize:
                 corr /= np.sum(self.coh_trans_func.pupil)
                 norm = np.sum(vals, axis = (1, 2)).repeat(vals.shape[1]*vals.shape[2]).reshape((vals.shape[0], vals.shape[1], vals.shape[2]))
                 vals /= norm

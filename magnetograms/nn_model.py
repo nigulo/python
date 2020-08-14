@@ -29,35 +29,6 @@ sys.path.append('../utils')
 import plot
 
 
-def load_weights(model, dir_name):
-    model_file = dir_name + '/weights.tf'
-    try:
-        model.load_weights(model_file)
-    except:
-        model_file = dir_name + '/weights.h5'
-        try:
-            model.load_weights(model_file)
-        except:
-            print("No model weights found")
-            return None
-    #params = pickle.load(open(dir_name + '/params.dat', 'rb'))
-    #return params
-
-def save_weights(model, dir_name):
-    model.save_weights(dir_name + '/weights.tf')
-        
-def save_params(params, dir_name):
-    with open(dir_name + '/params.dat', 'wb') as f:
-        pickle.dump(params, f, protocol=4)
-
-def load_params(dir_name):
-    try:
-        params = pickle.load(open(dir_name + '/params.dat', 'rb'))
-    except:
-        return None
-    return params
-    
-
 #import datetime
 class MyCustomCallback(tf.keras.callbacks.Callback):
     
@@ -93,8 +64,37 @@ class ScaleLayer(tf.keras.layers.Layer):
 class nn_model:       
     
     
+    def load_weights(self):
+        model_file = self.dir_name + f'/{self.name}_weights.tf'
+        try:
+            self.model.load_weights(model_file)
+        except:
+            model_file = self.dir_name + f'/{self.name}_weights.h5'
+            try:
+                self.model.load_weights(model_file)
+            except:
+                print("No model weights found")
+                return None
+        #params = pickle.load(open(dir_name + '/params.dat', 'rb'))
+        #return params
+    
+    def save_weights(self):
+        self.model.save_weights(self.dir_name + f'/{self.name}_weights.tf')
+            
+    def save_params(self, params):
+        with open(self.dir_name + f'/{self.name}_params.dat', 'wb') as f:
+            pickle.dump(params, f, protocol=4)
+    
+    def load_params(self):
+        try:
+            params = pickle.load(open(self.dir_name + f'/{self.name}_params.dat', 'rb'))
+        except:
+            return None
+        return params
+    
+    
     def load(self):
-        params = load_params(self.dir_name)
+        params = self.load_params()
         
         if params is not None:
             self.n_epochs_1, self.n_epochs_2, self.epoch, self.val_loss, self.nx, self.ny, self.nz, self.num_input_channels, self.batch_size, self.activation_fn, self.n_channels, self.mean, self.std = params
@@ -102,7 +102,8 @@ class nn_model:
             return True
         return False
 
-    def __init__(self, dir_name, n_gpus=1, gpu_id="/device:GPU:0"):
+    def __init__(self, name, dir_name, n_gpus=1, gpu_id="/device:GPU:0"):
+        self.name = name
         self.dir_name = dir_name
         self.n_gpus = n_gpus
         self.gpu_id = gpu_id
@@ -194,7 +195,7 @@ class nn_model:
             
         self.model.compile(optimizer=optimizer, loss='mse')#'adadelta', loss='mse')
 
-        load_weights(model, self.dir_name)
+        self.load_weights()
         
         '''
         epoch = 0
@@ -233,15 +234,14 @@ class nn_model:
                         callbacks=[MyCustomCallback(model)])
             if True:#self.val_loss > history.history['val_loss'][-1]:
                 self.val_loss = history.history['val_loss'][-1]
-                save_weights(model, self.dir_name)
-                save_params((self.n_epochs_1, self.n_epochs_2, epoch, self.val_loss, 
+                self.save_weights()
+                self.save_params((self.n_epochs_1, self.n_epochs_2, epoch, self.val_loss, 
                                      self.nx, self.ny, self.nz, self.num_input_channels, self.batch_size,
-                                     self.activation_fn, self.n_channels, self.mean, self.std), 
-                             self.dir_name)
+                                     self.activation_fn, self.n_channels, self.mean, self.std))
             else:
                 print("Validation loss increased", self.val_loss, history.history['val_loss'][-1])
                 #self.val_loss = float("inf")
-                load_weights(model, self.dir_name)
+                self.load_weights()
                 break
         self.epoch = 0
         

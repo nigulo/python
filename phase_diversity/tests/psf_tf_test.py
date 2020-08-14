@@ -42,7 +42,7 @@ def create_psf(nx):
     
     pa = psf.phase_aberration(jmax, start_index=0)
     ctf = psf.coh_trans_func(aperture_func, pa, defocus_func)
-    psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength)
+    psf_ = psf.psf(ctf, nx, arcsec_per_px, diameter, wavelength, normalize=False)
     return psf_tf_, psf_
 
 
@@ -97,7 +97,7 @@ class test_psf_tf(unittest.TestCase):
 
         image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
 
-        image_deconv, _ = psf_tf_.deconvolve(tf.concat([alphas_tf, tf.reshape(D, [num_frames*2*nx*nx])], 0))
+        image_deconv, _, _, _ = psf_tf_.deconvolve(tf.concat([alphas_tf, tf.reshape(D, [num_frames*2*nx*nx])], 0))
 
         my_plot = plot.plot(nrows=2, ncols=2)
         my_plot.colormap(image, [0, 0], show_colorbar=True, colorbar_prec=.3)
