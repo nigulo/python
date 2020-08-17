@@ -83,7 +83,7 @@ num_tries_without_progress = 100
 
 m_kiss = 13
 
-gp_or_nn = True
+gp_or_nn = False
 
 def load(file_name):
     
@@ -704,9 +704,19 @@ class disambiguator():
             
         if not gp_or_nn:
             import nn_model
-            self.nn_model = nn_model.nn_model(".")
-            self.nn_model.load()
-            self.nn_model.create()
+            self.nn_models = []
+            #model = nn_model.nn_model("01", ".")
+            #model.load()
+            #model.create()
+            #self.nn_models.append(model)
+            model = nn_model.nn_model("02", ".")
+            model.load()
+            model.create()
+            self.nn_models.append(model)
+            model = nn_model.nn_model("03", ".")
+            model.load()
+            model.create()
+            self.nn_models.append(model)
             
         
     def init(self):    
@@ -755,7 +765,12 @@ class disambiguator():
             
             y = np.array([[bx, by, bz]])
             y = np.transpose(y, [0, 2, 3, 4, 1])
-            return self.nn_model.test(y)
+            max_loglik = -float("inf")
+            for nn_model in self.nn_models:
+                loglik = nn_model.test(y)
+                if loglik > max_loglik:
+                    max_loglik = loglik
+            return max_loglik
             
     
     def estimate_z_scale(self):
@@ -865,7 +880,7 @@ class disambiguator():
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
         in_or_out = np.random.choice([True, False])
         num_indices = np.random.randint(low=1, high=2)
-        num_train_sets = 10
+        num_train_sets = 1
         #inds_train_all = self.get_random_indices(try_no, num_indices = num_indices*num_train_sets)#, length_scale=self.length_scale, in_or_out = in_or_out)
 
         r1 = random.uniform()
@@ -954,9 +969,60 @@ class disambiguator():
             #print("num_positive, num_negative:", num_positive, num_negative)
             reverse(self.y, self.y_sign, indices_to_reverse)
             return True
-                
+
+    def reverse_simple(self, try_no):
+        #thetas = np.array(np.exp(self.thetas))
+        #ids = np.where(thetas > 0.5)
+        #thetas[ids] = 1. - thetas[ids]
+        #thetas *= 2.
+        #r = np.random.uniform(size = len(thetas))
+        #inds1 = np.where(thetas+.1 > r)[0]
+        #inds1 = np.random.choice(inds1, len(inds1)//2, replace=False)
+
+        ell = .2#self.length_scale#max(self.length_scale, 3*self.length_scale*try_no/num_tries_without_progress)
         
+        num_indices = np.random.randint(low=1, high=2)
+        inds_train = self.get_random_indices(try_no, num_indices = num_indices, length_scale=ell)#, length_scale=self.length_scale, in_or_out = in_or_out)
+        #inds_train = inds_train_all[round_no*num_indices:(round_no+1)*num_indices]
     
+        #x_train = self.x[inds_train]
+        #y_train = np.array(self.y[inds_train])
+        
+        #y_train_copy = np.array(self.y[inds_train])
+        #y_sign_train_copy = np.array(self.y_sign[inds_train])
+        reverse(self.y, self.y_sign, inds_train)
+    
+        # Determine the points which lie in the vicinity of the point i            
+        #inds1 = np.random.choice(self.n, size=10000, replace=False)
+        inds1 = np.arange(self.n)
+        inds1 = np.setdiff1d(inds1, inds_train)
+        #######################################################################
+        # Determine the points wich lie in the vicinity of at least one training point
+        close_mask = np.zeros(len(inds1), dtype='bool')
+        x_test1 = self.x[inds1]
+        for x_t in self.x[inds_train]:
+            r = random.uniform()
+            #print("x_t", x_t)
+            x_diff = x_test1 - np.repeat(np.array([x_t]), x_test1.shape[0], axis=0)
+            x_diff = np.sum(x_diff**2, axis=1)
+            
+            p = .5*(1+special.erf(np.sqrt(.5*x_diff)/ell))
+            #print(p[1:10], self.length_scale)
+            i1 = np.where(p > 0.5)[0]
+            p[i1] = 1. - p[i1]
+            p *= 2.
+            close_inds = np.where(p >= r)[0]
+            close_mask[close_inds] = True
+            #print("close_inds", r, p, np.where(close_inds))
+        #print("close_mask", np.where(close_mask))
+        inds1 = inds1[close_mask]
+        #######################################################################
+        
+        reverse(self.y, self.y_sign, inds1)
+        return True
+
+        
+    '''
     def align2(self, indices, length_scale):
         print("len(indices)", len(indices))
         
@@ -996,6 +1062,7 @@ class disambiguator():
             reverse(self.y, self.y_sign, inds_test[sim_indices])
         
         return affected_indices
+    '''
     
     
     def get_random_indices(self, try_no, num_indices = None, length_scale=None, in_or_out=False):
@@ -1039,7 +1106,7 @@ class disambiguator():
 
     def disambiguate(self):#, best_loglik = sys.float_info.min):
         print(self.sig_var)
-        loglik = None
+        loglik = self.loglik()
         max_loglik = None
         
         iteration = -1
@@ -1095,7 +1162,7 @@ class disambiguator():
             print("Reverse took: " + str(end - start))
     
             if did_reverse:
-                do_plots(self.y, self.thetas, "Guess")
+                #do_plots(self.y, self.thetas, "Guess")
         
                 start = time.time()
         
@@ -1111,9 +1178,15 @@ class disambiguator():
                 if loglik is None or loglik1 > loglik:
                     loglik = loglik1
                     changed = True
+                    
+                    print("------------------")
+                    print("New solution found")
+                    print("------------------")
+
+                    do_plots(self.y, self.thetas, "Current best")
         
-                    for ri in np.arange(0, n):
-                        print("num_positive, num_negative:", self.num_positive[ri], self.num_negative[ri])
+                    #for ri in np.arange(0, n):
+                    #    print("num_positive, num_negative:", self.num_positive[ri], self.num_negative[ri])
                 else:
                     self.y = y_last
                     self.y_sign = y_sign_last
@@ -1126,11 +1199,10 @@ class disambiguator():
                     self.num_positive[ri] += 1.0
                 else:
                     self.num_negative[ri] += 1.0
-                if self.num_positive[ri] + self.num_negative[ri] >= 10:
+                if self.num_positive[ri] + self.num_negative[ri] >= 100:
                     theta = float(self.num_positive[ri])/(self.num_positive[ri] + self.num_negative[ri])
                     self.thetas[ri] = np.log(theta)
                  
-            do_plots(self.y, self.thetas, "Current best")
     
     
         do_plots(self.y, self.thetas, "Result")
@@ -1173,8 +1245,8 @@ if true_input is None:
     # Align all the transverse components either randomly or identically
     for i in np.arange(0, n):
         if np.random.uniform() < 0.5:
-            #y[i, :2] *= -1
-            y[i, :2] = np.abs(y[i, :2])
+            y[i, :2] *= -1
+            #y[i, :2] = np.abs(y[i, :2])
 
 
 for i in np.arange(0, total_num_tries):
