@@ -1241,7 +1241,7 @@ if inference:
     x = d.x # For z_scale
     print("Estimated length_scale", d.length_scale)
 
-
+sys.exit(0)
 y = np.array(y_orig)
 
 #if true_input is None:

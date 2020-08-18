@@ -393,7 +393,8 @@ class data_generator():
             y = np.array(self.ys[index])
             if train:
                 r = np.random.uniform(size=y[0].shape)
-                y[:2, r < 0.5] *= -1
+                r1 = np.random.uniform()
+                y[:2, r < r1] *= -1
             
             loglik = self.loglik(y)
         
@@ -403,7 +404,7 @@ class data_generator():
     
 
 sig_var=1.
-length_scale=.2
+length_scale=.3
 noise_var=0.01
 
 print("length_scale", length_scale)

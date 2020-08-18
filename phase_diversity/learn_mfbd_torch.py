@@ -240,9 +240,9 @@ def load_data(data_file):
     else:
         f = dir_name + '/' + data_file + ".npz"
         if os.path.exists(f):
-            loaded = np.load(f)
+            loaded = np.load(f, mmap_mode='r')
         else:
-            raise "No data found"
+            raise Exception("No data found")
     Ds = loaded['Ds']
     try:
         objs = loaded['objs']
@@ -292,8 +292,8 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
     k = 0
     for i in np.arange(num_objects):
         l = 0
-        Ds_k = np.zeros((Ds.shape[3], Ds_in.shape[4], Ds_in.shape[2]*num_frames_input))
-        diversity_k = np.zeros((Ds_in.shape[3], Ds_in.shape[4], Ds_in.shape[2]))
+        Ds_k = np.zeros((Ds_in.shape[2]*num_frames_input, Ds.shape[3], Ds_in.shape[4]))
+        diversity_k = np.zeros((Ds_in.shape[2], Ds_in.shape[3], Ds_in.shape[4]))
         for j in np.arange(num_frames):
             Ds_k[2*l, :, :] = Ds_in[i, j, 0, :, :]
             Ds_k[2*l+1, :, :] = Ds_in[i, j, 1, :, :]
@@ -363,20 +363,8 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.Ds)
 
 
-def conv_layer(x, n_channels, kernel=(3, 3), max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
-    for i in np.arange(num_convs):
-        x1 = keras.layers.Conv2D(n_channels, (1, 1), activation='linear', padding='same')(x)#(normalized)
-        x2 = keras.layers.Conv2D(n_channels, kernel, activation=activation, padding='same')(x)#(normalized)
-        x = keras.layers.add([x2, x1])#tf.keras.backend.tile(image_input, [1, 1, 1, 16])])
-        if batch_normalization:
-            x = keras.layers.BatchNormalization()(x)
-    if max_pooling:
-        x = keras.layers.MaxPooling2D()(x)
-    return x
-
-
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=nn.ReLU):
+    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
         super(ConvLayer, self).__init__()
 
         self.batch_normalization = batch_normalization
@@ -476,13 +464,13 @@ class NN(nn.Module):
 
         self.layers = []
 
-        l = conv_layer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=9, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=9, num_convs=1)
         self.layers.append(l)
-        l = conv_layer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=7)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=7)
         self.layers.append(l)
-        l = conv_layer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=5)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=5)
         self.layers.append(l)
-        l = conv_layer(in_channels=l.out_channels, out_channels=4*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
         self.layers.append(l)
         
         
@@ -633,10 +621,10 @@ class NN(nn.Module):
         
             Ds, objs, diversities, num_frames, obj_ids, positions, _s = convert_data(Ds, objs, diversity, positions)
             
-            med = np.median(Ds, axis=(3, 4), keepdims=True)
+            med = np.median(Ds, axis=(2, 3), keepdims=True)
             #std = np.std(Ds, axis=(1, 2), keepdims=True)
             Ds -= med
-            Ds = self.hanning.multiply(Ds, axis=1)
+            Ds = self.hanning.multiply(Ds, axis=2)
             Ds += med
             ##Ds /= std
             Ds /= med
@@ -681,10 +669,10 @@ class NN(nn.Module):
         else:
             Ds = Ds[:, :self.num_frames]
             Ds_validation, objs_validation, diversities_validation, _, obj_ids_validation, positions_validation, _s = convert_data(Ds, objs, diversity, positions)
-            med = np.median(Ds_validation, axis=(3, 4), keepdims=True)
+            med = np.median(Ds_validation, axis=(2, 3), keepdims=True)
             #std = np.std(Ds, axis=(1, 2), keepdims=True)
             Ds_validation -= med
-            Ds_validation = self.hanning.multiply(self.Ds_validation, axis=1)
+            Ds_validation = self.hanning.multiply(Ds_validation, axis=2)
             Ds_validation += med
             ##Ds /= std
             Ds_validation /= med
@@ -805,10 +793,10 @@ class NN(nn.Module):
             diversity = diversity.to(device)
             if train:
                 self.optimizer.zero_grad()
-                result = self.model(Ds, diversity)
+                result = self(Ds, diversity)
             else:
                 with torch.no_grad():
-                    result = self.model(Ds, diversity)
+                    result = self(Ds, diversity)
             if nn_mode == 1:
                 loss, alphas, num, den, num_conj = result
             else:
@@ -839,17 +827,19 @@ class NN(nn.Module):
         torch.save(state, dir_name + "/state.tar")
 
     def load_state(self):
-        state = torch.load(dir_name + "/state.tar", map_location=lambda storage, loc: storage)
-        self.load_state_dict(state['state_dict'])       
-        self.n_epochs_1 = state('n_epochs_1')
-        self.n_epochs_1 = state('n_epochs_2')
-        self.epoch = state('epoch')
-        self.val_loss = state('val_loss')
+        try:
+            state = torch.load(dir_name + "/state.tar", map_location=lambda storage, loc: storage)
+            self.load_state_dict(state['state_dict'])       
+            self.n_epochs_1 = state('n_epochs_1')
+            self.n_epochs_1 = state('n_epochs_2')
+            self.epoch = state('epoch')
+            self.val_loss = state('val_loss')
+        except:
+            print("No state found")
         
  
-    def training(self):
+    def do_train(self):
         jmax = self.jmax
-        model = self.model
 
 
         shuffle_epoch = True
@@ -863,7 +853,7 @@ class NN(nn.Module):
         #ds = tf.data.Dataset.from_tensors((self.Ds_train, output_data_train)).batch(batch_size)
         #ds_val = tf.data.Dataset.from_tensors((self.Ds_validation, output_data_validation)).batch(batch_size)
         
-        if self.nn_mode == MODE_1:
+        if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 self.do_epoch(Ds_train_loader)
                 val_loss, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
@@ -874,7 +864,7 @@ class NN(nn.Module):
                         'n_epochs_2': self.n_epochs_2,
                         'epoch': epoch,
                         'val_loss': val_loss,
-                        'state_dict': self.model.state_dict(),
+                        'state_dict': self.state_dict(),
                         'optimizer': self.optimizer.state_dict()
                     })
                 else:
@@ -886,7 +876,7 @@ class NN(nn.Module):
                 self.scheduler.step()
                 
             self.epoch = 0
-        elif self.nn_mode >= MODE_2:
+        elif nn_mode >= MODE_2:
             n_train = len(self.Ds_train)
             n_validation = len(self.Ds_validation)
             DD_DP_PP = np.zeros((n_train + n_validation, 4, nx, nx))
@@ -923,9 +913,9 @@ class NN(nn.Module):
         # Plot some of the training data results
         n_test = min(num_objs, 1)
 
-        if self.nn_mode == MODE_1:
+        if nn_mode == MODE_1:
             _, pred_alphas, _, den, num_conj = self.do_epoch(Ds_train_loader, train=False)
-        elif self.nn_mode >= MODE_2:
+        elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
             #pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
@@ -1113,7 +1103,7 @@ class NN(nn.Module):
         print("pos, coord, i", pos, coord, i)
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
-    def testing(self, Ds_, objs, diversity, positions, coords, file_prefix, true_coefs=None):
+    def do_test(self, Ds_, objs, diversity, positions, coords, file_prefix, true_coefs=None):
         estimate_full_image = True
         if coords is None:
             estimate_full_image = False
@@ -1123,17 +1113,16 @@ class NN(nn.Module):
             objs = np.zeros((Ds_.shape[0], Ds_.shape[3], Ds_.shape[4]))
         
         jmax = self.jmax
-        model = self.model
         
         num_frames = Ds_.shape[1]
         #num_objects = Ds_.shape[0]
 
         Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
         #print("positions1, coords1", positions, coords)
-        med = np.median(Ds, axis=(1, 2), keepdims=True)
+        med = np.median(Ds, axis=(2, 3), keepdims=True)
         #std = np.std(Ds, axis=(1, 2), keepdims=True)
         Ds -= med
-        Ds = self.hanning.multiply(Ds, axis=1)
+        Ds = self.hanning.multiply(Ds, axis=2)
         Ds += med
         ##Ds /= std
         Ds /= med
@@ -1144,9 +1133,9 @@ class NN(nn.Module):
 
         start = time.time()    
 
-        if self.nn_mode == MODE_1:
+        if nn_mode == MODE_1:
             _, pred_alphas, _, den, num_conj = self.do_epoch(Ds_test_loader, train=False)
-        elif self.nn_mode >= MODE_2:
+        elif nn_mode >= MODE_2:
             print("Not implemented")
             #DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
             #tt_sums = np.zeros((len(Ds), 2))
@@ -1569,9 +1558,8 @@ if train:
     for rep in np.arange(0, num_reps):
         model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True)
         print("Rep no: " + str(rep))
-    
         #model.psf.set_jmax_used(jmax_to_use)
-        model.training()
+        model.do_train()
         
         if jmax_to_use <= jmax//2:
             jmax_to_use *= 2
@@ -1701,7 +1689,8 @@ else:
     ###########################################################################
 
     model = NN(jmax, nx, n_test_frames, num_objs, pupil, modes)
-    
-    model.test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
+    model = model.to(device)
+
+    model.do_test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
 
 #logfile.close()
