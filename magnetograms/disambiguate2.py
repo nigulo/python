@@ -72,7 +72,7 @@ subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
 num_layers = 3
-inference = False
+inference = True
 infer_z_scale = True
 sample_or_optimize = False
 num_chains = 4
@@ -83,7 +83,7 @@ num_tries_without_progress = 100
 
 m_kiss = 13
 
-gp_or_nn = False
+gp_or_nn = True
 
 def load(file_name):
     
@@ -766,10 +766,13 @@ class disambiguator():
             y = np.array([[bx, by, bz]])
             y = np.transpose(y, [0, 2, 3, 4, 1])
             max_loglik = -float("inf")
+            max_model = None
             for nn_model in self.nn_models:
                 loglik = nn_model.test(y)
                 if loglik > max_loglik:
                     max_loglik = loglik
+                    max_model = nn_model
+            print("Best model", max_model.name)
             return max_loglik
             
     
@@ -1241,12 +1244,12 @@ if inference:
 
 y = np.array(y_orig)
 
-if true_input is None:
-    # Align all the transverse components either randomly or identically
-    for i in np.arange(0, n):
-        if np.random.uniform() < 0.5:
-            y[i, :2] *= -1
-            #y[i, :2] = np.abs(y[i, :2])
+#if true_input is None:
+#    # Align all the transverse components either randomly or identically
+#    for i in np.arange(0, n):
+#        if np.random.uniform() < 0.5:
+#            #y[i, :2] *= -1
+#            y[i, :2] = np.abs(y[i, :2])
 
 
 for i in np.arange(0, total_num_tries):

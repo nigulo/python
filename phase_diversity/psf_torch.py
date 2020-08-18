@@ -480,7 +480,7 @@ class psf_torch():
         alphas: [batch_size, num_frames, jmax], where first dimension can be omitted
         diversity: [2, nx, nx]
     '''
-    def mfbd_loss(self, Ds, alphas, diversity, tt=None, DD_DP_PP=None):
+    def mfbd_loss(self, Ds, alphas, diversity, DD_DP_PP=None):
         nx = self.nx
         mode = self.mode
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
@@ -493,7 +493,7 @@ class psf_torch():
         batch_size = Ds.size()[0]
         assert(self.batch_size == batch_size) # TODO: get rid of class member
 
-
+        tt = alphas[:, :, 2]
         if tt is not None:
             if self.sum_over_batch:
                 tt_sum = torch.sum(tt, axis=[0, 1])
@@ -536,6 +536,7 @@ class psf_torch():
             num = num + num1
         if self.sum_over_batch:
             num = torch.sum(num, axis=0)
+        num_conj = torch.conj(num)
         num = num*torch.conj(num)
         num = torch.real(num)
         
@@ -560,7 +561,7 @@ class psf_torch():
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum
+            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, num_conj
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
@@ -578,6 +579,6 @@ class psf_torch():
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
-            return loss, DD, DP_real, DP_imag, PP
+            return loss, num, den, num_conj, DD, DP_real, DP_imag, PP
 
     
