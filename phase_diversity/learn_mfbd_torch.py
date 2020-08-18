@@ -8,7 +8,6 @@ sys.setrecursionlimit(10000)
 import torch
 import torch.nn as nn
 import torch.utils.data
-import psf_torch
 
 #tf.compat.v1.disable_eager_execution()
 #from multiprocessing import Process
@@ -223,7 +222,7 @@ import config
 import misc
 import plot
 import psf
-import psf_tf
+import psf_torch
 import utils
 #import gen_images
 #import gen_data
