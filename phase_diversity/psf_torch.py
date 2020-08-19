@@ -283,12 +283,28 @@ class coh_trans_func_torch():
 
         if diversity is None:
             diversity = self.diversity
+            
+        if len(diversity.size()) == 4:
+            assert(len(self.phase.size()) == 4)
+            div_focus = diversity[:, 0]
+            div_defocus = diversity[:, 1]
+            
+            div_focus = div_focus.unsqueeze(1)
+            div_defocus = div_defocus.unsqueeze(1)
+
+            div_focus = div_focus.repeat(1, self.phase.size()[1], 1, 1)
+            div_defocus = div_defocus.repeat(1, self.phase.size()[1], 1, 1)
+            
+        else:
+            div_focus = diversity[0]
+            div_defocus = diversity[1]
         #else:
         #    diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
-        phase = self.phase + diversity[0]
+        #print("phase, diversity", self.phase.size(), diversity.size())
+        phase = self.phase + div_focus
         #focus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
         focus_val = mul(self.pupil, create_complex(torch.cos(-phase), torch.sin(-phase)))
-        phase = self.phase + diversity[1]
+        phase = self.phase + div_defocus
         #defocus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
         defocus_val = mul(self.pupil, create_complex(torch.cos(-phase), torch.sin(-phase)))
         

@@ -81,7 +81,7 @@ train_perc = 0.8
 activation_fn = nn.ReLU
 tt_weight = 0.0#0.001
 
-learning_rate = 3e-4
+learning_rate = 1.
 weight_decay = 0.0
 scheduler_decay = 0.5
 scheduler_iterations = 20
@@ -94,7 +94,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 5
+    n_epochs_2 = 1
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -490,7 +490,7 @@ class NN(nn.Module):
         self.layers3.append(activation_fn())
         self.layers3.append(nn.Linear(size, jmax*num_frames_input))
         
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        self.optimizer = torch.optim.Adadelta(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         
@@ -828,8 +828,11 @@ class NN(nn.Module):
             all_num.append(num.detach().numpy())
             all_den.append(den.detach().numpy())
             all_num_conj.append(num_conj.detach().numpy())
-        
-            progress_bar.set_postfix(loss=loss_sum/count)
+
+            if train:        
+                progress_bar.set_postfix({"Training error": loss_sum/count})
+            else:
+                progress_bar.set_postfix({"Validation error": loss_sum/count})
             
         
         all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
@@ -878,6 +881,7 @@ class NN(nn.Module):
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 self.do_epoch(Ds_train_loader)
                 val_loss, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
+                self.scheduler.step()
 
                 if True:#self.val_loss > history.history['val_loss'][-1]:
                     self.save_state({
@@ -894,7 +898,6 @@ class NN(nn.Module):
                     ##self.val_loss = float("inf")
                     #load_weights(model)
                     break
-                self.scheduler.step()
                 
             self.epoch = 0
         elif nn_mode >= MODE_2:
@@ -951,22 +954,22 @@ class NN(nn.Module):
         obj_ids_used = []
         objs_reconstr = []
         i = 0
-        while len(obj_ids_used) < n_test and i < len(self.objs):
+        while len(obj_ids_used) < n_test and i < len(self.Ds_train.objs):
             
-            obj = self.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+            obj = self.Ds_train.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
 
             ###################################################################            
             # Just to plot results only for different objects
             for obj_id in obj_ids_used:
-                if obj_id == self.obj_ids[i]:
+                if obj_id == self.Ds_train.obj_ids[i]:
                     found = True
                     break
             if found:
                 i += 1
                 continue
             ###################################################################            
-            obj_ids_used.append(self.obj_ids[i])
+            obj_ids_used.append(self.Ds_train.obj_ids[i])
 
             #DF = np.zeros((num_frames_input, 2, self.nx, self.nx), dtype="complex")
             ##DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
@@ -982,16 +985,16 @@ class NN(nn.Module):
             Ds_ = []
             alphas = []
             if pred_alphas is not None:
-                for j in np.arange(i, len(self.objs)):
-                    if self.obj_ids[j] == self.obj_ids[i]:
+                for j in np.arange(i, len(self.Ds_train.objs)):
+                    if self.Ds_train.obj_ids[j] == self.Ds_train.obj_ids[i]:
                         for l in np.arange(num_frames_input):
-                            D = self.Ds[j, :, :, 2*l]
-                            D_d = self.Ds[j, :, :, 2*l+1]
+                            D = self.Ds_train.Ds[j, 2*l, :, :]
+                            D_d = self.Ds_train.Ds[j, 2*l+1, :, :]
                             #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
-                            Ds_.append(self.Ds[j, :, :, 2*l:2*l+2])
+                            Ds_.append(self.Ds_train.Ds[j, 2*l:2*l+2, :, :])
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                             if len(alphas) > 32:
@@ -1008,7 +1011,7 @@ class NN(nn.Module):
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             if pred_alphas is not None:
-                diversity = np.concatenate((self.diversities[i, :, :, 0], self.diversities[i, :, :, 1]))
+                diversity = np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 #obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
@@ -1020,8 +1023,6 @@ class NN(nn.Module):
                 objs_reconstr.append(obj_reconstr)
                 #pred_Ds = self.psf_check.convolve(obj, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
                 pred_Ds = self.psf_check.convolve(obj, alphas=alphas)
-                #pred_Ds = self.psf_check.convolve(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx), alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
-                pred_Ds  = np.transpose(pred_Ds, (0, 2, 3, 1))
             #print("pred_alphas", i, pred_alphas[i])
 
             num_rows = 0
@@ -1040,14 +1041,14 @@ class NN(nn.Module):
                 #my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
-                my_test_plot.colormap(self.Ds[i, :, :, 0], [row, 0])
-                my_test_plot.colormap(pred_Ds[0, :, :, 0], [row, 1])
-                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 0] - pred_Ds[0, :, :, 0]), [row, 2])
+                my_test_plot.colormap(self.Ds_train.Ds[i, 0, :, :], [row, 0])
+                my_test_plot.colormap(pred_Ds[0, 0, :, :], [row, 1])
+                my_test_plot.colormap(np.abs(self.Ds_train.Ds[i, 0, :, :] - pred_Ds[0, 0, :, :]), [row, 2])
                 #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
                 row += 1
-                my_test_plot.colormap(self.Ds[i, :, :, 1], [row, 0])
-                my_test_plot.colormap(pred_Ds[0, :, :, 1], [row, 1])
-                my_test_plot.colormap(np.abs(self.Ds[i, :, :, 1] - pred_Ds[0, :, :, 1]), [row, 2])
+                my_test_plot.colormap(self.Ds_train.Ds[i, 1, :, :], [row, 0])
+                my_test_plot.colormap(pred_Ds[0, 1, :, :], [row, 1])
+                my_test_plot.colormap(np.abs(self.Ds_train.Ds[i, 1, :, :] - pred_Ds[0, 1, :, :]), [row, 2])
                 #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
 
             my_test_plot.save(f"{dir_name}/train{i}.png")
@@ -1238,7 +1239,7 @@ class NN(nn.Module):
                             #D_d = Ds[j, :, :, 2*l+1]
                             #DF = fft.fft2(D)
                             #DF_d = fft.fft2(D_d)
-                            Ds_.append(Ds[j, :, :, 2*l:2*l+2])
+                            Ds_.append(Ds[j, 2*l:2*l+2, :, :])
                             #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
             Ds_ = np.asarray(Ds_)
