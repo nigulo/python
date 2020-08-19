@@ -98,9 +98,9 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 256
+    num_frames = 128
     # How many objects to use in training
-    num_objs = 80#0#None
+    num_objs = 10#0#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -554,7 +554,7 @@ class NN(nn.Module):
         else:
             loss, num, den, num_conj, DD, DP_real, DP_imag, PP = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
 
-        loss = torch.sum(loss)#/nx/nx
+        loss = torch.mean(loss)/nx/nx
 
         return loss, alphas, num, den, num_conj
         
@@ -795,7 +795,7 @@ class NN(nn.Module):
             self.train()
         else:
             self.eval()
-        progress_bar = tqdm.tqdm(data_loader)
+        progress_bar = tqdm.tqdm(data_loader, file=sys.stdout)
         
         loss_sum = 0.
         count = 0.
@@ -824,18 +824,18 @@ class NN(nn.Module):
             loss_sum += loss.item()
             count += 1
             
-            all_alphas.append(alphas.numpy())
-            all_num.append(num.numpy())
-            all_den.append(den.numpy())
-            all_num_conj.append(num_conj.numpy())
+            all_alphas.append(alphas.detach().numpy())
+            all_num.append(num.detach().numpy())
+            all_den.append(den.detach().numpy())
+            all_num_conj.append(num_conj.detach().numpy())
         
             progress_bar.set_postfix(loss=loss_sum/count)
             
         
-        all_alphas = np.reshape(np.asarray(all_alphas), [alphas.shape[0]*alphas.shape[1], alphas.shape[2]])
-        all_num = np.reshape(np.asarray(all_num), [all_num.shape[0]*all_num.shape[1], all_num.shape[2], all_num.shape[3]])
-        all_den = np.reshape(np.asarray(all_den), [all_den.shape[0]*all_den.shape[1], all_den.shape[2], all_den.shape[3]])
-        all_num_conj = np.reshape(np.asarray(all_num_conj), [all_num_conj.shape[0]*all_num_conj.shape[1], all_num_conj.shape[2], all_num_conj.shape[3]])
+        all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
+        all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
+        all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
+        all_num_conj = np.reshape(np.asarray(all_num_conj), [-1, nx, nx])
         
         return loss_sum/count, all_alphas, all_num, all_den, all_num_conj
 
