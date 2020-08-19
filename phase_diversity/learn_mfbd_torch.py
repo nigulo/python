@@ -243,9 +243,9 @@ def load_data(data_file):
             loaded = np.load(f, mmap_mode='r')
         else:
             raise Exception("No data found")
-    Ds = loaded['Ds']
+    Ds = loaded['Ds'].astype("float32")
     try:
-        objs = loaded['objs']
+        objs = loaded['objs'].astype("float32")
     except:
         objs = None
     pupil = loaded['pupil']
@@ -384,23 +384,23 @@ class ConvLayer(nn.Module):
                 bn = nn.BatchNorm2d(n_channels)
             else:
                 bn = None
-            if max_pooling:
-                pool = nn.MaxPool2d(2)
-            else:
-                pool = None
-            self.layers.append((conv1, conv2, act, bn, pool))
+            self.layers.append((conv1, conv2, act, bn))
+        if max_pooling:
+            self.pool = nn.MaxPool2d(2)
+        else:
+            self.pool = None
 
 
     def forward(self, x):
         for layer in self.layers:
-            conv1, conv2, act, bn, pool = layer
+            conv1, conv2, act, bn = layer
             x1 = conv1(x)
             x2 = conv1(x)
             x = act(x1 + x2)
             if bn is not None:
                 x = bn(x)
-            if pool is not None:
-                x = pool(x)
+        if self.pool is not None:
+            x = self.pool(x)
 
         return x
 
@@ -462,35 +462,36 @@ class NN(nn.Module):
         
         num_defocus_channels = 2
 
-        self.layers = []
+        self.layers1 = []
 
         l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=9, num_convs=1)
-        self.layers.append(l)
+        self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=7)
-        self.layers.append(l)
+        self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=5)
-        self.layers.append(l)
+        self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
-        self.layers.append(l)
+        self.layers1.append(l)
+
+        self.layers2 = []
         
-        
-        self.layers.append(nn.Linear(l.out_channels, 36*n_channels))
-        self.layers.append(activation_fn())
-        self.layers.append(nn.Linear(36*n_channels, 1024))
-        self.layers.append(activation_fn())
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 36*n_channels))
+        self.layers2.append(activation_fn())
+        self.layers2.append(nn.Linear(36*n_channels, 1024))
+        self.layers2.append(activation_fn())
         size = 256
-        self.layers.append(nn.Linear(1024, size))
-        self.layers.append(activation_fn())
+        self.layers2.append(nn.Linear(1024, size))
+        self.layers2.append(activation_fn())
 
         self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         
-        self.layers2 = []
-        self.layers2.append(nn.Linear(size, size))
-        self.layers2.append(activation_fn())
-        self.layers2.append(nn.Linear(size, jmax*num_frames_input))
+        self.layers3 = []
+        self.layers3.append(nn.Linear(size, size))
+        self.layers3.append(activation_fn())
+        self.layers3.append(nn.Linear(size, jmax*num_frames_input))
         
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        self.loss_fn = nn.MSELoss().to(device)
+        #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         
         self.load_state()
@@ -509,14 +510,23 @@ class NN(nn.Module):
 
         x = image_input
         
-        for layer in self.layers:
+        # Convolutional blocks
+        for layer in self.layers1:
+            x = layer(x)
+            
+        # Fully connected layers
+        x = x.view(-1, x.size()[-1]*x.size()[-2]*x.size()[-3])
+        for layer in self.layers2:
             x = layer(x)
 
-        x = x.view(-1, x.size()[-1])
-        x = self.lstm(x)
-        x = x.view(-1, self.n_frames, x.size()[-1])
+        # We want to use LSQM over the whole batch,
+        # so we make first dimension of size 1
+        x = x.unsqueeze(dim=0)
+        x, _ = self.lstm(x)
+        x = x.squeeze()
 
-        for layer in self.layers2:
+        # Fully connected layers
+        for layer in self.layers3:
             x = layer(x)
         
         alphas = x
@@ -533,13 +543,20 @@ class NN(nn.Module):
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2)], axis=2)
             alphas = alphas - tip_tilt_means
         
+        # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
+        # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
+        image_input = torch.transpose(image_input, 0, 1)
+        image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
+        image_input = torch.transpose(image_input, 1, 2)
+        image_input = torch.transpose(image_input, 0, 1)
         if nn_mode == 1:
-            loss, num, den = self.psf.mfbd_loss(self, Ds, alphas, diversity)
+            loss, num, den, num_conj = self.psf.mfbd_loss(image_input, alphas, diversity_input)
         else:
-            loss, num, den, DD, DP_real, DP_imag, PP = self.psf.mfbd_loss(self, Ds, alphas, diversity, DD_DP_PP=None)
+            loss, num, den, num_conj, DD, DP_real, DP_imag, PP = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
 
+        loss = torch.sum(loss)#/nx/nx
 
-        return loss, alphas, num, den
+        return loss, alphas, num, den, num_conj
         
 
 
@@ -778,7 +795,7 @@ class NN(nn.Module):
             self.train()
         else:
             self.eval()
-        progress_bar = tqdm(data_loader)
+        progress_bar = tqdm.tqdm(data_loader)
         
         loss_sum = 0.
         count = 0.
@@ -793,10 +810,10 @@ class NN(nn.Module):
             diversity = diversity.to(device)
             if train:
                 self.optimizer.zero_grad()
-                result = self(Ds, diversity)
+                result = self((Ds, diversity))
             else:
                 with torch.no_grad():
-                    result = self(Ds, diversity)
+                    result = self((Ds, diversity))
             if nn_mode == 1:
                 loss, alphas, num, den, num_conj = result
             else:
@@ -831,10 +848,14 @@ class NN(nn.Module):
             state = torch.load(dir_name + "/state.tar", map_location=lambda storage, loc: storage)
             self.load_state_dict(state['state_dict'])       
             self.n_epochs_1 = state('n_epochs_1')
-            self.n_epochs_1 = state('n_epochs_2')
+            self.n_epochs_2 = state('n_epochs_2')
             self.epoch = state('epoch')
             self.val_loss = state('val_loss')
         except:
+            self.epoch = 0
+            self.n_epochs_1 = n_epochs_1
+            self.n_epochs_2 = n_epochs_2
+            self.val_loss = float("inf")
             print("No state found")
         
  

@@ -45,6 +45,52 @@ def create_psf(nx):
     return psf_torch_, psf_
 
 
+class test_complex(unittest.TestCase):
+    
+    def test(self):
+        a = torch.tensor([1. + .5j, 2.-1.j, 3.+2.j])
+        a_re = torch.real(a)
+        a_im = torch.imag(a)
+
+        b = torch.tensor([-2.5+0.j, 1.+4.j, -0.3-2.2j])
+        b_re = torch.real(b)
+        b_im = torch.imag(b)
+        
+        a1 = psf_torch.create_complex(a_re, a_im)
+        b1 = psf_torch.create_complex(b_re, b_im)
+
+        np.testing.assert_almost_equal(psf_torch.real(a1).numpy(), torch.real(a).numpy(), 15)
+        np.testing.assert_almost_equal(psf_torch.imag(a1).numpy(), torch.imag(a).numpy(), 15)
+
+        c = torch.tensor([1., 2., 3.])
+        c1 = psf_torch.to_complex(c)
+        c2 = psf_torch.to_complex(c, False)
+        np.testing.assert_almost_equal(psf_torch.real(c1).numpy(), c.numpy(), 15)
+        np.testing.assert_almost_equal(psf_torch.imag(c1).numpy(), np.zeros_like(c), 15)
+        np.testing.assert_almost_equal(psf_torch.real(c2).numpy(), np.zeros_like(c), 15)
+        np.testing.assert_almost_equal(psf_torch.imag(c2).numpy(), c.numpy(), 15)
+
+
+        expected = torch.conj(a)
+        result = psf_torch.conj(a1)
+        
+        np.testing.assert_almost_equal(psf_torch.real(result).numpy(), torch.real(expected).numpy(), 15)
+        np.testing.assert_almost_equal(psf_torch.imag(result).numpy(), torch.imag(expected).numpy(), 15)
+        
+        expected = a*b
+        result = psf_torch.mul(a1, b1)
+        
+        np.testing.assert_almost_equal(psf_torch.real(result).numpy(), torch.real(expected).numpy(), 15)
+        np.testing.assert_almost_equal(psf_torch.imag(result).numpy(), torch.imag(expected).numpy(), 15)
+        
+        expected = a/b
+        result = psf_torch.div(a1, b1)
+        
+        np.testing.assert_almost_equal(psf_torch.real(result).numpy(), torch.real(expected).numpy(), 15)
+        np.testing.assert_almost_equal(psf_torch.imag(result).numpy(), torch.imag(expected).numpy(), 15)
+        
+        
+
 class test_psf_torch(unittest.TestCase):
     
     def test(self):
@@ -121,7 +167,8 @@ class test_psf_torch(unittest.TestCase):
 
 
         psf_torch_.set_diversity = True
-        mfbd_loss = psf_torch_.mfbd_loss(D, alphas_torch, diversity_torch).numpy()
+        mfbd_loss, num, den, num_conj = psf_torch_.mfbd_loss(D, alphas_torch, diversity_torch)
+        mfbd_loss = mfbd_loss.numpy()
 
         my_plot = plot.plot(nrows=1, ncols=1)
         my_plot.colormap(mfbd_loss, [0], show_colorbar=True, colorbar_prec=.3)

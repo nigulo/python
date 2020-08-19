@@ -18,12 +18,79 @@ if __DEBUG__:
 
 from typing import Optional
 
-def fftshift(x):
-    return torch.roll(x, [x.size()[-1]//2, x.size()[-2]//2], [-1, -2])
+###############################################################################
+# Methods for convenience until gradient propagation
+# supports complex numbers
 
-def ifftshift(x):
-    return torch.roll(x, [-x.size()[-1]//2, -x.size()[-2]//2], [-1, -2])
+emulate_complex = True
+def create_complex(re, im):
+    re = torch.unsqueeze(re, -1)
+    im = torch.unsqueeze(im, -1)
+    return torch.cat([re, im], -1)
 
+def to_complex(x, re=True):
+    x = torch.unsqueeze(x, -1)
+    zeros = torch.zeros_like(x)
+    if re:
+        return torch.cat([x, zeros], -1)
+    else:
+        return torch.cat([zeros, x], -1)
+        
+
+def real(x):
+    return x[..., 0]
+
+def imag(x):
+    return x[..., 1]
+
+def conj(x):
+    re = x[..., 0]
+    im = x[..., 1]
+    re = torch.unsqueeze(re, -1)
+    im = torch.unsqueeze(im, -1)
+    return torch.cat([re, im*-1], -1)
+
+def mul(x, y):
+    x_re = x[..., 0]
+    x_im = x[..., 1]
+    y_re = y[..., 0]
+    y_im = y[..., 1]
+    x_re = torch.unsqueeze(x_re, -1)
+    x_im = torch.unsqueeze(x_im, -1)
+    y_re = torch.unsqueeze(y_re, -1)
+    y_im = torch.unsqueeze(y_im, -1)
+    return torch.cat([x_re*y_re-x_im*y_im, x_re*y_im+x_im*y_re], -1)
+
+def div(x, y):
+    x_re = x[..., 0]
+    x_im = x[..., 1]
+    y_re = y[..., 0]
+    y_im = y[..., 1]
+    x_re = torch.unsqueeze(x_re, -1)
+    x_im = torch.unsqueeze(x_im, -1)
+    y_re = torch.unsqueeze(y_re, -1)
+    y_im = torch.unsqueeze(y_im, -1)
+    den = (y_re**2+y_im**2)
+    return torch.cat([(x_re*y_re+x_im*y_im)/den, (x_im*y_re-x_re*y_im)/den], -1)
+    
+
+def fft(x):
+    return torch.fft(x, 2)
+
+def ifft(x):
+    return torch.ifft(x, 2)
+    
+###############################################################################
+'''
+
+def real(x):
+    return torch.real(x)
+
+def imag(x):
+    return torch.imag(x)
+
+def conj(x):
+    return torch.conj(x)
 
 def fft(x):
     x_real = torch.real(x)
@@ -47,7 +114,14 @@ def ifft(x):
     
     return fx[..., 0] + fx[..., 1]*1.j
 
+def fftshift(x):
+    return torch.roll(x, [x.size()[-1]//2, x.size()[-2]//2], [-1, -2])
 
+def ifftshift(x):
+    return torch.roll(x, [-x.size()[-1]//2, -x.size()[-2]//2], [-1, -2])
+'''
+###############################################################################
+'''
 def fftconv(in1, in2, mode="full", reorder_channels_before=True, reorder_channels_after=True):
     # Reorder channels to come second (needed for fft)
     if reorder_channels_before:
@@ -90,6 +164,7 @@ def fftconv(in1, in2, mode="full", reorder_channels_before=True, reorder_channel
 
         result = tf.transpose(result, perm=perm)
     return result
+'''
 
 class phase_aberration_torch():
     
@@ -174,7 +249,8 @@ class coh_trans_func_torch():
     
     def set_pupil(self, pupil):
         self.nx = pupil.shape[0]
-        self.pupil = torch.from_numpy(pupil).to(self.device, dtype=torch.complex64)
+        #self.pupil = torch.from_numpy(pupil).to(self.device, dtype=torch.complex64)
+        self.pupil = to_complex(torch.from_numpy(pupil)).to(self.device, dtype=torch.float32)
         
     #def set_defocus(self, defocus):
     #    self.defocus = tf.complex(tf.constant(defocus, dtype='float32'), tf.zeros((defocus.shape[0], defocus.shape[1]), dtype='float32'))
@@ -200,7 +276,8 @@ class coh_trans_func_torch():
             assert(False)
         
         
-        self.pupil = torch.from_numpy(pupil).to(self.device, dtype=torch.complex64)
+        #self.pupil = torch.from_numpy(pupil).to(self.device, dtype=torch.complex64)
+        self.pupil = to_complex(torch.from_numpy(pupil)).to(self.device, dtype=torch.float32)
         
     def __call__(self, alphas=None, diversity=None):
         self.phase = self.phase_aberr(alphas)
@@ -210,18 +287,18 @@ class coh_trans_func_torch():
             diversity = self.diversity
         #else:
         #    diversity = tf.complex(diversity, tf.zeros_like(diversity, dtype='float32'))
-        
-        phase = self.phase + diversity[0]
         print("phase, diversity", self.phase.size(), diversity.size())
-        focus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
+        phase = self.phase + diversity[0]
+        #focus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
+        focus_val = mul(self.pupil, create_complex(torch.cos(-phase), torch.sin(-phase)))
         phase = self.phase + diversity[1]
-        defocus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
+        #defocus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
+        defocus_val = mul(self.pupil, create_complex(torch.cos(-phase), torch.sin(-phase)))
         
-        #focus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[0]))))
-        #defocus_val = tf.math.multiply(self.pupil, tf.math.exp(tf.math.scalar_mul(self.i, tf.math.add(self.phase, diversity[1]))))
-
-        #return tf.concat(tf.reshape(focus_val, [1, focus_val.shape[0], focus_val.shape[1]]), tf.reshape(defocus_val, [1, defocus_val.shape[0], defocus_val.shape[1]]), 0)
-        return torch.cat([focus_val.unsqueeze(-3), defocus_val.unsqueeze(-3)], -3)
+        if emulate_complex:
+            return torch.cat([focus_val.unsqueeze(-4), defocus_val.unsqueeze(-4)], -4)
+        else:
+            return torch.cat([focus_val.unsqueeze(-3), defocus_val.unsqueeze(-3)], -3)
 
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
@@ -263,7 +340,8 @@ class psf_torch():
         self.sum_over_batch = sum_over_batch
         
         if fltr is not None:
-            self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.complex64)
+            #self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.complex64)
+            self.fltr = to_complex(torch.from_numpy(fltr)).to(self.device, dtype=torch.float32)
         else:
             self.fltr = None
             
@@ -304,7 +382,7 @@ class psf_torch():
         if self.jmax_used is not None and self.jmax_used < jmax:
             mask1 = torch.ones(self.jmax_used)
             mask2 = torch.zeros(jmax - self.jmax_used)
-            mask = torch.cat([mask1, mask2], axis=0)
+            mask = torch.cat([mask1, mask2], axis=0).to(self.device, dtype=torch.float32)
             alphas = alphas * mask
 
         #self.coh_trans_func.phase_aberr.set_alphas(alphas)
@@ -316,14 +394,14 @@ class psf_torch():
         #wf = tf.complex(self.coh_trans_func.phase, tf.zeros((tf.shape(self.coh_trans_func.phase)[0], tf.shape(self.coh_trans_func.phase)[1]), dtype='float32'))
     
         if self.corr_or_fft:
-            corr = fftconv(coh_vals, torch.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
-            #vals = torch.real(tf.signal.fftshift(torch.ifft2d(torch.ifftshift(corr, axes=(1, 2))), axes=(1, 2)))
-            vals = torch.real(fftshift(ifft(ifftshift(corr))))
-            #vals = tf.transpose(vals, (2, 0, 1))
+            print("Not implemented")
+            #corr = fftconv(coh_vals, torch.conj(coh_vals[:, ::-1, ::-1]), mode='full', reorder_channels_before=False, reorder_channels_after=False)/(self.nx*self.nx)
+            #vals = torch.real(fftshift(ifft(ifftshift(corr))))
         else:
             
             vals = ifft(coh_vals)
-            vals1 = torch.real(vals * torch.conj(vals)) + 0.j
+            print("vals, conj(vals)", vals.size(), conj(vals).size())
+            vals1 = to_complex(real(mul(vals, conj(vals))))
 
             #corr = tf.signal.fftshift(tf.signal.fft2d(vals1), axes=(1, 2))
             #corr = fftshift(fft(vals1))
@@ -352,21 +430,21 @@ class psf_torch():
     def multiply(self, dat_F, alphas, diversity):
         otf_vals, _ = self.calc(alphas, diversity)
         print("dat_F, otf_vals", dat_F.size(), otf_vals.size())
-        return dat_F * otf_vals
+        return mul(dat_F, otf_vals)
 
 
     def aberrate(self, obj, alphas, diversity=None):
         #nx = self.nx
         #jmax = self.coh_trans_func.phase_aberr.jmax
 
-        obj = obj.repeat(self.num_frames, 2, 1, 1) + 0.j
+        obj = to_complex(obj.repeat(self.num_frames, 2, 1, 1))
         
         fobj = fft(obj)
         #fobj = fftshift(fobj)
     
         DF = self.multiply(fobj, alphas, diversity)
         #DF = ifftshift(DF)
-        D = torch.real(ifft(DF))
+        D = real(ifft(DF))
         #D = ifftshift(D)
         
         #D = tf.transpose(D, (0, 2, 3, 1))
@@ -379,7 +457,7 @@ class psf_torch():
         reconstr = reconstr.repeat(1, 2*self.num_frames, 1, 1)
         DF = self.multiply(reconstr, alphas, diversity)
         #DF = tf.signal.ifftshift(DF, axes = (2, 3))
-        D = torch.real(ifft(DF))
+        D = real(ifft(DF))
         #D = tf.signal.fftshift(D, axes = (2, 3))
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
@@ -387,7 +465,7 @@ class psf_torch():
     def Ds_reconstr2(self, reconstr, alphas, diversity):
         DF = self.multiply(reconstr, alphas, diversity)
         #DF = tf.signal.ifftshift(DF, axes = (2, 3))
-        D = torch.real(ifft(DF))
+        D = real(ifft(DF))
         #D = tf.signal.fftshift(D, axes = (2, 3))
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
@@ -400,30 +478,32 @@ class psf_torch():
             DP_real = np.reshape(DP_real, [1, self.nx, self.nx])
             DP_imag = np.reshape(DP_imag, [1, self.nx, self.nx])
             PP = np.reshape(PP, [1, self.nx, self.nx])
-        DP = torch.from_numpy(DP_real + 1.j*DP_imag).to(self.device, dtype=torch.complex64)
-        #DP = tf.reshape(DP, [1, self.nx, self.nx])
-        #PP = tf.complex(tf.reshape(PP, [1, self.nx, self.nx]), tf.zeros((1, self.nx, self.nx)))
-        PP = torch.from_numpy(PP+0.j).to(self.device, dtype=torch.complex64)
+        #DP = torch.from_numpy(DP_real + 1.j*DP_imag).to(self.device, dtype=torch.complex64)
+        DP = create_complex(torch.from_numpy(DP_real), torch.from_numpy(DP_imag)).to(self.device, dtype=torch.float32)
+        #PP = torch.from_numpy(PP).to(self.device, dtype=torch.complex64)
+        PP = to_complex(torch.from_numpy(PP)).to(self.device, dtype=torch.float32)
         
-        obj, loss = self.reconstr_(torch.conj(DP), PP, do_fft)
+        obj, loss = self.reconstr_(conj(DP), PP, do_fft)
         if one_obj:
             return obj[0]
         else:
             return obj
 
     def reconstr_(self, DP, PP, do_fft = True):
-        eps = torch.tensor(1e-10 + 0.j).to(self.device, dtype=torch.complex64)
-        F_image = (DP + eps)/(PP + eps)
+        #eps = torch.tensor(1e-10).to(self.device, dtype=torch.complex64)
+        eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
+        #F_image = (DP + eps)/(PP + eps)
+        F_image = div(DP + eps, PP + eps)
         
         
-        loss = -torch.sum(torch.real(F_image * torch.conj(DP))) # Without DD part
+        loss = -torch.sum(real(mul(F_image, conj(DP)))) # Without DD part
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
-            F_image = F_image * self.fltr
+            F_image = mul(F_image, self.fltr)
     
         if do_fft:
-            image = torch.real(ifft(F_image))
+            image = real(ifft(F_image))
         else:
             image = F_image
         #image = tf.signal.ifftshift(image, axes=(1, 2))
@@ -454,15 +534,15 @@ class psf_torch():
         
         #Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
         print("Ds", Ds.size())
-        Ds_F = fft(Ds + 0.j)
+        Ds_F = fft(to_complex(Ds))
 
         Ps1, wf = self.calc(alphas, diversity)
         
         Ps = Ps1#tf.signal.ifftshift(Ps1, axes=(2, 3))
-        Ps_conj = torch.conj(Ps)
+        Ps_conj = conj(Ps)
     
-        num = torch.sum(Ds_F*Ps_conj, axis=1)
-        den = torch.sum(Ps*Ps_conj, axis=1)
+        num = torch.sum(mul(Ds_F, Ps_conj), axis=1)
+        den = torch.sum(mul(Ps, Ps_conj), axis=1)
         
         image, loss = self.reconstr_(num, den, do_fft)
         #F_image = tf.divide(num, den)
@@ -486,7 +566,6 @@ class psf_torch():
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
         if len(Ds.size()) == 4:
-            print("SIIN")
             Ds = torch.unsqueeze(Ds, 0)
             assert(len(alphas.size()) == 2)
             alphas = torch.unsqueeze(alphas, 0)
@@ -509,39 +588,39 @@ class psf_torch():
             tt_sum = torch.tensor(0., dtype=torch.float32)
             
         #Ds_F = tf.signal.fft2d(tf.signal.ifftshift(Ds, axes = (2, 3)))
-        Ds_F = fft(Ds + 0.j)
+        Ds_F = fft(to_complex(Ds))
             
-        Ds_F_conj = torch.conj(Ds_F)
+        Ds_F_conj = conj(Ds_F)
         
         Ps, wf = self.calc(alphas, diversity, normalize = False)
         #Ps = tf.signal.ifftshift(Ps, axes=(2, 3))
 
-        Ps_conj = torch.conj(Ps)
+        Ps_conj = conj(Ps)
         
         print("Ds_F_conj", Ds_F_conj.size(), Ps.size())
     
-        num = torch.sum(Ds_F_conj*Ps, axis=(1, 2))
+        num = torch.sum(mul(Ds_F_conj, Ps), axis=(1, 2))
         
         if mode >= 2:
             #if self.sum_over_batch:
             #    num = tf.reshape(num, [1, nx, nx])
             #else:
             num = num.view(batch_size, 1, nx, nx)
-            DP_real = torch.real(num)
-            DP_imag = torch.imag(num)
+            DP_real = real(num)
+            DP_imag = imag(num)
 
-            num1 = DD_DP_PP[:, 1] + DD_DP_PP[:, 2]*1.j
+            num1 = create_complex(DD_DP_PP[:, 1], DD_DP_PP[:, 2])
             #num1 = tf.complex(tf.slice(DD_DP_PP, [0, 1, 0, 0], [self.batch_size, 1, nx, nx]), 
             #                             tf.slice(DD_DP_PP, [0, 2, 0, 0], [self.batch_size, 1, nx, nx]))
             num = num + num1
         if self.sum_over_batch:
             num = torch.sum(num, axis=0)
-        num_conj = torch.conj(num)
-        num = num*torch.conj(num)
-        num = torch.real(num)
+        num_conj = conj(num)
+        num = mul(num, conj(num))
+        num = real(num)
         
-        den = torch.sum(Ps*Ps_conj, axis=(1, 2))
-        den = torch.real(den)
+        den = torch.sum(mul(Ps, Ps_conj), axis=(1, 2))
+        den = real(den)
         if mode >= 2:
             #PP1 = tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx])
             PP1 = DD_DP_PP[:, 3]
@@ -557,7 +636,7 @@ class psf_torch():
 
         eps = torch.tensor(1e-10, dtype=torch.float32)
         
-        DD = torch.real(torch.sum(Ds_F*Ds_F_conj, axis=(1, 2)))
+        DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=(1, 2)))
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
