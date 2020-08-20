@@ -42,17 +42,17 @@ i = 1
 dir_name = None
 if len(sys.argv) > i:
     dir_name = sys.argv[i]
-i +=1
+i += 1
 
 if len(sys.argv) > i:
     nn_mode = int(sys.argv[i])
-i +=1
+i += 1
 
 train = True
 if len(sys.argv) > i:
     if sys.argv[i].upper() == "TEST":
         train = False
-i +=1
+i += 1
 
 if train:
     data_files = "Ds"
@@ -66,16 +66,21 @@ data_files = data_files.split(',')
 assert(len(data_files) > 0)
 
 
-i +=1
+i += 1
 
 n_test_frames = None
 if len(sys.argv) > i:
     n_test_frames = int(sys.argv[i])
-i +=1
+i += 1
 
 n_test_objects = None
 if len(sys.argv) > i:
     n_test_objects = int(sys.argv[i])
+
+benchmarking_level = 0
+i += 1
+if len(sys.argv) > i:
+    compare_details = int(sys.argv[i])
 
 train_perc = 0.8
 activation_fn = nn.ReLU
@@ -85,6 +90,7 @@ learning_rate = 1.
 weight_decay = 0.0
 scheduler_decay = 0.5
 scheduler_iterations = 20
+
 
 if nn_mode == MODE_1:
     
@@ -1301,71 +1307,76 @@ class NN(nn.Module):
                 true_alphas = true_coefs[obj_ids[i]]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
-                obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
-                obj_reconstr_true = obj_reconstr_true.numpy()
-                
-                loss_diff = (loss.numpy() - loss_true.numpy())/nx/nx
-                loss_diffs.append(loss_diff)
-                
-                if estimate_full_image:
-                    cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
-                
-                psf_true = psf_true.numpy()
-                print("psf_true, obj_reconstr_true", psf_true.shape, obj_reconstr_true.shape)
-                wf_true = wf_true.numpy()*self.pupil
-                #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
-                psf_true = fft.ifftshift(fft.ifft2(psf_true).real, axes=(2, 3))
-                for j in np.arange(nf):
-                    if j % 100 == 0:
-                        print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
-                        print("psf[j]", np.max(psf[j]), np.min(psf[j]))
-                        print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
-                        my_test_plot = plot.plot(nrows=2, ncols=5)
-                        my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [0, 0], show_colorbar=True)
-                        my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [0, 1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
-                        my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
-                        my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
-                        my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
-                        my_test_plot.colormap(wfs[j], [1, 1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(wf_true[j]-wf[j]), [1, 2], show_colorbar=True)
-                        my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
-                        my_test_plot.close()
+                if benchmarking_level >= 2:
+                    obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
+                    obj_reconstr_true = obj_reconstr_true.numpy()
+                    
+                    loss_diff = (loss.numpy() - loss_true.numpy())/nx/nx
+                    loss_diffs.append(loss_diff)
+                    
+                    
+                    psf_true = psf_true.numpy()
+                    print("psf_true, obj_reconstr_true", psf_true.shape, obj_reconstr_true.shape)
+                    wf_true = wf_true.numpy()*self.pupil
+                    #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
+                    psf_true = fft.ifftshift(fft.ifft2(psf_true).real, axes=(2, 3))
+                    for j in np.arange(nf):
+                        if j % 100 == 0:
+                            print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
+                            print("psf[j]", np.max(psf[j]), np.min(psf[j]))
+                            print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
+                            my_test_plot = plot.plot(nrows=2, ncols=5)
+                            my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [0, 0], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [0, 1], show_colorbar=True)
+                            my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
+                            my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
+                            my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
+                            my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
+                            my_test_plot.colormap(wfs[j], [1, 1], show_colorbar=True)
+                            my_test_plot.colormap(np.abs(wf_true[j]-wf[j]), [1, 2], show_colorbar=True)
+                            my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
+                            my_test_plot.close()
 
+                    if estimate_full_image:
+                        cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 
-                nrows = int(np.sqrt(jmax))
-                ncols = int(math.ceil(jmax/nrows))
-                my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
-                row = 0
-                col = 0
-                #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
-                xs = np.arange(nf)
-                for coef_index in np.arange(alphas.shape[1]):
-                    scale = 1.//utils.mode_scale[coef_index]
-                    #scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
-                    mean = np.mean(alphas[:, coef_index])
-                    my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
-                    my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
-                    col += 1
-                    if col >= ncols:
-                        row += 1
-                        col = 0
-                my_test_plot.save(f"{dir_name}/alphas{i // n_test_frames}.png")
-                
-                if loss_diff > max_loss_diff or loss_diff < min_loss_diff:
-                    if loss_diff > max_loss_diff:
-                        if max_loss_plot is not None:
-                            max_loss_plot.close()
-                        max_loss_diff = loss_diff
-                        max_loss_plot = my_test_plot
-    
-                    if loss_diff < min_loss_diff:
-                        if min_loss_plot is not None:
-                            min_loss_plot.close()
-                        min_loss_diff = loss_diff
-                        min_loss_plot = my_test_plot
-                else:
-                    my_test_plot.close()
+                if benchmarking_level >= 1:
+                    nrows = int(np.sqrt(jmax))
+                    ncols = int(math.ceil(jmax/nrows))
+                    my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
+                    row = 0
+                    col = 0
+                    #xs = np.arange(modes_nn.shape[0]*modes_nn.shape[1])
+                    xs = np.arange(nf)
+                    for coef_index in np.arange(alphas.shape[1]):
+                        scale = 1.//utils.mode_scale[coef_index]
+                        #scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
+                        mean = np.mean(alphas[:, coef_index])
+                        my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
+                        my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
+                        col += 1
+                        if col >= ncols:
+                            row += 1
+                            col = 0
+                    my_test_plot.save(f"{dir_name}/alphas{i // n_test_frames}.png")
+
+                    if benchmarking_level >= 2:
+                        if loss_diff > max_loss_diff or loss_diff < min_loss_diff:
+                            if loss_diff > max_loss_diff:
+                                if max_loss_plot is not None:
+                                    max_loss_plot.close()
+                                max_loss_diff = loss_diff
+                                max_loss_plot = my_test_plot
+            
+                            if loss_diff < min_loss_diff:
+                                if min_loss_plot is not None:
+                                    min_loss_plot.close()
+                                min_loss_diff = loss_diff
+                                min_loss_plot = my_test_plot
+                        else:
+                            my_test_plot.close()
+                    else:
+                        my_test_plot.close()
                     
                 
         if max_loss_plot is not None:
@@ -1396,13 +1407,18 @@ class NN(nn.Module):
                 print(x, y, s)
                 full_obj[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_reconstr[x:x+s[0],y:y+s[1]] = cropped_reconstrs[i]
-                full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
+                if len(cropped_reconstrs_true) > 0:
+                    full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_reconstrs_true[i]
+                else:
+                    full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
 
-            loss_diffs = np.reshape(loss_diffs, (max_pos[0] + 1, max_pos[1] + 1)).T
-            loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
+            plot_loss_diffs = len(loss_diffs) > 0
+            num_cols = 3
+            if plot_loss_diffs:
+                num_cols += 1
                 
-            my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
+            my_test_plot = plot.plot(nrows=1, ncols=num_cols, size=plot.default_size(len(full_obj), len(full_obj)))
             my_test_plot.set_default_cmap(cmap_name="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
             min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
@@ -1412,15 +1428,20 @@ class NN(nn.Module):
             my_test_plot.colormap(full_reconstr_true, [0], vmin=min_val, vmax=max_val)
             my_test_plot.colormap(full_reconstr, [1], vmin=min_val, vmax=max_val)
             my_test_plot.colormap(full_D, [2])
-            max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
-            my_test_plot.set_default_cmap(cmap_name="bwr")
-            my_test_plot.colormap(dat=loss_diffs, ax_index=[3], vmin=-max_val, vmax=max_val, show_colorbar=True)
             
-            #my_test_plot.set_axis_title([0], "MOMFBD filtered")
             my_test_plot.set_axis_title([0], "MOMFBD")
             my_test_plot.set_axis_title([1], "Neural network")
             my_test_plot.set_axis_title([2], "Raw frame")
-            my_test_plot.set_axis_title([3], "Losses")
+
+            if plot_loss_diffs:
+                loss_diffs = np.reshape(loss_diffs, (max_pos[0] + 1, max_pos[1] + 1)).T
+                loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
+                max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
+                my_test_plot.set_default_cmap(cmap_name="bwr")
+                my_test_plot.colormap(dat=loss_diffs, ax_index=[3], vmin=-max_val, vmax=max_val, show_colorbar=True)
+                my_test_plot.set_axis_title([3], "Losses")
+            
+            #my_test_plot.set_axis_title([0], "MOMFBD filtered")
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
