@@ -308,10 +308,12 @@ class coh_trans_func_torch():
         #defocus_val = self.pupil * (torch.cos(-phase) + torch.sin(-phase)*1.j)
         defocus_val = mul(self.pupil, create_complex(torch.cos(-phase), torch.sin(-phase)))
         
+        size = list(focus_val.size())
+        index = len(size) - 2
         if emulate_complex:
-            return torch.cat([focus_val.unsqueeze(-4), defocus_val.unsqueeze(-4)], -4)
-        else:
-            return torch.cat([focus_val.unsqueeze(-3), defocus_val.unsqueeze(-3)], -3)
+            index -= 1
+        size[index - 1] *= 2
+        return torch.cat([focus_val.unsqueeze(index), defocus_val.unsqueeze(-4)], -4).view(size)
 
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))
@@ -427,7 +429,7 @@ class psf_torch():
         #        vals = tf.divide(vals, norm)
         #print("corr", corr.size())
         
-        return corr, wf#wf.view(1, wf.size()[0], wf.size()[1])
+        return corr, wf.squeeze()#wf.view(1, wf.size()[0], wf.size()[1])
 
             
 
@@ -438,6 +440,7 @@ class psf_torch():
     '''
     def multiply(self, dat_F, alphas, diversity):
         otf_vals, _ = self.calc(alphas, diversity)
+        print("dat_F, otf_vals", dat_F.size(), otf_vals.size())
         return mul(dat_F, otf_vals)
 
 
@@ -445,7 +448,8 @@ class psf_torch():
         #nx = self.nx
         #jmax = self.coh_trans_func.phase_aberr.jmax
 
-        obj = to_complex(obj.repeat(self.num_frames, 2, 1, 1))
+        obj = to_complex(obj.unsqueeze(0).repeat(self.num_frames*2, 1, 1))
+        print("obj, alphas", obj.size(), alphas.size())
         
         fobj = fft(obj)
         #fobj = fftshift(fobj)
@@ -456,7 +460,7 @@ class psf_torch():
         #D = ifftshift(D)
         
         #D = tf.transpose(D, (0, 2, 3, 1))
-        return D/(D.size()[2]*D.size()[3])
+        return D/(D.size()[1]*D.size()[2])
 
     # For numpy inputs
     def Ds_reconstr(self, DP_real, DP_imag, PP, alphas, diversity):
@@ -481,6 +485,7 @@ class psf_torch():
     # For numpy inputs
     def reconstr(self, DP_real, DP_imag, PP, do_fft = True):
         one_obj = False
+        print("DP_real, DP_imag, PP", DP_real.size(), DP_imag.size(), PP.size())
         if len(DP_real.shape) == 2:
             one_obj = True
             DP_real = np.reshape(DP_real, [1, self.nx, self.nx])
@@ -492,15 +497,17 @@ class psf_torch():
         PP = to_complex(torch.from_numpy(PP)).to(self.device, dtype=torch.float32)
         
         obj, loss = self.reconstr_(conj(DP), PP, do_fft)
+        
         if one_obj:
-            return obj[0]
-        else:
-            return obj
+            obj = obj[0]
+
+        return obj[..., 0] + obj[..., 1]*1.j
 
     def reconstr_(self, DP, PP, do_fft = True):
         #eps = torch.tensor(1e-10).to(self.device, dtype=torch.complex64)
         eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
         #F_image = (DP + eps)/(PP + eps)
+        print("DP, PP", DP.size(), PP.size())
         F_image = div(DP + eps, PP + eps)
         
         
@@ -522,18 +529,28 @@ class psf_torch():
         diversity: [2, nx, nx]
     '''
     def deconvolve(self, Ds, alphas, diversity = None, do_fft = True):
+        if len(Ds.size()) == 3:
+            Ds = torch.unsqueeze(Ds, 0)
+            assert(len(alphas.size()) == 2)
+            alphas = torch.unsqueeze(alphas, 0)
+        else:
+            assert(len(alphas.size()) >= 2)
+            if len(alphas.size()) == 2:
+                alphas = alphas.unsqueeze(1)
         Ds_F = fft(to_complex(Ds))
 
-        Ps1, wf = self.calc(alphas, diversity)
+        #print("alphas, diversity", alphas.size(), diversity.size())
+        Ps, wf = self.calc(alphas, diversity)
+        print("Ds_F, Ps", Ds_F.size(), Ps.size())
         
-        Ps = Ps1#tf.signal.ifftshift(Ps1, axes=(2, 3))
         Ps_conj = conj(Ps)
     
-        num = torch.sum(mul(Ds_F, Ps_conj), axis=1)
-        den = torch.sum(mul(Ps, Ps_conj), axis=1)
+        num = torch.sum(mul(Ds_F, Ps_conj), axis=[0, 1])
+        den = torch.sum(mul(Ps, Ps_conj), axis=[0, 1])
         
         image, loss = self.reconstr_(num, den, do_fft)
-        return image, Ps1, wf, loss
+        print("image", image.size())
+        return image, Ps[..., 0] + Ps[..., 0]*1.j, wf, loss
         
     '''
         Ds: [batch_size, num_frames, 2, nx, nx], where first dimension can be omitted
@@ -545,10 +562,14 @@ class psf_torch():
         mode = self.mode
         #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
-        if len(Ds.size()) == 4:
+        if len(Ds.size()) == 3:
             Ds = torch.unsqueeze(Ds, 0)
             assert(len(alphas.size()) == 2)
             alphas = torch.unsqueeze(alphas, 0)
+        else:
+            assert(len(alphas.size()) >= 2)
+            if len(alphas.size()) == 2:
+                alphas = alphas.unsqueeze(1)
         batch_size = Ds.size()[0]
         assert(self.batch_size == batch_size) # TODO: get rid of class member
 
@@ -577,7 +598,7 @@ class psf_torch():
 
         Ps_conj = conj(Ps)
         
-        num = torch.sum(mul(Ds_F_conj, Ps), axis=(1, 2))
+        num = torch.sum(mul(Ds_F_conj, Ps), axis=1)
         
         if mode >= 2:
             #if self.sum_over_batch:
@@ -593,11 +614,11 @@ class psf_torch():
             num = num + num1
         if self.sum_over_batch:
             num = torch.sum(num, axis=0)
-        num_conj = conj(num)
+        DP_conj = conj(num)
         num = mul(num, conj(num))
         num = real(num)
         
-        den = torch.sum(mul(Ps, Ps_conj), axis=(1, 2))
+        den = torch.sum(mul(Ps, Ps_conj), axis=1)
         den = real(den)
         if mode >= 2:
             #PP1 = tf.slice(DD_DP_PP, [0, 3, 0, 0], [self.batch_size, 1, nx, nx])
@@ -614,11 +635,11 @@ class psf_torch():
 
         eps = torch.tensor(1e-10, dtype=torch.float32)
         
-        DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=(1, 2)))
+        DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=1))
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, num_conj
+            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps[..., 0] + Ps[..., 1]*1.j, wf
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
@@ -636,6 +657,6 @@ class psf_torch():
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
-            return loss, num, den, num_conj, DD, DP_real, DP_imag, PP
+            return loss, num, den, DP_conj, DD, DP_real, DP_imag, PP, Ps[..., 0] + Ps[..., 1]*1.j, wf
 
     

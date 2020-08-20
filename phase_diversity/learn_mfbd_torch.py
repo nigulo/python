@@ -545,18 +545,18 @@ class NN(nn.Module):
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
         # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
-        image_input = torch.transpose(image_input, 0, 1)
-        image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
-        image_input = torch.transpose(image_input, 1, 2)
-        image_input = torch.transpose(image_input, 0, 1)
+        #image_input = torch.transpose(image_input, 0, 1)
+        #image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
+        #image_input = torch.transpose(image_input, 1, 2)
+        #image_input = torch.transpose(image_input, 0, 1)
         if nn_mode == 1:
-            loss, num, den, num_conj = self.psf.mfbd_loss(image_input, alphas, diversity_input)
+            loss, num, den, num_conj, psf, wf = self.psf.mfbd_loss(image_input, alphas, diversity_input)
         else:
-            loss, num, den, num_conj, DD, DP_real, DP_imag, PP = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
+            loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
 
         loss = torch.mean(loss)/nx/nx
 
-        return loss, alphas, num, den, num_conj
+        return loss, alphas, num, den, num_conj, psf, wf
         
 
 
@@ -565,7 +565,11 @@ class NN(nn.Module):
         num_objs = Ds.shape[0]
         #assert(len(alphas) == len(Ds))
         #assert(Ds.shape[3] == 2) # Ds = [num_objs, num_frames, nx, nx, 2]
-        num_frames = Ds.shape[1]
+        if len(Ds.shape) == 4:
+            # No batch dimension
+            num_frames = Ds.shape[0]
+        else:
+            num_frames = Ds.shape[1]
         if not train:
             assert(num_frames == n_test_frames)
         self.psf_test.set_num_frames(num_frames)
@@ -575,10 +579,9 @@ class NN(nn.Module):
         diversity = torch.tensor(diversity).to(device, dtype=torch.float32)
         Ds = torch.tensor(Ds).to(device, dtype=torch.float32)
         #Ds = tf.reshape(tf.transpose(Ds, [0, 2, 3, 1, 4]), [num_objs, nx, nx, 2*num_frames])
-
+        print("Ds", Ds.size())
         image_deconv, Ps, wf, loss = self.psf_test.deconvolve(Ds, alphas, diversity, do_fft=do_fft)
         return image_deconv, Ps, wf, loss
-        print("image_deconv", image_deconv.numpy().shape)
         
     # Inputs should be grouped per object (first axis)
     def Ds_reconstr(self, Ds, alphas, diversity):
@@ -803,8 +806,10 @@ class NN(nn.Module):
         #num_data = data_loader.dataset.length()
         all_alphas = []#np.empty((num_data, jmax))
         all_num = []#np.empty((num_data, nx, nx))
-        all_num_conj = []#np.empty((num_data, nx, nx), dtype="complex64")
+        all_DP_conj = []#np.empty((num_data, nx, nx), dtype="complex64")
         all_den = []#np.empty((num_data, nx, nx))
+        all_psf = []#np.empty((num_data, nx, nx))
+        all_wf = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
             Ds = Ds.to(device)
             diversity = diversity.to(device)
@@ -815,9 +820,10 @@ class NN(nn.Module):
                 with torch.no_grad():
                     result = self((Ds, diversity))
             if nn_mode == 1:
-                loss, alphas, num, den, num_conj = result
+                loss, alphas, num, den, DP_conj, psf, wf = result
+                #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
             else:
-                loss, alphas, num, den, num_conj, DD, DP_real, DP_imag, PP = result
+                loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf, wf = result
             if train:
                 loss.backward()
                 self.optimizer.step()
@@ -827,21 +833,24 @@ class NN(nn.Module):
             all_alphas.append(alphas.detach().numpy())
             all_num.append(num.detach().numpy())
             all_den.append(den.detach().numpy())
-            all_num_conj.append(num_conj.detach().numpy())
+            all_DP_conj.append(DP_conj.detach().numpy())
+            all_psf.append(psf.detach().numpy())
+            all_wf.append(wf.detach().numpy())
 
             if train:        
                 progress_bar.set_postfix({"Training error": loss_sum/count})
             else:
                 progress_bar.set_postfix({"Validation error": loss_sum/count})
             
-        
+        print("all_num", len(all_num), all_num[0].shape)
         all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
         all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
         all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
-        all_num_conj = np.reshape(np.asarray(all_num_conj), [-1, nx, nx])
+        all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
+        all_psf = np.reshape(np.asarray(all_psf), [-1, 2, nx, nx])
+        all_wf = np.reshape(np.asarray(all_wf), [-1, nx, nx])
         
-        return loss_sum/count, all_alphas, all_num, all_den, all_num_conj
-
+        return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf
 
     def save_state(self, state):
         torch.save(state, dir_name + "/state.tar")
@@ -880,7 +889,7 @@ class NN(nn.Module):
         if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 self.do_epoch(Ds_train_loader)
-                val_loss, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
+                val_loss, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
                 self.scheduler.step()
 
                 if True:#self.val_loss > history.history['val_loss'][-1]:
@@ -938,7 +947,7 @@ class NN(nn.Module):
         n_test = min(num_objs, 1)
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj = self.do_epoch(Ds_train_loader, train=False)
+            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
@@ -1156,7 +1165,7 @@ class NN(nn.Module):
         start = time.time()    
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj = self.do_epoch(Ds_test_loader, train=False)
+            losses, pred_alphas, _, dens, nums_conj, psf, wf = self.do_epoch(Ds_test_loader, train=False)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
@@ -1223,7 +1232,7 @@ class NN(nn.Module):
                 cropped_objs.append(cropped_obj)
                 
                 cropped_coords.append(top_left_coord)
-                cropped_Ds.append(Ds[i, :, :, 0][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                cropped_Ds.append(Ds[i, 0, :, :][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 full_shape += cropped_obj.shape
                 print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
 
@@ -1231,6 +1240,11 @@ class NN(nn.Module):
             #DFs = []
             Ds_ = []
             alphas = []
+            DP = 0.
+            PP = 0.
+            psfs = []
+            wfs = []
+            print("nums, dens, psf, wf", nums_conj.shape, dens.shape, psf.shape, wf.shape)
             if pred_alphas is not None:
                 for j in np.arange(i, len(objs)):
                     if obj_ids[j] == obj_ids[i]:
@@ -1242,9 +1256,15 @@ class NN(nn.Module):
                             Ds_.append(Ds[j, 2*l:2*l+2, :, :])
                             #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+                        DP += nums_conj[j//batch_size]
+                        PP += dens[j//batch_size]
+                        psfs.append(psf[j])
+                        wfs.append(wf[j])
             Ds_ = np.asarray(Ds_)
             #DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
+            psfs = np.asarray(psfs)
+            wfs = np.asarray(wfs)
                             
             #print("alphas", alphas.shape, Ds_.shape)
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
@@ -1253,13 +1273,15 @@ class NN(nn.Module):
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
             #obj_reconstr_mean += obj_reconstr
 
-            diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
-            self.psf_check.coh_trans_func.set_diversity(diversity)
-            obj_reconstr, psf, wf, loss = self.deconvolve(Ds_[None,], alphas, diversity)
-            obj_reconstr = obj_reconstr.numpy()[0]
-            psf = psf.numpy()[0]
-            wf = wf.numpy()[0]*self.pupil
-            psf = fft.ifftshift(fft.ifft2(fft.ifftshift(psf, axes=(1, 2))), axes=(1, 2)).real
+            diversity = diversities[i]
+            #print("diversity", diversities.shape)
+            #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
+            #print("diversity", diversity.shape)
+            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP), psf_torch.to_complex(torch.tensor(PP)))#self.deconvolve(Ds_, alphas, diversity)
+            obj_reconstr = obj_reconstr.numpy()
+            #psf = psf.numpy()
+            wfs = wfs*self.pupil
+            psfs = fft.ifftshift(fft.ifft2(psfs).real, axes=(2, 3))
             
 
             if estimate_full_image:
@@ -1279,8 +1301,8 @@ class NN(nn.Module):
                 true_alphas = true_coefs[obj_ids[i]]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
-                obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[None,:nf], true_alphas[:nf]/utils.mode_scale, diversity)
-                obj_reconstr_true = obj_reconstr_true.numpy()[0]
+                obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
+                obj_reconstr_true = obj_reconstr_true.numpy()
                 
                 loss_diff = (loss.numpy() - loss_true.numpy())/nx/nx
                 loss_diffs.append(loss_diff)
@@ -1288,22 +1310,24 @@ class NN(nn.Module):
                 if estimate_full_image:
                     cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 
-                psf_true = psf_true.numpy()[0]
-                wf_true = wf_true.numpy()[0]*self.pupil
-                psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
+                psf_true = psf_true.numpy()
+                print("psf_true, obj_reconstr_true", psf_true.shape, obj_reconstr_true.shape)
+                wf_true = wf_true.numpy()*self.pupil
+                #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
+                psf_true = fft.ifftshift(fft.ifft2(psf_true).real, axes=(2, 3))
                 for j in np.arange(nf):
                     if j % 100 == 0:
                         print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                         print("psf[j]", np.max(psf[j]), np.min(psf[j]))
                         print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
                         my_test_plot = plot.plot(nrows=2, ncols=5)
-                        my_test_plot.colormap(utils.trunc(psf_true[j], 1e-3), [0, 0], show_colorbar=True)
-                        my_test_plot.colormap(utils.trunc(psf[j], 1e-3), [0, 1], show_colorbar=True)
-                        my_test_plot.colormap(np.abs(psf_true[j]-psf[j]), [0, 2], show_colorbar=True)
+                        my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [0, 0], show_colorbar=True)
+                        my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [0, 1], show_colorbar=True)
+                        my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
                         my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
                         my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
                         my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
-                        my_test_plot.colormap(wf[j], [1, 1], show_colorbar=True)
+                        my_test_plot.colormap(wfs[j], [1, 1], show_colorbar=True)
                         my_test_plot.colormap(np.abs(wf_true[j]-wf[j]), [1, 2], show_colorbar=True)
                         my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
                         my_test_plot.close()
