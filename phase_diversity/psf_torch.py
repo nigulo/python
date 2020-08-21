@@ -313,7 +313,7 @@ class coh_trans_func_torch():
         if emulate_complex:
             index -= 1
         size[index - 1] *= 2
-        return torch.cat([focus_val.unsqueeze(index), defocus_val.unsqueeze(-4)], -4).view(size)
+        return torch.cat([focus_val.unsqueeze(index), defocus_val.unsqueeze(index)], index).view(size)
 
     #def get_defocus_val(self, focus_val):
     #    return tf.math.multiply(focus_val, tf.math.exp(tf.math.scalar_mul(self.i, self.defocus)))

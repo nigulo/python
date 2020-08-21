@@ -80,7 +80,7 @@ if len(sys.argv) > i:
 benchmarking_level = 0
 i += 1
 if len(sys.argv) > i:
-    compare_details = int(sys.argv[i])
+    benchmarking_level = int(sys.argv[i])
 
 train_perc = 0.8
 activation_fn = nn.ReLU
@@ -100,7 +100,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 1
+    n_epochs_2 = 5
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -154,38 +154,6 @@ elif nn_mode == MODE_2:
     if zero_avg_tiptilt:
         n_test_frames = num_frames
 
-else:
-    
-    shuffle0 = False
-    shuffle1 = True
-    shuffle2 = False
-    
-    num_reps = 1000
-    
-    n_epochs_2 = 4
-    n_epochs_1 = 1
-    
-    n_epochs_mode_2 = 10
-    
-    # How many frames to use in training
-    num_frames = 640
-    # How many objects to use in training
-    num_objs = 10#None
-    
-    # How many frames of the same object are sent to NN input
-    # Must be power of 2
-    num_frames_input = 1
-    
-    batch_size = 32
-    n_channels = 8
-    
-    sum_over_batch = True
-
-    zero_avg_tiptilt = True
-    num_alphas_input = 10
-
-    if zero_avg_tiptilt:
-        n_test_frames = num_frames
 
 no_shuffle = not shuffle0 and not shuffle2
 
@@ -240,8 +208,10 @@ if n_gpus >= 1:
     from numba import cuda
 
 def load_data(data_file):
+    is_zarr = False
     f = dir_name + '/' + data_file + ".zarr"
     if os.path.exists(f):
+        is_zarr = True
         loaded = zarr.open(f, 'r')
     else:
         f = dir_name + '/' + data_file + ".npz"
@@ -249,24 +219,24 @@ def load_data(data_file):
             loaded = np.load(f, mmap_mode='r')
         else:
             raise Exception("No data found")
-    Ds = loaded['Ds'].astype("float32")
+    Ds = loaded['Ds'][:]
     try:
-        objs = loaded['objs'].astype("float32")
+        objs = loaded['objs'][:]
     except:
         objs = None
-    pupil = loaded['pupil']
-    modes = loaded['modes']
-    diversity = loaded['diversity']
+    pupil = loaded['pupil'][:]
+    modes = loaded['modes'][:]
+    diversity = loaded['diversity'][:]
     try:
-        coefs = loaded['alphas']
+        coefs = loaded['alphas'][:]
     except:
         coefs = None
     try:
-        positions = loaded['positions']
+        positions = loaded['positions'][:]
     except:
         positions = None
     try:
-        coords = loaded['coords']
+        coords = loaded['coords'][:]
     except:
         coords = None
     return Ds, objs, pupil, modes, diversity, coefs, positions, coords
@@ -369,6 +339,14 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.Ds)
 
 
+def weights_init_uniform(m):
+    classname = m.__class__.__name__
+    if classname.find('Linear') != -1 or classname.find('Conv2d') != -1:
+        n = m.in_features
+        y = 1.0/np.sqrt(n)
+        m.weight.data.uniform_(-y, y)
+        m.bias.data.fill_(0)
+
 class ConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
         super(ConvLayer, self).__init__()
@@ -378,13 +356,11 @@ class ConvLayer(nn.Module):
         
         self.layers = []
         
+        n_channels = in_channels
         for i in np.arange(num_convs):
-            if i == 0:
-                n_channels = in_channels
-
             conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=1, stride=1)
+            conv2 = nn.Conv2d(n_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')
             n_channels = out_channels
-            conv2 = nn.Conv2d(n_channels, n_channels, kernel_size=kernel, stride=1)
             act = activation(inplace=True)
             if batch_normalization:
                 bn = nn.BatchNorm2d(n_channels)
@@ -401,7 +377,7 @@ class ConvLayer(nn.Module):
         for layer in self.layers:
             conv1, conv2, act, bn = layer
             x1 = conv1(x)
-            x2 = conv1(x)
+            x2 = conv2(x)
             x = act(x1 + x2)
             if bn is not None:
                 x = bn(x)
@@ -500,11 +476,9 @@ class NN(nn.Module):
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         
+        self.apply(weights_init_uniform)
         self.load_state()
         
-        
-    def weights_init(self):
-        pass
 
     def forward(self, data):
 
@@ -515,7 +489,7 @@ class NN(nn.Module):
         
 
         x = image_input
-        
+
         # Convolutional blocks
         for layer in self.layers1:
             x = layer(x)
@@ -542,10 +516,13 @@ class NN(nn.Module):
         if zero_avg_tiptilt:
             tip_tilt_sums = torch.sum(alphas[:, :, :2], dim=(0, 1), keepdims=True).repeat(alphas.size()[0], alphas.size()[1], 1)
             
-            if nn_mode >= MODE_2:
+            if nn_mode == 1:
+                tip_tilt_means = tip_tilt_sums / (alphas.size()[0] * alphas.size()[1])    
+            else:
+                #TODO double check
                 tt_sums = tt_sums_input.view(-1, 1, 2).repeat(1, num_frames_input, 1)
                 tip_tilt_sums = tip_tilt_sums + tt_sums
-            tip_tilt_means = tip_tilt_sums / self.num_frames
+                tip_tilt_means = tip_tilt_sums / self.num_frames
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2)], axis=2)
             alphas = alphas - tip_tilt_means
         
@@ -844,11 +821,11 @@ class NN(nn.Module):
             all_wf.append(wf.detach().numpy())
 
             if train:        
-                progress_bar.set_postfix({"Training error": loss_sum/count})
+                progress_bar.set_postfix({"lr": self.optimizer.param_groups[0]['lr'], "Training error": loss_sum/count})
             else:
                 progress_bar.set_postfix({"Validation error": loss_sum/count})
             
-        print("all_num", len(all_num), all_num[0].shape)
+        #print("all_num", len(all_num), all_num[0].shape)
         all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
         all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
         all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
@@ -895,8 +872,8 @@ class NN(nn.Module):
         if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 self.do_epoch(Ds_train_loader)
-                val_loss, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
                 self.scheduler.step()
+                val_loss, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
 
                 if True:#self.val_loss > history.history['val_loss'][-1]:
                     self.save_state({
@@ -1026,7 +1003,7 @@ class NN(nn.Module):
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             if pred_alphas is not None:
-                diversity = np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
+                diversity = self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 #obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
@@ -1425,8 +1402,8 @@ class NN(nn.Module):
             max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
             #my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
             #my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
-            my_test_plot.colormap(full_reconstr_true, [0], vmin=min_val, vmax=max_val)
-            my_test_plot.colormap(full_reconstr, [1], vmin=min_val, vmax=max_val)
+            my_test_plot.colormap(full_reconstr_true, [0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
+            my_test_plot.colormap(full_reconstr, [1])#, vmin=min_val, vmax=max_val)
             my_test_plot.colormap(full_D, [2])
             
             my_test_plot.set_axis_title([0], "MOMFBD")
