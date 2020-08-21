@@ -107,7 +107,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 32
+    n_channels = 128
     
     sum_over_batch = True
     
@@ -713,8 +713,10 @@ class nn_model:
                         loss = tf.slice(y_pred, [0, 0, 0, 0], [batch_size_per_gpu, 1, nx, nx])
                         return tf.math.reduce_sum(loss, axis=[1, 2, 3])/(nx*nx)
 
-            optimizer = keras.optimizers.Adam(
-                learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
+            #optimizer = keras.optimizers.Adam(
+            #    learning_rate=0.1, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
+
+            optimizer = keras.optimizers.Adadelta()
                 
             #self.model.compile(optimizer='adadelta', loss=mfbd_loss)#'mse')
             self.model.compile(optimizer=optimizer, loss=mfbd_loss)#'mse')

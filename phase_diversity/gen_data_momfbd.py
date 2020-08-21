@@ -9,10 +9,12 @@ import sys
 sys.path.append('../utils')
 import misc
 import utils
+from numcodecs import Blosc
+compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
 out_dir = "data_out"
 #nx = 96
 num_modes = 44
-use_zarr = False
+use_zarr = True
 
 if use_zarr:
     import zarr
@@ -26,6 +28,8 @@ if len(sys.argv) > 2:
     n_frames = int(sys.argv[2])
 
 n_objects = 200
+
+compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
 
 shuffle = True
 if len(sys.argv) > 3:
@@ -125,9 +129,9 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
 
     if use_zarr:
         handler = zarr.open(out_dir + '/Ds.zarr', 'w')
-        Ds = handler.create_dataset('Ds', shape=(num_objects, num_frames, 2, nx, nx), compressor=None)
-        objs = handler.create_dataset('objs', shape=(num_objects, nx, nx), compressor=None)
-        momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), compressor=None)
+        Ds = handler.create_dataset('Ds', shape=(num_objects, num_frames, 2, nx, nx), chunks=(max(num_objects//100, 1), num_frames, 2, nx, nx), compressor=None)
+        objs = handler.create_dataset('objs', shape=(num_objects, nx, nx), chunks=(max(num_objects//100, 1), nx, nx), compressor=None)
+        momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), chunks=(max(num_objects//100, 1), num_frames, num_modes), compressor=None)
         positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype='int', compressor=None)
         coords = handler.create_dataset('coords', shape=(num_objects, 2), dtype='int', compressor=None)
     else:
@@ -156,7 +160,9 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         indx = np.repeat(np.arange(0, npx, dtype="int"), npy)
         indy = np.tile(np.arange(0, npy, dtype="int"), npx)
         
-    
+    images = np.asarray(images)
+    images_defocus = np.asarray(images_defocus)
+    alphas = np.asarray(alphas)
     for loop in tqdm(range(num_objects)):
 
         x0 = xl[indx[loop]]
@@ -171,10 +177,15 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
 
         if len(objs_momfbd) > indt[loop]:
             objs[loop] = objs_momfbd[indt[loop]][indx[loop], indy[loop]]
-        for i in range(num_frames):
-            Ds[loop, i, 0] = images[indt[loop]+i][x0:x0+nx,y0:y0+nx]
-            Ds[loop, i, 1] = images_defocus[indt[loop]+i][x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
-            momfbd_coefs[loop, i] = alphas[indt[loop]+i][indx[loop],indy[loop],:]
+        #for i in range(num_frames):
+        #    Ds[loop, i, 0] = images[indt[loop]+i][x0:x0+nx,y0:y0+nx]
+        #    Ds[loop, i, 1] = images_defocus[indt[loop]+i][x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
+        #    momfbd_coefs[loop, i] = alphas[indt[loop]+i][indx[loop],indy[loop],:]
+        start_index = indt[loop]
+        end_index = start_index + num_frames
+        Ds[loop, :num_frames, 0] = images[start_index:end_index,x0:x0+nx,y0:y0+nx]
+        Ds[loop, :num_frames, 1] = images_defocus[start_index:end_index,x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
+        momfbd_coefs[loop, :num_frames] = alphas[start_index:end_index,indx[loop],indy[loop],:]
         positions[loop, 0] = indx[loop]
         positions[loop, 1] = indy[loop]
         
