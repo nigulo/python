@@ -376,6 +376,7 @@ class ConvLayer(nn.Module):
         self = super().to(*args, **kwargs)
         for i in np.arange(len(self.layers)):
             conv1, conv2, act, bn = self.layers[i]
+            conv1 = conv1.to(*args, **kwargs)
             conv2 = conv2.to(*args, **kwargs)
             act = act.to(*args, **kwargs)
             bn = bn.to(*args, **kwargs)
