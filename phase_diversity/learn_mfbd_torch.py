@@ -543,7 +543,7 @@ class NN(nn.Module):
                 tt_sums = tt_sums_input.view(-1, 1, 2).repeat(1, num_frames_input, 1)
                 tip_tilt_sums = tip_tilt_sums + tt_sums
                 tip_tilt_means = tip_tilt_sums / self.num_frames
-            tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2)], axis=2)
+            tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2).to(device, dtype=torch.float32)], axis=2)
             alphas = alphas - tip_tilt_means
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
