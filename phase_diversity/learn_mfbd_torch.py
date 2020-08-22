@@ -180,7 +180,7 @@ device = torch.device(f"cuda:0" if cuda else "cpu")
 if train:
     sys.stdout = open(dir_name + '/log.txt', 'a')
 else:
-    device = torch.device(f"cuda:0" if cuda else "cpu")      
+    device = torch.device(f"cuda:1" if cuda else "cpu")      
 
 print(f"Device : {device}")      
     
@@ -372,6 +372,15 @@ class ConvLayer(nn.Module):
         else:
             self.pool = None
 
+    def to(self, *args, **kwargs):
+        self = super().to(*args, **kwargs)
+        for i in np.arange(len(self.layers)):
+            conv1, conv2, act, bn = self.layers[i]
+            conv2 = conv2.to(*args, **kwargs)
+            act = act.to(*args, **kwargs)
+            bn = bn.to(*args, **kwargs)
+            self.layers1[i] = (conv1, conv2, act, bn)
+        return self
 
     def forward(self, x):
         for layer in self.layers:
@@ -479,7 +488,17 @@ class NN(nn.Module):
         self.apply(weights_init_uniform)
         self.load_state()
         
-
+    def to(self, *args, **kwargs):
+        self = super().to(*args, **kwargs)
+        for i in np.arange(len(self.layers1)):
+            self.layers1[i] = self.layers1[i].to(*args, **kwargs)
+        for i in np.arange(len(self.layers2)):
+            self.layers2[i] = self.layers2[i].to(*args, **kwargs)
+        for i in np.arange(len(self.layers3)):
+            self.layers3[i] = self.layers3[i].to(*args, **kwargs)
+        self.lstm = self.lstm.to(*args, **kwargs)
+        return self
+    
     def forward(self, data):
 
         if nn_mode == 1:
