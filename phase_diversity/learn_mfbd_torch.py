@@ -833,12 +833,12 @@ class NN(nn.Module):
             loss_sum += loss.item()
             count += 1
             
-            all_alphas.append(alphas.detach().numpy())
-            all_num.append(num.detach().numpy())
-            all_den.append(den.detach().numpy())
-            all_DP_conj.append(DP_conj.detach().numpy())
-            all_psf.append(psf.detach().numpy())
-            all_wf.append(wf.detach().numpy())
+            all_alphas.append(alphas.detach().cpu().numpy())
+            all_num.append(num.detach().cpu().numpy())
+            all_den.append(den.detach().cpu().numpy())
+            all_DP_conj.append(DP_conj.detach().cpu().numpy())
+            all_psf.append(psf.detach().cpu().numpy())
+            all_wf.append(wf.detach().cpu().numpy())
 
             if train:        
                 progress_bar.set_postfix({"lr": self.optimizer.param_groups[0]['lr'], "Training error": loss_sum/count})
@@ -1284,7 +1284,7 @@ class NN(nn.Module):
             #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #print("diversity", diversity.shape)
             obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP), psf_torch.to_complex(torch.tensor(PP)))#self.deconvolve(Ds_, alphas, diversity)
-            obj_reconstr = obj_reconstr.numpy()
+            obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil
             psfs = fft.ifftshift(fft.ifft2(psfs).real, axes=(2, 3))
@@ -1309,15 +1309,15 @@ class NN(nn.Module):
 
                 if benchmarking_level >= 2:
                     obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
-                    obj_reconstr_true = obj_reconstr_true.numpy()
+                    obj_reconstr_true = obj_reconstr_true.cpu().numpy()
                     
-                    loss_diff = (loss.numpy() - loss_true.numpy())/nx/nx
+                    loss_diff = (loss.cpu().numpy() - loss_true.cpu().numpy())/nx/nx
                     loss_diffs.append(loss_diff)
                     
                     psf_true = psf_torch.real(psf_torch.ifft(psf_true))
-                    psf_true = psf_true.numpy()
+                    psf_true = psf_true.cpu().numpy()
                     print("psf_true, obj_reconstr_true", psf_true.shape, obj_reconstr_true.shape)
-                    wf_true = wf_true.numpy()*self.pupil
+                    wf_true = wf_true.cpu().numpy()*self.pupil
                     #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
                     psf_true = fft.ifftshift(psf_true, axes=(2, 3))
                     for j in np.arange(nf):
