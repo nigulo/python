@@ -240,7 +240,7 @@ class coh_trans_func_torch():
         self.defocus_func = defocus_func
         self.device = device
     
-        self.i = torch.tensor(1.j)
+        #self.i = torch.tensor(1.j)
 
     def set_phase_aberr(self, phase_aberr):
         self.phase_aberr = phase_aberr
@@ -501,7 +501,7 @@ class psf_torch():
         if one_obj:
             obj = obj[0]
 
-        return obj[..., 0] + obj[..., 1]*1.j
+        return obj
 
     def reconstr_(self, DP, PP, do_fft = True):
         #eps = torch.tensor(1e-10).to(self.device, dtype=torch.complex64)
@@ -550,7 +550,7 @@ class psf_torch():
         
         image, loss = self.reconstr_(num, den, do_fft)
         print("image", image.size())
-        return image, Ps[..., 0] + Ps[..., 0]*1.j, wf, loss
+        return image, Ps, wf, loss
         
     '''
         Ds: [batch_size, num_frames, 2, nx, nx], where first dimension can be omitted
@@ -639,7 +639,7 @@ class psf_torch():
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps[..., 0] + Ps[..., 1]*1.j, wf
+            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
@@ -657,6 +657,6 @@ class psf_torch():
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
-            return loss, num, den, DP_conj, DD, DP_real, DP_imag, PP, Ps[..., 0] + Ps[..., 1]*1.j, wf
+            return loss, num, den, DP_conj, DD, DP_real, DP_imag, PP, Ps, wf
 
     

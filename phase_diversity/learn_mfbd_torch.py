@@ -830,7 +830,7 @@ class NN(nn.Module):
         all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
         all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
         all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
-        all_psf = np.reshape(np.asarray(all_psf), [-1, 2, nx, nx])
+        all_psf = np.reshape(np.asarray(all_psf), [-1, 2, nx, nx, 2]) # Complex array
         all_wf = np.reshape(np.asarray(all_wf), [-1, nx, nx])
         
         return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf
@@ -1159,6 +1159,9 @@ class NN(nn.Module):
             #for epoch in np.arange(n_epochs_mode_2):
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, alphas, Ds_diff)
             #pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
+
+        psf = fft.ifft2(psf[..., 0] + psf[..., 1]*1.j).real
+        psf = fft.ifftshift(psf, axes=(2, 3))
             
         #Ds *= std
         Ds *= med
@@ -1291,17 +1294,17 @@ class NN(nn.Module):
                     loss_diff = (loss.numpy() - loss_true.numpy())/nx/nx
                     loss_diffs.append(loss_diff)
                     
-                    
+                    psf_true = psf_torch.real(psf_torch.ifft(psf_true))
                     psf_true = psf_true.numpy()
                     print("psf_true, obj_reconstr_true", psf_true.shape, obj_reconstr_true.shape)
                     wf_true = wf_true.numpy()*self.pupil
                     #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
-                    psf_true = fft.ifftshift(fft.ifft2(psf_true).real, axes=(2, 3))
+                    psf_true = fft.ifftshift(psf_true, axes=(2, 3))
                     for j in np.arange(nf):
                         if j % 100 == 0:
                             print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
-                            print("psf[j]", np.max(psf[j]), np.min(psf[j]))
-                            print("psf MSE", np.sum((psf_true[j] - psf[j])**2))
+                            print("psf[j]", np.max(psfs[j]), np.min(psfs[j]))
+                            print("psf MSE", np.sum((psf_true[j] - psfs[j])**2))
                             my_test_plot = plot.plot(nrows=2, ncols=5)
                             my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [0, 0], show_colorbar=True)
                             my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [0, 1], show_colorbar=True)
