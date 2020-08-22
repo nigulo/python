@@ -379,7 +379,7 @@ class ConvLayer(nn.Module):
             conv2 = conv2.to(*args, **kwargs)
             act = act.to(*args, **kwargs)
             bn = bn.to(*args, **kwargs)
-            self.layers1[i] = (conv1, conv2, act, bn)
+            self.layers[i] = (conv1, conv2, act, bn)
         return self
 
     def forward(self, x):
