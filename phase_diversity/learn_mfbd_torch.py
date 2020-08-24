@@ -807,12 +807,13 @@ class NN(nn.Module):
         count = 0.
         
         #num_data = data_loader.dataset.length()
-        all_alphas = []#np.empty((num_data, jmax))
-        all_num = []#np.empty((num_data, nx, nx))
-        all_DP_conj = []#np.empty((num_data, nx, nx), dtype="complex64")
-        all_den = []#np.empty((num_data, nx, nx))
-        all_psf = []#np.empty((num_data, nx, nx))
-        all_wf = []#np.empty((num_data, nx, nx))
+        if not train:
+            all_alphas = []#np.empty((num_data, jmax))
+            all_num = []#np.empty((num_data, nx, nx))
+            all_DP_conj = []#np.empty((num_data, nx, nx), dtype="complex64")
+            all_den = []#np.empty((num_data, nx, nx))
+            all_psf = []#np.empty((num_data, nx, nx))
+            all_wf = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
             Ds = Ds.to(device)
             diversity = diversity.to(device)
@@ -830,30 +831,35 @@ class NN(nn.Module):
             if train:
                 loss.backward()
                 self.optimizer.step()
+            else:
+                all_alphas.append(alphas.cpu().numpy())
+                all_num.append(num.cpu().numpy())
+                all_den.append(den.cpu().numpy())
+                all_DP_conj.append(DP_conj.cpu().numpy())
+                all_psf.append(psf.cpu().numpy())
+                all_wf.append(wf.cpu().numpy())
+                
             loss_sum += loss.item()
             count += 1
             
-            all_alphas.append(alphas.detach().cpu().numpy())
-            all_num.append(num.detach().cpu().numpy())
-            all_den.append(den.detach().cpu().numpy())
-            all_DP_conj.append(DP_conj.detach().cpu().numpy())
-            all_psf.append(psf.detach().cpu().numpy())
-            all_wf.append(wf.detach().cpu().numpy())
 
             if train:        
                 progress_bar.set_postfix({"lr": self.optimizer.param_groups[0]['lr'], "Training error": loss_sum/count})
             else:
                 progress_bar.set_postfix({"Validation error": loss_sum/count})
             
-        #print("all_num", len(all_num), all_num[0].shape)
-        all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
-        all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
-        all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
-        all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
-        all_psf = np.reshape(np.asarray(all_psf), [-1, 2, nx, nx, 2]) # Complex array
-        all_wf = np.reshape(np.asarray(all_wf), [-1, nx, nx])
-        
-        return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf
+        if train:        
+            return loss_sum/count
+        else:
+            all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
+            all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
+            all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
+            all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
+            all_psf = np.reshape(np.asarray(all_psf), [-1, 2, nx, nx, 2]) # Complex array
+            all_wf = np.reshape(np.asarray(all_wf), [-1, nx, nx])
+            
+            return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf
+            
 
     def save_state(self, state):
         torch.save(state, dir_name + "/state.tar")
