@@ -1488,7 +1488,7 @@ if train:
     try:
         Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_files[0]+"_valid")
         Ds_train = Ds
-        Ds_test = Ds_test[:min(Ds_test.shpe[0], max(1, num_objs//10)), :min(Ds_test.shape[1], num_frames)]
+        Ds_test = Ds_test[:min(Ds_test.shape[0], max(1, num_objs//10)), :min(Ds_test.shape[1], num_frames)]
 
         objs_train = objs
         positions_train = positions
