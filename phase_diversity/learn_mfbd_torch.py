@@ -104,15 +104,15 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 128
     # How many objects to use in training
-    num_objs = 10#0#None
+    num_objs = 100#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
+    batch_size = 128
     n_channels = 32
     
     sum_over_batch = True
@@ -1307,7 +1307,7 @@ class NN(nn.Module):
             #print("diversity", diversities.shape)
             #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #print("diversity", diversity.shape)
-            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP), psf_torch.to_complex(torch.tensor(PP)))#self.deconvolve(Ds_, alphas, diversity)
+            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), psf_torch.to_complex(torch.tensor(PP).to(self.device, dtype=torch.float32)))#self.deconvolve(Ds_, alphas, diversity)
             obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil
