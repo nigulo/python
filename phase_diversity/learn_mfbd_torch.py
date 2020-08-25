@@ -1307,7 +1307,7 @@ class NN(nn.Module):
             #print("diversity", diversities.shape)
             #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #print("diversity", diversity.shape)
-            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), psf_torch.to_complex(torch.tensor(PP).to(self.device, dtype=torch.float32)))#self.deconvolve(Ds_, alphas, diversity)
+            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)))#self.deconvolve(Ds_, alphas, diversity)
             obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil
