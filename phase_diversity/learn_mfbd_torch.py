@@ -86,7 +86,7 @@ train_perc = 0.8
 activation_fn = nn.ReLU
 tt_weight = 0.0#0.001
 
-learning_rate = 1.
+learning_rate = 1e-2
 weight_decay = 0.0
 scheduler_decay = 0.5
 scheduler_iterations = 20
@@ -104,15 +104,15 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 128
+    num_frames = 32
     # How many objects to use in training
-    num_objs = 100#0#None
+    num_objs = 10#0#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 128
+    batch_size = 32
     n_channels = 32
     
     sum_over_batch = True
@@ -482,7 +482,10 @@ class NN(nn.Module):
         self.layers3.append(activation_fn())
         self.layers3.append(nn.Linear(size, jmax*num_frames_input))
         
-        self.optimizer = torch.optim.Adadelta(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        #######################################################################
+        self = self.to(device)
+        
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         
@@ -815,6 +818,18 @@ class NN(nn.Module):
             all_psf = []#np.empty((num_data, nx, nx))
             all_wf = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
+            ###################################################################
+            # DEBUG
+            #if batch_idx == 0:
+            #    for i in np.arange(len(Ds)):
+            #        my_test_plot = plot.plot(nrows=2, ncols=2)
+            #        my_test_plot.colormap(Ds.numpy()[i, 0], [0, 0], show_colorbar=True)
+            #        my_test_plot.colormap(Ds.numpy()[i, 1], [0, 1], show_colorbar=True)
+            #        my_test_plot.colormap(diversity.numpy()[i, 0], [1, 0], show_colorbar=True)
+            #        my_test_plot.colormap(diversity.numpy()[i, 1], [1, 1], show_colorbar=True)
+            #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
+            #        my_test_plot.close()
+            ###################################################################
             Ds = Ds.to(device)
             diversity = diversity.to(device)
             if train:
@@ -831,6 +846,9 @@ class NN(nn.Module):
             if train:
                 loss.backward()
                 self.optimizer.step()
+                #for param in self.parameters():
+                #    print(param.grad.data)
+                #    #print(param.data)
             else:
                 all_alphas.append(alphas.cpu().numpy())
                 all_num.append(num.cpu().numpy())
@@ -1627,7 +1645,6 @@ if train:
     ###########################################################################
     n_test_frames = Ds_test.shape[1] # Necessary to be set (TODO: refactor)
     model = NN(jmax, nx, num_frames, num_objs, pupil, modes)
-    model = model.to(device)
 
     sys.stdout.flush()
 
@@ -1766,7 +1783,6 @@ else:
     ###########################################################################
 
     model = NN(jmax, nx, n_test_frames, num_objs, pupil, modes)
-    model = model.to(device)
 
     model.do_test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
 

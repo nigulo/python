@@ -146,7 +146,6 @@ class test_psf_torch(unittest.TestCase):
 
         image_deconv_expected = psf_.deconvolve(dat_F, alphas = alphas1, gamma=1.0, do_fft=True, fft_shift_before=True, ret_all=False, a_est=None, normalize=False)
 
-        print("D", D.size())
         image_deconv, _, _, _ = psf_torch_.deconvolve(D, alphas_torch)
 
         my_plot = plot.plot(nrows=2, ncols=2)
@@ -162,10 +161,10 @@ class test_psf_torch(unittest.TestCase):
         #diversity = np.tile(psf_.coh_trans_func.get_diversity(), [num_frames, 1, 1])
         diversity = psf_.coh_trans_func.get_diversity()
         diversity = diversity.astype("float32")
-        print("diversity", diversity.shape)
         diversity_torch = torch.from_numpy(diversity)
 
 
+        print("D, alphas, diversity", D.size(), alphas_torch.size(), diversity_torch.size())
         psf_torch_.set_diversity = True
         mfbd_loss, num, den, num_conj, psf, wf = psf_torch_.mfbd_loss(D, alphas_torch, diversity_torch)
         mfbd_loss = mfbd_loss.numpy()
@@ -176,8 +175,42 @@ class test_psf_torch(unittest.TestCase):
         my_plot.save("test_psf_torch_mfbd_loss.png")
         my_plot.close()
         print("mfbd_loss", np.sum(mfbd_loss))
+        
+        #######################################################################
+        # Same test with batch dimension present
+        psf_torch_.set_diversity = True
+        
+        D_batch = D.view(D.size()[0]//2, 2, D.size()[1], D.size()[2])
+        alphas_batch = alphas_torch.unsqueeze(1)
+        diversity_batch = diversity_torch.unsqueeze(0).repeat(num_frames, 1, 1, 1)
+        print("D_batch, alphas_batch, diversity_batch", D_batch.size(), alphas_batch.size(), diversity_batch.size())
+        psf_torch_.set_batch_size(num_frames)
+        mfbd_loss_batch, num_batch, den_batch, num_conj_batch, psf_batch, wf_batch = psf_torch_.mfbd_loss(D_batch, alphas_batch, diversity_batch)
+        mfbd_loss_batch = mfbd_loss_batch.numpy()
 
-        np.testing.assert_almost_equal(D, D_expected, 15)
+        my_plot = plot.plot(nrows=1, ncols=1)
+        my_plot.colormap(mfbd_loss, [0], show_colorbar=True, colorbar_prec=.3)
+            
+        my_plot.save("test_psf_torch_mfbd_loss_batch.png")
+        my_plot.close()
+        
+        np.testing.assert_almost_equal(mfbd_loss, mfbd_loss_batch, 15)
+        np.testing.assert_array_almost_equal(num, num_batch, 6)
+        np.testing.assert_array_almost_equal(den, den_batch, 6)
+        np.testing.assert_array_almost_equal(num_conj, num_conj_batch, 6)
+        np.testing.assert_array_almost_equal(psf.squeeze(), psf_batch.view(num_frames*2, psf.size()[2], psf.size()[3], psf.size()[4]), 15)
+        np.testing.assert_array_almost_equal(wf, wf_batch, 15)
+        #######################################################################
+
+        obj_reconstr, loss = psf_torch_.reconstr_(num_conj, psf_torch.to_complex(den))
+        my_plot = plot.plot(nrows=1, ncols=2)
+        my_plot.colormap(image, [0], show_colorbar=True, colorbar_prec=.3)
+        my_plot.colormap(obj_reconstr.numpy(), [1])
+            
+        my_plot.save("test_psf_torch_reconstr.png")
+        my_plot.close()
+
+        #np.testing.assert_almost_equal(D, D_expected, 15)
 
 
 if __name__ == '__main__':
