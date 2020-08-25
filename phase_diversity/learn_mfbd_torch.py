@@ -106,14 +106,14 @@ if nn_mode == MODE_1:
     # How many frames to use in training
     num_frames = 128
     # How many objects to use in training
-    num_objs = 100#None
+    num_objs = 200#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -172,17 +172,17 @@ images_dir_test = "images_in"#images_in_test"
 sys.path.append('../utils')
 sys.path.append('..')
 
-cuda = torch.cuda.is_available()        
+cuda = torch.cuda.is_available()
 n_gpus_available = torch.cuda.device_count()
 
-device = torch.device(f"cuda:0" if cuda else "cpu")      
+device = torch.device(f"cuda:0" if cuda else "cpu")
 
 if train:
     sys.stdout = open(dir_name + '/log.txt', 'a')
 else:
-    device = torch.device(f"cuda:1" if cuda else "cpu")      
+    device = torch.device(f"cuda:1" if cuda else "cpu")
 
-print(f"Device : {device}")      
+print(f"Device : {device}")
     
 #else:
 #    dir_name = "."
@@ -339,12 +339,13 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.Ds)
 
 
-def weights_init_uniform(m):
+def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1 or classname.find('Conv2d') != -1:
-        n = m.in_features
-        y = 1.0/np.sqrt(n)
-        m.weight.data.uniform_(-y, y)
+        torch.nn.init.kaiming_normal_(m.weight)
+        #n = m.in_features
+        #y = 1.0/np.sqrt(n)
+        #m.weight.data.uniform_(-y, y)
         m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
@@ -379,8 +380,11 @@ class ConvLayer(nn.Module):
             conv1 = conv1.to(*args, **kwargs)
             conv2 = conv2.to(*args, **kwargs)
             act = act.to(*args, **kwargs)
-            bn = bn.to(*args, **kwargs)
+            if bn is not None:
+                bn = bn.to(*args, **kwargs)
             self.layers[i] = (conv1, conv2, act, bn)
+        if self.pool is not None:
+            self.pool = self.pool.to(*args, **kwargs)
         return self
 
     def forward(self, x):
@@ -388,7 +392,7 @@ class ConvLayer(nn.Module):
             conv1, conv2, act, bn = layer
             x1 = conv1(x)
             x2 = conv2(x)
-            x = act(x1 + x2)
+            x = x1 + act(x2)
             if bn is not None:
                 x = bn(x)
         if self.pool is not None:
@@ -489,7 +493,7 @@ class NN(nn.Module):
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         
-        self.apply(weights_init_uniform)
+        self.apply(weights_init)
         self.load_state()
         
     def to(self, *args, **kwargs):
@@ -522,7 +526,7 @@ class NN(nn.Module):
         for layer in self.layers2:
             x = layer(x)
 
-        # We want to use LSQM over the whole batch,
+        # We want to use LSTM over the whole batch,
         # so we make first dimension of size 1
         x = x.unsqueeze(dim=0)
         x, _ = self.lstm(x)
@@ -560,7 +564,7 @@ class NN(nn.Module):
         else:
             loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
 
-        loss = torch.mean(loss)/nx/nx
+        loss = torch.mean(loss)#/nx/nx
 
         return loss, alphas, num, den, num_conj, psf, wf
         
