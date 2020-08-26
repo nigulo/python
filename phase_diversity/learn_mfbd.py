@@ -1948,7 +1948,7 @@ if train:
     for rep in np.arange(0, num_reps):
         
         r = np.random.choice(np.arange(len(datasets)), 1, p=probs)
-        Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets(r)
+        Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets[r]
         
         model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True)
         print("Rep no: " + str(rep))
