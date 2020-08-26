@@ -370,7 +370,8 @@ class ConvLayer(nn.Module):
             self.pool = nn.MaxPool2d(2)
         else:
             self.pool = None
-
+    
+    '''
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
         self.layers = self.layers.to(*args, **kwargs)
@@ -389,6 +390,7 @@ class ConvLayer(nn.Module):
         if self.pool is not None:
             self.pool = self.pool.to(*args, **kwargs)
         return self
+    '''
 
     def forward(self, x):
         for layer in self.layers:
@@ -520,6 +522,7 @@ class NN(nn.Module):
             self.n_epochs_2 = n_epochs_2
             self.val_loss = float("inf")
             self.apply(weights_init)
+            self = self.to(device)
             self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     def init(self):
@@ -528,7 +531,8 @@ class NN(nn.Module):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         for p in self.parameters():
             print(p.name, p.numel())        
-       
+    
+    '''
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
         self.layers1 = self.layers1.to(*args, **kwargs)
@@ -542,6 +546,7 @@ class NN(nn.Module):
         #    self.layers3[i] = self.layers3[i].to(*args, **kwargs)
         self.lstm = self.lstm.to(*args, **kwargs)
         return self
+    '''
     
     def forward(self, data):
 
