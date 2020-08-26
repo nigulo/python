@@ -254,24 +254,24 @@ def load_data(data_file):
             loaded = np.load(f)
         else:
             raise "No data found"
-    Ds = loaded['Ds']
+    Ds = loaded['Ds'][:]
     try:
-        objs = loaded['objs']
+        objs = loaded['objs'][:]
     except:
         objs = None
-    pupil = loaded['pupil']
-    modes = loaded['modes']
-    diversity = loaded['diversity']
+    pupil = loaded['pupil'][:]
+    modes = loaded['modes'][:]
+    diversity = loaded['diversity'][:]
     try:
-        coefs = loaded['alphas']
+        coefs = loaded['alphas'][:]
     except:
         coefs = None
     try:
-        positions = loaded['positions']
+        positions = loaded['positions'][:]
     except:
         positions = None
     try:
-        coords = loaded['coords']
+        coords = loaded['coords'][:]
     except:
         coords = None
     return Ds, objs, pupil, modes, diversity, coefs, positions, coords
