@@ -373,18 +373,19 @@ class ConvLayer(nn.Module):
 
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
-        for i in np.arange(len(self.layers)):
-            layer = self.layers[i]
-            conv1 = layer[0]
-            conv2 = layer[1]
-            act = layer[2]
-            bn = layer[3]
-            conv1 = conv1.to(*args, **kwargs)
-            conv2 = conv2.to(*args, **kwargs)
-            act = act.to(*args, **kwargs)
-            if bn is not None:
-                bn = bn.to(*args, **kwargs)
-            self.layers[i] = nn.ModuleList([conv1, conv2, act, bn])
+        self.layers.to(*args, **kwargs)
+        #for i in np.arange(len(self.layers)):
+        #    layer = self.layers[i]
+        #    conv1 = layer[0]
+        #    conv2 = layer[1]
+        #    act = layer[2]
+        #    bn = layer[3]
+        #    conv1 = conv1.to(*args, **kwargs)
+        #    conv2 = conv2.to(*args, **kwargs)
+        #    act = act.to(*args, **kwargs)
+        #    if bn is not None:
+        #        bn = bn.to(*args, **kwargs)
+        #    self.layers[i] = nn.ModuleList([conv1, conv2, act, bn])
         if self.pool is not None:
             self.pool = self.pool.to(*args, **kwargs)
         return self
@@ -530,12 +531,15 @@ class NN(nn.Module):
        
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
-        for i in np.arange(len(self.layers1)):
-            self.layers1[i] = self.layers1[i].to(*args, **kwargs)
-        for i in np.arange(len(self.layers2)):
-            self.layers2[i] = self.layers2[i].to(*args, **kwargs)
-        for i in np.arange(len(self.layers3)):
-            self.layers3[i] = self.layers3[i].to(*args, **kwargs)
+        self.layers1.to(*args, **kwargs)
+        self.layers2.to(*args, **kwargs)
+        self.layers3.to(*args, **kwargs)
+        #for i in np.arange(len(self.layers1)):
+        #    self.layers1[i] = self.layers1[i].to(*args, **kwargs)
+        #for i in np.arange(len(self.layers2)):
+        #    self.layers2[i] = self.layers2[i].to(*args, **kwargs)
+        #for i in np.arange(len(self.layers3)):
+        #    self.layers3[i] = self.layers3[i].to(*args, **kwargs)
         self.lstm = self.lstm.to(*args, **kwargs)
         return self
     
