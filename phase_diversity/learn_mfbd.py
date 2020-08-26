@@ -1947,7 +1947,7 @@ if train:
     model.set_data(Ds_test, objs_test, diversity, positions_test, train_data=False)
     for rep in np.arange(0, num_reps):
         
-        r = np.random.choice(np.arange(len(datasets)), 1, p=probs)
+        r = np.random.choice(np.arange(len(datasets)), 1, p=probs)[0]
         Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets[r]
         
         model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True)
