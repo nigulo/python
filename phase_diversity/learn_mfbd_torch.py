@@ -103,16 +103,16 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 128
+    num_frames = 32
     # How many objects to use in training
-    num_objs = 200#None
+    num_objs = 10#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 128
-    n_channels = 64
+    batch_size = 32
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -173,12 +173,12 @@ sys.path.append('..')
 cuda = torch.cuda.is_available()
 n_gpus_available = torch.cuda.device_count()
 
-device = torch.device(f"cuda:0" if cuda else "cpu")
+device = torch.device("cuda:0" if cuda else "cpu")
 
 if train:
     sys.stdout = open(dir_name + '/log.txt', 'a')
 else:
-    device = torch.device(f"cuda:1" if cuda else "cpu")
+    device = torch.device("cuda:1" if cuda else "cpu")
 
 print(f"Device : {device}")
     
@@ -353,7 +353,7 @@ class ConvLayer(nn.Module):
         self.batch_normalization = batch_normalization
         self.out_channels = out_channels
         
-        self.layers = []
+        self.layers = nn.ModuleList()
         
         n_channels = in_channels
         for i in np.arange(num_convs):
@@ -365,7 +365,7 @@ class ConvLayer(nn.Module):
                 bn = nn.BatchNorm2d(n_channels)
             else:
                 bn = None
-            self.layers.append((conv1, conv2, act, bn))
+            self.layers.append(nn.ModuleList([conv1, conv2, act, bn]))
         if max_pooling:
             self.pool = nn.MaxPool2d(2)
         else:
@@ -374,20 +374,27 @@ class ConvLayer(nn.Module):
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
         for i in np.arange(len(self.layers)):
-            conv1, conv2, act, bn = self.layers[i]
+            layer = self.layers[i]
+            conv1 = layer[0]
+            conv2 = layer[1]
+            act = layer[2]
+            bn = layer[3]
             conv1 = conv1.to(*args, **kwargs)
             conv2 = conv2.to(*args, **kwargs)
             act = act.to(*args, **kwargs)
             if bn is not None:
                 bn = bn.to(*args, **kwargs)
-            self.layers[i] = (conv1, conv2, act, bn)
+            self.layers[i] = nn.ModuleList([conv1, conv2, act, bn])
         if self.pool is not None:
             self.pool = self.pool.to(*args, **kwargs)
         return self
 
     def forward(self, x):
         for layer in self.layers:
-            conv1, conv2, act, bn = layer
+            conv1 = layer[0]
+            conv2 = layer[1]
+            act = layer[2]
+            bn = layer[3]
             x1 = conv1(x)
             x2 = conv2(x)
             x = x1 + act(x2)
@@ -414,6 +421,7 @@ class NN(nn.Module):
         
         self.i1 = None # See set_data method for meaning
         self.i2 = None # See set_data method for meaning
+        self.data_index = 0
         
         self.hanning = utils.hanning(nx, 10)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
@@ -456,7 +464,7 @@ class NN(nn.Module):
         
         num_defocus_channels = 2
 
-        self.layers1 = []
+        self.layers1 = nn.ModuleList()
 
         l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=9, num_convs=1)
         self.layers1.append(l)
@@ -467,7 +475,7 @@ class NN(nn.Module):
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
         self.layers1.append(l)
 
-        self.layers2 = []
+        self.layers2 = nn.ModuleList()
         
         self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 36*n_channels))
         self.layers2.append(activation_fn())
@@ -479,21 +487,47 @@ class NN(nn.Module):
 
         self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         
-        self.layers3 = []
+        self.layers3 = nn.ModuleList()
         self.layers3.append(nn.Linear(size, size))
         self.layers3.append(activation_fn())
         self.layers3.append(nn.Linear(size, jmax*num_frames_input))
         
         #######################################################################
-        self = self.to(device)
         
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    def save_state(self, state):
+        torch.save(state, dir_name + "/state.tar")
+
+    def load_state(self):
+        try:
+            state = torch.load(dir_name + "/state.tar", map_location=device)
+            self.load_state_dict(state['state_dict'])
+            self.n_epochs_1 = state['n_epochs_1']
+            self.n_epochs_2 = state['n_epochs_2']
+            self.epoch = state['epoch']
+            self.val_loss = state['val_loss']
+            self.i1 = state['i1']
+            self.i2 = state['i2']
+            self.data_index = state['data_index']
+            self = self.to(device)
+            self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            self.optimizer.load_state_dict(state['optimizer_state_dict'])
+        except Exception as e:
+            print(e)
+            print("No state found")
+            self.epoch = 0
+            self.n_epochs_1 = n_epochs_1
+            self.n_epochs_2 = n_epochs_2
+            self.val_loss = float("inf")
+            self.apply(weights_init)
+            self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    def init(self):
+        self.load_state()
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
-        
-        self.apply(weights_init)
-        self.load_state()
-        
+        for p in self.parameters():
+            print(p.name, p.numel())        
+       
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
         for i in np.arange(len(self.layers1)):
@@ -610,8 +644,9 @@ class NN(nn.Module):
         return ret_val
         
 
-    def set_data(self, Ds, objs, diversity, positions, train_perc=train_perc, train_data=True):
+    def set_data(self, datasets, train_data=True):
         if train_data:
+            Ds, objs, diversity, positions = datasets[self.data_index]
             assert(Ds.shape[1] >= self.num_frames)
             #assert(self.num_frames <= Ds.shape[1])
             if self.num_objs is None or self.num_objs <= 0:
@@ -636,13 +671,14 @@ class NN(nn.Module):
                 i1 = self.i1
                 i2 = self.i2
                 self.i2 += self.num_frames
-                full_data_processed = False
                 if self.i2 > Ds.shape[1] - self.num_frames:
                     self.i2 = 0
                     self.i1 += self.num_objs
                     if self.i1 > Ds.shape[0] - self.num_objs:
                         self.i1 = 0
-                        full_data_processed = True
+                        self.data_index += 1
+                        if self.data_index >= len(datasets):
+                            self.data_index = 0
                 
             Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
             objs = objs[i1:i1+self.num_objs]
@@ -695,8 +731,8 @@ class NN(nn.Module):
             '''
             
             self.Ds_train = Dataset(Ds, objs, diversities, positions, obj_ids)
-            return full_data_processed
         else:
+            Ds, objs, diversity, positions = datasets
             Ds = Ds[:, :self.num_frames]
             Ds_validation, objs_validation, diversities_validation, _, obj_ids_validation, positions_validation, _s = convert_data(Ds, objs, diversity, positions)
             med = np.median(Ds_validation, axis=(2, 3), keepdims=True)
@@ -883,25 +919,6 @@ class NN(nn.Module):
             return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf
             
 
-    def save_state(self, state):
-        torch.save(state, dir_name + "/state.tar")
-
-    def load_state(self):
-        try:
-            state = torch.load(dir_name + "/state.tar", map_location=lambda storage, loc: storage)
-            self.load_state_dict(state['state_dict'])       
-            self.n_epochs_1 = state('n_epochs_1')
-            self.n_epochs_2 = state('n_epochs_2')
-            self.epoch = state('epoch')
-            self.val_loss = state('val_loss')
-        except:
-            self.epoch = 0
-            self.n_epochs_1 = n_epochs_1
-            self.n_epochs_2 = n_epochs_2
-            self.val_loss = float("inf")
-            print("No state found")
-        
- 
     def do_train(self):
         jmax = self.jmax
 
@@ -929,8 +946,11 @@ class NN(nn.Module):
                         'n_epochs_2': self.n_epochs_2,
                         'epoch': epoch,
                         'val_loss': val_loss,
+                        'i1': self.i1,
+                        'i2': self.i1,
+                        'data_index': self.data_index,
                         'state_dict': self.state_dict(),
-                        'optimizer': self.optimizer.state_dict()
+                        'optimizer_state_dict': self.optimizer.state_dict()
                     })
                 else:
                     self.load_state()
@@ -1491,7 +1511,7 @@ if train:
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
     
-    datasets.append((Ds, objs, pupil, modes, diversity, true_coefs, positions, coords))
+    datasets.append((Ds, objs, diversity, positions))
     
     for data_file in data_files[1:]:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
@@ -1499,7 +1519,7 @@ if train:
         #Ds = np.concatenate((Ds, Ds3))
         #objs = np.concatenate((objs, objs3))
         #positions = np.concatenate((positions, positions3))
-        datasets.append((Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3))
+        datasets.append((Ds3, objs3, diversity3, positions3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -1531,9 +1551,9 @@ if train:
         print("n_train, n_test", n_train, n_test)
 
         if n_test == len(datasets[-1][0]):
-            Ds_test, objs_test, _, _, _, _, positions_test, _ = datasets.pop()
+            Ds_test, objs_test, _, positions_test = datasets.pop()
         else:
-            Ds_last, objs_last, pupil_last, modes_last, diversity_last, true_coefs_last, positions_last, coords_last = datasets[-1]
+            Ds_last, objs_last, diversity_last, positions_last = datasets[-1]
             Ds_train = Ds_last[:-n_test]
             Ds_test = Ds_last[-n_test:]
             if objs_last is not None:
@@ -1548,7 +1568,7 @@ if train:
             else:
                 positions_train = None
                 positions_test = None
-            datasets[-1] = (Ds_train, objs_train, pupil_last, modes_last, diversity_last, true_coefs_last, positions_train, coords_last)
+            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train)
             
     print("num_frames", Ds.shape[1])
 
@@ -1659,20 +1679,12 @@ if train:
     ###########################################################################
     n_test_frames = Ds_test.shape[1] # Necessary to be set (TODO: refactor)
     model = NN(jmax, nx, num_frames, num_objs, pupil, modes)
+    model.init()
 
-    sys.stdout.flush()
-
-    model.set_data(Ds_test, objs_test, diversity, positions_test, train_data=False)
-    data_index = 0
+    model.set_data((Ds_test, objs_test, diversity, positions_test), train_data=False)
     for rep in np.arange(0, num_reps):
-        if shuffle1:
-            data_index = np.random.choice(np.arange(len(datasets)), 1, p=probs)[0]
-        Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets[data_index]
         
-        if model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True):
-            data_index += 1
-            if data_index >= len(datasets):
-                data_index = 0
+        model.set_data(datasets, train_data=True)
         print("Rep no: " + str(rep))
     
         #model.psf.set_jmax_used(jmax_to_use)
@@ -1806,6 +1818,7 @@ else:
     ###########################################################################
 
     model = NN(jmax, nx, n_test_frames, num_objs, pupil, modes)
+    model.init()
 
     model.do_test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
 
