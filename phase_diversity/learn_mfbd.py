@@ -88,7 +88,6 @@ tt_weight = 0.0#0.001
 
 if nn_mode == MODE_1:
     
-    shuffle0 = False
     shuffle1 = True
     shuffle2 = False
     
@@ -115,7 +114,6 @@ if nn_mode == MODE_1:
     
 elif nn_mode == MODE_2:
 
-    shuffle0 = False
     shuffle1 = False
     shuffle2 = False
     
@@ -150,7 +148,6 @@ elif nn_mode == MODE_2:
 
 else:
     
-    shuffle0 = False
     shuffle1 = True
     shuffle2 = False
     
@@ -181,7 +178,7 @@ else:
     if zero_avg_tiptilt:
         n_test_frames = num_frames
 
-no_shuffle = not shuffle0 and not shuffle2
+no_shuffle = not shuffle2
 
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
@@ -1776,65 +1773,75 @@ class nn_model:
 
 if train:
 
+    datasets = []
+    
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
+    
+    datasets.append((Ds, objs, pupil, modes, diversity, true_coefs, positions, coords))
     
     for data_file in data_files[1:]:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
         Ds3 = Ds3[:,:Ds.shape[1]]
-        Ds = np.concatenate((Ds, Ds3))
-        objs = np.concatenate((objs, objs3))
-        positions = np.concatenate((positions, positions3))
+        #Ds = np.concatenate((Ds, Ds3))
+        #objs = np.concatenate((objs, objs3))
+        #positions = np.concatenate((positions, positions3))
+        datasets.append((Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
     jmax_to_use = 4
 
-    if shuffle0:
-        random_indices = random.choice(Ds.shape[1], size=Ds.shape[1], replace=False)
-        Ds = Ds[:, random_indices]
-
-    #hanning = utils.hanning(nx, 10)
-    #med = np.median(Ds, axis=(3, 4), keepdims=True)
-    #std = np.std(Ds, axis=(3, 4), keepdims=True)
-    #Ds -= med
-    #Ds = hanning.multiply(Ds, axis=3)
-    #Ds += med
-    ##Ds /= std
-    #Ds /= med
+    num_data = 0
+    for d in datasets:
+        d = datasets[i]
+        num_data += len(d[0])
     
     try:
         Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_files[0]+"_valid")
-        Ds_train = Ds
 
         objs_train = objs
         positions_train = positions
 
-        n_train = int(len(Ds))
+        n_train = num_data
         print("validation set: ", data_files[0]+"_valid")
         print("n_train, n_test", len(Ds), len(Ds_test))
     except:
         
-        n_train = int(len(Ds)*train_perc)
-        print("n_train, n_test", n_train, len(Ds) - n_train)
-            
-        Ds_train = Ds[:n_train]
-        #num_frames_valid = num_frames_input*batch_size
-        Ds_test = Ds[n_train:]#, :num_frames_valid]
-        if objs is not None:
-            objs_train = objs[:n_train]
-            objs_test = objs[n_train:]
-        else:
-            objs_train = None
-            objs_test = None
         
-        if positions is not None:
-            positions_train = positions[:n_train]
-            positions_test = positions[n_train:]
-        else:
-            positions_train = None
-            positions_test = None
+        n_train = int(num_data*train_perc)
+        n_test = num_data - n_train
+        n_test = min(len(datasets[-1]), n_test)
+        print("n_train, n_test", n_train, n_test)
 
+        if n_test == len(datasets[-1][0]):
+            Ds_test, objs_test, _, _, _, _, positions_test, _ = datasets.pop()
+        else:
+            Ds_last, objs_last, pupil_last, modes_last, diversity_last, true_coefs_last, positions_last, coords_last = datasets[-1]
+            Ds_train = Ds_last[:-n_test]
+            Ds_test = Ds_last[-n_test:]
+            if objs_last is not None:
+                objs_train = objs_last[:-n_test]
+                objs_test = objs_last[-n_test:]
+            else:
+                objs_train = None
+                objs_test = None
+            if positions_last is not None:
+                positions_train = positions_last[:-n_test]
+                positions_test = positions_last[-n_test:]
+            else:
+                positions_train = None
+                positions_test = None
+            datasets[-1] = (Ds_train, objs_train, pupil_last, modes_last, diversity_last, true_coefs_last, positions_train, coords_last)
+            
     print("num_frames", Ds.shape[1])
+
+    probs = np.empty(len(datasets), dtype=float)
+    for d in datasets:
+        probs[i] = len(d[0])
+    
+    probs /= np.sum(probs)
+    print("probs", probs, np.sum(probs))
+    
 
     #if coords is not None:
     #    coords_test = coords[n_train:]
@@ -1939,6 +1946,10 @@ if train:
 
     model.set_data(Ds_test, objs_test, diversity, positions_test, train_data=False)
     for rep in np.arange(0, num_reps):
+        
+        r = np.random.choice(np.arange(len(datasets)), 1, p=probs)
+        Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets(r)
+        
         model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True)
         print("Rep no: " + str(rep))
     
