@@ -1793,7 +1793,6 @@ if train:
 
     num_data = 0
     for d in datasets:
-        d = datasets[i]
         num_data += len(d[0])
     
     try:
@@ -1836,7 +1835,8 @@ if train:
     print("num_frames", Ds.shape[1])
 
     probs = np.empty(len(datasets), dtype=float)
-    for d in datasets:
+    for i in range(len(datasets)):
+        d = datasets[i]
         probs[i] = len(d[0])
     
     probs /= np.sum(probs)
