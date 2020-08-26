@@ -373,7 +373,7 @@ class ConvLayer(nn.Module):
 
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
-        self.layers.to(*args, **kwargs)
+        self.layers = self.layers.to(*args, **kwargs)
         #for i in np.arange(len(self.layers)):
         #    layer = self.layers[i]
         #    conv1 = layer[0]
@@ -531,9 +531,9 @@ class NN(nn.Module):
        
     def to(self, *args, **kwargs):
         self = super().to(*args, **kwargs)
-        self.layers1.to(*args, **kwargs)
-        self.layers2.to(*args, **kwargs)
-        self.layers3.to(*args, **kwargs)
+        self.layers1 = self.layers1.to(*args, **kwargs)
+        self.layers2 = self.layers2.to(*args, **kwargs)
+        self.layers3 = self.layers3.to(*args, **kwargs)
         #for i in np.arange(len(self.layers1)):
         #    self.layers1[i] = self.layers1[i].to(*args, **kwargs)
         #for i in np.arange(len(self.layers2)):
