@@ -103,16 +103,16 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 128
     # How many objects to use in training
-    num_objs = 10#None
+    num_objs = 200#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
-    n_channels = 32
+    batch_size = 128
+    n_channels = 64
     
     sum_over_batch = True
     
