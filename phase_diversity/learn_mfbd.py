@@ -88,7 +88,7 @@ tt_weight = 0.0#0.001
 
 if nn_mode == MODE_1:
     
-    shuffle1 = True
+    shuffle1 = False
     shuffle2 = False
     
     num_reps = 1000
@@ -822,20 +822,22 @@ class nn_model:
                 i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
             else:
                 if self.i1 is None:
-                    self.i1 = self.num_objs * random.randint(0, Ds.shape[0]//self.num_objs)
+                    self.i1 = 0#self.num_objs * random.randint(0, Ds.shape[0]//self.num_objs)
                 if self.i2 is None:
-                    self.i2 = self.num_frames * random.randint(0, Ds.shape[1]//self.num_frames)
+                    self.i2 = 0#self.num_frames * random.randint(0, Ds.shape[1]//self.num_frames)
                 print("i1, i2", self.i1, self.i2)
                 # No shuffleing, but shift the used data window
                 # along frames and objects
                 i1 = self.i1
                 i2 = self.i2
                 self.i2 += self.num_frames
+                full_data_processed = False
                 if self.i2 > Ds.shape[1] - self.num_frames:
                     self.i2 = 0
                     self.i1 += self.num_objs
                     if self.i1 > Ds.shape[0] - self.num_objs:
                         self.i1 = 0
+                        full_data_processed = True
                 
             Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
             objs = objs[i1:i1+self.num_objs]
@@ -917,6 +919,7 @@ class nn_model:
             self.obj_ids_train = self.obj_ids[:n_train]
             self.obj_ids_validation = self.obj_ids[n_train:n_train+n_validation]
             '''
+            return full_data_processed
         else:
             Ds = Ds[:, :self.num_frames]
             self.Ds_validation, self.objs_validation, self.diversities_validation, _, self.obj_ids_validation, _, _s = convert_data(Ds, objs, diversity, positions)
@@ -1945,12 +1948,16 @@ if train:
     sys.stdout.flush()
 
     model.set_data(Ds_test, objs_test, diversity, positions_test, train_data=False)
+    data_index = 0
     for rep in np.arange(0, num_reps):
+        if shuffle1:
+            data_index = np.random.choice(np.arange(len(datasets)), 1, p=probs)[0]
+        Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets[data_index]
         
-        r = np.random.choice(np.arange(len(datasets)), 1, p=probs)[0]
-        Ds_train, objs_train, _, _, _, _, positions_train, _ = datasets[r]
-        
-        model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True)
+        if model.set_data(Ds_train, objs_train, diversity, positions_train, train_data=True):
+            data_index += 1
+            if data_index >= len(datasets):
+                data_index = 0
         print("Rep no: " + str(rep))
     
         #model.psf.set_jmax_used(jmax_to_use)
