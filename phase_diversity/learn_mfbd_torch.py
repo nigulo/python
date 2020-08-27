@@ -848,10 +848,14 @@ class NN(nn.Module):
                         alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
-    def do_epoch(self, data_loader, train=True, prefix="Training error" if train else "Validation error"):
+    def do_epoch(self, data_loader, train=True, use_prefix=True):
+        prefix = None
         if train:
+            prefix="Training error"
             self.train()
         else:
+            if use_prefix:
+                prefix="Validation error"
             self.eval()
         progress_bar = tqdm.tqdm(data_loader, file=sys.stdout)
         
@@ -1008,7 +1012,7 @@ class NN(nn.Module):
         n_test = min(num_objs, 1)
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False, prefix=None)
+            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
@@ -1345,7 +1349,7 @@ class NN(nn.Module):
             obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil
-            psfs = fft.ifftshift(fft.ifft2(psfs).real, axes=(2, 3))
+            psfs = fft.ifftshift(fft.ifft2(fft.fftshift(psfs, axes=(2, 3))).real, axes=(2, 3))
             
 
             if estimate_full_image:
@@ -1391,7 +1395,7 @@ class NN(nn.Module):
                             my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
                             my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
                             my_test_plot.colormap(wfs[j], [1, 1], show_colorbar=True)
-                            my_test_plot.colormap(np.abs(wf_true[j]-wf[j]), [1, 2], show_colorbar=True)
+                            my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
                             my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
                             my_test_plot.close()
 
