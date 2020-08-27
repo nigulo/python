@@ -1325,8 +1325,8 @@ class NN(nn.Module):
                             #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                         if j % batch_size == 0:
-                            DP = nums_conj[j//batch_size]
-                            PP = dens[j//batch_size]
+                            DP += nums_conj[j//batch_size]
+                            PP += dens[j//batch_size]
                         psfs.append(psf[j])
                         wfs.append(wf[j])
             Ds_ = np.asarray(Ds_)
