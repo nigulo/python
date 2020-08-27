@@ -1328,8 +1328,8 @@ class NN(nn.Module):
                             DP = nums_conj[j]
                             PP = dens[j]
                         else:
-                            assert(nums_conj[j] == DP)
-                            assert(dens[j] == PP)
+                            np.testing.assert_array_almost_equal(nums_conj[j], DP, 10)
+                            np.testing.assert_array_almost_equal(dens[j], PP, 10)
                         psfs.append(psf[j])
                         wfs.append(wf[j])
             Ds_ = np.asarray(Ds_)
