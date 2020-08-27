@@ -88,7 +88,7 @@ tt_weight = 0.0#0.001
 
 learning_rate = 1e-4
 weight_decay = 0.0
-scheduler_decay = 0.5
+scheduler_decay = 0.9
 scheduler_iterations = 20
 
 
