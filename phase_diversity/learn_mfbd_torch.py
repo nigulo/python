@@ -957,7 +957,7 @@ class NN(nn.Module):
                         'epoch': epoch,
                         'val_loss': val_loss,
                         'i1': self.i1,
-                        'i2': self.i1,
+                        'i2': self.i2,
                         'data_index': self.data_index,
                         'state_dict': self.state_dict(),
                         'optimizer_state_dict': self.optimizer.state_dict()
@@ -1008,7 +1008,7 @@ class NN(nn.Module):
         n_test = min(num_objs, 1)
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False)
+            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False, prefix=None)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
