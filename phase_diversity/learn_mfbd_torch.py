@@ -99,7 +99,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 5
+    n_epochs_2 = 2
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -469,11 +469,11 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=9, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=7, num_convs=1)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=7)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=5)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=5)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
         self.layers1.append(l)
@@ -1477,11 +1477,11 @@ class NN(nn.Module):
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
 
             plot_loss_diffs = len(loss_diffs) > 0
-            num_cols = 3
+            num_cols = 2
             if plot_loss_diffs:
                 num_cols += 1
                 
-            my_test_plot = plot.plot(nrows=1, ncols=num_cols, size=plot.default_size(len(full_obj), len(full_obj)))
+            my_test_plot = plot.plot(nrows=1, ncols=num_cols, size=plot.default_size(len(full_obj)*2, len(full_obj)*2))
             my_test_plot.set_default_cmap(cmap_name="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
             min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
@@ -1490,7 +1490,7 @@ class NN(nn.Module):
             #my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
             my_test_plot.colormap(full_reconstr_true, [0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
             my_test_plot.colormap(full_reconstr, [1])#, vmin=min_val, vmax=max_val)
-            my_test_plot.colormap(full_D, [2])
+            #my_test_plot.colormap(full_D, [2])
             
             my_test_plot.set_axis_title([0], "MOMFBD")
             my_test_plot.set_axis_title([1], "Neural network")
@@ -1501,8 +1501,8 @@ class NN(nn.Module):
                 loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
                 my_test_plot.set_default_cmap(cmap_name="bwr")
-                my_test_plot.colormap(dat=loss_diffs, ax_index=[3], vmin=-max_val, vmax=max_val, show_colorbar=True)
-                my_test_plot.set_axis_title([3], "Losses")
+                my_test_plot.colormap(dat=loss_diffs, ax_index=[num_cols-1], vmin=-max_val, vmax=max_val, show_colorbar=True)
+                my_test_plot.set_axis_title([num_cols-1], "Losses")
             
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
