@@ -1246,7 +1246,7 @@ class NN(nn.Module):
         psf = fft.ifftshift(psf, axes=(2, 3))
             
         #Ds *= std
-        Ds *= med
+        #Ds *= med
         #Ds += med
         
         end = time.time()
@@ -1308,8 +1308,8 @@ class NN(nn.Module):
             #DFs = []
             Ds_ = []
             alphas = []
-            DP = 0.
-            PP = 0.
+            DP = np.zeros_like(nums_conj[0])
+            PP = np.zeros_like(dens[0])
             psfs = []
             wfs = []
             print("nums, dens, psf, wf", nums_conj.shape, dens.shape, psf.shape, wf.shape)
