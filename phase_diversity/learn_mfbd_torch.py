@@ -86,7 +86,7 @@ train_perc = 0.8
 activation_fn = nn.ReLU
 tt_weight = 0.0#0.001
 
-learning_rate = 1e-2
+learning_rate = 1e-4
 weight_decay = 0.0
 scheduler_decay = 0.5
 scheduler_iterations = 20
@@ -848,7 +848,7 @@ class NN(nn.Module):
                         alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
-    def do_epoch(self, data_loader, train=True):
+    def do_epoch(self, data_loader, train=True, prefix="Training error" if train else "Validation error"):
         if train:
             self.train()
         else:
@@ -911,9 +911,10 @@ class NN(nn.Module):
             
 
             if train:        
-                progress_bar.set_postfix({"lr": self.optimizer.param_groups[0]['lr'], "Training error": loss_sum/count})
+                progress_bar.set_postfix({"lr": self.optimizer.param_groups[0]['lr'], prefix: loss_sum/count})
             else:
-                progress_bar.set_postfix({"Validation error": loss_sum/count})
+                if prefix is not None:
+                    progress_bar.set_postfix({prefix: loss_sum/count})
             
         if train:        
             return loss_sum/count
