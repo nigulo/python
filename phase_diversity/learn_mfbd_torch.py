@@ -318,23 +318,96 @@ def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None)
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, Ds, objs, diversities, positions, obj_ids):
+    #def __init__(self, Ds, objs, diversities, positions, obj_ids):
+    def __init__(self, datasets):
         super(Dataset, self).__init__()
         
-        self.Ds = Ds
-        self.objs = objs
-        self.diversities = diversities
-        self.positions = positions
-        self.obj_ids = obj_ids
+        self.datasets = datasets
+        
+        self.tota_num_rows = 0
+        self.num_rows = np.zeros(len(datasets))
+        for i in range(len(datasets)):
+            Ds = datasets[i][0]
+            num_objects = Ds.shape[0]
+            num_frames = Ds.shape[1]
+            self.num_rows[i] = (num_frames-num_frames_input+1)*num_objects
+            self.total_num_rows += self.num_rows[i]
+        
+        
+        nx = datasets[0][0].shape[3]
+        self.hanning = utils.hanning(nx, 10)
+        
                
     def __getitem__(self, index):
-        return self.Ds[index].astype('float32'), self.diversities[index].astype('float32')
+        for data_index in range(len(datasets)):
+            if self.num_rows[data_index] >= index:
+                break
+            index -= self.num_rows[data_index]
+
+        Ds, objs, diversity, positions = self.datasets[data_index]
+
+        num_frames = Ds.shape[1]
+        
+        obj_index = index//(num_frames-num_frames_input+1)
+        frame_index = index % (num_frames-num_frames_input+1)
+        
+        Ds_out = Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :]
+        Ds_out = np.reshape((Ds_out, 2*num_frames_input, Ds.shape[3], Ds.shape[4]))
+
+
+        if diversity is not None:
+            diversities_out = np.zeros((Ds.shape[2], Ds.shape[3], Ds.shape[4])).astype('float32')
+            if positions is None:
+                if len(diversity.shape) == 3:
+                    # Diversities both for focus and defocus image
+                    #diversity_out[k, :, :, 0] = diversity_in[0]
+                    for div_i in np.arange(diversity.shape[0]):
+                        diversities_out[1, :, :] += diversity[div_i]
+                else:
+                    assert(len(diversity.shape) == 2)
+                    # Just a defocus
+                    diversities_out[1, :, :] = diversity
+            else:
+                assert(len(diversity.shape) == 5)
+                #for div_i in np.arange(diversity_in.shape[2]):
+                #    #diversity_out[k, :, :, 0] = diversity_in[positions[i, 0], positions[i, 1], 0]
+                #    diversity_out[k, :, :, 1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
+                #    #diversity_out[k, :, :, 1] = diversity_in[positions[i, 0], positions[i, 1], 1]
+                diversities_out[1, :, :] += diversity[positions[obj_index, 0], positions[obj_index, 1], 1]
+        else:
+            diversities_out  = None
+
+        med = np.median(Ds_out, axis=(1, 2), keepdims=True)
+        #std = np.std(Ds, axis=(1, 2), keepdims=True)
+        Ds_out -= med
+        Ds_out = self.hanning.multiply(Ds_out, axis=1)
+        Ds_out += med
+        ##Ds /= std
+        Ds_out /= med
+        
+        return Ds_out.astype('float32'), diversities_out
         
     def __len__(self):
-        return len(self.Ds)
+        return self.total_num_rows
     
     def length(self):
-        return len(self.Ds)
+        return self.total_num_rows
+
+    def get_obj_data(self, index):
+        obj_index = 0
+        for data_index in range(len(self.datasets)):
+            if self.num_rows[data_index] >= index:
+                break
+            index -= self.num_rows[data_index]
+            obj_index += self.datasets[data_index][0].shape[0]
+
+        Ds, objs, diversity, positions, coords = self.datasets[data_index]
+
+        num_frames = Ds.shape[1]
+        
+        obj_index += index//(num_frames-num_frames_input+1)
+        
+        return obj_index, objs[obj_index], positions[obj_index], coords[obj_index]
 
 
 def weights_init(m):
@@ -655,6 +728,13 @@ class NN(nn.Module):
 
     def set_data(self, datasets, train_data=True):
         if train_data:
+            self.Ds_train = Dataset(datasets)
+        else:
+            self.Ds_validation = Dataset(datasets)
+
+    '''
+    def set_data(self, datasets, train_data=True):
+        if train_data:
             Ds, objs, diversity, positions = datasets[self.data_index]
             assert(Ds.shape[1] >= self.num_frames)
             #assert(self.num_frames <= Ds.shape[1])
@@ -753,7 +833,7 @@ class NN(nn.Module):
             Ds_validation /= med
             
             self.Ds_validation = Dataset(Ds_validation, objs_validation, diversities_validation, positions_validation, obj_ids_validation)
-        
+    '''
 
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None, tt=None):
         unique_obj_ids = np.unique(obj_ids)
@@ -1028,22 +1108,22 @@ class NN(nn.Module):
         obj_ids_used = []
         objs_reconstr = []
         i = 0
-        while len(obj_ids_used) < n_test and i < len(self.Ds_train.objs):
+        while len(obj_ids_used) < n_test and i < self.Ds_train.length():
             
-            obj = self.Ds_train.objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+            obj_index, obj, _, _ = self.Ds_train.get_obj_data(i)#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
 
             ###################################################################            
             # Just to plot results only for different objects
             for obj_id in obj_ids_used:
-                if obj_id == self.Ds_train.obj_ids[i]:
+                if obj_id == obj_index:
                     found = True
                     break
             if found:
                 i += 1
                 continue
             ###################################################################            
-            obj_ids_used.append(self.Ds_train.obj_ids[i])
+            obj_ids_used.append(obj_index)
 
             #DF = np.zeros((num_frames_input, 2, self.nx, self.nx), dtype="complex")
             ##DF = np.zeros((num_frames_input, 2, 2*self.pupil.shape[0]-1, 2*self.pupil.shape[0]-1), dtype="complex")
@@ -1056,19 +1136,17 @@ class NN(nn.Module):
             #    DF[l, 1] = fft.fft2(D_d)
                 
             DFs = []
-            Ds_ = []
             alphas = []
             if pred_alphas is not None:
-                for j in np.arange(i, len(self.Ds_train.objs)):
-                    if self.Ds_train.obj_ids[j] == self.Ds_train.obj_ids[i]:
+                for j in np.arange(i, self.Ds_train.length()):
+                    if self.Ds_train.get_obj_data(j)[0] == obj_index:
                         for l in np.arange(num_frames_input):
-                            D = self.Ds_train.Ds[j, 2*l, :, :]
-                            D_d = self.Ds_train.Ds[j, 2*l+1, :, :]
+                            D = self.Ds_train[j][0][2*l, :, :]
+                            D_d = self.Ds_train[j][0][2*l+1, :, :]
                             #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
                             DF_d = fft.fft2(D_d)
-                            Ds_.append(self.Ds_train.Ds[j, 2*l:2*l+2, :, :])
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                             if len(alphas) > 32:
@@ -1085,7 +1163,7 @@ class NN(nn.Module):
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             if pred_alphas is not None:
-                diversity = self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
+                diversity = self.Ds_train[i][1]#self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 #obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
@@ -1115,14 +1193,15 @@ class NN(nn.Module):
                 #my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
-                my_test_plot.colormap(self.Ds_train.Ds[i, 0, :, :], [row, 0])
+                Ds = self.Ds_train.Ds[i][0]
+                my_test_plot.colormap(Ds[0, :, :], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, 0, :, :], [row, 1])
-                my_test_plot.colormap(np.abs(self.Ds_train.Ds[i, 0, :, :] - pred_Ds[0, 0, :, :]), [row, 2])
+                my_test_plot.colormap(np.abs(Ds[0, :, :] - pred_Ds[0, 0, :, :]), [row, 2])
                 #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 0], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 0]), [row, 2])
                 row += 1
-                my_test_plot.colormap(self.Ds_train.Ds[i, 1, :, :], [row, 0])
+                my_test_plot.colormap(Ds[1, :, :], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, 1, :, :], [row, 1])
-                my_test_plot.colormap(np.abs(self.Ds_train.Ds[i, 1, :, :] - pred_Ds[0, 1, :, :]), [row, 2])
+                my_test_plot.colormap(np.abs(Ds[1, :, :] - pred_Ds[0, 1, :, :]), [row, 2])
                 #my_test_plot.colormap(np.abs(misc.sample_image(self.Ds[i, :, :, 1], (2.*self.pupil.shape[0] - 1)/nx) - pred_Ds[0, :, :, 1]), [row, 2])
 
             my_test_plot.save(f"{dir_name}/train{i}.png")
@@ -1526,7 +1605,7 @@ if train:
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
     
-    datasets.append((Ds, objs, diversity, positions))
+    datasets.append((Ds, objs, diversity, positions, coords))
     
     for data_file in data_files[1:]:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
@@ -1534,7 +1613,7 @@ if train:
         #Ds = np.concatenate((Ds, Ds3))
         #objs = np.concatenate((objs, objs3))
         #positions = np.concatenate((positions, positions3))
-        datasets.append((Ds3, objs3, diversity3, positions3))
+        datasets.append((Ds3, objs3, diversity3, positions3, coords3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -1696,10 +1775,10 @@ if train:
     model = NN(jmax, nx, num_frames, num_objs, pupil, modes)
     model.init()
 
-    model.set_data((Ds_test, objs_test, diversity, positions_test), train_data=False)
+    model.set_data([(Ds_test, objs_test, diversity, positions_test, coords)], train_data=False)
+    model.set_data(datasets, train_data=True)
     for rep in np.arange(0, num_reps):
         
-        model.set_data(datasets, train_data=True)
         print("Rep no: " + str(rep))
     
         #model.psf.set_jmax_used(jmax_to_use)
