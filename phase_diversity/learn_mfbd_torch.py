@@ -103,15 +103,13 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
-    # How many objects to use in training
-    num_objs = 10#None
+    num_frames = 128
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
+    batch_size = 128
     n_channels = 32
     
     sum_over_batch = True
@@ -133,8 +131,6 @@ elif nn_mode == MODE_2:
     
     # How many frames to use in training
     num_frames = 256
-    # How many objects to use in training
-    num_objs = 80#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
@@ -238,83 +234,6 @@ def load_data(data_file):
     except:
         coords = None
     return Ds, objs, pupil, modes, diversity, coefs, positions, coords
-
-
-'''
-    Ds_in: [num_objs, num_frames, 2, nx, nx]
-    
-    Ds_out:  [num_objs*(num_frames-num_frames_input+1), 2*num_frames_input, nx, nx]
-'''
-def convert_data(Ds_in, objs_in, diversity_in=None, positions=None, coords=None):
-    assert(Ds_in.shape[2] == 2)
-    assert(Ds_in.shape[0] == objs_in.shape[0])
-    num_objects = Ds_in.shape[0]
-    num_frames = Ds_in.shape[1]
-    Ds_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds_in.shape[2]*num_frames_input, Ds_in.shape[3], Ds_in.shape[4]))
-    if objs_in is not None:
-        objs_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, objs_in.shape[1], objs_in.shape[2]))
-    else:
-        objs_out  = None
-    if diversity_in is not None:
-        diversity_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, Ds_in.shape[2], Ds_in.shape[3], Ds_in.shape[4]))
-    else:
-        diversity_out = None
-    ids = np.zeros((num_frames-num_frames_input+1)*num_objects, dtype='int')
-    positions_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
-    coords_out = np.zeros(((num_frames-num_frames_input+1)*num_objects, 2), dtype='int')
-        
-    k = 0
-    for i in np.arange(num_objects):
-        l = 0
-        Ds_k = np.zeros((Ds_in.shape[2]*num_frames_input, Ds.shape[3], Ds_in.shape[4]))
-        diversity_k = np.zeros((Ds_in.shape[2], Ds_in.shape[3], Ds_in.shape[4]))
-        for j in np.arange(num_frames):
-            Ds_k[2*l, :, :] = Ds_in[i, j, 0, :, :]
-            Ds_k[2*l+1, :, :] = Ds_in[i, j, 1, :, :]
-            if diversity_out is not None and l == 0:
-                if positions is None:
-                    if len(diversity_in.shape) == 3:
-                        # Diversities both for focus and defocus image
-                        #diversity_out[k, :, :, 0] = diversity_in[0]
-                        for div_i in np.arange(diversity_in.shape[0]):
-                            diversity_k[1, :, :] += diversity_in[div_i]
-                    else:
-                        assert(len(diversity_in.shape) == 2)
-                        # Just a defocus
-                        diversity_k[1, :, :] = diversity_in
-                else:
-                    assert(len(diversity_in.shape) == 5)
-                    #for div_i in np.arange(diversity_in.shape[2]):
-                    #    #diversity_out[k, :, :, 0] = diversity_in[positions[i, 0], positions[i, 1], 0]
-                    #    diversity_out[k, :, :, 1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
-                    #    #diversity_out[k, :, :, 1] = diversity_in[positions[i, 0], positions[i, 1], 1]
-                    diversity_k[1, :, :] += diversity_in[positions[i, 0], positions[i, 1], 1]
-            l += 1
-            if l >= num_frames_input:
-                Ds_out[k] = Ds_k
-                if diversity_out is not None:
-                    diversity_out[k] = diversity_k
-                if objs_out is not None:
-                    objs_out[k] = objs_in[i]
-                ids[k] = i
-                if positions is not None:
-                    positions_out[k] = positions[i]
-                if coords is not None:
-                    coords_out[k] = coords[i]
-                l = 0
-                k += 1
-                Ds_k = np.zeros((Ds_in.shape[2]*num_frames_input, Ds.shape[3], Ds_in.shape[4]))
-                diversity_k = np.zeros((Ds_in.shape[2], Ds_in.shape[3], Ds_in.shape[4]))
-    Ds_out = Ds_out[:k]
-    if objs_out is not None:
-        objs_out = objs_out[:k]
-    if diversity_out is not None:
-        diversity_out = diversity_out[:k]
-    ids = ids[:k]
-    positions_out = positions_out[:k]
-    coords_out = coords_out[:k]
-    #assert(k == (num_frames-num_frames_input+1)*num_objects)
-    return Ds_out, objs_out, diversity_out, num_frames - num_frames_input + 1, ids, positions_out, coords_out
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -531,7 +450,7 @@ class ConvLayer(nn.Module):
 
 
 class NN(nn.Module):
-    def __init__(self, jmax, nx, num_frames, num_objs, pupil, modes):
+    def __init__(self, jmax, nx, num_frames, pupil, modes):
         super(NN, self).__init__()
 
         self.jmax = jmax
@@ -541,7 +460,6 @@ class NN(nn.Module):
         
         self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
-        self.num_objs = num_objs
         
         self.i1 = None # See set_data method for meaning
         self.i2 = None # See set_data method for meaning
@@ -780,86 +698,6 @@ class NN(nn.Module):
         else:
             self.Ds_validation = Dataset(datasets)
 
-    '''
-    def set_data(self, datasets, train_data=True):
-        if train_data:
-            Ds, objs, diversity, positions = datasets[self.data_index]
-            assert(Ds.shape[1] >= self.num_frames)
-            #assert(self.num_frames <= Ds.shape[1])
-            if self.num_objs is None or self.num_objs <= 0:
-                self.num_objs = Ds.shape[0]
-            self.num_objs = min(self.num_objs, Ds.shape[0])
-            #assert(self.num_objs <= Ds.shape[0])
-            assert(Ds.shape[2] == 2)
-            if objs is None:
-                # Just generate dummy array in case we don't have true object data
-                objs = np.zeros((Ds.shape[0], Ds.shape[3], Ds.shape[4]))
-            if shuffle1:
-                i1 = random.randint(0, Ds.shape[0] + 1 - self.num_objs)
-                i2 = random.randint(0, Ds.shape[1] + 1 - self.num_frames)
-            else:
-                if self.i1 is None:
-                    self.i1 = 0#self.num_objs * random.randint(0, Ds.shape[0]//self.num_objs)
-                if self.i2 is None:
-                    self.i2 = 0#self.num_frames * random.randint(0, Ds.shape[1]//self.num_frames)
-                print("i1, i2", self.i1, self.i2)
-                # No shuffleing, but shift the used data window
-                # along frames and objects
-                i1 = self.i1
-                i2 = self.i2
-                self.i2 += self.num_frames
-                if self.i2 > Ds.shape[1] - self.num_frames:
-                    self.i2 = 0
-                    self.i1 += self.num_objs
-                    if self.i1 > Ds.shape[0] - self.num_objs:
-                        self.i1 = 0
-                        self.data_index += 1
-                        if self.data_index >= len(datasets):
-                            self.data_index = 0
-                
-            Ds = Ds[i1:i1+self.num_objs, i2:i2+self.num_frames]
-            objs = objs[i1:i1+self.num_objs]
-            if positions is not None:
-                positions = positions[i1:i1+self.num_objs]
-        
-            Ds, objs, diversities, num_frames, obj_ids, positions, _s = convert_data(Ds, objs, diversity, positions)
-            
-            med = np.median(Ds, axis=(2, 3), keepdims=True)
-            #std = np.std(Ds, axis=(1, 2), keepdims=True)
-            Ds -= med
-            Ds = self.hanning.multiply(Ds, axis=2)
-            Ds += med
-            ##Ds /= std
-            Ds /= med
-            
-                        
-            if shuffle2 and (not sum_over_batch or batch_size == 1):
-                # Shuffle the data
-                random_indices = random.choice(len(Ds), size=len(Ds), replace=False)
-                Ds = Ds[random_indices]
-                if objs is not None:
-                    objs = objs[random_indices]
-                if diversities is not None:
-                    diversities = diversities[random_indices]
-                obj_ids = obj_ids[random_indices]
-                positions = positions[random_indices]
-
-            
-            self.Ds_train = Dataset(Ds, objs, diversities, positions, obj_ids)
-        else:
-            Ds, objs, diversity, positions = datasets
-            Ds = Ds[:, :self.num_frames]
-            Ds_validation, objs_validation, diversities_validation, _, obj_ids_validation, positions_validation, _s = convert_data(Ds, objs, diversity, positions)
-            med = np.median(Ds_validation, axis=(2, 3), keepdims=True)
-            #std = np.std(Ds, axis=(1, 2), keepdims=True)
-            Ds_validation -= med
-            Ds_validation = self.hanning.multiply(Ds_validation, axis=2)
-            Ds_validation += med
-            ##Ds /= std
-            Ds_validation /= med
-            
-            self.Ds_validation = Dataset(Ds_validation, objs_validation, diversities_validation, positions_validation, obj_ids_validation)
-    '''
 
     def group_per_obj(self, Ds, alphas, diversities, obj_ids, DD_DP_PP=None, tt=None):
         unique_obj_ids = np.unique(obj_ids)
@@ -1115,7 +953,7 @@ class NN(nn.Module):
         
         #######################################################################
         # Plot some of the training data results
-        n_test = min(num_objs, 1)
+        n_test = 1
 
         if nn_mode == MODE_1:
             _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
@@ -1659,7 +1497,7 @@ if train:
     
     try:
         Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_files[0]+"_valid")
-        n_test = min(Ds_test.shape[0], max(1, num_objs//10))
+        n_test = min(Ds_test.shape[0], 10)
         Ds_test = Ds_test[:n_test, :min(Ds_test.shape[1], num_frames)]
         objs_test = objs_test[:n_test]
         positions_test = positions_test[:n_test]
@@ -1812,7 +1650,7 @@ if train:
 
     ###########################################################################
     n_test_frames = Ds_test.shape[1] # Necessary to be set (TODO: refactor)
-    model = NN(jmax, nx, num_frames, num_objs, pupil, modes)
+    model = NN(jmax, nx, num_frames, pupil, modes)
     model.init()
 
     model.set_data([(Ds_test, objs_test, diversity, positions_test, coords)], train_data=False)
@@ -1951,7 +1789,7 @@ else:
     my_test_plot.close()
     ###########################################################################
 
-    model = NN(jmax, nx, n_test_frames, num_objs, pupil, modes)
+    model = NN(jmax, nx, n_test_frames, pupil, modes)
     model.init()
 
     model.do_test((Ds, objs, diversity, positions, coords), "test", true_coefs=true_coefs)
