@@ -103,16 +103,16 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 128
+    num_frames = 32
     # How many objects to use in training
-    num_objs = 200#None
+    num_objs = 10#None
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 128
-    n_channels = 64
+    batch_size = 32
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -324,12 +324,18 @@ class Dataset(torch.utils.data.Dataset):
         
         self.datasets = datasets
         
-        self.tota_num_rows = 0
-        self.num_rows = np.zeros(len(datasets))
+        self.total_num_rows = 0
+        self.num_rows = np.zeros(len(datasets), dtype=int)
+        self.num_frames = None
+        self.num_objs = 0
         for i in range(len(datasets)):
             Ds = datasets[i][0]
             num_objects = Ds.shape[0]
+            self.num_objs += num_objects
             num_frames = Ds.shape[1]
+            if self.num_frames is None:
+                self.num_frames = num_frames
+            assert(self.num_frames >= num_frames)
             self.num_rows[i] = (num_frames-num_frames_input+1)*num_objects
             self.total_num_rows += self.num_rows[i]
         
@@ -344,7 +350,7 @@ class Dataset(torch.utils.data.Dataset):
                 break
             index -= self.num_rows[data_index]
 
-        Ds, objs, diversity, positions = self.datasets[data_index]
+        Ds, objs, diversity, positions, coords = self.datasets[data_index]
 
         num_frames = Ds.shape[1]
         
@@ -352,7 +358,7 @@ class Dataset(torch.utils.data.Dataset):
         frame_index = index % (num_frames-num_frames_input+1)
         
         Ds_out = Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :]
-        Ds_out = np.reshape((Ds_out, 2*num_frames_input, Ds.shape[3], Ds.shape[4]))
+        Ds_out = np.reshape(Ds_out, (2*num_frames_input, Ds.shape[3], Ds.shape[4]))
 
 
         if diversity is not None:
@@ -393,6 +399,12 @@ class Dataset(torch.utils.data.Dataset):
     def length(self):
         return self.total_num_rows
 
+    def get_num_objs(self):
+        return self.num_objs
+
+    def get_num_frames(self):
+        return self.num_frames
+        
     def get_obj_data(self, index):
         obj_index = 0
         for data_index in range(len(self.datasets)):
@@ -407,7 +419,22 @@ class Dataset(torch.utils.data.Dataset):
         
         obj_index += index//(num_frames-num_frames_input+1)
         
-        return obj_index, objs[obj_index], positions[obj_index], coords[obj_index]
+        if objs is not None:
+            obj = objs[obj_index]
+        else:
+            obj = None
+            
+        if positions is not None:
+            pos = positions[obj_index]
+        else:
+            pos = None
+            
+        if coords is not None:
+            coord = coords[obj_index]
+        else:
+            coord = None
+        
+        return obj_index, obj, pos, coord
 
 
 def weights_init(m):
@@ -796,28 +823,6 @@ class NN(nn.Module):
                 obj_ids = obj_ids[random_indices]
                 positions = positions[random_indices]
 
-            '''
-            # Validation data has to be set first
-            self.Ds = np.concatenate([Ds, self.Ds_validation])
-            # Create new views
-            self.Ds_train = self.Ds[:len(Ds)]
-            self.Ds_validation = self.Ds[len(Ds):]
-            
-            self.objs = np.concatenate([objs, self.objs_validation])
-            self.objs_train = self.objs[:len(objs)]
-            self.objs_validation = self.objs[len(objs):]
-
-            self.diversities = np.concatenate([diversities, self.diversities_validation])
-            self.diversities_train = self.diversities[:len(diversities)]
-            self.diversities_validation = self.diversities[len(diversities):]
-
-            if np.max(obj_ids) >= np.min(self.obj_ids_validation):
-                self.obj_ids_validation += np.max(obj_ids) + 1
-            assert(np.max(obj_ids) + 1 == np.min(self.obj_ids_validation))
-            self.obj_ids = np.concatenate([obj_ids, self.obj_ids_validation])
-            self.obj_ids_train = self.obj_ids[:len(obj_ids)]
-            self.obj_ids_validation = self.obj_ids[len(obj_ids):]
-            '''
             
             self.Ds_train = Dataset(Ds, objs, diversities, positions, obj_ids)
         else:
@@ -1278,31 +1283,33 @@ class NN(nn.Module):
         print("pos, coord, i", pos, coord, i)
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
-    def do_test(self, Ds_, objs, diversity, positions, coords, file_prefix, true_coefs=None):
-        estimate_full_image = True
-        if coords is None:
-            estimate_full_image = False
-        #print("positions, coords", positions, coords)
-        if objs is None:
-            # Just generate dummy array in case we don't have true object data
-            objs = np.zeros((Ds_.shape[0], Ds_.shape[3], Ds_.shape[4]))
+    def do_test(self, dataset, file_prefix, true_coefs=None):
         
         jmax = self.jmax
         
-        num_frames = Ds_.shape[1]
+        #num_frames = Ds_.shape[1]
         #num_objects = Ds_.shape[0]
-
-        Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
-        #print("positions1, coords1", positions, coords)
-        med = np.median(Ds, axis=(2, 3), keepdims=True)
-        #std = np.std(Ds, axis=(1, 2), keepdims=True)
-        Ds -= med
-        Ds = self.hanning.multiply(Ds, axis=2)
-        Ds += med
-        ##Ds /= std
-        Ds /= med
         
-        Ds_test = Dataset(Ds, objs, diversities, positions, obj_ids)
+        Ds_test = Dataset([dataset])
+
+        estimate_full_image = True
+        _, _, _, coord = Ds_test.get_obj_data(0)
+        if coord is None:
+            estimate_full_image = False
+
+        #num_frames = dataset.get_num_frames()
+
+        #Ds, objs, diversities, num_frames, obj_ids, positions, coords = convert_data(Ds_, objs, diversity, positions, coords)
+        ##print("positions1, coords1", positions, coords)
+        #med = np.median(Ds, axis=(2, 3), keepdims=True)
+        ##std = np.std(Ds, axis=(1, 2), keepdims=True)
+        #Ds -= med
+        #Ds = self.hanning.multiply(Ds, axis=2)
+        #Ds += med
+        ###Ds /= std
+        #Ds /= med
+        
+        #Ds_test = Dataset(Ds, objs, diversities, positions, obj_ids)
         Ds_test_loader = torch.utils.data.DataLoader(Ds_test, batch_size=batch_size, shuffle=False, drop_last=False)
         
 
@@ -1355,23 +1362,25 @@ class NN(nn.Module):
         max_loss_plot = None
 
     
-        for i in np.arange(len(objs)):
+        for i in range(Ds_test.length()):
             #if len(obj_ids_test) >= n_test_objects:
             #    break
-            obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
+            obj_index_i, obj, pos, coord = Ds_test.get_obj_data(i)
+            #obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
             ###################################################################            
             # Just to plot results only for different objects
             # TODO: use set for obj_ids_test, instead of list
             for obj_id in obj_ids_test:
-                if obj_id == obj_ids[i]:
+                if obj_id == obj_index_i:
                     found = True
                     break
             if found:
                 continue
             ###################################################################            
-            obj_ids_test.append(obj_ids[i])
+            obj_ids_test.append(obj_index_i)
             
+            Ds, diversity = Ds_test[i]
             if estimate_full_image:
                 top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
                 print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
@@ -1379,7 +1388,7 @@ class NN(nn.Module):
                 cropped_objs.append(cropped_obj)
                 
                 cropped_coords.append(top_left_coord)
-                cropped_Ds.append(Ds[i, 0, :, :][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
+                cropped_Ds.append(Ds[0, :, :][top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 full_shape += cropped_obj.shape
                 print("cropped_obj.shape", cropped_obj.shape, top_left_coord)
 
@@ -1393,14 +1402,16 @@ class NN(nn.Module):
             wfs = []
             print("nums, dens, psf, wf", nums_conj.shape, dens.shape, psf.shape, wf.shape)
             if pred_alphas is not None:
-                for j in np.arange(i, len(objs)):
-                    if obj_ids[j] == obj_ids[i]:
+                for j in range(i, Ds_test.length()):
+                    obj_index_j, _, _, _ = Ds_test.get_obj_data(j)
+                    if obj_index_j == obj_index_i:
+                        Ds, _ = Ds_test[j]
                         for l in np.arange(num_frames_input):
                             #D = Ds[j, :, :, 2*l]
                             #D_d = Ds[j, :, :, 2*l+1]
                             #DF = fft.fft2(D)
                             #DF_d = fft.fft2(D_d)
-                            Ds_.append(Ds[j, 2*l:2*l+2, :, :])
+                            Ds_.append(Ds[2*l:2*l+2, :, :])
                             #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                         if j % batch_size == 0:
@@ -1421,7 +1432,7 @@ class NN(nn.Module):
             #obj_reconstr = fft.ifftshift(obj_reconstr[0])
             #obj_reconstr_mean += obj_reconstr
 
-            diversity = diversities[i]
+            #diversity = diversities[i]
             #print("diversity", diversities.shape)
             #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #print("diversity", diversity.shape)
@@ -1446,7 +1457,7 @@ class NN(nn.Module):
             #my_test_plot.close()
 
             if true_coefs is not None:
-                true_alphas = true_coefs[obj_ids[i]]
+                true_alphas = true_coefs[obj_index_i]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
                 if benchmarking_level >= 2:
@@ -1647,7 +1658,7 @@ if train:
         if n_test == len(datasets[-1][0]):
             Ds_test, objs_test, _, positions_test = datasets.pop()
         else:
-            Ds_last, objs_last, diversity_last, positions_last = datasets[-1]
+            Ds_last, objs_last, diversity_last, positions_last, coords_last = datasets[-1]
             Ds_train = Ds_last[:-n_test]
             Ds_test = Ds_last[-n_test:]
             if objs_last is not None:
@@ -1662,17 +1673,23 @@ if train:
             else:
                 positions_train = None
                 positions_test = None
-            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train)
+            if coords_last is not None:
+                coords_train = coords_last[:-n_test]
+                coords_test = coords_last[-n_test:]
+            else:
+                coords_train = None
+                coords_test = None
+            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train, coords_train)
             
     print("num_frames", Ds.shape[1])
 
-    probs = np.empty(len(datasets), dtype=float)
-    for i in range(len(datasets)):
-        d = datasets[i]
-        probs[i] = len(d[0])
-    
-    probs /= np.sum(probs)
-    print("probs", probs, np.sum(probs))
+    #probs = np.empty(len(datasets), dtype=float)
+    #for i in range(len(datasets)):
+    #    d = datasets[i]
+    #    probs[i] = len(d[0])
+    #
+    #probs /= np.sum(probs)
+    #print("probs", probs, np.sum(probs))
     
 
     #if coords is not None:
@@ -1914,6 +1931,6 @@ else:
     model = NN(jmax, nx, n_test_frames, num_objs, pupil, modes)
     model.init()
 
-    model.do_test(Ds, objs, diversity, positions, coords, "test", true_coefs=true_coefs)
+    model.do_test((Ds, objs, diversity, positions, coords), "test", true_coefs=true_coefs)
 
 #logfile.close()
