@@ -956,7 +956,7 @@ class NN(nn.Module):
         n_test = 1
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
+            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_validation_loader, train=False, use_prefix=False)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
