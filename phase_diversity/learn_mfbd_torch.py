@@ -345,8 +345,8 @@ class Dataset(torch.utils.data.Dataset):
         
                
     def __getitem__(self, index):
-        for data_index in range(len(datasets)):
-            if self.num_rows[data_index] >= index:
+        for data_index in range(len(self.datasets)):
+            if self.num_rows[data_index] > index:
                 break
             index -= self.num_rows[data_index]
 
@@ -356,8 +356,8 @@ class Dataset(torch.utils.data.Dataset):
         
         obj_index = index//(num_frames-num_frames_input+1)
         frame_index = index % (num_frames-num_frames_input+1)
-        
-        Ds_out = Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :]
+        #print("index, obj_index, frame_index", index, obj_index, frame_index, Ds.shape)
+        Ds_out = np.array(Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :])
         Ds_out = np.reshape(Ds_out, (2*num_frames_input, Ds.shape[3], Ds.shape[4]))
 
 
@@ -391,6 +391,19 @@ class Dataset(torch.utils.data.Dataset):
         ##Ds /= std
         Ds_out /= med
         
+        #######################################################################
+        # DEBUG
+        #if index < batch_size:
+        #    my_test_plot = plot.plot(nrows=Ds_out.shape[0]//2, ncols=4)
+        #    for i in range(Ds_out.shape[0]//2):
+        #        my_test_plot.colormap(Ds_out[2*i], [i, 0], show_colorbar=True)
+        #        my_test_plot.colormap(Ds_out[2*i+1], [i, 1], show_colorbar=True)
+        #        my_test_plot.colormap(diversities_out[0], [i, 2], show_colorbar=True)
+        #        my_test_plot.colormap(diversities_out[1], [i, 3], show_colorbar=True)
+        #    my_test_plot.save(f"{dir_name}/Ds_dbg{index}.png")
+        #    my_test_plot.close()
+        #######################################################################
+        
         return Ds_out.astype('float32'), diversities_out
         
     def __len__(self):
@@ -404,20 +417,28 @@ class Dataset(torch.utils.data.Dataset):
 
     def get_num_frames(self):
         return self.num_frames
+
+    def get_positions(self):
+        # In test mode we assume currently that there is only one full image
+        assert(len(self.datasets) == 1)
+        return self.datasets[0][3]
+    
+    def get_coords(self):
+        # In test mode we assume currently that there is only one full image
+        assert(len(self.datasets) == 1)
+        return self.datasets[0][4]
         
     def get_obj_data(self, index):
-        obj_index = 0
         for data_index in range(len(self.datasets)):
-            if self.num_rows[data_index] >= index:
+            if self.num_rows[data_index] > index:
                 break
             index -= self.num_rows[data_index]
-            obj_index += self.datasets[data_index][0].shape[0]
 
         Ds, objs, diversity, positions, coords = self.datasets[data_index]
 
         num_frames = Ds.shape[1]
         
-        obj_index += index//(num_frames-num_frames_input+1)
+        obj_index = index//(num_frames-num_frames_input+1)
         
         if objs is not None:
             obj = objs[obj_index]
@@ -629,8 +650,8 @@ class NN(nn.Module):
         self.load_state()
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
-        for p in self.parameters():
-            print(p.name, p.numel())        
+        #for p in self.parameters():
+        #    print(p.name, p.numel())        
     
     '''
     def to(self, *args, **kwargs):
@@ -1143,7 +1164,7 @@ class NN(nn.Module):
             DFs = []
             alphas = []
             if pred_alphas is not None:
-                for j in np.arange(i, self.Ds_train.length()):
+                for j in range(i, self.Ds_train.length()):
                     if self.Ds_train.get_obj_data(j)[0] == obj_index:
                         for l in np.arange(num_frames_input):
                             D = self.Ds_train[j][0][2*l, :, :]
@@ -1161,7 +1182,7 @@ class NN(nn.Module):
                             #    break
                     #if len(alphas) >= n_test_frames:
                     #    break
-            Ds_ = np.asarray(Ds_)
+            #Ds_ = np.asarray(Ds_)
             DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                 
@@ -1198,7 +1219,7 @@ class NN(nn.Module):
                 #my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
-                Ds = self.Ds_train.Ds[i][0]
+                Ds = self.Ds_train[i][0]
                 my_test_plot.colormap(Ds[0, :, :], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, 0, :, :], [row, 1])
                 my_test_plot.colormap(np.abs(Ds[0, :, :] - pred_Ds[0, 0, :, :]), [row, 2])
@@ -1267,10 +1288,10 @@ class NN(nn.Module):
         #print("pos, filtr", pos, filtr)
         return coords[filtr][0]
     
-    def crop(self, i, coords, positions):
+    def crop(self, obj_index, coords, positions):
         nx = self.nx
-        coord = coords[i]
-        pos = positions[i]
+        coord = coords[obj_index]
+        pos = positions[obj_index]
         top_left_coord = self.coords_of_pos(coords, positions, pos - [1, 1]) + [nx, nx]
         bottom_right_coord = self.coords_of_pos(coords, positions, pos + [1, 1])
         print("top_left_coord, bottom_right_coord", top_left_coord, bottom_right_coord)
@@ -1280,7 +1301,7 @@ class NN(nn.Module):
         top_left_delta = top_left_coord - coord 
         bottom_right_delta = bottom_right_coord - coord - [nx, nx]
     
-        print("pos, coord, i", pos, coord, i)
+        print("pos, coord, obj_index", pos, coord, obj_index)
         return top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta
     
     def do_test(self, dataset, file_prefix, true_coefs=None):
@@ -1365,7 +1386,9 @@ class NN(nn.Module):
         for i in range(Ds_test.length()):
             #if len(obj_ids_test) >= n_test_objects:
             #    break
-            obj_index_i, obj, pos, coord = Ds_test.get_obj_data(i)
+            obj_index_i, obj, _, _ = Ds_test.get_obj_data(i)
+            coords = Ds_test.get_coords()
+            positions = Ds_test.get_positions()
             #obj = objs[i]#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
             ###################################################################            
@@ -1382,7 +1405,7 @@ class NN(nn.Module):
             
             Ds, diversity = Ds_test[i]
             if estimate_full_image:
-                top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(i, coords, positions)
+                top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(obj_index_i, coords, positions)
                 print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
                 cropped_obj = obj[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]]
                 cropped_objs.append(cropped_obj)
