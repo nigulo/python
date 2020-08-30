@@ -245,16 +245,16 @@ class Dataset(torch.utils.data.Dataset):
         
         self.total_num_rows = 0
         self.num_rows = np.zeros(len(datasets), dtype=int)
-        self.num_frames = None
+        #self.num_frames = None
         self.num_objs = 0
         for i in range(len(datasets)):
             Ds = datasets[i][0]
             num_objects = Ds.shape[0]
             self.num_objs += num_objects
             num_frames = Ds.shape[1]
-            if self.num_frames is None:
-                self.num_frames = num_frames
-            assert(self.num_frames >= num_frames)
+            #if self.num_frames is None:
+            #    self.num_frames = num_frames
+            #assert(self.num_frames >= num_frames)
             self.num_rows[i] = (num_frames-num_frames_input+1)*num_objects
             self.total_num_rows += self.num_rows[i]
         
@@ -334,8 +334,8 @@ class Dataset(torch.utils.data.Dataset):
     def get_num_objs(self):
         return self.num_objs
 
-    def get_num_frames(self):
-        return self.num_frames
+    #def get_num_frames(self):
+    #    return self.num_frames
 
     def get_positions(self):
         # In test mode we assume currently that there is only one full image
