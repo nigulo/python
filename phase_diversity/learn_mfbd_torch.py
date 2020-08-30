@@ -302,7 +302,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             diversities_out  = None
 
-        med = np.median(Ds_out, axis=(1, 2), keepdims=True)
+        med = np.median(Ds_out, axis=(0, 1, 2), keepdims=True)
         #std = np.std(Ds, axis=(1, 2), keepdims=True)
         Ds_out -= med
         Ds_out = self.hanning.multiply(Ds_out, axis=1)
