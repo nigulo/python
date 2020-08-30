@@ -972,9 +972,9 @@ class NN(nn.Module):
         obj_ids_used = []
         objs_reconstr = []
         i = 0
-        while len(obj_ids_used) < n_test and i < self.Ds_train.length():
+        while len(obj_ids_used) < n_test and i < self.Ds_validation.length():
             
-            obj_index, obj, _, _ = self.Ds_train.get_obj_data(i)#np.reshape(self.objs[i], (self.nx, self.nx))
+            obj_index, obj, _, _ = self.Ds_validation.get_obj_data(i)#np.reshape(self.objs[i], (self.nx, self.nx))
             found = False
 
             ###################################################################            
@@ -1002,11 +1002,11 @@ class NN(nn.Module):
             DFs = []
             alphas = []
             if pred_alphas is not None:
-                for j in range(i, self.Ds_train.length()):
-                    if self.Ds_train.get_obj_data(j)[0] == obj_index:
+                for j in range(i, self.Ds_validation.length()):
+                    if self.Ds_validation.get_obj_data(j)[0] == obj_index:
                         for l in np.arange(num_frames_input):
-                            D = self.Ds_train[j][0][2*l, :, :]
-                            D_d = self.Ds_train[j][0][2*l+1, :, :]
+                            D = self.Ds_validation[j][0][2*l, :, :]
+                            D_d = self.Ds_validation[j][0][2*l+1, :, :]
                             #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
                             DF = fft.fft2(D)
@@ -1027,7 +1027,7 @@ class NN(nn.Module):
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             if pred_alphas is not None:
-                diversity = self.Ds_train[i][1]#self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
+                diversity = self.Ds_validation[i][1]#self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
                 #obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
@@ -1057,7 +1057,7 @@ class NN(nn.Module):
                 #my_test_plot.colormap(misc.sample_image(obj, (2.*self.pupil.shape[0] - 1)/nx) - obj_reconstr, [row, 2])
                 row += 1
             if pred_Ds is not None:
-                Ds = self.Ds_train[i][0]
+                Ds = self.Ds_validation[i][0]
                 my_test_plot.colormap(Ds[0, :, :], [row, 0])
                 my_test_plot.colormap(pred_Ds[0, 0, :, :], [row, 1])
                 my_test_plot.colormap(np.abs(Ds[0, :, :] - pred_Ds[0, 0, :, :]), [row, 2])
