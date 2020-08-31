@@ -276,7 +276,7 @@ class Dataset(torch.utils.data.Dataset):
         obj_index = index//(num_frames-num_frames_input+1)
         frame_index = index % (num_frames-num_frames_input+1)
         #print("index, obj_index, frame_index", index, obj_index, frame_index, Ds.shape)
-        Ds_out = np.array(Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :])
+        Ds_out = np.array(Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :]).astype('float32')
         Ds_out = np.reshape(Ds_out, (2*num_frames_input, Ds.shape[3], Ds.shape[4]))
 
 
@@ -323,7 +323,7 @@ class Dataset(torch.utils.data.Dataset):
         #    my_test_plot.close()
         #######################################################################
         
-        return Ds_out.astype('float32'), diversities_out
+        return Ds_out, diversities_out
         
     def __len__(self):
         return self.total_num_rows
