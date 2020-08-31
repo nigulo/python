@@ -31,10 +31,12 @@ n_objects = 200
 
 compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
 
+train = True
 shuffle = True
 if len(sys.argv) > 3:
     if sys.argv[3].upper() == "TEST":
         print("Generating test data")
+        train = False
         shuffle = False
         n_objects = None
 
@@ -129,17 +131,23 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
 
     if use_zarr:
         handler = zarr.open(out_dir + '/Ds.zarr', 'w')
-        Ds = handler.create_dataset('Ds', shape=(num_objects, num_frames, 2, nx, nx), chunks=(max(num_objects//100, 1), num_frames, 2, nx, nx), compressor=None)
-        objs = handler.create_dataset('objs', shape=(num_objects, nx, nx), chunks=(max(num_objects//100, 1), nx, nx), compressor=None)
-        momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), chunks=(max(num_objects//100, 1), num_frames, num_modes), compressor=None)
-        positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype='int', compressor=None)
-        coords = handler.create_dataset('coords', shape=(num_objects, 2), dtype='int', compressor=None)
+        Ds = handler.create_dataset('Ds', shape=(num_objects, num_frames, 2, nx, nx), chunks=(max(num_objects//100, 1), num_frames, 2, nx, nx), compressor=None, dtype=np.int16)
+        if train:
+            objs = None
+        else:
+            objs = handler.create_dataset('objs', shape=(num_objects, nx, nx), chunks=(max(num_objects//100, 1), nx, nx), compressor=None, dtype=np.int16)
+        momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), chunks=(max(num_objects//100, 1), num_frames, num_modes), compressor=None, dtype=np.float32)
+        positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype=np.int16, compressor=None)
+        coords = handler.create_dataset('coords', shape=(num_objects, 2), dtype=np.int16, compressor=None)
     else:
-        Ds = np.zeros((num_objects, num_frames, 2, nx, nx)) # in real space
-        objs = np.zeros((num_objects, nx, nx)) # in real space
-        momfbd_coefs = np.zeros((num_objects, num_frames, num_modes))
-        positions = np.zeros((num_objects, 2), dtype='int')
-        coords = np.zeros((num_objects, 2), dtype='int')
+        Ds = np.zeros((num_objects, num_frames, 2, nx, nx), dtype=np.int16)
+        if train:
+            objs = None
+        else:
+            objs = np.zeros((num_objects, nx, nx), dtype=np.int16)
+        momfbd_coefs = np.zeros((num_objects, num_frames, num_modes), dtype=np.float32)
+        positions = np.zeros((num_objects, 2), dtype=np.int16)
+        coords = np.zeros((num_objects, 2), dtype=np.int16)
         handler = None
         
 
@@ -175,8 +183,9 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
             dx = 0
             dy = 0
 
-        if len(objs_momfbd) > indt[loop]:
-            objs[loop] = objs_momfbd[indt[loop]][indx[loop], indy[loop]]
+        if objs is not None:
+            if len(objs_momfbd) > indt[loop]:
+                objs[loop] = objs_momfbd[indt[loop]][indx[loop], indy[loop]]
         #for i in range(num_frames):
         #    Ds[loop, i, 0] = images[indt[loop]+i][x0:x0+nx,y0:y0+nx]
         #    Ds[loop, i, 1] = images_defocus[indt[loop]+i][x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
