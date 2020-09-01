@@ -1445,7 +1445,7 @@ class NN(nn.Module):
             
             my_test_plot.set_axis_title([0], "MOMFBD")
             my_test_plot.set_axis_title([1], "Neural network")
-            my_test_plot.set_axis_title([2], "Raw frame")
+            #my_test_plot.set_axis_title([2], "Raw frame")
 
             if plot_loss_diffs:
                 loss_diffs = np.reshape(loss_diffs, (max_pos[0] + 1, max_pos[1] + 1)).T
