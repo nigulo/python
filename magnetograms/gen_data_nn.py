@@ -66,7 +66,7 @@ num_subsample_reps = 1
 num_layers = 3
 n3 = num_layers
 
-m_kiss = 13
+m_kiss = 20
 
 def load(file_name):
     
@@ -314,7 +314,7 @@ x_flat = np.reshape(x, (3*n, -1))
 
 m1 = max(m_kiss, n1//10)
 m2 = max(m_kiss, n2//10)
-m3 = n3
+m3 = 2
 m = m1 * m2 * m3
 u1_range = np.max(x[:,0])
 u2_range = np.max(x[:,1])
@@ -395,6 +395,24 @@ class data_generator():
                 r = np.random.uniform(size=y[0].shape)
                 r1 = np.random.uniform()
                 y[:2, r < r1] *= -1
+                
+                if i < 10:
+                    test_plot = plot.plot(nrows=3, ncols=3)
+                    
+                    test_plot.colormap(y[0, :, :, 0], [0, 0])
+                    test_plot.colormap(y[1, :, :, 0], [0, 1])
+                    test_plot.colormap(y[2, :, :, 0], [0, 2])
+
+                    test_plot.colormap(y[0, :, :, 1], [1, 0])
+                    test_plot.colormap(y[1, :, :, 1], [1, 1])
+                    test_plot.colormap(y[2, :, :, 1], [1, 2])
+
+                    test_plot.colormap(y[0, :, :, 2], [2, 0])
+                    test_plot.colormap(y[1, :, :, 2], [2, 1])
+                    test_plot.colormap(y[2, :, :, 2], [2, 2])
+                    test_plot.save("random_field" + str(i) +".png")
+                    test_plot.close()
+                    
             
             loglik = self.loglik(y)
         

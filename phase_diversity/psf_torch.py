@@ -482,10 +482,20 @@ class psf_torch():
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
 
+    def reconstr2(self, Ds, psfs, do_fft = True, use_filter = True):
+        Ds = torch.tensor(Ds).to(self.device, dtype=torch.float32)
+        psfs = torch.tensor(psfs).to(self.device, dtype=torch.float32)
+        Ds_F = fft(to_complex(Ds))
+        psfs_conj = conj(psfs)
+        DP = mul(Ds_F, psfs_conj)
+        PP = mul(psfs, psfs_conj)
+        DD = mul(Ds_F, conj(Ds_F))
+        return self.reconstr_(DP, PP, do_fft, use_filter, DD)
+        
+
     # For numpy inputs
-    def reconstr(self, DP_real, DP_imag, PP, do_fft = True):
+    def reconstr(self, DP_real, DP_imag, PP, do_fft = True, use_filter = True, DD = None):
         one_obj = False
-        print("DP_real, DP_imag, PP", DP_real.size(), DP_imag.size(), PP.size())
         if len(DP_real.shape) == 2:
             one_obj = True
             DP_real = np.reshape(DP_real, [1, self.nx, self.nx])
@@ -496,22 +506,23 @@ class psf_torch():
         #PP = torch.from_numpy(PP).to(self.device, dtype=torch.complex64)
         PP = to_complex(torch.from_numpy(PP)).to(self.device, dtype=torch.float32)
         
-        obj, loss = self.reconstr_(conj(DP), PP, do_fft)
+        obj, loss = self.reconstr_(conj(DP), PP, do_fft, use_filter, DD)
         
         if one_obj:
             obj = obj[0]
 
         return obj
 
-    def reconstr_(self, DP, PP, do_fft = True):
+    def reconstr_(self, DP, PP, do_fft = True, use_filter = True, DD = None):
         #eps = torch.tensor(1e-10).to(self.device, dtype=torch.complex64)
         eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
         #F_image = (DP + eps)/(PP + eps)
-        print("DP, PP", DP.size(), PP.size())
         F_image = div(DP + eps, PP + eps)
         
         
         loss = -torch.sum(real(mul(F_image, conj(DP)))) # Without DD part
+        if DD is not None:
+            loss += torch.sum(DD)
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
@@ -528,7 +539,7 @@ class psf_torch():
         Ds: [num_frames, 2, nx, nx]
         diversity: [2, nx, nx]
     '''
-    def deconvolve(self, Ds, alphas, diversity = None, do_fft = True):
+    def deconvolve(self, Ds, alphas, diversity = None, do_fft = True, use_filter = True):
         if len(Ds.size()) == 3:
             Ds = torch.unsqueeze(Ds, 0)
             assert(len(alphas.size()) == 2)
@@ -548,7 +559,9 @@ class psf_torch():
         num = torch.sum(mul(Ds_F, Ps_conj), axis=[0, 1])
         den = torch.sum(mul(Ps, Ps_conj), axis=[0, 1])
         
-        image, loss = self.reconstr_(num, den, do_fft)
+        DD = mul(Ds_F, conj(Ds_F))
+        
+        image, loss = self.reconstr_(num, den, do_fft, use_filter, DD)
         print("image", image.size())
         return image, Ps, wf, loss
         
@@ -639,7 +652,7 @@ class psf_torch():
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf
+            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
@@ -657,6 +670,6 @@ class psf_torch():
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
-            return loss, num, den, DP_conj, DD, DP_real, DP_imag, PP, Ps, wf
+            return loss, num, den, DP_conj, DD, DP_real, DP_imag, PP, Ps, wf, DD
 
     

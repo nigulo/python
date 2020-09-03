@@ -98,6 +98,7 @@ if nn_mode == MODE_1:
     shuffle2 = False
     
     num_reps = 1000
+    num_iter = 2
 
     n_epochs_2 = 2
     n_epochs_1 = 1
@@ -110,7 +111,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 64
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -376,6 +377,51 @@ class Dataset(torch.utils.data.Dataset):
         
         return obj_index, obj, pos, coord
 
+class Dataset2(torch.utils.data.Dataset):
+    #def __init__(self, Ds, objs, diversities, positions, obj_ids):
+    def __init__(self, Ds, diversities):
+        super(Dataset2, self).__init__()
+        
+        self.Ds = Ds
+        self.diversities = diversities
+        
+        nx = Ds.shape[2]
+        self.hanning = utils.hanning(nx, 10)
+        
+               
+    def __getitem__(self, index):
+
+        Ds_out = np.array(self.Ds[index]).astype('float32')
+        
+        med = np.median(Ds_out, axis=(0, 1, 2), keepdims=True)
+        #std = np.std(Ds, axis=(1, 2), keepdims=True)
+        Ds_out -= med
+        Ds_out = self.hanning.multiply(Ds_out, axis=1)
+        Ds_out += med
+        ##Ds /= std
+        Ds_out /= med
+        
+        #######################################################################
+        # DEBUG
+        #if index < batch_size:
+        #    my_test_plot = plot.plot(nrows=Ds_out.shape[0]//2, ncols=4)
+        #    for i in range(Ds_out.shape[0]//2):
+        #        my_test_plot.colormap(Ds_out[2*i], [i, 0], show_colorbar=True)
+        #        my_test_plot.colormap(Ds_out[2*i+1], [i, 1], show_colorbar=True)
+        #        my_test_plot.colormap(diversities_out[0], [i, 2], show_colorbar=True)
+        #        my_test_plot.colormap(diversities_out[1], [i, 3], show_colorbar=True)
+        #    my_test_plot.save(f"{dir_name}/Ds_dbg{index}.png")
+        #    my_test_plot.close()
+        #######################################################################
+        
+        return Ds_out, self.diversities[index].astype('float32')
+        
+    def __len__(self):
+        return len(self.Ds)
+    
+    def length(self):
+        return len(self.Ds)
+
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -640,13 +686,13 @@ class NN(nn.Module):
         #image_input = torch.transpose(image_input, 1, 2)
         #image_input = torch.transpose(image_input, 0, 1)
         if nn_mode == 1:
-            loss, num, den, num_conj, psf, wf = self.psf.mfbd_loss(image_input, alphas, diversity_input)
+            loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas, diversity_input)
         else:
-            loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
+            loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
 
         loss = torch.mean(loss)#/nx/nx
 
-        return loss, alphas, num, den, num_conj, psf, wf
+        return loss, alphas, num, den, num_conj, psf, wf, DD
         
 
 
@@ -814,6 +860,7 @@ class NN(nn.Module):
             all_den = []#np.empty((num_data, nx, nx))
             all_psf = []#np.empty((num_data, nx, nx))
             all_wf = []#np.empty((num_data, nx, nx))
+            all_DD = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
             ###################################################################
             # DEBUG
@@ -836,10 +883,10 @@ class NN(nn.Module):
                 with torch.no_grad():
                     result = self((Ds, diversity))
             if nn_mode == 1:
-                loss, alphas, num, den, DP_conj, psf, wf = result
+                loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
             else:
-                loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf, wf = result
+                loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = result
             if train:
                 loss.backward()
                 self.optimizer.step()
@@ -853,6 +900,7 @@ class NN(nn.Module):
                 all_DP_conj.append(DP_conj.cpu().numpy())
                 all_psf.append(psf.cpu().numpy())
                 all_wf.append(wf.cpu().numpy())
+                all_DD.append(DD.cpu().numpy())
                 
             loss_sum += loss.item()
             count += 1
@@ -873,8 +921,9 @@ class NN(nn.Module):
             all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
             all_psf = np.reshape(np.asarray(all_psf), [-1, 2, nx, nx, 2]) # Complex array
             all_wf = np.reshape(np.asarray(all_wf), [-1, nx, nx])
+            all_DD = np.reshape(np.asarray(all_DD), [-1, nx, nx])
             
-            return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf
+            return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf, all_DD
             
 
     def do_train(self):
@@ -896,7 +945,7 @@ class NN(nn.Module):
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 self.do_epoch(Ds_train_loader)
                 self.scheduler.step()
-                val_loss, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
+                val_loss, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
 
                 if True:#self.val_loss > history.history['val_loss'][-1]:
                     self.save_state({
@@ -956,7 +1005,7 @@ class NN(nn.Module):
         n_test = 1
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj, psf, wf = self.do_epoch(Ds_validation_loader, train=False, use_prefix=False)
+            _, pred_alphas, _, den, num_conj, psf, wf, DD = self.do_epoch(Ds_validation_loader, train=False, use_prefix=False)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
@@ -1170,12 +1219,38 @@ class NN(nn.Module):
         
         #Ds_test = Dataset(Ds, objs, diversities, positions, obj_ids)
         Ds_test_loader = torch.utils.data.DataLoader(Ds_test, batch_size=batch_size, shuffle=False, drop_last=False)
-        
 
-        start = time.time()    
+        start = time.time()
 
         if nn_mode == MODE_1:
-            losses, pred_alphas, _, dens, nums_conj, psf, wf = self.do_epoch(Ds_test_loader, train=False)
+            losses, pred_alphas, _, dens, nums_conj, psf, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
+            
+            if num_iter > 1:
+                Ds_test2 = np.empty((len(pred_alphas), 2*num_frames_input, nx, nx))
+                diversities = np.empty((len(pred_alphas), 2, nx, nx))
+                for i in range(Ds_test.length()):
+                    Ds, diversity = Ds_test[i]
+                    diversities[i] = diversity
+                    for l in np.arange(num_frames_input):
+                        Ds_r, _ = self.psf_test.reconstr2(Ds[2*l:2*l+2, :, :], psf[i], use_filter=False)
+                        Ds_test2[i, 2*l:2*l+2] = Ds_r.cpu().numpy()
+                        #######################################################################
+                        # DEBUG
+                        if i < 10:
+                            my_test_plot = plot.plot(nrows=2, ncols=2)
+                            my_test_plot.colormap(Ds[2*l], [0, 0], show_colorbar=True)
+                            my_test_plot.colormap(Ds[2*l+1], [0, 1], show_colorbar=True)
+                            my_test_plot.colormap(Ds_test2[i, 2*l], [1, 0], show_colorbar=True)
+                            my_test_plot.colormap(Ds_test2[i, 2*l+1], [1, 1], show_colorbar=True)
+                            my_test_plot.save(f"{dir_name}/Ds_dbg{i}_{l}.png")
+                            my_test_plot.close()
+                        #######################################################################
+                Ds_test2 = Dataset2(Ds_test2, diversities)
+                Ds_test_loader2 = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
+                losses, pred_alphas, _, dens, nums_conj, psf, wf, DDs = self.do_epoch(Ds_test_loader2, train=False)
+    
+                
+            
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
@@ -1257,6 +1332,7 @@ class NN(nn.Module):
             #DFs = []
             Ds_ = []
             alphas = []
+            DD = np.zeros_like(DDs[0])
             DP = np.zeros_like(nums_conj[0])
             PP = np.zeros_like(dens[0])
             psfs = []
@@ -1278,6 +1354,7 @@ class NN(nn.Module):
                         if j % batch_size == 0:
                             DP += nums_conj[j//batch_size]
                             PP += dens[j//batch_size]
+                            DD += DDs[j//batch_size]
                         psfs.append(psf[j])
                         wfs.append(wf[j])
             Ds_ = np.asarray(Ds_)
@@ -1297,7 +1374,7 @@ class NN(nn.Module):
             #print("diversity", diversities.shape)
             #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #print("diversity", diversity.shape)
-            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)))#self.deconvolve(Ds_, alphas, diversity)
+            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
             obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil

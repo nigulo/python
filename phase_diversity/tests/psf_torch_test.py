@@ -166,7 +166,7 @@ class test_psf_torch(unittest.TestCase):
 
         print("D, alphas, diversity", D.size(), alphas_torch.size(), diversity_torch.size())
         psf_torch_.set_diversity = True
-        mfbd_loss, num, den, num_conj, psf, wf = psf_torch_.mfbd_loss(D, alphas_torch, diversity_torch)
+        mfbd_loss, num, den, num_conj, psf, wf, DD = psf_torch_.mfbd_loss(D, alphas_torch, diversity_torch)
         mfbd_loss = mfbd_loss.numpy()
 
         my_plot = plot.plot(nrows=1, ncols=1)
@@ -185,7 +185,7 @@ class test_psf_torch(unittest.TestCase):
         diversity_batch = diversity_torch.unsqueeze(0).repeat(num_frames, 1, 1, 1)
         print("D_batch, alphas_batch, diversity_batch", D_batch.size(), alphas_batch.size(), diversity_batch.size())
         psf_torch_.set_batch_size(num_frames)
-        mfbd_loss_batch, num_batch, den_batch, num_conj_batch, psf_batch, wf_batch = psf_torch_.mfbd_loss(D_batch, alphas_batch, diversity_batch)
+        mfbd_loss_batch, num_batch, den_batch, num_conj_batch, psf_batch, wf_batch, DD = psf_torch_.mfbd_loss(D_batch, alphas_batch, diversity_batch)
         mfbd_loss_batch = mfbd_loss_batch.numpy()
 
         my_plot = plot.plot(nrows=1, ncols=1)
