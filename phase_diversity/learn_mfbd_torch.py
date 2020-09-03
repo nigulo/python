@@ -98,7 +98,7 @@ if nn_mode == MODE_1:
     shuffle2 = False
     
     num_reps = 1000
-    num_iter = 2
+    num_iter = 1
 
     n_epochs_2 = 2
     n_epochs_1 = 1
@@ -679,6 +679,9 @@ class NN(nn.Module):
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2).to(device, dtype=torch.float32)], axis=2)
             alphas = alphas - tip_tilt_means
         
+        if self.test and num_iter > 1:
+            alphas = alphas / (1.*num_iter)
+        
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
         # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
         #image_input = torch.transpose(image_input, 0, 1)
@@ -928,6 +931,7 @@ class NN(nn.Module):
 
     def do_train(self):
         jmax = self.jmax
+        self.test = False
 
 
         shuffle_epoch = True
@@ -1194,6 +1198,7 @@ class NN(nn.Module):
     def do_test(self, dataset, file_prefix, true_coefs=None):
         
         jmax = self.jmax
+        self.test = True
         
         #num_frames = Ds_.shape[1]
         #num_objects = Ds_.shape[0]
@@ -1224,30 +1229,37 @@ class NN(nn.Module):
 
         if nn_mode == MODE_1:
             losses, pred_alphas, _, dens, nums_conj, psf, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
+            Ds_test2 = Ds_test
             
-            if num_iter > 1:
-                Ds_test2 = np.empty((len(pred_alphas), 2*num_frames_input, nx, nx))
+            for iter_ in np.arange(1, num_iter):
+                Ds2 = np.empty((len(pred_alphas), 2*num_frames_input, nx, nx))
                 diversities = np.empty((len(pred_alphas), 2, nx, nx))
-                for i in range(Ds_test.length()):
-                    Ds, diversity = Ds_test[i]
+                for i in range(Ds_test2.length()):
+                    Ds, diversity = Ds_test2[i]
                     diversities[i] = diversity
                     for l in np.arange(num_frames_input):
-                        Ds_r, _ = self.psf_test.reconstr2(Ds[2*l:2*l+2, :, :], psf[i], use_filter=False)
-                        Ds_test2[i, 2*l:2*l+2] = Ds_r.cpu().numpy()
+                        Ds_r, _ = self.psf_test.reconstr2(Ds[2*l], psf[i, 0], use_filter=False)
+                        Ds_r_d, _ = self.psf_test.reconstr2(Ds[2*l+1], psf[i, 0], use_filter=False)
+                        Ds2[i, 2*l] = Ds_r.cpu().numpy()
+                        Ds2[i, 2*l+1] = Ds_r_d.cpu().numpy()
+                        psf_r = fft.ifft2(psf[i, ..., 0] + psf[i, ..., 1]*1.j).real
+                        psf_r = fft.ifftshift(psf_r, axes=(1, 2))
                         #######################################################################
                         # DEBUG
-                        if i < 10:
-                            my_test_plot = plot.plot(nrows=2, ncols=2)
+                        if i == 0:
+                            my_test_plot = plot.plot(nrows=3, ncols=2)
                             my_test_plot.colormap(Ds[2*l], [0, 0], show_colorbar=True)
                             my_test_plot.colormap(Ds[2*l+1], [0, 1], show_colorbar=True)
-                            my_test_plot.colormap(Ds_test2[i, 2*l], [1, 0], show_colorbar=True)
-                            my_test_plot.colormap(Ds_test2[i, 2*l+1], [1, 1], show_colorbar=True)
-                            my_test_plot.save(f"{dir_name}/Ds_dbg{i}_{l}.png")
+                            my_test_plot.colormap(Ds2[i, 2*l], [1, 0], show_colorbar=True)
+                            my_test_plot.colormap(Ds2[i, 2*l+1], [1, 1], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psf_r[0], 1e-3), [2, 0], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psf_r[1], 1e-3), [2, 1], show_colorbar=True)
+                            my_test_plot.save(f"{dir_name}/Ds_dbg{iter_}_{i}_{l}.png")
                             my_test_plot.close()
                         #######################################################################
-                Ds_test2 = Dataset2(Ds_test2, diversities)
+                Ds_test2 = Dataset2(Ds2, diversities)
                 Ds_test_loader2 = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
-                losses, pred_alphas, _, dens, nums_conj, psf, wf, DDs = self.do_epoch(Ds_test_loader2, train=False)
+                losses, pred_alphas, _, dens, nums_conj, psf, wf, _ = self.do_epoch(Ds_test_loader2, train=False)
     
                 
             
@@ -1378,7 +1390,7 @@ class NN(nn.Module):
             obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil
-            psfs = fft.ifftshift(fft.ifft2(fft.fftshift(psfs, axes=(2, 3))).real, axes=(2, 3))
+            #psfs = fft.ifftshift(fft.ifft2(fft.fftshift(psfs, axes=(2, 3))).real, axes=(2, 3))
             
 
             if estimate_full_image:
