@@ -23,6 +23,7 @@ from typing import Optional
 # supports complex numbers
 
 emulate_complex = True
+
 def create_complex(re, im):
     re = torch.unsqueeze(re, -1)
     im = torch.unsqueeze(im, -1)
@@ -35,7 +36,16 @@ def to_complex(x, re=True):
         return torch.cat([x, zeros], -1)
     else:
         return torch.cat([zeros, x], -1)
-        
+
+def complex_from_numpy(x, device):
+    re = torch.tensor(x.real).to(device, dtype=torch.float32)
+    im = torch.tensor(x.imag).to(device, dtype=torch.float32)
+    return create_complex(re, im)
+
+def complex_to_numpy(x):
+    re = x[..., 0].cpu().numpy()
+    im = x[..., 1].cpu().numpy()
+    return re + im*1.j
 
 def real(x):
     return x[..., 0]
@@ -412,14 +422,17 @@ class psf_torch():
         else:
             
             vals = ifft(coh_vals)
-            vals1 = to_complex(real(mul(vals, conj(vals))))
+            vals1 = real(mul(vals, conj(vals)))
+
+            if normalize:
+                vals1 = vals1 / torch.sum(vals1, axis=[-2, -1], keepdim=True)#torch.sum(self.coh_trans_func.pupil)
+                
+            vals1 = to_complex(vals1)
 
             #corr = tf.signal.fftshift(tf.signal.fft2d(vals1), axes=(1, 2))
             #corr = fftshift(fft(vals1))
             corr = fft(vals1)
             
-            #if normalize:
-            #    corr /= tf.reduce_sum(self.coh_trans_func.pupil)
 
         #if calc_psf:
         #    # This block is currently not used (needed for more direct psf calculation)
@@ -482,12 +495,14 @@ class psf_torch():
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D
 
-    def reconstr2(self, Ds, psfs, do_fft = True, use_filter = True):
+    def reconstr2(self, Ds, psfs, do_fft = True, use_filter = True, psf_airy=None):
         Ds = torch.tensor(Ds).to(self.device, dtype=torch.float32)
         psfs = torch.tensor(psfs).to(self.device, dtype=torch.float32)
         Ds_F = fft(to_complex(Ds))
         psfs_conj = conj(psfs)
         DP = mul(Ds_F, psfs_conj)
+        if psf_airy is not None:
+            DP = mul(DP, psf_airy[0])
         PP = mul(psfs, psfs_conj)
         DD = mul(Ds_F, conj(Ds_F))
         return self.reconstr_(DP, PP, do_fft, use_filter, DD)
@@ -513,14 +528,16 @@ class psf_torch():
 
         return obj
 
-    def reconstr_(self, DP, PP, do_fft = True, use_filter = True, DD = None):
+    def reconstr_(self, DP, PP, do_fft = True, use_filter = True, DD = None, DP1 = None):
         #eps = torch.tensor(1e-10).to(self.device, dtype=torch.complex64)
         eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
         #F_image = (DP + eps)/(PP + eps)
         F_image = div(DP + eps, PP + eps)
         
+        if DP1 is None:
+            DP1 = DP
         
-        loss = -torch.sum(real(mul(F_image, conj(DP)))) # Without DD part
+        loss = -torch.sum(real(mul(F_image, conj(DP1)))) # Without DD part
         if DD is not None:
             loss += torch.sum(DD)
         
@@ -564,7 +581,13 @@ class psf_torch():
         image, loss = self.reconstr_(num, den, do_fft, use_filter, DD)
         print("image", image.size())
         return image, Ps, wf, loss
-        
+    
+    
+    def calc_airy(self, diversity):
+        psf, _ = self.calc(torch.zeros([1, self.coh_trans_func.phase_aberr.jmax]).to(self.device, dtype=torch.float32), 
+                           torch.tensor(diversity).to(self.device, dtype=torch.float32))
+        return psf
+    
     '''
         Ds: [batch_size, num_frames, 2, nx, nx], where first dimension can be omitted
         alphas: [batch_size, num_frames, jmax], where first dimension can be omitted
@@ -606,7 +629,7 @@ class psf_torch():
             
         Ds_F_conj = conj(Ds_F)
         
-        Ps, wf = self.calc(alphas, diversity, normalize = False)
+        Ps, wf = self.calc(alphas, diversity, normalize = True)
         #Ps = tf.signal.ifftshift(Ps, axes=(2, 3))
 
         Ps_conj = conj(Ps)

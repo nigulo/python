@@ -679,8 +679,8 @@ class NN(nn.Module):
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2).to(device, dtype=torch.float32)], axis=2)
             alphas = alphas - tip_tilt_means
         
-        if self.test and num_iter > 1:
-            alphas = alphas / (1.*num_iter)
+        #if self.test and num_iter > 1:
+        #    alphas = alphas *.9
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
         # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
@@ -1228,8 +1228,10 @@ class NN(nn.Module):
         start = time.time()
 
         if nn_mode == MODE_1:
-            losses, pred_alphas, _, dens, nums_conj, psf, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
+            losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
             Ds_test2 = Ds_test
+            psf_f1 = psf_f
+            psf_airy = self.psf_test.calc_airy(Ds_test2[0][1])
             
             for iter_ in np.arange(1, num_iter):
                 Ds2 = np.empty((len(pred_alphas), 2*num_frames_input, nx, nx))
@@ -1238,11 +1240,11 @@ class NN(nn.Module):
                     Ds, diversity = Ds_test2[i]
                     diversities[i] = diversity
                     for l in np.arange(num_frames_input):
-                        Ds_r, _ = self.psf_test.reconstr2(Ds[2*l], psf[i, 0], use_filter=False)
-                        Ds_r_d, _ = self.psf_test.reconstr2(Ds[2*l+1], psf[i, 0], use_filter=False)
+                        Ds_r, _ = self.psf_test.reconstr2(Ds[2*l], psf_f1[i, 0], use_filter=False, psf_airy=psf_airy)
+                        Ds_r_d, _ = self.psf_test.reconstr2(Ds[2*l+1], psf_f1[i, 0], use_filter=False, psf_airy=psf_airy)
                         Ds2[i, 2*l] = Ds_r.cpu().numpy()
                         Ds2[i, 2*l+1] = Ds_r_d.cpu().numpy()
-                        psf_r = fft.ifft2(psf[i, ..., 0] + psf[i, ..., 1]*1.j).real
+                        psf_r = fft.ifft2(psf_f1[i, ..., 0] + psf_f1[i, ..., 1]*1.j).real
                         psf_r = fft.ifftshift(psf_r, axes=(1, 2))
                         #######################################################################
                         # DEBUG
@@ -1259,10 +1261,11 @@ class NN(nn.Module):
                         #######################################################################
                 Ds_test2 = Dataset2(Ds2, diversities)
                 Ds_test_loader2 = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
-                losses, pred_alphas, _, dens, nums_conj, psf, wf, _ = self.do_epoch(Ds_test_loader2, train=False)
-    
+                losses, pred_alphas, _, dens, nums_conj, psf_f1, wf, _ = self.do_epoch(Ds_test_loader2, train=False)
+                psf_focus = psf_f1[:, 0]
+                psf_f[:, 0] *= psf_focus
+                psf_f[:, 1] *= psf_focus
                 
-            
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
@@ -1274,7 +1277,8 @@ class NN(nn.Module):
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, alphas, Ds_diff)
             #pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
 
-        psf = fft.ifft2(psf[..., 0] + psf[..., 1]*1.j).real
+        psf_f = psf_f[..., 0] + psf_f[..., 1]*1.j
+        psf = fft.ifft2(psf_f).real
         psf = fft.ifftshift(psf, axes=(2, 3))
             
         #Ds *= std
@@ -1346,6 +1350,7 @@ class NN(nn.Module):
             alphas = []
             DD = np.zeros_like(DDs[0])
             DP = np.zeros_like(nums_conj[0])
+            DP1 = np.zeros((nx, nx), dtype="complex")
             PP = np.zeros_like(dens[0])
             psfs = []
             wfs = []
@@ -1356,13 +1361,15 @@ class NN(nn.Module):
                     if obj_index_j == obj_index_i:
                         Ds, _ = Ds_test[j]
                         for l in np.arange(num_frames_input):
-                            #D = Ds[j, :, :, 2*l]
+                            D = Ds[2*l:2*l+2, :, :]
                             #D_d = Ds[j, :, :, 2*l+1]
-                            #DF = fft.fft2(D)
+                            DF = fft.fft2(D)
                             #DF_d = fft.fft2(D_d)
-                            Ds_.append(Ds[2*l:2*l+2, :, :])
+                            Ds_.append(D)
                             #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
+                            DP1 += np.sum(DF * psf_f[j].conj(), axis = 0)
+
                         if j % batch_size == 0:
                             DP += nums_conj[j//batch_size]
                             PP += dens[j//batch_size]
@@ -1386,7 +1393,9 @@ class NN(nn.Module):
             #print("diversity", diversities.shape)
             #diversity = np.concatenate((diversities[i, :, :, 0], diversities[i, :, :, 1]))
             #print("diversity", diversity.shape)
-            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
+            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
+                        psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
+                        DD=torch.tensor(DD).to(device, dtype=torch.float32), DP1=psf_torch.complex_from_numpy(DP1, device=device))#self.deconvolve(Ds_, alphas, diversity)
             obj_reconstr = obj_reconstr.cpu().numpy()
             #psf = psf.numpy()
             wfs = wfs*self.pupil
