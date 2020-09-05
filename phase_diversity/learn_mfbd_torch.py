@@ -841,7 +841,7 @@ class NN(nn.Module):
                         alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
-    def do_batch(self, Ds, diversity):
+    def do_batch(self, Ds, diversity, train=True):
         Ds = Ds.to(device)
         diversity = diversity.to(device)
         if train:
@@ -888,7 +888,7 @@ class NN(nn.Module):
             #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
             #        my_test_plot.close()
             ###################################################################
-            result = self.do_batch(Ds, diversity)
+            result = self.do_batch(Ds, diversity, train)
             if nn_mode == 1:
                 loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
@@ -930,7 +930,7 @@ class NN(nn.Module):
                             #    my_test_plot.close()
                             #######################################################################
                     Ds1 = torch.tensor(Ds2)
-                    result = self.do_batch(Ds1, diversity)
+                    result = self.do_batch(Ds1, diversity, train)
                     if nn_mode == 1:
                         loss, alphas, num, den, DP_conj, psf1, wf, DD = result
                         #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
