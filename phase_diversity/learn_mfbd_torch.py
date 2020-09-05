@@ -901,13 +901,13 @@ class NN(nn.Module):
                 loss.backward()
                 self.optimizer.step()
 
-                Ds1 = Ds.numpy()
+                Ds1 = Ds
                 psf1 = psf
                 psf_airy = self.psf_test.calc_airy(diversity[0].numpy())
                 
                 for iter_ in np.arange(1, num_iter):
-                    Ds2 = np.empty((Ds1.size()[0], 2*num_frames_input, nx, nx))
-                    for i in range(Ds1.size()[0]):
+                    Ds2 = np.empty((len(Ds1), 2*num_frames_input, nx, nx))
+                    for i in range(len(Ds1)):
                         Ds_i = Ds1[i]
                         for l in np.arange(num_frames_input):
                             Ds_r, _ = self.psf_test.reconstr2(Ds_i[2*l], psf1[i, 0], use_filter=False, psf_airy=psf_airy)
