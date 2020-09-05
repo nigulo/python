@@ -929,7 +929,7 @@ class NN(nn.Module):
                             #    my_test_plot.save(f"{dir_name}/Ds_dbg{iter_}_{i}_{l}.png")
                             #    my_test_plot.close()
                             #######################################################################
-                    Ds1 = Ds2
+                    Ds1 = torch.tensor(Ds2)
                     result = self.do_batch(Ds1, diversity)
                     if nn_mode == 1:
                         loss, alphas, num, den, DP_conj, psf1, wf, DD = result
