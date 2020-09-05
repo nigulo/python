@@ -98,7 +98,7 @@ if nn_mode == MODE_1:
     shuffle2 = False
     
     num_reps = 1000
-    num_iter = 1
+    num_iter = 2
 
     n_epochs_2 = 2
     n_epochs_1 = 1
@@ -841,6 +841,17 @@ class NN(nn.Module):
                         alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
+    def do_batch(self, Ds, diversity):
+        Ds = Ds.to(device)
+        diversity = diversity.to(device)
+        if train:
+            self.optimizer.zero_grad()
+            result = self((Ds, diversity))
+        else:
+            with torch.no_grad():
+                result = self((Ds, diversity))
+        return result
+    
     def do_epoch(self, data_loader, train=True, use_prefix=True):
         prefix = None
         if train:
@@ -877,25 +888,59 @@ class NN(nn.Module):
             #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
             #        my_test_plot.close()
             ###################################################################
-            Ds = Ds.to(device)
-            diversity = diversity.to(device)
-            if train:
-                self.optimizer.zero_grad()
-                result = self((Ds, diversity))
-            else:
-                with torch.no_grad():
-                    result = self((Ds, diversity))
+            result = do_batch(Ds, diversity)
             if nn_mode == 1:
                 loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
             else:
                 loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = result
+                
+            ###################################################################
+            
             if train:
                 loss.backward()
                 self.optimizer.step()
-                #for param in self.parameters():
-                #    print(param.grad.data)
-                #    #print(param.data)
+
+                Ds1 = Ds.numpy()
+                psf1 = psf
+                psf_airy = self.psf_test.calc_airy(diversity[0].numpy())
+                
+                for iter_ in np.arange(1, num_iter):
+                    Ds2 = np.empty((Ds1.size()[0], 2*num_frames_input, nx, nx))
+                    for i in range(Ds1.size()[0]):
+                        Ds_i = Ds1[i]
+                        for l in np.arange(num_frames_input):
+                            Ds_r, _ = self.psf_test.reconstr2(Ds_i[2*l], psf1[i, 0], use_filter=False, psf_airy=psf_airy)
+                            Ds_r_d, _ = self.psf_test.reconstr2(Ds_i[2*l+1], psf1[i, 0], use_filter=False, psf_airy=psf_airy)
+                            Ds2[i, 2*l] = Ds_r.cpu().numpy()
+                            Ds2[i, 2*l+1] = Ds_r_d.cpu().numpy()
+                            #psf_r = fft.ifft2(psf_f1[i, ..., 0] + psf_f1[i, ..., 1]*1.j).real
+                            #psf_r = fft.ifftshift(psf_r, axes=(1, 2))
+                            #######################################################################
+                            # DEBUG
+                            #if i == 0:
+                            #    my_test_plot = plot.plot(nrows=3, ncols=2)
+                            #    my_test_plot.colormap(Ds[2*l], [0, 0], show_colorbar=True)
+                            #    my_test_plot.colormap(Ds[2*l+1], [0, 1], show_colorbar=True)
+                            #    my_test_plot.colormap(Ds2[i, 2*l], [1, 0], show_colorbar=True)
+                            #    my_test_plot.colormap(Ds2[i, 2*l+1], [1, 1], show_colorbar=True)
+                            #    my_test_plot.colormap(utils.trunc(psf_r[0], 1e-3), [2, 0], show_colorbar=True)
+                            #    my_test_plot.colormap(utils.trunc(psf_r[1], 1e-3), [2, 1], show_colorbar=True)
+                            #    my_test_plot.save(f"{dir_name}/Ds_dbg{iter_}_{i}_{l}.png")
+                            #    my_test_plot.close()
+                            #######################################################################
+                    Ds1 = Ds2
+                    result = do_batch(Ds1, diversity)
+                    if nn_mode == 1:
+                        loss, alphas, num, den, DP_conj, psf1, wf, DD = result
+                        #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
+                    else:
+                        loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf1, wf, DD = result
+                    
+                    loss.backward()
+                    self.optimizer.step()
+                    
+                ###################################################################
             else:
                 all_alphas.append(alphas.cpu().numpy())
                 all_num.append(num.cpu().numpy())
