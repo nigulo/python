@@ -906,7 +906,7 @@ class NN(nn.Module):
                 psf_airy = self.psf_test.calc_airy(diversity[0].numpy())
                 
                 for iter_ in np.arange(1, num_iter):
-                    Ds2 = np.empty((len(Ds1), 2*num_frames_input, nx, nx))
+                    Ds2 = np.empty((len(Ds1), 2*num_frames_input, nx, nx), dtype="float32")
                     for i in range(len(Ds1)):
                         Ds_i = Ds1[i]
                         for l in np.arange(num_frames_input):
