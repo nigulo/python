@@ -888,7 +888,7 @@ class NN(nn.Module):
             #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
             #        my_test_plot.close()
             ###################################################################
-            result = do_batch(Ds, diversity)
+            result = self.do_batch(Ds, diversity)
             if nn_mode == 1:
                 loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
@@ -930,7 +930,7 @@ class NN(nn.Module):
                             #    my_test_plot.close()
                             #######################################################################
                     Ds1 = Ds2
-                    result = do_batch(Ds1, diversity)
+                    result = self.do_batch(Ds1, diversity)
                     if nn_mode == 1:
                         loss, alphas, num, den, DP_conj, psf1, wf, DD = result
                         #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
