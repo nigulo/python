@@ -21,7 +21,7 @@ import math
 import os
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
-import zarr
+#import zarr
 import pickle
 import os.path
 import numpy.fft as fft
@@ -68,7 +68,7 @@ n_epochs_1 = 1
 
 
 batch_size = 32
-n_channels = 8
+n_channels = 16
     
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -78,12 +78,17 @@ if dir_name is None:
 sys.path.append('../utils')
 sys.path.append('..')
 
-gpu_id = '/device:GPU:0'
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    gpu_id = '/device:GPU:0'
+else:
+    gpu_id = 'CPU'
 
 if train:
     sys.stdout = open(dir_name + '/log.txt', 'a')
 else:
-    gpu_id = '/device:GPU:1'
+    if gpus:
+        gpu_id = '/device:GPU:1'
 
     
 #else:

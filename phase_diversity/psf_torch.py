@@ -451,10 +451,10 @@ class psf_torch():
     dat_F.shape = [num_frames, 2, nx, nx]
     alphas.shape = [num_frames, jmax]
     '''
-    def multiply(self, dat_F, alphas, diversity):
+    def multiply(self, obj_F, alphas, diversity):
         otf_vals, _ = self.calc(alphas, diversity)
-        print("dat_F, otf_vals", dat_F.size(), otf_vals.size())
-        return mul(dat_F, otf_vals)
+        print("obj_F, otf_vals", obj_F.size(), otf_vals.size())
+        return mul(obj_F, otf_vals)
 
 
     def aberrate(self, obj, alphas, diversity=None):
@@ -464,16 +464,29 @@ class psf_torch():
         obj = to_complex(obj.unsqueeze(0).repeat(self.num_frames*2, 1, 1))
         print("obj, alphas", obj.size(), alphas.size())
         
-        fobj = fft(obj)
+        obj_F = fft(obj)
         #fobj = fftshift(fobj)
     
-        DF = self.multiply(fobj, alphas, diversity)
+        DF = self.multiply(obj_F, alphas, diversity)
         #DF = ifftshift(DF)
         D = real(ifft(DF))
         #D = ifftshift(D)
         
         #D = tf.transpose(D, (0, 2, 3, 1))
         return D/(D.size()[1]*D.size()[2])
+    
+    def aberrate2(self, obj_F, psf_F, do_fft=True):
+        if len(obj_F.size()) == 3:
+            obj_F = obj_F.unsqueeze(0)    
+        obj_F = obj_F.repeat_interleave(psf_F.size()[0]//obj_F.size()[0], dim=0)
+        obj_F = obj_F.unsqueeze(1)
+        dat_F = mul(obj_F, psf_F)
+        if do_fft:
+            dat = real(ifft(dat_F))
+        else:
+            dat = dat_F
+        return dat
+        
 
     # For numpy inputs
     def Ds_reconstr(self, DP_real, DP_imag, PP, alphas, diversity):
@@ -505,6 +518,10 @@ class psf_torch():
             DP = mul(DP, psf_airy[0])
         PP = mul(psfs, psfs_conj)
         DD = mul(Ds_F, conj(Ds_F))
+        while len(DP.size()) > 3:
+            DP = torch.sum(DP, axis=0)
+            PP = torch.sum(PP, axis=0)
+            DD = torch.sum(DD, axis=0)
         return self.reconstr_(DP, PP, do_fft, use_filter, DD)
         
 
