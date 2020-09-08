@@ -23,7 +23,11 @@ def convert(path):
     
     for root, dirs, files in os.walk(path):
         for file in files:
-            f = pa.fzread(path + "/" + file)
+            try:
+                f = pa.fzread(path + "/" + file)
+            except Exception as e:
+                pass
+                
             image = f['data']
             max_val = np.max(image)
             min_val = np.min(image)
@@ -37,8 +41,11 @@ def convert(path):
     i = 0
     for root, dirs, files in os.walk(path):
         for file in files:
+            try:
+                f = pa.fzread(path + "/" + file)
+            except Exception as e:
+                print("Skipping " + file)
             print(file)
-            f = pa.fzread(path + "/" + file)
             image = f['data']
                 
             #image = image.astype(np.uint32)

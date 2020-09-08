@@ -99,7 +99,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
     num_iter = 1
-    use_ds_diff = False
+    use_ds_diff = True
 
     n_epochs_2 = 2
     n_epochs_1 = 1
@@ -112,7 +112,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -901,8 +901,6 @@ class NN(nn.Module):
             ###################################################################
             
             if train:
-                loss.backward()
-                self.optimizer.step()
 
                 if use_ds_diff:       
                     # This block assumes that num_frames_input = 1
@@ -929,13 +927,13 @@ class NN(nn.Module):
                     #######################################################################
                     result = self.do_batch(Ds - torch.tensor(dat), diversity, train)
                     if nn_mode == 1:
-                        loss1, alphas, num, den, DP_conj, psf1, wf, DD = result
+                        loss, alphas, num, den, DP_conj, psf1, wf, DD = result
                         #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
                     else:
-                        loss1, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf1, wf, DD = result
+                        loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf1, wf, DD = result
                     
-                    loss1.backward()
-                    self.optimizer.step()
+                loss.backward()
+                self.optimizer.step()
 
                 if num_iter > 1:
                 
@@ -1311,6 +1309,7 @@ class NN(nn.Module):
         start = time.time()
 
         if nn_mode == MODE_1:
+            
             losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
             
             if use_ds_diff:       
@@ -1352,8 +1351,9 @@ class NN(nn.Module):
                         my_test_plot.close()
                 #######################################################################
                 Ds_test2 = Dataset2(Ds2, diversities)
-                Ds_test_loader2 = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
-                losses, pred_alphas, _, dens, nums_conj, psf_f, wf, _ = self.do_epoch(Ds_test_loader2, train=False)
+                Ds_test_loader = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
+            
+                losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
 
             if num_iter > 1:
                 Ds_test2 = Ds_test
@@ -1526,7 +1526,8 @@ class NN(nn.Module):
             elif num_iter > 1:
                 obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
                         psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
-                        DD=torch.tensor(DD).to(device, dtype=torch.float32), DP1=psf_torch.complex_from_numpy(DP1, device=device))#self.deconvolve(Ds_, alphas, diversity)
+                        DD=torch.tensor(DD).to(device, dtype=torch.float32), 
+                        DP1=psf_torch.complex_from_numpy(DP1, device=device))#self.deconvolve(Ds_, alphas, diversity)
             else:
                 obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
                         psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
