@@ -112,7 +112,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 64
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -324,7 +324,19 @@ class Dataset(torch.utils.data.Dataset):
         #######################################################################
         
         return Ds_out, diversities_out
+      
+
+    def get_data(self):
+        Ds0, div0 = self[0]
+        Ds = np.empty((self.length(), Ds0.shape[0], Ds0.shape[1], Ds0.shape[2]))
+        diversities = np.empty((self.length(), div0.shape[0], div0.shape[1], div0.shape[2]))
+        for i in range(self.length()):
+            Ds_i, diversity_i = self[i]
+            Ds[i] = Ds_i
+            diversities[i] = diversity_i
+        return Ds, diversities
         
+    
     def __len__(self):
         return self.total_num_rows
     
@@ -849,7 +861,7 @@ class NN(nn.Module):
                 result = self((Ds, diversity))
         return result
     
-    def do_epoch(self, data_loader, train=True, use_prefix=True):
+    def do_epoch(self, data_loader, train=True, use_prefix=True, normalize=True):
         prefix = None
         if train:
             prefix="Training error"
@@ -873,11 +885,12 @@ class NN(nn.Module):
             all_wf = []#np.empty((num_data, nx, nx))
             all_DD = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
-            med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
-            Ds -= med
-            Ds = self.hanning.multiply(Ds, axis=2)
-            Ds += med
-            Ds /= med
+            if normalize:
+                med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
+                Ds -= med
+                Ds = self.hanning.multiply(Ds, axis=2)
+                Ds += med
+                Ds /= med
             
             ###################################################################
             # DEBUG
@@ -891,7 +904,33 @@ class NN(nn.Module):
             #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
             #        my_test_plot.close()
             ###################################################################
-            result = self.do_batch(Ds, diversity, train)
+            if use_ds_diff:
+                with torch.no_grad():
+                    psf_airy = self.psf_test.calc_airy(diversity[0].numpy())
+                    obj_reconstr_F, _ = self.psf_test.reconstr2(Ds, psf_airy, do_fft=False, use_filter=False)
+                    dat = self.psf_test.aberrate2(obj_reconstr_F, psf_airy.unsqueeze(0).repeat([len(Ds), 1, 1, 1, 1])).cpu().numpy()
+                    if normalize:
+                        med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
+                        dat -= med
+                        dat = self.hanning.multiply(dat, axis=2)
+                        dat += med
+                        dat /= med
+                #######################################################################
+                # DEBUG
+                #for i in range(len(dat)):
+                #    Ds_i = Ds[i].cpu().numpy()
+                #    if i < 10:
+                #        my_test_plot = plot.plot(nrows=2, ncols=2)
+                #        my_test_plot.colormap(Ds_i[0] - dat[i, 0], [0, 0], show_colorbar=True)
+                #        my_test_plot.colormap(Ds_i[1] - dat[i, 1], [0, 1], show_colorbar=True)
+                #        my_test_plot.colormap(dat[i, 0], [1, 0], show_colorbar=True)
+                #        my_test_plot.colormap(dat[i, 1], [1, 1], show_colorbar=True)
+                #        my_test_plot.save(f"{dir_name}/Ds_dbg2_{i}.png")
+                #        my_test_plot.close()
+                #######################################################################
+                result = self.do_batch(Ds - torch.tensor(dat), diversity, train)
+            else:
+                result = self.do_batch(Ds, diversity, train)
             if nn_mode == 1:
                 loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
@@ -905,13 +944,15 @@ class NN(nn.Module):
                 if use_ds_diff:       
                     # This block assumes that num_frames_input = 1
                     with torch.no_grad():
-                        obj_reconstr_F, _ = self.psf_test.reconstr_(DP_conj, psf_torch.to_complex(den), do_fft=False, use_filter=False)#self.deconvolve(Ds_, alphas, diversity)
+                        obj_reconstr_F, _ = self.psf_test.reconstr2(Ds, psf, do_fft=False, use_filter=False)
+                        #obj_reconstr_F, _ = self.psf_test.reconstr_(DP_conj, psf_torch.to_complex(den), do_fft=False, use_filter=False)#self.deconvolve(Ds_, alphas, diversity)
                         dat = self.psf_test.aberrate2(obj_reconstr_F, psf).cpu().numpy()
-                        med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
-                        dat -= med
-                        dat = self.hanning.multiply(dat, axis=2)
-                        dat += med
-                        dat /= med
+                        if normalize:
+                            med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
+                            dat -= med
+                            dat = self.hanning.multiply(dat, axis=2)
+                            dat += med
+                            dat /= med
                     #######################################################################
                     # DEBUG
                     #for i in range(len(dat)):
@@ -1314,27 +1355,35 @@ class NN(nn.Module):
             
             if use_ds_diff:       
                 # This block assumes that num_frames_input = 1
-                with torch.no_grad():
-                    obj_reconstr_F, _ = self.psf_test.reconstr_(torch.tensor(nums_conj).to(device, dtype=torch.float32), 
-                                psf_torch.to_complex(torch.tensor(dens).to(device, dtype=torch.float32)), 
-                                do_fft=False, use_filter=False)#self.deconvolve(Ds_, alphas, diversity)
-                    dat = self.psf_test.aberrate2(obj_reconstr_F, torch.tensor(psf_f).to(device, dtype=torch.float32)).cpu().numpy()
-                    med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
-                    dat -= med
-                    dat = self.hanning.multiply(dat, axis=2)
-                    dat += med
-                    dat /= med
-                Ds2 = np.empty((len(dat), 2*num_frames_input, nx, nx))
-                diversities = np.empty((len(dat), 2, nx, nx))
-                for i in range(len(dat)):
-                    Ds, diversity = Ds_test[i]
-                    diversities[i] = diversity
-                    Ds2[i] = Ds_test[i][0]
+                Ds2, diversities = Ds_test.get_data()
                 med = np.median(Ds2, axis=(0, 1, 2, 3), keepdims=True)
                 Ds2 -= med
                 Ds2 = self.hanning.multiply(Ds2, axis=2)
                 Ds2 += med
                 Ds2 /= med
+                with torch.no_grad():
+                    obj_reconstr_F, _ = self.psf_test.reconstr2(Ds2, psf_f, do_fft=False, use_filter=False)
+                    #obj_reconstr_F, _ = self.psf_test.reconstr_(torch.tensor(nums_conj).to(device, dtype=torch.float32), 
+                    #            psf_torch.to_complex(torch.tensor(dens).to(device, dtype=torch.float32)), 
+                    #            do_fft=False, use_filter=False)#self.deconvolve(Ds_, alphas, diversity)
+                    psf_dev = torch.tensor(psf_f).to(device, dtype=torch.float32)
+                    dat = self.psf_test.aberrate2(obj_reconstr_F, psf_dev).cpu().numpy()
+                    med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
+                    dat -= med
+                    dat = self.hanning.multiply(dat, axis=2)
+                    dat += med
+                    dat /= med
+                #Ds2 = np.empty((len(dat), 2*num_frames_input, nx, nx))
+                #diversities = np.empty((len(dat), 2, nx, nx))
+                #for i in range(len(dat)):
+                #    Ds, diversity = Ds_test[i]
+                #    diversities[i] = diversity
+                #    Ds2[i] = Ds_test[i][0]
+                #med = np.median(Ds2, axis=(0, 1, 2, 3), keepdims=True)
+                #Ds2 -= med
+                #Ds2 = self.hanning.multiply(Ds2, axis=2)
+                #Ds2 += med
+                #Ds2 /= med
                 
                 Ds2 -= dat
 
@@ -1353,7 +1402,7 @@ class NN(nn.Module):
                 Ds_test2 = Dataset2(Ds2, diversities)
                 Ds_test_loader = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
             
-                losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
+                losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False, normalize=False)
 
             if num_iter > 1:
                 Ds_test2 = Ds_test
