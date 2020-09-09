@@ -68,7 +68,7 @@ n_epochs_1 = 1
 
 
 batch_size = 32
-n_channels = 16
+n_channels = 8
     
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -196,7 +196,9 @@ else:
 
     
     data_train, loglik_train, data_test, loglik_test = load_data(data_file)
+    data_train = np.transpose(data_train, (0, 2, 3, 4, 1))
 
+    print(data_train.shape)
     mean = np.mean(data_train, axis = 0)
     data_train -= mean
     std = np.std(data_train, axis = 0)
@@ -219,7 +221,8 @@ else:
 
 
     model = nn_model.nn_model(data_file, dir_name, n_gpus, gpu_id)
-    model.load()
+    if not model.load():
+        model.init(nx, ny, nz, num_input_channels, batch_size, activation_fn, n_channels, n_epochs_1, n_epochs_2, mean, std)
     model.create()
     
     model.test(data_test, loglik_test)
