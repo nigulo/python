@@ -99,7 +99,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
     num_iter = 1
-    use_ds_diff = True
+    use_ds_diff = False
 
     n_epochs_2 = 2
     n_epochs_1 = 1
@@ -112,7 +112,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 128
-    n_channels = 32
+    n_channels = 128
     
     sum_over_batch = True
     
