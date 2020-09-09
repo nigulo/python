@@ -48,22 +48,22 @@ state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
 #state_file = 'pi-ambiguity-test/amb_turb.fits'
 
-num_x = 1
-num_y = 1
-x_no = 0
-y_no = 0
+nx = None
+ny = None
+x_start = 0
+y_start = 0
 true_input = None # If False, then already processed input and no shuffling needed
 
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
 if len(sys.argv) > 2:
-    num_x = int(sys.argv[2])
+    x_start = int(sys.argv[2])
 if len(sys.argv) > 3:
-    num_y = int(sys.argv[3])
+    y_start = int(sys.argv[3])
 if len(sys.argv) > 4:
-    x_no = int(sys.argv[4])
+    nx = int(sys.argv[4])
 if len(sys.argv) > 5:
-    y_no = int(sys.argv[5])
+    ny = int(sys.argv[5])
 if len(sys.argv) > 6:
     true_input = sys.argv[6]
 
@@ -72,7 +72,7 @@ subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
 num_layers = 3
-inference = True
+inference = False
 infer_z_scale = True
 sample_or_optimize = False
 num_chains = 4
@@ -83,7 +83,7 @@ num_tries_without_progress = 100
 
 m_kiss = 13
 
-gp_or_nn = True
+gp_or_nn = False
 
 def load(file_name):
     
@@ -267,11 +267,18 @@ def convert(b, phi, theta):
     ###########################################################################
     # Cut out the patch as specified by program arguments
     
-    n1 = b.shape[0]//num_x
-    n2 = b.shape[1]//num_y
-    x_start = n1*x_no
+    n1 = nx
+    n2 = ny
+    if n1 is None:
+        n1 = b.shape[0]
+    if n2 is None:
+        n2 = b.shape[1]
+    
+    #n1 = b.shape[0]//num_x
+    #n2 = b.shape[1]//num_y
+    #x_start = n1*x_no
     x_end = min(x_start + n1, b.shape[0])
-    y_start = n2*y_no
+    #y_start = n2*y_no
     y_end = min(y_start + n1, b.shape[1])
     
     b = b[x_start:x_end, y_start:y_end, :num_layers]
@@ -315,7 +322,7 @@ def convert(b, phi, theta):
             truth_plot.colormap(bz[:, :, layer], ax_index = [layer, 2])
             truth_plot.colormap(np.sqrt(bx[:, :, layer]**2 + by[:, :, layer]**2 + bz[:, :, layer]**2), ax_index = [layer, 3])
             #truth_plot.vectors(x1_mesh, x2_mesh, bx[:, :, layer], by[:, :, layer], ax_index = [layer], units='width', color = 'k')
-        truth_plot.save("truth_field_" + str(x_no) + "_" + str(y_no) + ".png")
+        truth_plot.save("truth_field_" + str(x_start) + "_" + str(y_start) + ".png")
         truth_plot.close()
 
     bx = np.reshape(bx, n)
@@ -399,9 +406,11 @@ def do_plots(y, thetas, title = None, file_name=None):
             bx_diff = bx_true[:, :, layer] - bx_dis[:, :, layer]
             by_diff = by_true[:, :, layer] - by_dis[:, :, layer]
             phi_diff = phi_true[:, :] - phi_dis[:, :]
-            components_plot.colormap(np.array(bx_diff == 0., dtype='float'), [2, 0], cmap_name="Greys")
-            components_plot.colormap(np.array(by_diff == 0., dtype='float'), [2, 1])
-            components_plot.colormap(np.array(phi_diff == 0., dtype='float'), [2, 2])
+            
+            modulus = np.sqrt(bx_true[:, :, layer]**2 + by_true[:, :, layer]**2)
+            components_plot.colormap(np.array(bx_diff != 0., dtype='float')*modulus, [2, 0], cmap_name="Greys", reverse_cmap=False)
+            components_plot.colormap(np.array(by_diff != 0., dtype='float')*modulus, [2, 1], cmap_name="Greys", reverse_cmap=False)
+            components_plot.colormap(np.array(phi_diff != 0., dtype='float')*modulus, [2, 2], cmap_name="Greys", reverse_cmap=False)
 
         #if thetas is not None:
         #    components_plot.set_colormap('Greys')
@@ -410,7 +419,7 @@ def do_plots(y, thetas, title = None, file_name=None):
         
         if file_name is None:
             file_name = "components"
-        components_plot.save(file_name + "_" + str(x_no) + "_" + str(y_no) + "_" + str(layer) +".png")
+        components_plot.save(file_name + "_" + str(x_start) + "_" + str(y_start) + "_" + str(layer) +".png")
         components_plot.close()
 
 
@@ -709,10 +718,12 @@ class disambiguator():
             #model.load()
             #model.create()
             #self.nn_models.append(model)
-            model = nn_model.nn_model("02", ".")
-            model.load()
-            model.create()
-            self.nn_models.append(model)
+            
+            #model = nn_model.nn_model("02", ".")
+            #model.load()
+            #model.create()
+            #self.nn_models.append(model)
+            
             model = nn_model.nn_model("03", ".")
             model.load()
             model.create()
@@ -1222,7 +1233,7 @@ z_scale = None
 if not inference:
     
     sig_var=1.
-    length_scale=.2
+    length_scale=.3
     noise_var=0.01
 
     #sig_var=1.
@@ -1241,15 +1252,14 @@ if inference:
     x = d.x # For z_scale
     print("Estimated length_scale", d.length_scale)
 
-sys.exit(0)
 y = np.array(y_orig)
 
-#if true_input is None:
-#    # Align all the transverse components either randomly or identically
-#    for i in np.arange(0, n):
-#        if np.random.uniform() < 0.5:
-#            #y[i, :2] *= -1
-#            y[i, :2] = np.abs(y[i, :2])
+if true_input is None:
+    # Align all the transverse components either randomly or identically
+    for i in np.arange(0, n):
+        if np.random.uniform() < 0.5:
+            y[i, :2] *= -1
+            #y[i, :2] = np.abs(y[i, :2])
 
 
 for i in np.arange(0, total_num_tries):
@@ -1261,11 +1271,12 @@ for i in np.arange(0, total_num_tries):
         best_y = field_y
         do_plots(best_y, d.thetas, title="Current best", file_name="best_result")
 
-        misc.save("result_" + str(x_no) + "_" + str(y_no) + ".pkl", (n1_orig, n2_orig, n3_orig, num_x, num_y, x_no, y_no, best_y))
+        misc.save("result_" + str(x_start) + "_" + str(y_start) + ".pkl", (n1_orig, n2_orig, n3_orig, x_start, y_start, n1, n2, n3, best_y))
 
     y = np.array(best_y)
         
     # Swap half of the pixels
-    indices = np.random.choice(len(y), len(y)//2, replace = False)
-    y[indices, :2] *= -1
+    if true_input is None:
+        indices = np.random.choice(len(y), len(y)//2, replace = False)
+        y[indices, :2] *= -1
         

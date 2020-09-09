@@ -234,10 +234,7 @@ def load(file_name):
     return b, phi, theta
 
 def get_patches(b, phi, theta, num_patches, rnd=True):
-    
-    
     ys = []
-    
     
     x_start = 0
     y_start = 0

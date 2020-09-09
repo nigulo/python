@@ -89,6 +89,7 @@ class nn_model:
         try:
             params = pickle.load(open(self.dir_name + f'/{self.name}_params.dat', 'rb'))
         except:
+            print("No parameters found")
             return None
         return params
     
@@ -191,7 +192,7 @@ class nn_model:
         self.model = model
         
         optimizer = keras.optimizers.Adam(
-            learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
+            learning_rate=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False)
             
         self.model.compile(optimizer=optimizer, loss='mse')#'adadelta', loss='mse')
 
@@ -248,6 +249,7 @@ class nn_model:
 
     def test(self, data_test, loglik_test=None):
         model = self.model
+        print(data_test.shape, self.mean.shape)
         data_test -= self.mean
         data_test /= self.std
         
@@ -257,7 +259,7 @@ class nn_model:
         if loglik_test is not None:
             print(pred_logliks.shape, loglik_test.shape)
             x = np.arange(len(pred_logliks))
-            my_plot = plot.plot(nrows=1, ncols=1, smart_axis=False, width=20., height = 3.)
+            my_plot = plot.plot(nrows=1, ncols=1, smart_axis=False, width=20., height = 5)
             my_plot.plot(x=x, y=np.log(np.abs(pred_logliks)), params="r-")
             my_plot.plot(x=x, y=np.log(np.abs(loglik_test)), params="b--")
             #my_plot.plot(x=x, y=np.abs(pred_logliks-loglik_test), ax_index=2, params="k-")
