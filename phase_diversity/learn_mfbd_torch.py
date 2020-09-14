@@ -398,7 +398,7 @@ class Dataset(torch.utils.data.Dataset):
         for i in range(self.length()):
             Ds, _ = self[i]
             med += np.median(Ds)
-        return med/self.length()
+        return (med/self.length()).astype("float32")
 
 class Dataset2(torch.utils.data.Dataset):
     #def __init__(self, Ds, objs, diversities, positions, obj_ids):
