@@ -29,7 +29,7 @@ gamma = 1.0
 MODE_1 = 1 # aberrated images --> wavefront coefs --> MFBD loss
 MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 MODE_3 = 3 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
-nn_mode = MODE_2
+nn_mode = MODE_1
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -240,7 +240,7 @@ def load_data(data_file):
 
 class Dataset(torch.utils.data.Dataset):
     #def __init__(self, Ds, objs, diversities, positions, obj_ids):
-    def __init__(self, datasets):
+    def __init__(self, datasets, calc_median=True):
         super(Dataset, self).__init__()
         
         self.datasets = datasets
@@ -263,6 +263,10 @@ class Dataset(torch.utils.data.Dataset):
         
         nx = datasets[0][0].shape[3]
         self.hanning = utils.hanning(nx, 10)
+        if calc_median:
+            self.median = self.calc_median()
+        else:
+            self.median = None
         
                
     def __getitem__(self, index):
@@ -387,6 +391,14 @@ class Dataset(torch.utils.data.Dataset):
             coord = None
         
         return obj_index, obj, pos, coord
+    
+    def calc_median(self):
+        # This is actually mean of medians
+        med = 0.
+        for i in range(self.length()):
+            Ds, _ = self[i]
+            med += np.median(Ds)
+        return med/self.length()
 
 class Dataset2(torch.utils.data.Dataset):
     #def __init__(self, Ds, objs, diversities, positions, obj_ids):
@@ -404,7 +416,7 @@ class Dataset2(torch.utils.data.Dataset):
 
         Ds_out = np.array(self.Ds[index]).astype('float32')
         
-        med = np.median(Ds_out, axis=(0, 1, 2), keepdims=True)
+        #med = np.median(Ds_out, axis=(0, 1, 2), keepdims=True)
         #Ds_out -= med
         #Ds_out = self.hanning.multiply(Ds_out, axis=1)
         #Ds_out += med
@@ -886,7 +898,9 @@ class NN(nn.Module):
             all_DD = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
             if normalize:
-                med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
+                med = np.array(data_loader.dataset.median)[None, None, None, None]
+                if med is None:
+                    med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
                 Ds -= med
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
@@ -1564,7 +1578,9 @@ class NN(nn.Module):
             #print("alphas", alphas.shape, Ds_.shape)
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
-            med = np.median(Ds_, axis=(0, 1, 2, 3), keepdims=True)
+            med = np.array(Ds_test.median)[None, None, None, None]
+            if med is None:
+                med = np.median(Ds_, axis=(0, 1, 2, 3), keepdims=True)
             Ds_ -= med
             Ds_ = self.hanning.multiply(Ds_, axis=2)
             Ds_ += med
