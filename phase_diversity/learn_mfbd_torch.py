@@ -105,14 +105,14 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 128
+    num_frames = 32
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 128
-    n_channels = 128
+    batch_size = 32
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -1201,7 +1201,7 @@ class NN(nn.Module):
                 
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
-            if pred_alphas is not None:
+            if pred_alphas is not None and obj is not None:
                 diversity = self.Ds_validation[i][1]#self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
                 #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
                 self.psf_check.coh_trans_func.set_diversity(diversity)
