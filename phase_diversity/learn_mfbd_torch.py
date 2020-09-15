@@ -905,6 +905,14 @@ class NN(nn.Module):
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
+                
+                # Mirror randomly for data augmentation purposes
+                if bool(random.getrandbits(1)):
+                    Ds = Ds[..., ::-1, :]
+                    diversity = diversity[..., ::-1, :]
+                if bool(random.getrandbits(1)):
+                    Ds = Ds[..., :, ::-1]
+                    diversity = diversity[..., :, ::-1]
             
             ###################################################################
             # DEBUG
