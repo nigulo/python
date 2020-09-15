@@ -907,10 +907,10 @@ class NN(nn.Module):
                 Ds /= med
                 
                 # Mirror randomly for data augmentation purposes
-                if bool(random.getrandbits(1)):
+                if random.choice([True, False]):
                     Ds = Ds[..., ::-1, :]
                     diversity = diversity[..., ::-1, :]
-                if bool(random.getrandbits(1)):
+                if random.choice([True, False]):
                     Ds = Ds[..., :, ::-1]
                     diversity = diversity[..., :, ::-1]
             
