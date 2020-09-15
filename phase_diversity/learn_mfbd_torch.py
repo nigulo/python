@@ -908,11 +908,11 @@ class NN(nn.Module):
                 
                 # Mirror randomly for data augmentation purposes
                 if random.choice([True, False]):
-                    Ds = Ds[..., ::-1, :]
-                    diversity = diversity[..., ::-1, :]
+                    Ds = torch.flip(Ds, [-1])
+                    diversity = torch.flip(diversity, [-1])
                 if random.choice([True, False]):
-                    Ds = Ds[..., :, ::-1]
-                    diversity = diversity[..., :, ::-1]
+                    Ds = torch.flip(Ds, [-2])
+                    diversity = torch.flip(diversity, [-2])
             
             ###################################################################
             # DEBUG
