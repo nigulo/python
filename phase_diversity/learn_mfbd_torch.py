@@ -105,13 +105,13 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 64
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
+    batch_size = 64
     n_channels = 32
     
     sum_over_batch = True
@@ -524,8 +524,6 @@ class NN(nn.Module):
         self.nx = nx
         self.num_frames = num_frames
         
-        
-        self.num_frames = num_frames
         assert(num_frames_input <= self.num_frames)
         
         self.i1 = None # See set_data method for meaning
@@ -590,7 +588,7 @@ class NN(nn.Module):
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(36*n_channels, 1024))
         self.layers2.append(activation_fn())
-        size = 256
+        size = batch_size*8#256
         self.layers2.append(nn.Linear(1024, size))
         self.layers2.append(activation_fn())
 
