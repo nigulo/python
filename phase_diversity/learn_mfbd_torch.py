@@ -105,13 +105,13 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 32
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 64
+    batch_size = 32
     n_channels = 32
     
     sum_over_batch = True
@@ -588,7 +588,7 @@ class NN(nn.Module):
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(36*n_channels, 1024))
         self.layers2.append(activation_fn())
-        size = batch_size*8#256
+        size = 256
         self.layers2.append(nn.Linear(1024, size))
         self.layers2.append(activation_fn())
 
@@ -673,9 +673,12 @@ class NN(nn.Module):
 
         # We want to use LSTM over the whole batch,
         # so we make first dimension of size 1
-        x = x.unsqueeze(dim=0)
+        num_chunks = batch_size//16
+        x = x.view(num_chunks, x.size()[0]//num_chunks, x.size()[1])
+        #x = x.unsqueeze(dim=0)
         x, _ = self.lstm(x)
-        x = x.squeeze()
+        x = x.view(x.size()[1]*num_chunks, x.size()[2])
+        #x = x.squeeze()
 
         # Fully connected layers
         for layer in self.layers3:
