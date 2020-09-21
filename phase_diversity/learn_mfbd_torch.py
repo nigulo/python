@@ -105,14 +105,14 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 32
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 64
-    n_channels = 32
+    batch_size = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -1642,22 +1642,25 @@ class NN(nn.Module):
                     wf_true = wf_true.cpu().numpy()*self.pupil
                     #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
                     psf_true = fft.ifftshift(psf_true, axes=(2, 3))
+                    frame_step = nf//5
+                    my_test_plot = plot.plot(nrows=5, ncols=4)
+                    row = 0
                     for j in np.arange(nf):
-                        if j % 100 == 0:
+                        if j % frame_step == 0:
                             print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                             print("psf[j]", np.max(psfs[j]), np.min(psfs[j]))
                             print("psf MSE", np.sum((psf_true[j] - psfs[j])**2))
-                            my_test_plot = plot.plot(nrows=2, ncols=5)
-                            my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [0, 0], show_colorbar=True)
-                            my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [0, 1], show_colorbar=True)
-                            my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
-                            my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
-                            my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
-                            my_test_plot.colormap(wf_true[j], [1, 0], show_colorbar=True)
-                            my_test_plot.colormap(wfs[j], [1, 1], show_colorbar=True)
-                            my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
-                            my_test_plot.save(f"{dir_name}/psf{i // n_test_frames}_{j}.png")
-                            my_test_plot.close()
+                            my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [row, 0], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [row, 1], show_colorbar=True)
+                            #my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
+                            #my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
+                            #my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
+                            my_test_plot.colormap(wf_true[j], [row, 2], show_colorbar=True)
+                            my_test_plot.colormap(wfs[j], [row, 3], show_colorbar=True)
+                            #my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
+                            row += 1
+                    my_test_plot.save(f"{dir_name}/psf{obj_index_i}.png")
+                    my_test_plot.close()
 
                     if estimate_full_image:
                         cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
