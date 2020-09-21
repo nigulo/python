@@ -112,7 +112,7 @@ if nn_mode == MODE_1:
     num_frames_input = 1
     
     batch_size = 32
-    n_channels = 64
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -1646,13 +1646,15 @@ class NN(nn.Module):
                     frame_step = nf//num_plot_frames
                     my_test_plot = plot.plot(nrows=num_plot_frames, ncols=4)
                     row = 0
+                    zoom_start = psf_true.shape[2]//4
+                    zoom_end = psf_true.shape[2] - zoom_start
                     for j in np.arange(nf):
                         if row < num_plot_frames and j % frame_step == 0:
                             print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                             print("psf[j]", np.max(psfs[j]), np.min(psfs[j]))
                             print("psf MSE", np.sum((psf_true[j] - psfs[j])**2))
-                            my_test_plot.colormap(utils.trunc(psf_true[j, 0], 1e-3), [row, 0], show_colorbar=True)
-                            my_test_plot.colormap(utils.trunc(psfs[j, 0], 1e-3), [row, 1], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psf_true[j, 0, zoom_start:psf_zoom_end, zoom_start:psf_zoom_end], 1e-3), [row, 0], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psfs[j, 0, zoom_start:psf_zoom_end, zoom_start:psf_zoom_end], 1e-3), [row, 1], show_colorbar=True)
                             #my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
                             #my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
                             #my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
