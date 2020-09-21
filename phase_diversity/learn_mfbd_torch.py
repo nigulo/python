@@ -1642,11 +1642,12 @@ class NN(nn.Module):
                     wf_true = wf_true.cpu().numpy()*self.pupil
                     #psf_true = fft.ifftshift(fft.ifft2(fft.ifftshift(psf_true, axes=(1, 2))), axes=(1, 2)).real
                     psf_true = fft.ifftshift(psf_true, axes=(2, 3))
-                    frame_step = nf//5
-                    my_test_plot = plot.plot(nrows=5, ncols=4)
+                    num_plot_frames = 5
+                    frame_step = nf//num_plot_frames
+                    my_test_plot = plot.plot(nrows=num_plot_frames, ncols=4)
                     row = 0
                     for j in np.arange(nf):
-                        if j % frame_step == 0:
+                        if row < num_plot_frames and j % frame_step == 0:
                             print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                             print("psf[j]", np.max(psfs[j]), np.min(psfs[j]))
                             print("psf MSE", np.sum((psf_true[j] - psfs[j])**2))
