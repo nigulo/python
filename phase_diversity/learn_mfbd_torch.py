@@ -1646,7 +1646,7 @@ class NN(nn.Module):
                     frame_step = nf//num_plot_frames
                     my_test_plot = plot.plot(nrows=num_plot_frames, ncols=4)
                     row = 0
-                    zoom_start = psf_true.shape[2]//4
+                    zoom_start = psf_true.shape[2]//3
                     zoom_end = psf_true.shape[2] - zoom_start
                     for j in np.arange(nf):
                         if row < num_plot_frames and j % frame_step == 0:
