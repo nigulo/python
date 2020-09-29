@@ -105,13 +105,13 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 16
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 32
+    batch_size = 16
     n_channels = 32
     
     sum_over_batch = True
@@ -573,9 +573,9 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=3, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=7, num_convs=1)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=3)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=5)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
         self.layers1.append(l)
@@ -1369,7 +1369,7 @@ class NN(nn.Module):
         #Ds /= med
         
         #Ds_test = Dataset(Ds, objs, diversities, positions, obj_ids)
-        Ds_test_loader = torch.utils.data.DataLoader(Ds_test, batch_size=batch_size, shuffle=False, drop_last=False)
+        Ds_test_loader = torch.utils.data.DataLoader(Ds_test, batch_size=n_test_frames, shuffle=False, drop_last=False)
 
         start = time.time()
 
@@ -1679,8 +1679,8 @@ class NN(nn.Module):
                     for coef_index in np.arange(alphas.shape[1]):
                         scale = 1.//utils.mode_scale[coef_index]
                         #scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
-                        mean = np.mean(alphas[:, coef_index])
-                        my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index]-mean, -1), [row, col], "r-")
+                        #mean = np.mean(alphas[:, coef_index])
+                        my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index], -1), [row, col], "r-")
                         my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
                         col += 1
                         if col >= ncols:
