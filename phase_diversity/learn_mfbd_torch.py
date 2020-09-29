@@ -1345,6 +1345,7 @@ class NN(nn.Module):
         
         jmax = self.jmax
         self.test = True
+        batch_size = n_test_frames
         
         #num_frames = Ds_.shape[1]
         #num_objects = Ds_.shape[0]
@@ -1369,7 +1370,7 @@ class NN(nn.Module):
         #Ds /= med
         
         #Ds_test = Dataset(Ds, objs, diversities, positions, obj_ids)
-        Ds_test_loader = torch.utils.data.DataLoader(Ds_test, batch_size=n_test_frames, shuffle=False, drop_last=False)
+        Ds_test_loader = torch.utils.data.DataLoader(Ds_test, batch_size=batch_size, shuffle=False, drop_last=False)
 
         start = time.time()
 
