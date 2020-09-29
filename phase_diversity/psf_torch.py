@@ -624,7 +624,7 @@ class psf_torch():
             if len(alphas.size()) == 2:
                 alphas = alphas.unsqueeze(1)
         batch_size = Ds.size()[0]
-        assert(self.batch_size == batch_size) # TODO: get rid of class member
+        #assert(self.batch_size == batch_size) # TODO: get rid of class member
 
         tt = alphas[:, :, 2]
         if tt is not None:
@@ -680,7 +680,7 @@ class psf_torch():
             #    PP = tf.reshape(den, [1, nx, nx])
             #    PP1 = tf.math.reduce_sum(PP1, axis=[0])
             #else:
-            PP = den.view(self.batch_size, 1, nx, nx)
+            PP = den.view(batch_size, 1, nx, nx)
             den = PP + PP1
 
         if self.sum_over_batch:
@@ -702,7 +702,7 @@ class psf_torch():
             #    DD = tf.reshape(DD, [1, nx, nx])
             #    DD1 = tf.math.reduce_sum(DD1, axis=[0])
             #else:
-            DD = DD.view(self.batch_size, 1, nx, nx)
+            DD = DD.view(batch_size, 1, nx, nx)
             DD1 = DD + DD1 
             if self.sum_over_batch:
                 DD1 = torch.sum(DD1, axis=0)
