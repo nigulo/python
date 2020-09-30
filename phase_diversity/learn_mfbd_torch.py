@@ -1787,7 +1787,7 @@ class NN(nn.Module):
             
 
             # Plot spectra            
-            my_test_plot = plot.plot(nrows=1, ncols=1)
+            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 200))
             
             avg1 = np.mean(full_reconstr_true, axis=0)
             avg2 = np.mean(full_reconstr, axis=0)
@@ -1802,7 +1802,7 @@ class NN(nn.Module):
             my_test_plot.plot(freqs, spec[1], params="g-")
             my_test_plot.plot(freqs, spec[2], params="b-")
             my_test_plot.set_log()
-            my_test_plot.set_axis_limits(limits = [None, [1e-11, 1]])
+            my_test_plot.set_axis_limits(limits = [[0, np.max(freqs)], [1e-11, 1]])
             my_test_plot.legend(legends=["MOMFBD", "NN", "Raw"])
 
             my_test_plot.save(f"{dir_name}/spec.png")
