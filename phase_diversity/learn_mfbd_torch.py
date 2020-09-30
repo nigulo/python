@@ -1818,7 +1818,7 @@ class NN(nn.Module):
             my_test_plot.plot(freqs, spec[3], params="b-")
             my_test_plot.set_log()
             my_test_plot.set_axis_limits(limits = [[0, np.max(freqs)], [1e-9, 1]])
-            my_test_plot.legend(legends=[None, "MOMFBD", "NN", "Raw"])
+            my_test_plot.legend(legends=["MOMFBD 1", "MOMFBD 2", "NN", "Raw"])
 
             my_test_plot.save(f"{dir_name}/spec.png")
             my_test_plot.close()
