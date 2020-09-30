@@ -1787,7 +1787,7 @@ class NN(nn.Module):
             
 
             # Plot spectra            
-            h = utils.hanning(full_reconstr_true.shape[1], 50, n_dim=1)
+            #h = utils.hanning(full_reconstr_true.shape[1], 50, n_dim=1)
             #my_test_plot = plot.plot(nrows=1, ncols=1)
             #my_test_plot.plot(np.arange(h.win.shape[0]), h.win, params="r-")
             #my_test_plot.save(f"{dir_name}/hanning.png")
@@ -1796,15 +1796,18 @@ class NN(nn.Module):
             my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(500, 200))
             
             
-            avg1 = np.mean(full_reconstr_true, axis=0)
-            avg2 = np.mean(full_reconstr, axis=0)
-            avg3 = np.mean(full_D, axis=0)
-            avg = h.multiply(np.array([avg1, avg2, avg3]), axis=1)
-            spec = fft.fft(avg)
-            freqs = fft.fftfreq(n=avg1.size, d=1./avg1.size)
+            #avg1 = np.mean(full_reconstr_true, axis=0)
+            #avg2 = np.mean(full_reconstr, axis=0)
+            #avg3 = np.mean(full_D, axis=0)
+            #avg = h.multiply(np.array([avg1, avg2, avg3]), axis=1)
+            #avg = np.array([avg1, avg2, avg3])
+            spec = fft.fft2(np.array([full_reconstr_true, full_reconstr, full_D]))
+            #spec = fft.fft(avg)
             spec = np.real(spec*np.conj(spec))
+            spec = np.mean(spec, axis=1)
             spec = misc.normalize(spec, axis=1)
             spec = fft.fftshift(spec)
+            freqs = fft.fftfreq(n=spec.shape[1], d=1.)
             freqs = fft.fftshift(freqs)
             my_test_plot.plot(freqs, spec[0], params="r-")
             my_test_plot.plot(freqs, spec[1], params="g-")
