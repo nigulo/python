@@ -1794,7 +1794,7 @@ class NN(nn.Module):
             avg1 = np.mean(full_reconstr_true, axis=0)
             avg2 = np.mean(full_reconstr, axis=0)
             avg3 = np.mean(full_D, axis=0)
-            avg = h.multiply(np.array([avg1, avg2, avg3]))
+            avg = h.multiply(np.array([avg1, avg2, avg3]), axis=1)
             spec = fft.fft(avg)
             freqs = fft.fftfreq(n=avg1.size, d=1./avg1.size)
             spec = np.real(spec*np.conj(spec))
