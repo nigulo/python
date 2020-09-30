@@ -130,14 +130,14 @@ class plot:
         ax.plot(x, y, params)
         self.post_processing(ax)
         
-    def set_log(self, ax_index = None, params="y"):
+    def set_log(self, ax_index=None, params="y"):
         ax = self.get_ax(ax_index)
         if "x" in params:
             ax.set_xscale("log")
         if "y" in params:
             ax.set_yscale("log")
     
-    def legend(self, ax_index = None, legends, loc='upper right'):
+    def legend(self, ax_index=None, legends=[], loc='upper right'):
         ax = self.get_ax(ax_index)
         ax.legend(legends, numpoints = 1,
                         scatterpoints=1,
