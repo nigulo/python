@@ -1789,7 +1789,7 @@ class NN(nn.Module):
             # Plot spectra            
             my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(500, 200))
             
-            h = utils.hanning(full_reconstr_true.shape[0], 50, n_dim=1)
+            h = utils.hanning(full_reconstr_true.shape[1], 50, n_dim=1)
             
             avg1 = np.mean(full_reconstr_true, axis=0)
             avg2 = np.mean(full_reconstr, axis=0)
