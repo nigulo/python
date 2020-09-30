@@ -136,6 +136,13 @@ class plot:
             ax.set_xscale("log")
         if "y" in params:
             ax.set_yscale("log")
+    
+    def legend(self, ax_index = None, legends, loc='upper right'):
+        ax = self.get_ax(ax_index)
+        ax.legend(legends, numpoints = 1,
+                        scatterpoints=1,
+                        loc=loc, ncol=1,
+                        fontsize=10, labelspacing=0.7)
         
     
     
