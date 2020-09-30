@@ -133,9 +133,9 @@ class plot:
     def set_log(self, ax_index = None, params="y"):
         ax = self.get_ax(ax_index)
         if "x" in params:
-            ax.set_xscale("log", nonpositive='clip')
+            ax.set_xscale("log")
         if "y" in params:
-            ax.set_yscale("log", nonpositive='clip')
+            ax.set_yscale("log")
         
     
     
