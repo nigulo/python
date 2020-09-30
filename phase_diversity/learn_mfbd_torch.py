@@ -1786,6 +1786,24 @@ class NN(nn.Module):
             print("Contrasts 2", np.std(full_obj), np.std(full_reconstr))
             
 
+            # Plot spectra            
+            my_test_plot = plot.plot(nrows=1, ncols=1)
+            
+            avg1 = np.mean(full_reconstr_true, axis=0)
+            avg2 = np.mean(full_reconstr, axis=0)
+            avg3 = np.mean(full_D, axis=0)
+            spec = fft.fft(np.array([avg1, avg2, avg3]))
+            freqs = fft.fftfreq(n=avg1.size, d=1./avg1.size)
+            spec = fft.fftshift(spec)
+            freqs = fft.fftshift(freqs)
+            my_test_plot.plot(freqs, spec[0], "r-")
+            my_test_plot.plot(freqs, spec[1], "g-")
+            my_test_plot.plot(freqs, spec[2], "b-")
+
+            my_test_plot.save(f"{dir_name}/spec.png")
+            my_test_plot.close()
+            
+
 if train:
 
     datasets = []
