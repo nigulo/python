@@ -105,13 +105,13 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 16
+    num_frames = 32
     
     # How many frames of the same object are sent to NN input
     # Must be power of 2
     num_frames_input = 1
     
-    batch_size = 16
+    batch_size = 32
     n_channels = 32
     
     sum_over_batch = True
@@ -588,7 +588,7 @@ class NN(nn.Module):
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(36*n_channels, 1024))
         self.layers2.append(activation_fn())
-        size = 512
+        size = 256
         self.layers2.append(nn.Linear(1024, size))
         self.layers2.append(activation_fn())
 
@@ -1788,10 +1788,10 @@ class NN(nn.Module):
 
             # Plot spectra            
             h = utils.hanning(full_reconstr_true.shape[1], 50, n_dim=1)
-            my_test_plot = plot.plot(nrows=1, ncols=1)
-            my_test_plot.plot(np.arange(h.win.shape[0]), h.win, params="r-")
-            my_test_plot.save(f"{dir_name}/hanning.png")
-            my_test_plot.close()
+            #my_test_plot = plot.plot(nrows=1, ncols=1)
+            #my_test_plot.plot(np.arange(h.win.shape[0]), h.win, params="r-")
+            #my_test_plot.save(f"{dir_name}/hanning.png")
+            #my_test_plot.close()
 
             my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(500, 200))
             
