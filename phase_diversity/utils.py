@@ -302,6 +302,8 @@ class hanning:
         self.n_dim = n_dim
         if n_dim == 2:
             self.win = np.outer(win, win)
+        else:
+            self.win = win
         
     def multiply(self, image, axis=None):
         win = self.win
