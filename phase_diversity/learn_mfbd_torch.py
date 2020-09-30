@@ -1787,12 +1787,15 @@ class NN(nn.Module):
             
 
             # Plot spectra            
-            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 200))
+            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(500, 200))
+            
+            h = utils.hanning(full_reconstr_true.shape[0], 50, n_dim=1)
             
             avg1 = np.mean(full_reconstr_true, axis=0)
             avg2 = np.mean(full_reconstr, axis=0)
             avg3 = np.mean(full_D, axis=0)
-            spec = fft.fft(np.array([avg1, avg2, avg3]))
+            avg = h.multiply(np.array([avg1, avg2, avg3]))
+            spec = fft.fft(avg)
             freqs = fft.fftfreq(n=avg1.size, d=1./avg1.size)
             spec = np.real(spec*np.conj(spec))
             spec = misc.normalize(spec, axis=1)
