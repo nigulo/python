@@ -1806,7 +1806,7 @@ class NN(nn.Module):
             spec = np.real(spec*np.conj(spec))
             spec = np.mean(spec, axis=1)
             spec = spec/np.max(spec, axis=1, keepdims=True)
-            spec = misc.normalize(spec, axis=1)
+            #spec = misc.normalize(spec, axis=1)
             spec = fft.fftshift(spec)
             freqs = fft.fftfreq(n=spec.shape[1], d=1.)
             freqs = fft.fftshift(freqs)
