@@ -308,7 +308,11 @@ class plot:
             ax = None
         else:
             ax = self.get_ax(ax_index)
-        for ax1 in self.axes.flatten():
+        if isinstance(self.axes, (list, tuple, np.ndarray)):
+            axes = self.axes.flatten()
+        else:
+            axes = [self.axes]
+        for ax1 in axes:
             if ax is None or ax == ax1:
                 if limits is None:
                     ax1.set_xlim(left=None, right=None)
@@ -328,7 +332,11 @@ class plot:
             ax = None
         else:
             ax = self.get_ax(ax_index)
-        for ax1 in self.axes.flatten():
+        if isinstance(self.axes, (list, tuple, np.ndarray)):
+            axes = self.axes.flatten()
+        else:
+            axes = [self.axes]
+        for ax1 in axes:
             if ax is None or ax == ax1:
                 if labels is None:
                     ax1.set_xlabel(None)
@@ -345,7 +353,11 @@ class plot:
             ax = None
         else:
             ax = self.get_ax(ax_index)
-        for ax1 in self.axes.flatten():
+        if isinstance(self.axes, (list, tuple, np.ndarray)):
+            axes = self.axes.flatten()
+        else:
+            axes = [self.axes]
+        for ax1 in axes:
             if ax is None or ax == ax1:               
                 ax1.set_title(title, fontsize=self.axis_title_font_size)
     
