@@ -139,10 +139,11 @@ class plot:
     
     def legend(self, ax_index=None, legends=[], loc='upper right'):
         ax = self.get_ax(ax_index)
-        ax.legend(legends, numpoints = 1,
-                        scatterpoints=1,
-                        loc=loc, ncol=1,
-                        fontsize=10, labelspacing=0.7)
+        ax.legend(legends, loc=loc)
+        #ax.legend(legends, numpoints = 1,
+        #                scatterpoints=1,
+        #                loc=loc, ncol=1,
+        #                fontsize=10, labelspacing=0.7)
         
     
     
