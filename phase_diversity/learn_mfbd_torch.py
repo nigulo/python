@@ -1808,7 +1808,7 @@ class NN(nn.Module):
             spec = spec/np.max(spec, axis=1, keepdims=True)
             freqs = fft.fftfreq(n=spec.shape[1], d=1.)
             spec = spec[:, :spec.shape[1]//2]
-            freqs = freqs[:freqs.shape//2]
+            freqs = freqs[:freqs.shape[0]//2]
             #spec = misc.normalize(spec, axis=1)
             #spec = fft.fftshift(spec)
             #freqs = fft.fftshift(freqs)
