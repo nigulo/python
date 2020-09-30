@@ -1796,9 +1796,9 @@ class NN(nn.Module):
             freqs = fft.fftfreq(n=avg1.size, d=1./avg1.size)
             spec = fft.fftshift(spec)
             freqs = fft.fftshift(freqs)
-            my_test_plot.plot(freqs, spec[0], "r-")
-            my_test_plot.plot(freqs, spec[1], "g-")
-            my_test_plot.plot(freqs, spec[2], "b-")
+            my_test_plot.plot(freqs, spec[0], params="r-")
+            my_test_plot.plot(freqs, spec[1], params="g-")
+            my_test_plot.plot(freqs, spec[2], params="b-")
 
             my_test_plot.save(f"{dir_name}/spec.png")
             my_test_plot.close()
