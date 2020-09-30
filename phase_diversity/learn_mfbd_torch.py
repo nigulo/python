@@ -1795,6 +1795,7 @@ class NN(nn.Module):
             spec = fft.fft(np.array([avg1, avg2, avg3]))
             freqs = fft.fftfreq(n=avg1.size, d=1./avg1.size)
             spec = fft.fftshift(spec)
+            spec = np.real(spec*np.conj(spec))
             freqs = fft.fftshift(freqs)
             my_test_plot.plot(freqs, spec[0], params="r-")
             my_test_plot.plot(freqs, spec[1], params="g-")
