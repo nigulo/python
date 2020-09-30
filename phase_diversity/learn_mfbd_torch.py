@@ -588,7 +588,7 @@ class NN(nn.Module):
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(36*n_channels, 1024))
         self.layers2.append(activation_fn())
-        size = 256
+        size = 512
         self.layers2.append(nn.Linear(1024, size))
         self.layers2.append(activation_fn())
 
@@ -1799,6 +1799,7 @@ class NN(nn.Module):
             my_test_plot.plot(freqs, spec[0], params="r-")
             my_test_plot.plot(freqs, spec[1], params="g-")
             my_test_plot.plot(freqs, spec[2], params="b-")
+            my_test_plot.set_log()
 
             my_test_plot.save(f"{dir_name}/spec.png")
             my_test_plot.close()
