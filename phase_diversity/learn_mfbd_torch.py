@@ -586,11 +586,12 @@ class NN(nn.Module):
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(36*n_channels, 1024))
         self.layers2.append(activation_fn())
-        size = 256
+        size = 512
         self.layers2.append(nn.Linear(1024, size))
         self.layers2.append(activation_fn())
 
-        self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+        #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+        self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         
         self.layers3 = nn.ModuleList()
         self.layers3.append(nn.Linear(size, size))
