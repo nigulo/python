@@ -8,6 +8,7 @@ sys.setrecursionlimit(10000)
 import torch
 import torch.nn as nn
 import torch.utils.data
+import torch.nn.functional as F
 
 #tf.compat.v1.disable_eager_execution()
 #from multiprocessing import Process
@@ -106,10 +107,6 @@ if nn_mode == MODE_1:
     # How many frames to use in training
     num_frames = 32
     
-    # How many frames of the same object are sent to NN input
-    # Must be power of 2
-    num_frames_input = 1
-    
     batch_size = 32
     n_channels = 32
     
@@ -153,6 +150,8 @@ elif nn_mode == MODE_2:
 
 no_shuffle = not shuffle2
 
+num_frames_input = 1
+assert(num_frames_input == 1) # There is no need for more frames for input
 assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
     if not train:
@@ -595,14 +594,34 @@ class NN(nn.Module):
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         if tip_tilt_separated:
             self.lstm_high = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
-        self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
-        
-        self.layers3 = nn.ModuleList()
-        self.layers3.append(nn.Linear(size, size))
-        self.layers3.append(activation_fn())
-        self.layers3.append(nn.Linear(size, size))
-        self.layers3.append(activation_fn())
-        self.layers3.append(nn.Linear(size, jmax*num_frames_input))
+
+            self.layers3_high = nn.ModuleList()
+            self.layers3_high.append(nn.Linear(size, size))
+            self.layers3_high.append(activation_fn())
+            self.layers3_high.append(nn.Linear(size, size))
+            self.layers3_high.append(activation_fn())
+            self.layers3_high.append(0.1*nn.Linear(size, (jmax-2)*num_frames_input))
+            self.layers3_high.append(2.0*NN.Tanh())
+            
+
+            self.lstm_low = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+
+            self.layers3_low = nn.ModuleList()
+            self.layers3_low.append(nn.Linear(size, size))
+            self.layers3_low.append(activation_fn())
+            self.layers3_low.append(nn.Linear(size, size))
+            self.layers3_low.append(activation_fn())
+            self.layers3_low.append(0.1*nn.Linear(size, 2*num_frames_input))
+            self.layers3_low.append(4.0*NN.Tanh())
+        else:
+            self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+            
+            self.layers3 = nn.ModuleList()
+            self.layers3.append(nn.Linear(size, size))
+            self.layers3.append(activation_fn())
+            self.layers3.append(nn.Linear(size, size))
+            self.layers3.append(activation_fn())
+            self.layers3.append(nn.Linear(size, jmax*num_frames_input))
         
         #######################################################################
         
@@ -681,13 +700,44 @@ class NN(nn.Module):
         #num_chunks = batch_size//16
         #x = x.view(num_chunks, x.size()[0]//num_chunks, x.size()[1])
         x = x.unsqueeze(dim=0)
-        x, _ = self.lstm(x)
-        #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
-        x = x.squeeze()
+        if tip_tilt_separated:
+            x_high, _ = self.lstm_high(x)
+            #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
+            x_high = x_high.squeeze()
+    
+            # Fully connected layers
+            for layer in self.layers3_high:
+                x_high = layer(x_high)
 
-        # Fully connected layers
-        for layer in self.layers3:
-            x = layer(x)
+            x_low, _ = self.lstm_low(x[:, 1:, :])
+            #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
+            x_low = x_low.squeeze()
+    
+            # Fully connected layers
+            for layer in self.layers3_low:
+                x_low = layer(x_low)
+                
+            #x_low = x_low.view(-1, self.n_frames-1, 2)
+            x_low = x_low.view(-1, 2)
+            x_low = x_low.unsqueeze()
+
+            #x_high = x_high.view(-1, self.n_frames, (jmax-2)*num_frames_input)
+            x_high = x_high.view(-1, (jmax-2)*num_frames_input)
+            x_high = x_high.unsqueeze()
+    
+            x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
+
+            x = torch.cat([x_low, x_high], dim=-1)
+            x = x.view(-1, jmax)
+                
+        else:
+            x, _ = self.lstm(x)
+            #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
+            x = x.squeeze()
+    
+            # Fully connected layers
+            for layer in self.layers3:
+                x = layer(x)
         
         alphas = x
 
