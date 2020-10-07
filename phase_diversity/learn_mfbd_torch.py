@@ -98,8 +98,6 @@ if nn_mode == MODE_1:
     shuffle2 = False
     
     num_reps = 1000
-    num_iter = 1
-    use_ds_diff = False
 
     n_epochs_2 = 2
     n_epochs_1 = 1
@@ -701,8 +699,6 @@ class NN(nn.Module):
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2).to(device, dtype=torch.float32)], axis=2)
             alphas = alphas - tip_tilt_means
         
-        #if self.test and num_iter > 1:
-        #    alphas = alphas *.9
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
         # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
@@ -928,33 +924,7 @@ class NN(nn.Module):
             #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
             #        my_test_plot.close()
             ###################################################################
-            if use_ds_diff:
-                with torch.no_grad():
-                    psf_airy = self.psf_test.calc_airy(diversity[0].numpy())
-                    obj_reconstr_F, _ = self.psf_test.reconstr2(Ds, psf_airy, do_fft=False, use_filter=False)
-                    dat = self.psf_test.aberrate2(obj_reconstr_F, psf_airy.unsqueeze(0).repeat([len(Ds), 1, 1, 1, 1])).cpu().numpy()
-                    if normalize:
-                        med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
-                        dat -= med
-                        dat = self.hanning.multiply(dat, axis=2)
-                        dat += med
-                        dat /= med
-                #######################################################################
-                # DEBUG
-                #for i in range(len(dat)):
-                #    Ds_i = Ds[i].cpu().numpy()
-                #    if i < 10:
-                #        my_test_plot = plot.plot(nrows=2, ncols=2)
-                #        my_test_plot.colormap(Ds_i[0] - dat[i, 0], [0, 0], show_colorbar=True)
-                #        my_test_plot.colormap(Ds_i[1] - dat[i, 1], [0, 1], show_colorbar=True)
-                #        my_test_plot.colormap(dat[i, 0], [1, 0], show_colorbar=True)
-                #        my_test_plot.colormap(dat[i, 1], [1, 1], show_colorbar=True)
-                #        my_test_plot.save(f"{dir_name}/Ds_dbg2_{i}.png")
-                #        my_test_plot.close()
-                #######################################################################
-                result = self.do_batch(Ds - torch.tensor(dat), diversity, train)
-            else:
-                result = self.do_batch(Ds, diversity, train)
+            result = self.do_batch(Ds, diversity, train)
             if nn_mode == 1:
                 loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
@@ -965,83 +935,9 @@ class NN(nn.Module):
             
             if train:
 
-                if use_ds_diff:       
-                    # This block assumes that num_frames_input = 1
-                    with torch.no_grad():
-                        obj_reconstr_F, _ = self.psf_test.reconstr2(Ds, psf, do_fft=False, use_filter=False)
-                        #obj_reconstr_F, _ = self.psf_test.reconstr_(DP_conj, psf_torch.to_complex(den), do_fft=False, use_filter=False)#self.deconvolve(Ds_, alphas, diversity)
-                        dat = self.psf_test.aberrate2(obj_reconstr_F, psf).cpu().numpy()
-                        if normalize:
-                            med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
-                            dat -= med
-                            dat = self.hanning.multiply(dat, axis=2)
-                            dat += med
-                            dat /= med
-                    #######################################################################
-                    # DEBUG
-                    #for i in range(len(dat)):
-                    #    Ds_i = Ds[i].cpu().numpy()
-                    #    if i < 10:
-                    #        my_test_plot = plot.plot(nrows=2, ncols=2)
-                    #        my_test_plot.colormap(Ds_i[0] - dat[i, 0], [0, 0], show_colorbar=True)
-                    #        my_test_plot.colormap(Ds_i[1] - dat[i, 0], [0, 1], show_colorbar=True)
-                    #        my_test_plot.colormap(dat[i, 0], [1, 0], show_colorbar=True)
-                    #        my_test_plot.colormap(dat[i, 1], [1, 1], show_colorbar=True)
-                    #        my_test_plot.save(f"{dir_name}/Ds_dbg2_{i}.png")
-                    #        my_test_plot.close()
-                    #######################################################################
-                    result = self.do_batch(Ds - torch.tensor(dat), diversity, train)
-                    if nn_mode == 1:
-                        loss, alphas, num, den, DP_conj, psf1, wf, DD = result
-                        #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
-                    else:
-                        loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf1, wf, DD = result
-                    
                 loss.backward()
                 self.optimizer.step()
 
-                if num_iter > 1:
-                
-                    Ds1 = Ds
-                    psf1 = psf
-                    psf_airy = self.psf_test.calc_airy(diversity[0].numpy())
-                    
-                    for iter_ in np.arange(1, num_iter):
-                        Ds2 = np.empty((len(Ds1), 2*num_frames_input, nx, nx), dtype="float32")
-                        for i in range(len(Ds1)):
-                            Ds_i = Ds1[i]
-                            for l in np.arange(num_frames_input):
-                                Ds_r, _ = self.psf_test.reconstr2(Ds_i[2*l], psf1[i, 0], use_filter=False, psf_airy=psf_airy)
-                                Ds_r_d, _ = self.psf_test.reconstr2(Ds_i[2*l+1], psf1[i, 0], use_filter=False, psf_airy=psf_airy)
-                                Ds2[i, 2*l] = Ds_r.cpu().numpy()
-                                Ds2[i, 2*l+1] = Ds_r_d.cpu().numpy()
-                                #psf_r = fft.ifft2(psf_f1[i, ..., 0] + psf_f1[i, ..., 1]*1.j).real
-                                #psf_r = fft.ifftshift(psf_r, axes=(1, 2))
-                                #######################################################################
-                                # DEBUG
-                                #if i == 0:
-                                #    my_test_plot = plot.plot(nrows=3, ncols=2)
-                                #    my_test_plot.colormap(Ds[2*l], [0, 0], show_colorbar=True)
-                                #    my_test_plot.colormap(Ds[2*l+1], [0, 1], show_colorbar=True)
-                                #    my_test_plot.colormap(Ds2[i, 2*l], [1, 0], show_colorbar=True)
-                                #    my_test_plot.colormap(Ds2[i, 2*l+1], [1, 1], show_colorbar=True)
-                                #    my_test_plot.colormap(utils.trunc(psf_r[0], 1e-3), [2, 0], show_colorbar=True)
-                                #    my_test_plot.colormap(utils.trunc(psf_r[1], 1e-3), [2, 1], show_colorbar=True)
-                                #    my_test_plot.save(f"{dir_name}/Ds_dbg{iter_}_{i}_{l}.png")
-                                #    my_test_plot.close()
-                                #######################################################################
-                        Ds1 = torch.tensor(Ds2)
-                        result = self.do_batch(Ds1, diversity, train)
-                        if nn_mode == 1:
-                            loss, alphas, num, den, DP_conj, psf1, wf, DD = result
-                            #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
-                        else:
-                            loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf1, wf, DD = result
-                        
-                        loss.backward()
-                        self.optimizer.step()
-                    
-                ###################################################################
             else:
                 all_alphas.append(alphas.cpu().numpy())
                 all_num.append(num.cpu().numpy())
@@ -1377,96 +1273,7 @@ class NN(nn.Module):
         if nn_mode == MODE_1:
             
             losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
-            
-            if use_ds_diff:       
-                # This block assumes that num_frames_input = 1
-                Ds2, diversities = Ds_test.get_data()
-                med = np.median(Ds2, axis=(0, 1, 2, 3), keepdims=True)
-                Ds2 -= med
-                Ds2 = self.hanning.multiply(Ds2, axis=2)
-                Ds2 += med
-                Ds2 /= med
-                with torch.no_grad():
-                    obj_reconstr_F, _ = self.psf_test.reconstr2(Ds2, psf_f, do_fft=False, use_filter=False)
-                    #obj_reconstr_F, _ = self.psf_test.reconstr_(torch.tensor(nums_conj).to(device, dtype=torch.float32), 
-                    #            psf_torch.to_complex(torch.tensor(dens).to(device, dtype=torch.float32)), 
-                    #            do_fft=False, use_filter=False)#self.deconvolve(Ds_, alphas, diversity)
-                    psf_dev = torch.tensor(psf_f).to(device, dtype=torch.float32)
-                    dat = self.psf_test.aberrate2(obj_reconstr_F, psf_dev).cpu().numpy()
-                    med = np.median(dat, axis=(0, 1, 2, 3), keepdims=True)
-                    dat -= med
-                    dat = self.hanning.multiply(dat, axis=2)
-                    dat += med
-                    dat /= med
-                #Ds2 = np.empty((len(dat), 2*num_frames_input, nx, nx))
-                #diversities = np.empty((len(dat), 2, nx, nx))
-                #for i in range(len(dat)):
-                #    Ds, diversity = Ds_test[i]
-                #    diversities[i] = diversity
-                #    Ds2[i] = Ds_test[i][0]
-                #med = np.median(Ds2, axis=(0, 1, 2, 3), keepdims=True)
-                #Ds2 -= med
-                #Ds2 = self.hanning.multiply(Ds2, axis=2)
-                #Ds2 += med
-                #Ds2 /= med
-                
-                Ds2 -= dat
 
-                #######################################################################
-                # DEBUG
-                for i in range(len(dat)):
-                    if i < 10:
-                        my_test_plot = plot.plot(nrows=2, ncols=2)
-                        my_test_plot.colormap(Ds2[i, 0], [0, 0], show_colorbar=True)
-                        my_test_plot.colormap(Ds2[i, 1] - dat[i, 0], [0, 1], show_colorbar=True)
-                        my_test_plot.colormap(dat[i, 0], [1, 0], show_colorbar=True)
-                        my_test_plot.colormap(dat[i, 1], [1, 1], show_colorbar=True)
-                        my_test_plot.save(f"{dir_name}/Ds_dbg2_{i}.png")
-                        my_test_plot.close()
-                #######################################################################
-                Ds_test2 = Dataset2(Ds2, diversities)
-                Ds_test_loader = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
-            
-                losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False, normalize=False)
-
-            if num_iter > 1:
-                Ds_test2 = Ds_test
-                psf_f1 = psf_f
-                psf_airy = self.psf_test.calc_airy(Ds_test2[0][1])
-                
-                for iter_ in np.arange(1, num_iter):
-                    Ds2 = np.empty((len(pred_alphas), 2*num_frames_input, nx, nx))
-                    diversities = np.empty((len(pred_alphas), 2, nx, nx))
-                    for i in range(Ds_test2.length()):
-                        Ds, diversity = Ds_test2[i]
-                        diversities[i] = diversity
-                        for l in np.arange(num_frames_input):
-                            Ds_r, _ = self.psf_test.reconstr2(Ds[2*l], psf_f1[i, 0], use_filter=False, psf_airy=psf_airy)
-                            Ds_r_d, _ = self.psf_test.reconstr2(Ds[2*l+1], psf_f1[i, 0], use_filter=False, psf_airy=psf_airy)
-                            Ds2[i, 2*l] = Ds_r.cpu().numpy()
-                            Ds2[i, 2*l+1] = Ds_r_d.cpu().numpy()
-                            psf_r = fft.ifft2(psf_f1[i, ..., 0] + psf_f1[i, ..., 1]*1.j).real
-                            psf_r = fft.ifftshift(psf_r, axes=(1, 2))
-                            #######################################################################
-                            # DEBUG
-                            if i == 0:
-                                my_test_plot = plot.plot(nrows=3, ncols=2)
-                                my_test_plot.colormap(Ds[2*l], [0, 0], show_colorbar=True)
-                                my_test_plot.colormap(Ds[2*l+1], [0, 1], show_colorbar=True)
-                                my_test_plot.colormap(Ds2[i, 2*l], [1, 0], show_colorbar=True)
-                                my_test_plot.colormap(Ds2[i, 2*l+1], [1, 1], show_colorbar=True)
-                                my_test_plot.colormap(utils.trunc(psf_r[0], 1e-3), [2, 0], show_colorbar=True)
-                                my_test_plot.colormap(utils.trunc(psf_r[1], 1e-3), [2, 1], show_colorbar=True)
-                                my_test_plot.save(f"{dir_name}/Ds_dbg{iter_}_{i}_{l}.png")
-                                my_test_plot.close()
-                            #######################################################################
-                    Ds_test2 = Dataset2(Ds2, diversities)
-                    Ds_test_loader2 = torch.utils.data.DataLoader(Ds_test2, batch_size=batch_size, shuffle=False, drop_last=False)
-                    losses, pred_alphas, _, dens, nums_conj, psf_f1, wf, _ = self.do_epoch(Ds_test_loader2, train=False)
-                    psf_focus = psf_f1[:, 0]
-                    psf_f[:, 0] *= psf_focus
-                    psf_f[:, 1] *= psf_focus
-                
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #DD_DP_PP = np.zeros((len(Ds), 4, nx, nx))
@@ -1597,17 +1404,9 @@ class NN(nn.Module):
             Ds_ += med
             Ds_ /= med
             
-            if use_ds_diff:
-                obj_reconstr, loss = self.psf_test.reconstr2(Ds_, psfs_f)#self.deconvolve(Ds_, alphas, diversity)
-            elif num_iter > 1:
-                obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
-                        psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
-                        DD=torch.tensor(DD).to(device, dtype=torch.float32), 
-                        DP1=psf_torch.complex_from_numpy(DP1, device=device))#self.deconvolve(Ds_, alphas, diversity)
-            else:
-                obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
-                        psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
-                        DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
+            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
+                    psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
+                    DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
             
             obj_reconstr = obj_reconstr.cpu().numpy()
             wfs = wfs*self.pupil
