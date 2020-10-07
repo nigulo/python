@@ -83,7 +83,7 @@ if len(sys.argv) > i:
     benchmarking_level = int(sys.argv[i])
 
 train_perc = 0.8
-activation_fn = nn.ReLU
+activation_fn = nn.eLU
 tt_weight = 0.0#0.001
 
 learning_rate = 1e-4
@@ -115,6 +115,7 @@ if nn_mode == MODE_1:
     sum_over_batch = True
     
     zero_avg_tiptilt = True
+    tip_tilt_separated = True
     
 elif nn_mode == MODE_2:
 
@@ -591,9 +592,13 @@ class NN(nn.Module):
         self.layers2.append(activation_fn())
 
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+        if tip_tilt_separated:
+            self.lstm_high = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         
         self.layers3 = nn.ModuleList()
+        self.layers3.append(nn.Linear(size, size))
+        self.layers3.append(activation_fn())
         self.layers3.append(nn.Linear(size, size))
         self.layers3.append(activation_fn())
         self.layers3.append(nn.Linear(size, jmax*num_frames_input))
