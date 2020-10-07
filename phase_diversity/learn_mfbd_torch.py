@@ -732,11 +732,11 @@ class NN(nn.Module):
                 
             #x_low = x_low.view(-1, self.n_frames-1, 2)
             x_low = x_low.view(-1, 2)
-            x_low = x_low.unsqueeze()
+            x_low = x_low.unsqueeze(dim=0)
 
             #x_high = x_high.view(-1, self.n_frames, (jmax-2)*num_frames_input)
             x_high = x_high.view(-1, (jmax-2)*num_frames_input)
-            x_high = x_high.unsqueeze()
+            x_high = x_high.unsqueeze(dim=0)
     
             x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
 
