@@ -600,8 +600,8 @@ class NN(nn.Module):
             self.layers3_high.append(activation_fn())
             self.layers3_high.append(nn.Linear(size, size))
             self.layers3_high.append(activation_fn())
-            self.layers3_high.append(0.1*nn.Linear(size, (jmax-2)*num_frames_input))
-            self.layers3_high.append(2.0*NN.Tanh())
+            self.layers3_high.append(nn.Linear(size, (jmax-2)*num_frames_input))
+            self.layers3_high.append(NN.Tanh())
             
 
             self.lstm_low = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
@@ -611,8 +611,8 @@ class NN(nn.Module):
             self.layers3_low.append(activation_fn())
             self.layers3_low.append(nn.Linear(size, size))
             self.layers3_low.append(activation_fn())
-            self.layers3_low.append(0.1*nn.Linear(size, 2*num_frames_input))
-            self.layers3_low.append(4.0*NN.Tanh())
+            self.layers3_low.append(nn.Linear(size, 2*num_frames_input))
+            self.layers3_low.append(NN.Tanh())
         else:
             self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
             
@@ -706,16 +706,29 @@ class NN(nn.Module):
             x_high = x_high.squeeze()
     
             # Fully connected layers
+            i = len(self.layers3_high)
             for layer in self.layers3_high:
                 x_high = layer(x_high)
+                i -= 1
+                if i == 1:
+                    x_high = x_high*0.1
+                elif i == 0:
+                    x_high = x_high*2.0
+                    
 
             x_low, _ = self.lstm_low(x[:, 1:, :])
             #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
             x_low = x_low.squeeze()
     
+            i = len(self.layers3_low)
             # Fully connected layers
             for layer in self.layers3_low:
                 x_low = layer(x_low)
+                i -= 1
+                if i == 1:
+                    x_low = x_low*0.1
+                elif i == 0:
+                    x_low = x_low*4.0
                 
             #x_low = x_low.view(-1, self.n_frames-1, 2)
             x_low = x_low.view(-1, 2)
