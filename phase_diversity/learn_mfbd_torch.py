@@ -756,7 +756,7 @@ class NN(nn.Module):
 
         alphas = alphas.view(-1, num_frames_input, self.jmax)
 
-        if zero_avg_tiptilt:
+        if zero_avg_tiptilt and not tip_tilt_separated:
             tip_tilt_sums = torch.sum(alphas[:, :, :2], dim=(0, 1), keepdims=True).repeat(alphas.size()[0], alphas.size()[1], 1)
             
             if nn_mode == 1:
