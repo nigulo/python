@@ -601,7 +601,7 @@ class NN(nn.Module):
             self.layers3_high.append(nn.Linear(size, size))
             self.layers3_high.append(activation_fn())
             self.layers3_high.append(nn.Linear(size, (jmax-2)*num_frames_input))
-            self.layers3_high.append(NN.Tanh())
+            self.layers3_high.append(nn.Tanh())
             
 
             self.lstm_low = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
@@ -612,7 +612,7 @@ class NN(nn.Module):
             self.layers3_low.append(nn.Linear(size, size))
             self.layers3_low.append(activation_fn())
             self.layers3_low.append(nn.Linear(size, 2*num_frames_input))
-            self.layers3_low.append(NN.Tanh())
+            self.layers3_low.append(nn.Tanh())
         else:
             self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
             
