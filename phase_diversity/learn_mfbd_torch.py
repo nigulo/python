@@ -83,7 +83,8 @@ if len(sys.argv) > i:
     benchmarking_level = int(sys.argv[i])
 
 train_perc = 0.8
-activation_fn = nn.eLU
+#activation_fn = nn.ReLU
+activation_fn = nn.ELU
 tt_weight = 0.0#0.001
 
 learning_rate = 1e-4
