@@ -83,6 +83,11 @@ i += 1
 if len(sys.argv) > i:
     benchmarking_level = int(sys.argv[i])
 
+i += 1
+if len(sys.argv) > i:
+    start_index = int(sys.argv[i])
+
+
 train_perc = 0.8
 #activation_fn = nn.ReLU
 activation_fn = nn.ELU
@@ -1955,7 +1960,7 @@ else:
     print(max_pos)
     max_pos = np.floor(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
     print(max_pos)
-    filtr = np.all(positions <= max_pos, axis=1)
+    filtr = np.all(positions <= max_pos and positions >= [start_index, start_index], axis=1)
 
     if no_shuffle:
         stride = 1
