@@ -83,6 +83,7 @@ i += 1
 if len(sys.argv) > i:
     benchmarking_level = int(sys.argv[i])
 
+start_index=0
 i += 1
 if len(sys.argv) > i:
     start_index = int(sys.argv[i])
@@ -1249,26 +1250,27 @@ class NN(nn.Module):
     def coords_of_pos(self, coords, positions, pos):
         #print("pos", pos)
         max_pos = np.max(positions, axis = 0)
-        if pos[0] < 0 or pos[1] < 0:
+        min_pos = np.min(positions, axis = 0)
+        if pos[0] < min_pos[0] or pos[1] < min_pos[1]:
             # extrapolate left coord
-            coord0 = self.coords_of_pos(coords, positions, [0, 0])
+            coord0 = self.coords_of_pos(coords, positions, min_pos)
             if max_pos[0] == 0:
                 if max_pos[1] == 0: # We have only single patch
                     coord1 = coord0 - [nx, nx] + [nx//10, nx//10]
                 else:
-                    coord1 = np.array([coord0[0] - nx + nx//10, 2*coord0[1] - self.coords_of_pos(coords, positions, [0, 1])[1]])
+                    coord1 = np.array([coord0[0] - nx + nx//10, 2*coord0[1] - self.coords_of_pos(coords, positions, min_pos + [0, 1])[1]])
             elif max_pos[1] == 0:
-                coord1 = np.array([2*coord0[0] - self.coords_of_pos(coords, positions, [1, 0])[0], coord0[1] - nx + nx//10])
+                coord1 = np.array([2*coord0[0] - self.coords_of_pos(coords, positions, min_pos + [1, 0])[0], coord0[1] - nx + nx//10])
             else:                
-                coord1 = 2*coord0 - self.coords_of_pos(coords, positions, [1, 1])
-            if pos[0] < 0:
-                if pos[1] < 0:
+                coord1 = 2*coord0 - self.coords_of_pos(coords, positions, min_pos + [1, 1])
+            if pos[0] < min_pos[0]:
+                if pos[1] < min_pos[1]:
                     return coord1
                 else:
-                    coord0 = self.coords_of_pos(coords, positions, [0, pos[1]])
+                    coord0 = self.coords_of_pos(coords, positions, [min_pos[0], pos[1]])
                     return np.array([coord1[0], coord0[1]])
             else:
-                coord0 = self.coords_of_pos(coords, positions, [pos[0], 0])
+                coord0 = self.coords_of_pos(coords, positions, [pos[0], min_pos[1]])
                 return np.array([coord0[0], coord1[1]])
         #print("max_pos", max_pos, positions)
         if pos[0] > max_pos[0] or pos[1] > max_pos[1]:
@@ -1293,7 +1295,7 @@ class NN(nn.Module):
                 coord0 = self.coords_of_pos(coords, positions, [pos[0], max_pos[1]])
                 return np.array([coord0[0], coord1[1]])
         filtr = np.all(positions == pos, axis=1)
-        #print("pos, filtr", pos, filtr)
+        #print("pos, coords, filtr", pos, coords, filtr)
         return coords[filtr][0]
     
     def crop(self, obj_index, coords, positions):
@@ -1594,9 +1596,10 @@ class NN(nn.Module):
 
         if estimate_full_image:
             max_pos = np.max(positions, axis = 0)
+            min_pos = np.min(positions, axis = 0)
             min_coord = np.min(cropped_coords, axis = 0)
-            full_shape[0] = full_shape[0] // (max_pos[1] + 1)
-            full_shape[1] = full_shape[1] // (max_pos[0] + 1)
+            full_shape[0] = full_shape[0] // (max_pos[1] - min_pos[1] + 1)
+            full_shape[1] = full_shape[1] // (max_pos[0] - min_pos[0] + 1)
             print("full_shape", full_shape)
             full_obj = np.zeros(full_shape)
             full_reconstr = np.zeros(full_shape)
@@ -1637,7 +1640,7 @@ class NN(nn.Module):
             #my_test_plot.set_axis_title([2], "Raw frame")
 
             if plot_loss_diffs:
-                loss_diffs = np.reshape(loss_diffs, (max_pos[0] + 1, max_pos[1] + 1)).T
+                loss_diffs = np.reshape(loss_diffs, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1)).T
                 loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
                 my_test_plot.set_default_cmap(cmap_name="bwr")
@@ -1956,11 +1959,13 @@ else:
     #    assert(n_test_frames == num_frames_mode_2)
     
     max_pos = np.max(positions, axis = 0)
-
+    min_pos = np.array([start_index, start_index])
     print(max_pos)
-    max_pos = np.floor(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int)
+    max_pos = np.floor(max_pos*np.sqrt(n_test_objects/len(Ds))).astype(int) + min_pos
     print(max_pos)
-    filtr = np.all(positions <= max_pos and positions >= [start_index, start_index], axis=1)
+    filtr = np.all((positions <= max_pos) & (positions >= min_pos), axis=1)
+    print("filtr", filtr)
+    print("positions", positions.shape)
 
     if no_shuffle:
         stride = 1
