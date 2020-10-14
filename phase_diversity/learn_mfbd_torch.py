@@ -1175,8 +1175,8 @@ class NN(nn.Module):
                             DF_d = fft.fft2(D_d)
                             DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
-                            if len(alphas) > 32:
-                                break
+                            #if len(alphas) > 32:
+                            #    break
                             #print("alphas", j, l, alphas[-1][0])
                             #if n_test_frames is not None and len(alphas) >= n_test_frames:
                             #    break
