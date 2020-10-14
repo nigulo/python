@@ -1286,13 +1286,7 @@ class NN(nn.Module):
                 coord0 = self.coords_of_pos(coords, positions, [pos[0], max_pos[1]])
                 return np.array([coord0[0], coord1[1]])
         filtr = np.all(positions == pos, axis=1)
-<<<<<<< HEAD
-        #print("pos, filtr", pos, filtr)
-            return coords[filtr][0]
-=======
-        #print("pos, coords, filtr", pos, coords, filtr)
         return coords[filtr][0]
->>>>>>> 97ba6ebe06517b1a94ff510fbe229e34758541db
     
     def crop(self, obj_index, coords, positions):
         nx = self.nx
