@@ -118,7 +118,7 @@ if nn_mode == MODE_1:
     sum_over_batch = True
     
     zero_avg_tiptilt = True
-    tip_tilt_separated = True
+    tip_tilt_separated = False
     
 elif nn_mode == MODE_2:
 
@@ -136,10 +136,6 @@ elif nn_mode == MODE_2:
     # How many frames to use in training
     num_frames = 256
     
-    # How many frames of the same object are sent to NN input
-    # Must be power of 2
-    num_frames_input = 1
-    
     batch_size = 32
     n_channels = 64
     
@@ -155,12 +151,9 @@ elif nn_mode == MODE_2:
 
 no_shuffle = not shuffle2
 
-num_frames_input = 1
-assert(num_frames_input == 1) # There is no need for more frames for input
-assert(num_frames % num_frames_input == 0)
 if sum_over_batch:
     if not train:
-        assert((n_test_frames // num_frames_input) % batch_size == 0)
+        assert(n_test_frames % batch_size == 0)
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -261,7 +254,7 @@ class Dataset(torch.utils.data.Dataset):
             #if self.num_frames is None:
             #    self.num_frames = num_frames
             #assert(self.num_frames >= num_frames)
-            self.num_rows[i] = (num_frames-num_frames_input+1)*num_objects
+            self.num_rows[i] = num_frames*num_objects
             self.total_num_rows += self.num_rows[i]
         
         
@@ -283,11 +276,11 @@ class Dataset(torch.utils.data.Dataset):
 
         num_frames = Ds.shape[1]
         
-        obj_index = index//(num_frames-num_frames_input+1)
-        frame_index = index % (num_frames-num_frames_input+1)
+        obj_index = index//num_frames
+        frame_index = index % num_frames
         #print("index, obj_index, frame_index", index, obj_index, frame_index, Ds.shape)
-        Ds_out = np.array(Ds[obj_index, frame_index*num_frames_input:frame_index*num_frames_input+num_frames_input, :, :, :]).astype('float32')
-        Ds_out = np.reshape(Ds_out, (2*num_frames_input, Ds.shape[3], Ds.shape[4]))
+        Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
+        Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
 
 
         if diversity is not None:
@@ -377,7 +370,7 @@ class Dataset(torch.utils.data.Dataset):
 
         num_frames = Ds.shape[1]
         
-        obj_index = index//(num_frames-num_frames_input+1)
+        obj_index = index//num_frames
         
         if objs is not None:
             obj = objs[obj_index]
@@ -528,8 +521,6 @@ class NN(nn.Module):
         self.nx = nx
         self.num_frames = num_frames
         
-        assert(num_frames_input <= self.num_frames)
-        
         self.i1 = None # See set_data method for meaning
         self.i2 = None # See set_data method for meaning
         self.data_index = 0
@@ -566,9 +557,9 @@ class NN(nn.Module):
         ctf.set_pupil(pupil)
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
-        self.psf = psf_torch.psf_torch(ctf, num_frames=num_frames_input, batch_size=batch_size_per_gpu, set_diversity=True, 
+        self.psf = psf_torch.psf_torch(ctf, num_frames=1, batch_size=batch_size_per_gpu, set_diversity=True, 
                                  mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, tt_weight=tt_weight, device=device)
-        print("batch_size_per_gpu, num_frames_input", batch_size_per_gpu, num_frames_input)
+        print("batch_size_per_gpu", batch_size_per_gpu)
         
         self.psf_test = psf_torch.psf_torch(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, 
                                       mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, device=device)
@@ -577,7 +568,7 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels*num_frames_input, out_channels=n_channels, kernel=7, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=7, num_convs=1)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=5)
         self.layers1.append(l)
@@ -605,7 +596,7 @@ class NN(nn.Module):
             self.layers3_high.append(activation_fn())
             self.layers3_high.append(nn.Linear(size, size))
             self.layers3_high.append(activation_fn())
-            self.layers3_high.append(nn.Linear(size, (jmax-2)*num_frames_input))
+            self.layers3_high.append(nn.Linear(size, jmax-2))
             self.layers3_high.append(nn.Tanh())
             
 
@@ -616,7 +607,7 @@ class NN(nn.Module):
             self.layers3_low.append(activation_fn())
             self.layers3_low.append(nn.Linear(size, size))
             self.layers3_low.append(activation_fn())
-            self.layers3_low.append(nn.Linear(size, 2*num_frames_input))
+            self.layers3_low.append(nn.Linear(size, 2))
             self.layers3_low.append(nn.Tanh())
         else:
             self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
@@ -626,7 +617,7 @@ class NN(nn.Module):
             self.layers3.append(activation_fn())
             self.layers3.append(nn.Linear(size, size))
             self.layers3.append(activation_fn())
-            self.layers3.append(nn.Linear(size, jmax*num_frames_input))
+            self.layers3.append(nn.Linear(size, jmax))
         
         #######################################################################
         
@@ -740,7 +731,7 @@ class NN(nn.Module):
             x_low = x_low.unsqueeze(dim=0)
 
             #x_high = x_high.view(-1, self.n_frames, (jmax-2)*num_frames_input)
-            x_high = x_high.view(-1, (jmax-2)*num_frames_input)
+            x_high = x_high.view(-1, jmax-2)
             x_high = x_high.unsqueeze(dim=0)
     
             x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
@@ -759,19 +750,19 @@ class NN(nn.Module):
         
         alphas = x
 
-        alphas = alphas.view(-1, num_frames_input, self.jmax)
+        #alphas = alphas.view(-1, num_frames_input, self.jmax)
 
         if zero_avg_tiptilt and not tip_tilt_separated:
-            tip_tilt_sums = torch.sum(alphas[:, :, :2], dim=(0, 1), keepdims=True).repeat(alphas.size()[0], alphas.size()[1], 1)
+            tip_tilt_sums = torch.sum(alphas[:, :2], dim=(0), keepdims=True).repeat(alphas.size()[0], 1)
             
             if nn_mode == 1:
-                tip_tilt_means = tip_tilt_sums / (alphas.size()[0] * alphas.size()[1])    
+                tip_tilt_means = tip_tilt_sums / alphas.size()[0]    
             else:
                 #TODO double check
-                tt_sums = tt_sums_input.view(-1, 1, 2).repeat(1, num_frames_input, 1)
+                tt_sums = tt_sums_input.view(-1, 1, 2).repeat(1, 1, 1)
                 tip_tilt_sums = tip_tilt_sums + tt_sums
                 tip_tilt_means = tip_tilt_sums / self.num_frames
-            tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1], alphas.size()[2]-2).to(device, dtype=torch.float32)], axis=2)
+            tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
             alphas = alphas - tip_tilt_means
         
         
@@ -902,8 +893,8 @@ class NN(nn.Module):
         #DD_DP_PP_sums = dict()
         #DD_DP_PP_counts = dict()
         assert(len(DD_DP_PP_out) == len(Ds))
-        tt = np.empty((len(alphas), num_frames_input, 2))
-        for frame in np.arange(num_frames_input):
+        tt = np.empty((len(alphas), 1, 2))
+        for frame in np.arange(1):
             tt[:, frame] = alphas[:, frame*jmax:frame*jmax+2]
         Ds_per_obj, alphas_per_obj, diversities_per_obj, DD_DP_PP_sums_per_obj, tt_sums_per_obj = self.group_per_obj(Ds, alphas, diversities, obj_ids, DD_DP_PP_out, tt)
 
@@ -920,18 +911,18 @@ class NN(nn.Module):
                     DD_DP_PP[i:i+batch_size] = (DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out_batch_sum)/batch_size
             else:
                 DD_DP_PP[i] = DD_DP_PP_sums_per_obj[obj_ids[i]] - DD_DP_PP_out[i]
-            if i % batch_size*num_frames_input == 0:
-                for j in np.arange(i, i+batch_size*num_frames_input):
+            if i % batch_size == 0:
+                for j in np.arange(i, i+batch_size):
                     assert(obj_ids[j] == obj_ids[i])
                 tt_batch_sum = np.sum(tt[i:i+batch_size], axis=(0, 1))
                 tt_sums[i:i+batch_size] = tt_sums_per_obj[obj_ids[i]] - tt_batch_sum
             if no_shuffle:#not shuffle0 and not shuffle1 and not shuffle2:
                 # Use alphas of previous frame
                 for j in np.arange(0, num_alphas_input):
-                    if (i + j) % (num_frames/num_frames_input) < num_alphas_input:
-                        alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = np.zeros_like(alphas[i])
+                    if (i + j) % (num_frames) < num_alphas_input:
+                        alphas_in[i, jmax*j:jmax*(j+1)] = np.zeros_like(alphas[i])
                     else:
-                        alphas_in[i, jmax*num_frames_input*j:jmax*num_frames_input*(j+1)] = alphas[i-num_alphas_input+j]
+                        alphas_in[i, jmax*j:jmax*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
     def do_batch(self, Ds, diversity, train=True):
@@ -1097,7 +1088,7 @@ class NN(nn.Module):
             tt_sums = np.zeros((n_train + n_validation, 2))
             tt_sums_train = tt_sums[:n_train]
             tt_sums_validation = tt_sums[n_train:n_train+n_validation]
-            alphas = np.zeros((n_train + n_validation, num_alphas_input*num_frames_input*jmax))
+            alphas = np.zeros((n_train + n_validation, num_alphas_input*jmax))
             alphas_train = alphas[:n_train]
             alphas_validation = alphas[n_train:n_train+n_validation]
             Ds_diff = None
@@ -1174,7 +1165,7 @@ class NN(nn.Module):
             if pred_alphas is not None:
                 for j in range(i, self.Ds_validation.length()):
                     if self.Ds_validation.get_obj_data(j)[0] == obj_index:
-                        for l in np.arange(num_frames_input):
+                        for l in np.arange(1):
                             D = self.Ds_validation[j][0][2*l, :, :]
                             D_d = self.Ds_validation[j][0][2*l+1, :, :]
                             #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
@@ -1294,7 +1285,7 @@ class NN(nn.Module):
                 return np.array([coord0[0], coord1[1]])
         filtr = np.all(positions == pos, axis=1)
         #print("pos, filtr", pos, filtr)
-        return coords[filtr][0]
+            return coords[filtr][0]
     
     def crop(self, obj_index, coords, positions):
         nx = self.nx
@@ -1444,7 +1435,7 @@ class NN(nn.Module):
                     obj_index_j, _, _, _ = Ds_test.get_obj_data(j)
                     if obj_index_j == obj_index_i:
                         Ds, _ = Ds_test[j]
-                        for l in np.arange(num_frames_input):
+                        for l in np.arange(1):
                             D = Ds[2*l:2*l+2, :, :]
                             #D_d = Ds[j, :, :, 2*l+1]
                             DF = fft.fft2(D)
