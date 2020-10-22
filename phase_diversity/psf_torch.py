@@ -697,7 +697,6 @@ class psf_torch():
                 DD = torch.sum(DD, axis=0)
             loss = DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum
             loss /= DD
-            loss *= self.nx*self.nx
             
             return loss, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
@@ -715,7 +714,6 @@ class psf_torch():
                 DD1 = torch.sum(DD1, axis=0)
             loss = DD1 - (num + eps)/(den + eps)
             loss /= DD1
-            loss *= self.nx*self.nx
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
