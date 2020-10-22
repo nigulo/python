@@ -94,7 +94,7 @@ train_perc = 0.8
 activation_fn = nn.ELU
 tt_weight = 0.0#0.001
 
-learning_rate = 1e-4
+learning_rate = 5e-5
 weight_decay = 0.0
 scheduler_decay = 0.9
 scheduler_iterations = 20
@@ -111,10 +111,10 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 64
     
-    batch_size = 32
-    n_channels = 32
+    batch_size = 64
+    n_channels = 128
     
     sum_over_batch = True
     
@@ -154,6 +154,7 @@ no_shuffle = not shuffle2
 
 if sum_over_batch:
     if not train:
+        batch_size = n_test_frames
         assert(n_test_frames % batch_size == 0)
 
 if dir_name is None:
@@ -571,22 +572,22 @@ class NN(nn.Module):
 
         l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=7, num_convs=1)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=5)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=5)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
-        
-        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 36*n_channels))
+       
+        size = 1024
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 2*size))#36*n_channels))
         self.layers2.append(activation_fn())
-        self.layers2.append(nn.Linear(36*n_channels, 1024))
+        self.layers2.append(nn.Linear(2*size, size))#36*n_channels, 1024))
         self.layers2.append(activation_fn())
-        size = 512
-        self.layers2.append(nn.Linear(1024, size))
-        self.layers2.append(activation_fn())
+        #self.layers2.append(nn.Linear(1024, size))
+        #self.layers2.append(activation_fn())
 
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         if tip_tilt_separated:
