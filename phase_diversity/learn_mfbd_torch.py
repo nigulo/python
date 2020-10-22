@@ -588,7 +588,7 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=7, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=7, num_convs=2)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=5)
         self.layers1.append(l)
