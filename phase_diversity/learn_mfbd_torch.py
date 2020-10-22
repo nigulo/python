@@ -98,6 +98,7 @@ learning_rate = 5e-5
 weight_decay = 0.0
 scheduler_decay = 0.9
 scheduler_iterations = 20
+grad_clip = 0#0.1
 
 
 if nn_mode == MODE_1:
@@ -1021,6 +1022,9 @@ class NN(nn.Module):
             if train:
 
                 loss.backward()
+                # Gradient clipping
+                if grad_clip: 
+                    nn.utils.clip_grad_value_(self.parameters(), grad_clip)
                 self.optimizer.step()
 
             else:
