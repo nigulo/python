@@ -72,7 +72,7 @@ subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
 
 num_layers = 3
-inference = False
+inference = True
 infer_z_scale = True
 sample_or_optimize = False
 num_chains = 4
@@ -83,7 +83,7 @@ num_tries_without_progress = 100
 
 m_kiss = 13
 
-gp_or_nn = False
+gp_or_nn = True
 
 def load(file_name):
     
@@ -153,9 +153,9 @@ def load(file_name):
         bz = np.transpose(bz, (0, 2, 1))
 
         # Take only three surface layers
-        bx = bx[:, :, -6::2]
-        by = by[:, :, -6::2]
-        bz = bz[:, :, -6::2]
+        bx = bx[:, :, -3::1]
+        by = by[:, :, -3::1]
+        bz = bz[:, :, -3::1]
 
         b = np.sqrt(bx**2 + by**2 + bz**2)
         phi = np.arctan2(by, bx)
@@ -752,23 +752,31 @@ class disambiguator():
 
     def loglik(self):
         if gp_or_nn:
-            gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+            if len(self.y.shape) > 1 and self.y.shape[1] == 3:
+                n = self.n * 3
+                dim = 3
+                gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
+            else:
+                n = self.n
+                dim = 1
+                gp = cov_sq_exp.cov_sq_exp(self.sig_var, self.length_scale, self.noise_var, dim_out=1)
+            #gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
             if (self.approx_type == 'd2'):
                 loglik = 0.
                 for i in np.arange(0, num_subsample_reps):
-                    loglik += gp.calc_loglik_approx(self.x, np.reshape(self.y, (3*self.n, -1)), subsample=subsample)
+                    loglik += gp.calc_loglik_approx(self.x, np.reshape(self.y, (n, -1)), subsample=subsample)
                     #if (best_loglik is None or loglik > best_loglik):
                     #    best_loglik = loglik
                 return loglik/num_subsample_reps
             elif self.approx_type == 'kiss-gp':
                 U = gp.calc_cov(self.u, self.u, data_or_test=True)
-                W = utils.calc_W(self.u_mesh, self.x, us=self.u, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
-                (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(self.y, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
+                W = utils.calc_W(self.u_mesh, self.x, us=self.u, dim = dim, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
+                (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(self.y, (n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
                 L = la.cholesky(U)
                 v = la.solve(L, x)
-                return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+                return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * n * np.log(2.0 * np.pi)
             else:
-                return gp.calc_loglik(self.x, np.reshape(self.y, (3*self.n, -1)))
+                return gp.calc_loglik(self.x, np.reshape(self.y, (n, -1)))
         else:
             bx = np.reshape(self.y[:, 0], [n1, n2, n3])
             by = np.reshape(self.y[:, 1], [n1, n2, n3])
@@ -796,7 +804,9 @@ class disambiguator():
 
         x_copy = np.array(self.x)
         # Try different scalings
-        
+        y_copy = np.array(self.y)
+        self.y = np.sqrt(np.sum(self.y*self.y, axis=1))
+
         z_range = np.linspace(.1, 1, 20)
         max_loglik = -float("inf")
         for z_scale in np.concatenate((z_range, 1./z_range[::-1][1:])):
@@ -808,6 +818,7 @@ class disambiguator():
                 max_loglik = loglik
                 best_z_scale = z_scale
         self.x = np.array(x_copy)
+        self.y = np.array(y_copy)
         self.x[:, 2] *= best_z_scale
         self.z_scale = best_z_scale
         print("best_z_scale", best_z_scale)
