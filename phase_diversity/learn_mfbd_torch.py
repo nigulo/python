@@ -1522,7 +1522,7 @@ class NN(nn.Module):
                     obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                     obj_reconstr_true = obj_reconstr_true.cpu().numpy()
                     
-                    loss_diff = (loss.cpu().numpy() - loss_true.cpu().numpy())/nx/nx
+                    loss_diff = (loss.cpu().numpy() - loss_true.cpu().numpy())#/nx/nx
                     loss_diffs.append(loss_diff)
                     
                     psf_true = psf_torch.real(psf_torch.ifft(psf_true))
