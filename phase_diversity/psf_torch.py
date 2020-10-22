@@ -559,6 +559,7 @@ class psf_torch():
             DD_sum = torch.sum(DD)
             loss += DD_sum
             loss /= DD_sum
+            loss *= self.nx*self.nx
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
