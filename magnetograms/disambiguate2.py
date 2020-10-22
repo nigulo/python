@@ -153,9 +153,9 @@ def load(file_name):
         bz = np.transpose(bz, (0, 2, 1))
 
         # Take only three surface layers
-        bx = bx[:, :, -3::1]
-        by = by[:, :, -3::1]
-        bz = bz[:, :, -3::1]
+        bx = bx[:, :, -24::8]
+        by = by[:, :, -24::8]
+        bz = bz[:, :, -24::8]
 
         b = np.sqrt(bx**2 + by**2 + bz**2)
         phi = np.arctan2(by, bx)

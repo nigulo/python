@@ -114,7 +114,7 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 128
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -463,15 +463,24 @@ class ConvLayer(nn.Module):
         
         n_channels = in_channels
         for i in np.arange(num_convs):
-            conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=1, stride=1)
-            conv2 = nn.Conv2d(n_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')
+            #conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=1, stride=1)
+            conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')
             n_channels = out_channels
-            act = activation(inplace=True)
+            if i < num_convs - 1:
+                act = activation(inplace=True)
+            else:
+                act = None
             if batch_normalization:
                 bn = nn.BatchNorm2d(n_channels)
             else:
                 bn = None
-            self.layers.append(nn.ModuleList([conv1, conv2, act, bn]))
+            self.layers.append(nn.ModuleList([conv1, bn, act]))
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1)
+        if batch_normalization:
+            self.bn = nn.BatchNorm2d(n_channels)
+        else:
+            self.bn = None
+        self.act = activation(inplace=True)
         if max_pooling:
             self.pool = nn.MaxPool2d(2)
         else:
@@ -499,16 +508,24 @@ class ConvLayer(nn.Module):
     '''
 
     def forward(self, x):
+        x1 = self.conv(x)
+        if self.bn is not None:
+            x1 = self.bn(x1)
         for layer in self.layers:
             conv1 = layer[0]
-            conv2 = layer[1]
+            #conv2 = layer[1]
+            bn = layer[1]
             act = layer[2]
-            bn = layer[3]
-            x1 = conv1(x)
-            x2 = conv2(x)
-            x = x1 + act(x2)
+            x = conv1(x)
+            #x2 = conv2(x)
+            #x = x1 + act(x2)
             if bn is not None:
                 x = bn(x)
+            if act is not None:
+                x = act(x)
+        x = x + x1
+        x = self.act(x)
+        
         if self.pool is not None:
             x = self.pool(x)
 
