@@ -710,6 +710,7 @@ class psf_torch():
             if self.sum_over_batch:
                 DD1 = torch.sum(DD1, axis=0)
             loss = DD1 - (num + eps)/(den + eps)
+            loss /= DD1
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
