@@ -695,11 +695,11 @@ class psf_torch():
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            loss = DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num
+            loss = DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum
             loss /= DD
             loss *= self.nx*self.nx
             
-            return loss, den, DP_conj, Ps, wf, DD
+            return loss, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
