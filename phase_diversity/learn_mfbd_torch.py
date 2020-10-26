@@ -97,7 +97,7 @@ tt_weight = 0.0#0.001
 learning_rate = 5e-5
 weight_decay = 0.0
 scheduler_decay = 0.9
-scheduler_iterations = 20
+scheduler_iterations = 10
 grad_clip = 0#0.1
 
 
@@ -108,7 +108,7 @@ if nn_mode == MODE_1:
     
     num_reps = 1000
 
-    n_epochs_2 = 2
+    n_epochs_2 = 10
     n_epochs_1 = 1
     
     # How many frames to use in training
@@ -454,7 +454,7 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
+    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=4, activation=activation_fn):
         super(ConvLayer, self).__init__()
 
         self.batch_normalization = batch_normalization
@@ -592,52 +592,53 @@ class NN(nn.Module):
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=5)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
-       
-        size = 1024
-        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 2*size))#36*n_channels))
+        
+        size1 = 4096
+        size2 = 1024
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, size1))#36*n_channels))
         self.layers2.append(activation_fn())
-        self.layers2.append(nn.Linear(2*size, size))#36*n_channels, 1024))
+        self.layers2.append(nn.Linear(size1, size2))#36*n_channels, 1024))
         self.layers2.append(activation_fn())
         #self.layers2.append(nn.Linear(1024, size))
         #self.layers2.append(activation_fn())
 
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         if tip_tilt_separated:
-            self.lstm_high = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm_high = nn.GRU(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
 
             self.layers3_high = nn.ModuleList()
-            self.layers3_high.append(nn.Linear(size, size))
+            self.layers3_high.append(nn.Linear(size2, size2))
             self.layers3_high.append(activation_fn())
-            self.layers3_high.append(nn.Linear(size, size))
+            self.layers3_high.append(nn.Linear(size2, size2))
             self.layers3_high.append(activation_fn())
-            self.layers3_high.append(nn.Linear(size, jmax-2))
+            self.layers3_high.append(nn.Linear(size2, jmax-2))
             self.layers3_high.append(nn.Tanh())
             
 
-            self.lstm_low = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm_low = nn.GRU(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
 
             self.layers3_low = nn.ModuleList()
-            self.layers3_low.append(nn.Linear(size, size))
+            self.layers3_low.append(nn.Linear(size2, size2))
             self.layers3_low.append(activation_fn())
-            self.layers3_low.append(nn.Linear(size, size))
+            self.layers3_low.append(nn.Linear(size2, size2))
             self.layers3_low.append(activation_fn())
-            self.layers3_low.append(nn.Linear(size, 2))
+            self.layers3_low.append(nn.Linear(size2, 2))
             self.layers3_low.append(nn.Tanh())
         else:
-            self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm = nn.GRU(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
             
             self.layers3 = nn.ModuleList()
-            self.layers3.append(nn.Linear(size, size))
+            self.layers3.append(nn.Linear(size2, size2))
             self.layers3.append(activation_fn())
-            self.layers3.append(nn.Linear(size, size))
+            self.layers3.append(nn.Linear(size2, size2))
             self.layers3.append(activation_fn())
-            self.layers3.append(nn.Linear(size, jmax))
+            self.layers3.append(nn.Linear(size2, jmax))
         
         #######################################################################
         
