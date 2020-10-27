@@ -96,8 +96,8 @@ tt_weight = 0.0#0.001
 
 learning_rate = 5e-5
 weight_decay = 0.0
-scheduler_decay = 0.9
-scheduler_iterations = 10
+scheduler_decay = 1.0
+scheduler_iterations = 20
 grad_clip = 0#0.1
 
 
@@ -115,7 +115,7 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -452,6 +452,9 @@ def weights_init(m):
         #y = 1.0/np.sqrt(n)
         #m.weight.data.uniform_(-y, y)
         m.bias.data.fill_(0)
+    elif classname.find('BatchNorm1d') != -1 or classname.find('BatchNorm2d') != -1:
+        m.weight.data.fill_(1)
+        m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=4, activation=activation_fn):
@@ -599,7 +602,7 @@ class NN(nn.Module):
 
         self.layers2 = nn.ModuleList()
         
-        size1 = 4096
+        size1 = 2048
         size2 = 1024
         self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, size1))#36*n_channels))
         self.layers2.append(activation_fn())
@@ -982,9 +985,11 @@ class NN(nn.Module):
             all_DD = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
             if normalize:
-                med = np.array(data_loader.dataset.median)[None, None, None, None]
+                med = data_loader.dataset.median
                 if med is None:
-                    med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
+                    med = np.median(Ds, axis=(2, 3), keepdims=True)
+                else:
+                    med = np.array(med)[None, None, None, None]
                 Ds -= med
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
@@ -1486,9 +1491,11 @@ class NN(nn.Module):
             #print("alphas", alphas.shape, Ds_.shape)
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
-            med = np.array(Ds_test.median)[None, None, None, None]
+            med = Ds_test.median
             if med is None:
-                med = np.median(Ds_, axis=(0, 1, 2, 3), keepdims=True)
+                med = np.median(Ds, axis=(2, 3), keepdims=True)
+            else:
+                med = np.array(med)[None, None, None, None]
             Ds_ -= med
             Ds_ = self.hanning.multiply(Ds_, axis=2)
             Ds_ += med
