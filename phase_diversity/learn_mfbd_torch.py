@@ -115,7 +115,7 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 64
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -399,6 +399,7 @@ class Dataset(torch.utils.data.Dataset):
             Ds, _ = self[i]
             med += np.median(Ds)
         return (med/self.length()).astype("float32")
+
 
 class Dataset2(torch.utils.data.Dataset):
     #def __init__(self, Ds, objs, diversities, positions, obj_ids):
@@ -994,6 +995,8 @@ class NN(nn.Module):
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
+                DD = torch.sqrt(torch.sum(Ds*Ds)/(nx*nx*2*batch_size))
+                Ds /= DD
                 
                 # Mirror randomly for data augmentation purposes
                 # Seemed not much useful
@@ -1500,11 +1503,13 @@ class NN(nn.Module):
             Ds_ = self.hanning.multiply(Ds_, axis=2)
             Ds_ += med
             Ds_ /= med
-            
+            DD_ = np.sqrt(np.sum(Ds_*Ds_)/(nx*nx*2*batch_size))
+            Ds_ /= DD_
+
             obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
                     psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
                     DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
-            
+
             obj_reconstr = obj_reconstr.cpu().numpy()
             wfs = wfs*self.pupil
             
@@ -1525,8 +1530,9 @@ class NN(nn.Module):
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_index_i]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
-
                 if benchmarking_level >= 2:
+                    assert(len(Ds_) == nf) # We want to compare restorations with same number of frames
+
                     obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                     obj_reconstr_true = obj_reconstr_true.cpu().numpy()
                     
