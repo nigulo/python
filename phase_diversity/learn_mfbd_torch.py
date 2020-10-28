@@ -115,7 +115,7 @@ if nn_mode == MODE_1:
     num_frames = 32
     
     batch_size = 32
-    n_channels = 64
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -458,7 +458,7 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=4, activation=activation_fn):
+    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=2, activation=activation_fn):
         super(ConvLayer, self).__init__()
 
         self.batch_normalization = batch_normalization
@@ -592,20 +592,30 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=7, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=5, num_convs=1)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=5)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3, max_pooling=False)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
+        self.layers1.append(l)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels)
+        self.layers1.append(l)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
+        self.layers1.append(l)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
         
-        size1 = 2048
+        num_poolings = 0
+        for l in self.layers1:
+            if l.pool is not None:
+                num_poolings += 1
+        size1 = 4096
         size2 = 1024
-        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, size1))#36*n_channels))
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**num_poolings))**2, size1))#36*n_channels))
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(size1, size2))#36*n_channels, 1024))
         self.layers2.append(activation_fn())
@@ -635,7 +645,7 @@ class NN(nn.Module):
             self.layers3_low.append(nn.Linear(size2, 2))
             self.layers3_low.append(nn.Tanh())
         else:
-            self.lstm = nn.GRU(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm = nn.LSTM(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
             
             self.layers3 = nn.ModuleList()
             self.layers3.append(nn.Linear(size2, size2))
