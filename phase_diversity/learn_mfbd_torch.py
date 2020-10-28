@@ -94,7 +94,7 @@ train_perc = 0.8
 activation_fn = nn.ELU
 tt_weight = 0.0#0.001
 
-learning_rate = 5e-5
+learning_rate = 1e-5
 weight_decay = 0.0
 scheduler_decay = 1.0
 scheduler_iterations = 20
@@ -112,15 +112,15 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 32
     
-    batch_size = 64
-    n_channels = 32
+    batch_size = 32
+    n_channels = 64
     
     sum_over_batch = True
     
     zero_avg_tiptilt = True
-    tip_tilt_separated = True
+    tip_tilt_separated = False
     
 elif nn_mode == MODE_2:
 
@@ -995,8 +995,8 @@ class NN(nn.Module):
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
-                DD = torch.sqrt(torch.sum(Ds*Ds)/(nx*nx*2*batch_size))
-                Ds /= DD
+                #DD = torch.sqrt(torch.sum(Ds*Ds)/(nx*nx*2*batch_size))
+                #Ds /= DD
                 
                 # Mirror randomly for data augmentation purposes
                 # Seemed not much useful
@@ -1503,8 +1503,8 @@ class NN(nn.Module):
             Ds_ = self.hanning.multiply(Ds_, axis=2)
             Ds_ += med
             Ds_ /= med
-            DD_ = np.sqrt(np.sum(Ds_*Ds_)/(nx*nx*2*batch_size))
-            Ds_ /= DD_
+            #DD_ = np.sqrt(np.sum(Ds_*Ds_)/(nx*nx*2*batch_size))
+            #Ds_ /= DD_
 
             obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
                     psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
