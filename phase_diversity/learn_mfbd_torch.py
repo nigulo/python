@@ -94,7 +94,7 @@ train_perc = 0.8
 activation_fn = nn.ELU
 tt_weight = 0.0#0.001
 
-learning_rate = 1e-5
+learning_rate = 5e-5
 weight_decay = 0.0
 scheduler_decay = 1.0
 scheduler_iterations = 20
@@ -112,9 +112,9 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 32
+    num_frames = 64
     
-    batch_size = 32
+    batch_size = 64
     n_channels = 32
     
     sum_over_batch = True
@@ -458,7 +458,7 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=2, activation=activation_fn):
+    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
         super(ConvLayer, self).__init__()
 
         self.batch_normalization = batch_normalization
@@ -480,7 +480,7 @@ class ConvLayer(nn.Module):
             else:
                 bn = None
             self.layers.append(nn.ModuleList([conv1, bn, act]))
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')#, kernel_size=1, stride=1)
         if batch_normalization:
             self.bn = nn.BatchNorm2d(n_channels)
         else:
@@ -594,16 +594,16 @@ class NN(nn.Module):
 
         l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=5, num_convs=1)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3, max_pooling=False)
-        self.layers1.append(l)
+        #l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3, max_pooling=False)
+        #self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
-        self.layers1.append(l)
+        #l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
+        #self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
-        self.layers1.append(l)
+        #l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
+        #self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels)
         self.layers1.append(l)
 
@@ -613,9 +613,10 @@ class NN(nn.Module):
         for l in self.layers1:
             if l.pool is not None:
                 num_poolings += 1
-        size1 = 4096
+        size0 = l.out_channels*(nx//(2**num_poolings))**2
+        size1 = min(size0, 4096)
         size2 = 1024
-        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**num_poolings))**2, size1))#36*n_channels))
+        self.layers2.append(nn.Linear(size0, size1))#36*n_channels))
         self.layers2.append(activation_fn())
         self.layers2.append(nn.Linear(size1, size2))#36*n_channels, 1024))
         self.layers2.append(activation_fn())
