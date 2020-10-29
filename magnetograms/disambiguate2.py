@@ -438,7 +438,7 @@ do_plots(None, None)
 
 grid_density = (np.max(x[:,0])-np.min(x[:,0]))/n1 +(np.max(x[:,1])-np.min(x[:,1]))/n2 + (np.max(x[:,2])-np.min(x[:,2]))/n3
 grid_density /= 3
-max_grid_size = max((np.max(x[:,0])-np.min(x[:,0])), (np.max(x[:,1])-np.min(x[:,1])) + (np.max(x[:,2])-np.min(x[:,2])))
+max_grid_size = max((np.max(x[:,0])-np.min(x[:,0])), (np.max(x[:,1])-np.min(x[:,1])), (np.max(x[:,2])-np.min(x[:,2])))
 print("grid_density:", grid_density)
 print("max_grid_size:", max_grid_size)
 
