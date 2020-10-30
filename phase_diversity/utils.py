@@ -7,6 +7,7 @@ import os
 import matplotlib.pyplot as plt
 #from astropy.io import fits
 import misc
+import torch
 
 mode_scale = np.array([3.4211644e-07, 2.9869247e-07, 1.2330536e-07, 1.2948983e-07,\
     1.3634113e-07, 6.2635998e-08, 6.0679490e-08, 6.1960371e-08,\
@@ -305,7 +306,7 @@ class hanning:
         else:
             self.win = win
         
-    def multiply(self, image, axis=None):
+    def multiply(self, image, axis=None, device=None):
         win = self.win
         if axis is not None:
             # axis is the starting index of the consecuive axis that 
@@ -314,6 +315,8 @@ class hanning:
             #    win = win[None, ...]
             for i in np.arange(axis+self.n_dim, len(image.shape)):
                 win = win[..., None]
+        if device is not None:
+            win = torch.tensor(win).to(device, dtype=torch.float32)
         return image * win
     
     
