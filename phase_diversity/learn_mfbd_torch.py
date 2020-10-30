@@ -710,7 +710,7 @@ class NN(nn.Module):
                     x_high = x_high*2.0
                     
 
-            x_low, _ = self.lstm_low(x[:, 1:, :])
+            x_low, _ = self.lstm_low(x)#x[:, 1:, :])
             #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
             x_low = x_low.squeeze()
     
@@ -726,7 +726,7 @@ class NN(nn.Module):
                 
             #x_low = x_low.view(-1, self.n_frames-1, 2)
             x_low = x_low.view(-1, 2)
-            #x_low = x_low.unsqueeze(dim=0)
+            x_low = x_low.unsqueeze(dim=0)
 
             #x_high = x_high.view(-1, self.n_frames, (jmax-2)*num_frames_input)
             x_high = x_high.view(-1, jmax-2)
