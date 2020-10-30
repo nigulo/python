@@ -556,10 +556,7 @@ class psf_torch():
         
         loss = -torch.sum(real(mul(F_image, conj(DP1)))) # Without DD part
         if DD is not None:
-            DD_sum = torch.sum(DD)
-            loss += DD_sum
-            #loss /= DD_sum
-            #loss *= self.nx*self.nx
+            loss += torch.sum(DD)
         
         if self.fltr is not None:
             #F_image = smart_fltr(F_image)
@@ -695,10 +692,7 @@ class psf_torch():
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            loss = DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum
-            #loss /= DD
-            
-            return loss, num, den, DP_conj, Ps, wf, DD
+            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
@@ -713,7 +707,6 @@ class psf_torch():
             if self.sum_over_batch:
                 DD1 = torch.sum(DD1, axis=0)
             loss = DD1 - (num + eps)/(den + eps)
-            #loss /= DD1
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])

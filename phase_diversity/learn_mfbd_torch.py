@@ -98,7 +98,6 @@ learning_rate = 5e-5
 weight_decay = 0.0
 scheduler_decay = 1.0
 scheduler_iterations = 20
-grad_clip = 0#0.1
 
 
 if nn_mode == MODE_1:
@@ -115,7 +114,7 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 32
+    n_channels = 16
     
     sum_over_batch = True
     
@@ -400,7 +399,6 @@ class Dataset(torch.utils.data.Dataset):
             med += np.median(Ds)
         return (med/self.length()).astype("float32")
 
-
 class Dataset2(torch.utils.data.Dataset):
     #def __init__(self, Ds, objs, diversities, positions, obj_ids):
     def __init__(self, Ds, diversities):
@@ -453,9 +451,6 @@ def weights_init(m):
         #y = 1.0/np.sqrt(n)
         #m.weight.data.uniform_(-y, y)
         m.bias.data.fill_(0)
-    elif classname.find('BatchNorm1d') != -1 or classname.find('BatchNorm2d') != -1:
-        m.weight.data.fill_(1)
-        m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
@@ -468,24 +463,15 @@ class ConvLayer(nn.Module):
         
         n_channels = in_channels
         for i in np.arange(num_convs):
-            #conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=1, stride=1)
-            conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')
+            conv1 = nn.Conv2d(n_channels, out_channels, kernel_size=1, stride=1)
+            conv2 = nn.Conv2d(n_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')
             n_channels = out_channels
-            if i < num_convs - 1:
-                act = activation(inplace=True)
-            else:
-                act = None
+            act = activation(inplace=True)
             if batch_normalization:
                 bn = nn.BatchNorm2d(n_channels)
             else:
                 bn = None
-            self.layers.append(nn.ModuleList([conv1, bn, act]))
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel, stride=1, padding=kernel//2, padding_mode='reflect')#, kernel_size=1, stride=1)
-        if batch_normalization:
-            self.bn = nn.BatchNorm2d(n_channels)
-        else:
-            self.bn = None
-        self.act = activation(inplace=True)
+            self.layers.append(nn.ModuleList([conv1, conv2, act, bn]))
         if max_pooling:
             self.pool = nn.MaxPool2d(2)
         else:
@@ -513,24 +499,16 @@ class ConvLayer(nn.Module):
     '''
 
     def forward(self, x):
-        x1 = self.conv(x)
-        if self.bn is not None:
-            x1 = self.bn(x1)
         for layer in self.layers:
             conv1 = layer[0]
-            #conv2 = layer[1]
-            bn = layer[1]
+            conv2 = layer[1]
             act = layer[2]
-            x = conv1(x)
-            #x2 = conv2(x)
-            #x = x1 + act(x2)
+            bn = layer[3]
+            x1 = conv1(x)
+            x2 = conv2(x)
+            x = x1 + act(x2)
             if bn is not None:
                 x = bn(x)
-            if act is not None:
-                x = act(x)
-        x = x + x1
-        x = self.act(x)
-        
         if self.pool is not None:
             x = self.pool(x)
 
@@ -592,68 +570,52 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=5, num_convs=1)
+        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=3, num_convs=1)
         self.layers1.append(l)
-        #l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3, max_pooling=False)
-        #self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=3)
         self.layers1.append(l)
-        #l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
-        #self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
         self.layers1.append(l)
-        #l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, max_pooling=False)
-        #self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=8*n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
-        
-        num_poolings = 0
-        for l in self.layers1:
-            if l.pool is not None:
-                num_poolings += 1
-        size0 = l.out_channels*(nx//(2**num_poolings))**2
-        size1 = min(size0, 4096)
-        size2 = 1024
-        self.layers2.append(nn.Linear(size0, size1))#36*n_channels))
+       
+        size = 1024
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 2*size))#36*n_channels))
         self.layers2.append(activation_fn())
-        self.layers2.append(nn.Linear(size1, size2))#36*n_channels, 1024))
+        self.layers2.append(nn.Linear(2*size, size))#36*n_channels, 1024))
         self.layers2.append(activation_fn())
         #self.layers2.append(nn.Linear(1024, size))
         #self.layers2.append(activation_fn())
 
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         if tip_tilt_separated:
-            self.lstm_high = nn.GRU(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm_high = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
 
             self.layers3_high = nn.ModuleList()
-            self.layers3_high.append(nn.Linear(size2, size2))
+            self.layers3_high.append(nn.Linear(size, size))
             self.layers3_high.append(activation_fn())
-            self.layers3_high.append(nn.Linear(size2, size2))
+            self.layers3_high.append(nn.Linear(size, size))
             self.layers3_high.append(activation_fn())
-            self.layers3_high.append(nn.Linear(size2, jmax-2))
+            self.layers3_high.append(nn.Linear(size, jmax-2))
             self.layers3_high.append(nn.Tanh())
             
 
-            self.lstm_low = nn.GRU(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm_low = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
 
             self.layers3_low = nn.ModuleList()
-            self.layers3_low.append(nn.Linear(size2, size2))
+            self.layers3_low.append(nn.Linear(size, size))
             self.layers3_low.append(activation_fn())
-            self.layers3_low.append(nn.Linear(size2, size2))
+            self.layers3_low.append(nn.Linear(size, size))
             self.layers3_low.append(activation_fn())
-            self.layers3_low.append(nn.Linear(size2, 2))
+            self.layers3_low.append(nn.Linear(size, 2))
             self.layers3_low.append(nn.Tanh())
         else:
-            self.lstm = nn.LSTM(size2, size2//2, batch_first=True, bidirectional=True, dropout=0.0)
+            self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
             
             self.layers3 = nn.ModuleList()
-            self.layers3.append(nn.Linear(size2, size2))
-            self.layers3.append(activation_fn())
-            self.layers3.append(nn.Linear(size2, size2))
-            self.layers3.append(activation_fn())
-            self.layers3.append(nn.Linear(size2, jmax))
+            self.layers3.append(nn.Linear(size, jmax))
         
         #######################################################################
         
@@ -997,17 +959,13 @@ class NN(nn.Module):
             all_DD = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
             if normalize:
-                med = data_loader.dataset.median
+                med = np.array(data_loader.dataset.median)[None, None, None, None]
                 if med is None:
-                    med = np.median(Ds, axis=(2, 3), keepdims=True)
-                else:
-                    med = np.array(med)[None, None, None, None]
+                    med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
                 Ds -= med
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
-                #DD = torch.sqrt(torch.sum(Ds*Ds)/(nx*nx*2*batch_size))
-                #Ds /= DD
                 
                 # Mirror randomly for data augmentation purposes
                 # Seemed not much useful
@@ -1042,9 +1000,6 @@ class NN(nn.Module):
             if train:
 
                 loss.backward()
-                # Gradient clipping
-                if grad_clip: 
-                    nn.utils.clip_grad_value_(self.parameters(), grad_clip)
                 self.optimizer.step()
 
             else:
@@ -1505,22 +1460,18 @@ class NN(nn.Module):
             #print("alphas", alphas.shape, Ds_.shape)
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
-            med = Ds_test.median
+            med = np.array(Ds_test.median)[None, None, None, None]
             if med is None:
-                med = np.median(Ds, axis=(2, 3), keepdims=True)
-            else:
-                med = np.array(med)[None, None, None, None]
+                med = np.median(Ds_, axis=(0, 1, 2, 3), keepdims=True)
             Ds_ -= med
             Ds_ = self.hanning.multiply(Ds_, axis=2)
             Ds_ += med
             Ds_ /= med
-            #DD_ = np.sqrt(np.sum(Ds_*Ds_)/(nx*nx*2*batch_size))
-            #Ds_ /= DD_
-
+            
             obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
                     psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
                     DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
-
+            
             obj_reconstr = obj_reconstr.cpu().numpy()
             wfs = wfs*self.pupil
             
@@ -1541,13 +1492,12 @@ class NN(nn.Module):
             if true_coefs is not None:
                 true_alphas = true_coefs[obj_index_i]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
-                if benchmarking_level >= 2:
-                    assert(len(Ds_) == nf) # We want to compare restorations with same number of frames
 
+                if benchmarking_level >= 2:
                     obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                     obj_reconstr_true = obj_reconstr_true.cpu().numpy()
                     
-                    loss_diff = (loss.cpu().numpy() - loss_true.cpu().numpy())#/nx/nx
+                    loss_diff = (loss.cpu().numpy() - loss_true.cpu().numpy())/nx/nx
                     loss_diffs.append(loss_diff)
                     
                     psf_true = psf_torch.real(psf_torch.ifft(psf_true))

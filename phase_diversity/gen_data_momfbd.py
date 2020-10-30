@@ -63,7 +63,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         objs_momfbd.append(tmp['img']) # MOMBD Restored objects
         loop = 0
 
-        for i in tqdm(range(lower, upper)):
+        for i in tqdm(range(lower, upper+1)):
             si = str(i)
             si = "0"*(9-len(si))+si
             if (os.path.isfile(f'{path}image.{si}.f0.ch1.cor.f0')):
@@ -86,6 +86,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     num_frames = min(num_frames, n_full_images)
 
     print(f"Number of full images: {n_full_images}")
+    print(f"Number of frames: {num_frames}")
     nx_full = images[0].shape[1]
     ny_full = images[0].shape[0]
     print(f"Full image dimensions: {nx_full}, {ny_full}")
