@@ -770,6 +770,7 @@ class NN(nn.Module):
         #image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
         #image_input = torch.transpose(image_input, 1, 2)
         #image_input = torch.transpose(image_input, 0, 1)
+        image_input = self.hanning.multiply(image_input, axis=2)
         if nn_mode == 1:
             loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas, diversity_input)
         else:
@@ -963,7 +964,7 @@ class NN(nn.Module):
                 if med is None:
                     med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
                 Ds -= med
-                Ds = self.hanning.multiply(Ds, axis=2)
+                #Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
                 
