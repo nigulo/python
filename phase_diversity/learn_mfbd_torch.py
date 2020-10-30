@@ -599,7 +599,7 @@ class NN(nn.Module):
             self.layers3_high.append(nn.Linear(size, size))
             self.layers3_high.append(activation_fn())
             self.layers3_high.append(nn.Linear(size, jmax-2))
-            self.layers3_high.append(nn.Tanh())
+            #self.layers3_high.append(nn.Tanh())
             
 
             self.lstm_low = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
@@ -610,7 +610,7 @@ class NN(nn.Module):
             self.layers3_low.append(nn.Linear(size, size))
             self.layers3_low.append(activation_fn())
             self.layers3_low.append(nn.Linear(size, 2))
-            self.layers3_low.append(nn.Tanh())
+            #self.layers3_low.append(nn.Tanh())
         else:
             self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
             
@@ -704,10 +704,10 @@ class NN(nn.Module):
             for layer in self.layers3_high:
                 x_high = layer(x_high)
                 i -= 1
-                if i == 1:
-                    x_high = x_high*0.1
-                elif i == 0:
-                    x_high = x_high*2.0
+                #if i == 1:
+                #    x_high = x_high*0.1
+                #elif i == 0:
+                #    x_high = x_high*2.0
                     
 
             x_low, _ = self.lstm_low(x)#x[:, 1:, :])
@@ -719,10 +719,10 @@ class NN(nn.Module):
             for layer in self.layers3_low:
                 x_low = layer(x_low)
                 i -= 1
-                if i == 1:
-                    x_low = x_low*0.1
-                elif i == 0:
-                    x_low = x_low*4.0
+                #if i == 1:
+                #    x_low = x_low*0.1
+                #elif i == 0:
+                #    x_low = x_low*4.0
                 
             #x_low = x_low.view(-1, self.n_frames-1, 2)
             x_low = x_low.view(-1, 2)
