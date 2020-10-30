@@ -119,7 +119,7 @@ if nn_mode == MODE_1:
     sum_over_batch = True
     
     zero_avg_tiptilt = True
-    tip_tilt_separated = False
+    tip_tilt_separated = True
     
 elif nn_mode == MODE_2:
 
@@ -726,13 +726,13 @@ class NN(nn.Module):
                 
             #x_low = x_low.view(-1, self.n_frames-1, 2)
             x_low = x_low.view(-1, 2)
-            x_low = x_low.unsqueeze(dim=0)
+            #x_low = x_low.unsqueeze(dim=0)
 
             #x_high = x_high.view(-1, self.n_frames, (jmax-2)*num_frames_input)
             x_high = x_high.view(-1, jmax-2)
             x_high = x_high.unsqueeze(dim=0)
     
-            x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
+            #x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
 
             x = torch.cat([x_low, x_high], dim=-1)
             x = x.view(-1, jmax)
@@ -750,7 +750,7 @@ class NN(nn.Module):
 
         #alphas = alphas.view(-1, num_frames_input, self.jmax)
 
-        if zero_avg_tiptilt and not tip_tilt_separated:
+        if zero_avg_tiptilt:
             tip_tilt_sums = torch.sum(alphas[:, :2], dim=(0), keepdims=True).repeat(alphas.size()[0], 1)
             
             if nn_mode == 1:
