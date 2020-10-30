@@ -668,7 +668,7 @@ class psf_torch():
         if self.sum_over_batch:
             num = torch.sum(num, axis=0)
         DP_conj = conj(num)
-        num = mul(num, conj(num))
+        num = mul(num, DP_conj)
         num = real(num)
         
         den = torch.sum(mul(Ps, Ps_conj), axis=1)
