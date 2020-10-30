@@ -1468,8 +1468,8 @@ class NN(nn.Module):
             Ds_ += med
             Ds_ /= med
             
-            obj_reconstr, loss = self.psf_test.reconstr_(torch.tensor(DP).to(device, dtype=torch.float32), 
-                    psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
+            obj_reconstr, loss = self.psf_test.reconstr_(DP=torch.tensor(DP).to(device, dtype=torch.float32), 
+                    PP=psf_torch.to_complex(torch.tensor(PP).to(device, dtype=torch.float32)), 
                     DD=torch.tensor(DD).to(device, dtype=torch.float32))#self.deconvolve(Ds_, alphas, diversity)
             
             obj_reconstr = obj_reconstr.cpu().numpy()
