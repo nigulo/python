@@ -570,7 +570,7 @@ class NN(nn.Module):
         
         num_in_channels = 2
         if fourier_input:
-            num_in_channels = 4
+            num_in_channels = 6
 
         self.layers1 = nn.ModuleList()
 
@@ -684,8 +684,8 @@ class NN(nn.Module):
 
         x = image_input
         if fourier_input:
-            x = psf_torch.fft(psf_torch.to_complex(x))
-            x = torch.cat([x[..., 0], x[..., 1]], dim=1)
+            x_f = psf_torch.fft(psf_torch.to_complex(x))
+            x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
 
         # Convolutional blocks
         for layer in self.layers1:
