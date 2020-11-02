@@ -568,11 +568,13 @@ class NN(nn.Module):
         self.psf_test = psf_torch.psf_torch(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, 
                                       mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, device=device)
         
-        num_defocus_channels = 2
+        num_in_channels = 2
+        if fourier_input:
+            num_in_channels = 4
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_defocus_channels, out_channels=n_channels, kernel=3, num_convs=1)
+        l = ConvLayer(in_channels=num_in_channels, out_channels=n_channels, kernel=3, num_convs=1)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=3)
         self.layers1.append(l)
