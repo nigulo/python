@@ -121,6 +121,8 @@ if nn_mode == MODE_1:
     zero_avg_tiptilt = True
     tip_tilt_separated = True
     
+    fourier_input = True
+    
 elif nn_mode == MODE_2:
 
     shuffle1 = False
@@ -679,6 +681,8 @@ class NN(nn.Module):
         
 
         x = image_input
+        if fourier_input:
+            x = psf_torch.fft(psf_torch.to_complex(x))
 
         # Convolutional blocks
         for layer in self.layers1:
