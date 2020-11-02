@@ -114,7 +114,7 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 16
+    n_channels = 32
     
     sum_over_batch = True
     
@@ -261,7 +261,7 @@ class Dataset(torch.utils.data.Dataset):
         
         
         nx = datasets[0][0].shape[3]
-        self.hanning = utils.hanning(nx, 10)
+        self.hanning = utils.hanning(nx, 20)
         if calc_median:
             self.median = self.calc_median()
         else:
@@ -527,7 +527,7 @@ class NN(nn.Module):
         self.i2 = None # See set_data method for meaning
         self.data_index = 0
         
-        self.hanning = utils.hanning(nx, 10)
+        self.hanning = utils.hanning(nx, 20)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
@@ -770,7 +770,6 @@ class NN(nn.Module):
         #image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
         #image_input = torch.transpose(image_input, 1, 2)
         #image_input = torch.transpose(image_input, 0, 1)
-        image_input = self.hanning.multiply(image_input, axis=2, device=device)
         if nn_mode == 1:
             loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas, diversity_input)
         else:
@@ -964,7 +963,7 @@ class NN(nn.Module):
                 if med is None:
                     med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
                 Ds -= med
-                #Ds = self.hanning.multiply(Ds, axis=2)
+                Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
                 
