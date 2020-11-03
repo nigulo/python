@@ -372,7 +372,7 @@ class Dataset(torch.utils.data.Dataset):
         # This is actually mean of medians
         med = 0.
         for i in range(self.length()):
-            Ds, _ = self[i]
+            Ds, _, _ = self[i]
             med += np.median(Ds)
         return (med/self.length()).astype("float32")
 
