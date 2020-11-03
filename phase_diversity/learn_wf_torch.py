@@ -366,7 +366,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             coord = None
         
-        return obj_index, obj, pos, coord, coefs
+        return obj_index, obj, pos, coord, coefs[obj_index]
     
     def calc_median(self):
         # This is actually mean of medians
