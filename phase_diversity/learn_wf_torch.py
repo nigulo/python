@@ -1206,7 +1206,7 @@ class NN(nn.Module):
             ###################################################################
             obj_ids_test.append(obj_index_i)
             
-            Ds, diversity = Ds_test[i]
+            Ds, diversity, _ = Ds_test[i]
             if estimate_full_image:
                 top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta = self.crop(obj_index_i, coords, positions)
                 print("Crop:", top_left_coord, bottom_right_coord, top_left_delta, bottom_right_delta)
