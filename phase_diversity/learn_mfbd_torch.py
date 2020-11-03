@@ -1515,7 +1515,7 @@ class NN(nn.Module):
                     psf_true = fft.ifftshift(psf_true, axes=(2, 3))
                     num_plot_frames = 5
                     frame_step = nf//num_plot_frames
-                    my_test_plot = plot.plot(nrows=num_plot_frames, ncols=4)
+                    my_test_plot = plot.plot(nrows=num_plot_frames, ncols=6)
                     row = 0
                     zoom_start = psf_true.shape[2]//3
                     zoom_end = psf_true.shape[2] - zoom_start
@@ -1526,11 +1526,13 @@ class NN(nn.Module):
                             print("psf MSE", np.sum((psf_true[j] - psfs[j])**2))
                             my_test_plot.colormap(utils.trunc(psf_true[j, 0, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 0], show_colorbar=True)
                             my_test_plot.colormap(utils.trunc(psfs[j, 0, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 1], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psf_true[j, 1, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 2], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psfs[j, 1, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 3], show_colorbar=True)
                             #my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
                             #my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
                             #my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
-                            my_test_plot.colormap(wf_true[j], [row, 2], show_colorbar=True)
-                            my_test_plot.colormap(wfs[j], [row, 3], show_colorbar=True)
+                            my_test_plot.colormap(wf_true[j], [row, 4], show_colorbar=True)
+                            my_test_plot.colormap(wfs[j], [row, 5], show_colorbar=True)
                             #my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
                             row += 1
                     my_test_plot.save(f"{dir_name}/psf{obj_index_i}.png")
