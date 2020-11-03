@@ -1538,6 +1538,12 @@ class NN(nn.Module):
                             my_test_plot.colormap(wfs[j], [row, 5], show_colorbar=True)
                             #my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
                             row += 1
+                    my_test_plot.set_axis_title([0, 0], "MOMFBD PSF (focus)")
+                    my_test_plot.set_axis_title([0, 1], "NN PSF (focus)")
+                    my_test_plot.set_axis_title([0, 2], "MOMFBD PSF (defocus)")
+                    my_test_plot.set_axis_title([0, 3], "NN PSF (defocus)")
+                    my_test_plot.set_axis_title([0, 4], "MOMFBD wavefront")
+                    my_test_plot.set_axis_title([0, 5], "NN PSF wavefront")
                     my_test_plot.save(f"{dir_name}/psf{obj_index_i}.png")
                     my_test_plot.close()
 
