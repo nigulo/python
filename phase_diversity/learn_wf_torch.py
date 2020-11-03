@@ -112,11 +112,11 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 32
+    n_channels = 16
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = True
+    zero_avg_tiptilt = False
     tip_tilt_separated = True
     
     fourier_input = True
