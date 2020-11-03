@@ -1652,7 +1652,7 @@ class NN(nn.Module):
                 loss_ratios = np.repeat(np.repeat(loss_ratios, 10, axis=1), 10, axis=0)
                 max_val = max(abs(np.max(loss_ratios)), abs(np.min(loss_ratios)))
                 my_test_plot.set_default_cmap(cmap_name="bwr")
-                my_test_plot.colormap(dat=loss_ratios, ax_index=[num_cols-1], vmin=-max_val, vmax=max_val, show_colorbar=True)
+                my_test_plot.colormap(dat=loss_ratios, ax_index=[num_cols-1], vmin=1./max_val, vmax=max_val, show_colorbar=True)
                 my_test_plot.set_axis_title([num_cols-1], "Loss ratio")
             
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
