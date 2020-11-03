@@ -1545,8 +1545,11 @@ class NN(nn.Module):
                         cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 
                 if benchmarking_level >= 1:
-                    nrows = int(np.sqrt(jmax))
-                    ncols = int(math.ceil(jmax/nrows))
+                    ncols = int(np.sqrt(jmax))
+                    for ncols in np.arange(ncols, 0, -1):
+                        if jmax % ncols == 0:
+                            break
+                    nrows = jmax // ncols
                     my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
                     row = 0
                     col = 0
