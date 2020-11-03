@@ -1234,7 +1234,7 @@ class NN(nn.Module):
                 for j in range(i, Ds_test.length()):
                     obj_index_j, _, _, _, _ = Ds_test.get_obj_data(j)
                     if obj_index_j == obj_index_i:
-                        Ds, _ = Ds_test[j]
+                        Ds, _, _ = Ds_test[j]
                         for l in np.arange(1):
                             D = Ds[2*l:2*l+2, :, :]
                             #D_d = Ds[j, :, :, 2*l+1]
