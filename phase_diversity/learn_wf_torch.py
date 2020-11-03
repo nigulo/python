@@ -1496,7 +1496,7 @@ if train:
     
     Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
     
-    datasets.append((Ds, objs, diversity, positions, coords, true_coefs))
+    datasets.append((Ds, objs, diversity, positions, coords, true_coefs/utils.mode_scale))
     
     for data_file in data_files[1:]:
         Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
@@ -1504,7 +1504,7 @@ if train:
         #Ds = np.concatenate((Ds, Ds3))
         #objs = np.concatenate((objs, objs3))
         #positions = np.concatenate((positions, positions3))
-        datasets.append((Ds3, objs3, diversity3, positions3, coords3, true_coefs3))
+        datasets.append((Ds3, objs3, diversity3, positions3, coords3, true_coefs3/utils.mode_scale))
 
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -1536,9 +1536,9 @@ if train:
         print("n_train, n_test", n_train, n_test)
 
         if n_test == len(datasets[-1][0]):
-            Ds_test, objs_test, _, positions_test = datasets.pop()
+            Ds_test, objs_test, _, positions_test, coords_test, true_coefs_test = datasets.pop()
         else:
-            Ds_last, objs_last, diversity_last, positions_last, coords_last = datasets[-1]
+            Ds_last, objs_last, diversity_last, positions_last, coords_last, true_coefs_last = datasets[-1]
             Ds_train = Ds_last[:-n_test]
             Ds_test = Ds_last[-n_test:]
             if objs_last is not None:
@@ -1559,7 +1559,9 @@ if train:
             else:
                 coords_train = None
                 coords_test = None
-            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train, coords_train)
+            true_coefs_train = true_coefs_last[:-n_test]
+            true_coefs_test = true_coefs_last[-n_test:]
+            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train, coords_train, true_coefs_train)
             
     print("num_frames", Ds.shape[1])
 
@@ -1672,7 +1674,7 @@ if train:
     model = NN(jmax, nx, num_frames, pupil, modes)
     model.init()
 
-    model.set_data([(Ds_test, objs_test, diversity, positions_test, coords)], train_data=False)
+    model.set_data([(Ds_test, objs_test, diversity, positions_test, coords, true_coefs_test)], train_data=False)
     model.set_data(datasets, train_data=True)
     for rep in np.arange(0, num_reps):
         
