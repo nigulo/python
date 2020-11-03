@@ -118,7 +118,7 @@ if nn_mode == MODE_1:
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = True
+    zero_avg_tiptilt = False
     tip_tilt_separated = True
     
     fourier_input = True
@@ -584,11 +584,12 @@ class NN(nn.Module):
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
-       
+        
+        size1 = 2048
         size = 1024
-        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, 2*size))#36*n_channels))
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, size1))#36*n_channels))
         self.layers2.append(activation_fn())
-        self.layers2.append(nn.Linear(2*size, size))#36*n_channels, 1024))
+        self.layers2.append(nn.Linear(size1, size))#36*n_channels, 1024))
         self.layers2.append(activation_fn())
         #self.layers2.append(nn.Linear(1024, size))
         #self.layers2.append(activation_fn())
