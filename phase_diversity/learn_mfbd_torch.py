@@ -1381,14 +1381,14 @@ class NN(nn.Module):
         cropped_reconstrs_true = []
         cropped_coords = []
         
-        loss_diffs = []
+        loss_ratios = []
         
         full_shape = np.zeros(2, dtype="int")
         
         #print("coords, pos", coords, positions)
     
-        min_loss_diff = float("inf")
-        max_loss_diff = -min_loss_diff
+        min_loss_ratio = float("inf")
+        max_loss_ratio = 0.
         
         min_loss_plot = None
         max_loss_plot = None
@@ -1507,8 +1507,8 @@ class NN(nn.Module):
                     obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                     obj_reconstr_true = obj_reconstr_true.cpu().numpy()
                     
-                    loss_diff = (loss.cpu().numpy() - loss_true.cpu().numpy())/nx/nx
-                    loss_diffs.append(loss_diff)
+                    loss_ratio = loss.cpu().numpy()/loss_true.cpu().numpy()
+                    loss_ratios.append(loss_ratio)
                     
                     psf_true = psf_torch.real(psf_torch.ifft(psf_true))
                     psf_true = psf_true.cpu().numpy()
@@ -1568,17 +1568,17 @@ class NN(nn.Module):
                     my_test_plot.save(f"{dir_name}/alphas{i // n_test_frames}.png")
 
                     if benchmarking_level >= 2:
-                        if loss_diff > max_loss_diff or loss_diff < min_loss_diff:
-                            if loss_diff > max_loss_diff:
+                        if loss_ratio > max_loss_ratio or loss_ratio < min_loss_ratio:
+                            if loss_ratio > max_loss_ratio:
                                 if max_loss_plot is not None:
                                     max_loss_plot.close()
-                                max_loss_diff = loss_diff
+                                max_loss_ratio = loss_ratio
                                 max_loss_plot = my_test_plot
             
-                            if loss_diff < min_loss_diff:
+                            if loss_ratio < min_loss_ratio:
                                 if min_loss_plot is not None:
                                     min_loss_plot.close()
-                                min_loss_diff = loss_diff
+                                min_loss_ratio = loss_ratio
                                 min_loss_plot = my_test_plot
                         else:
                             my_test_plot.close()
@@ -1621,9 +1621,9 @@ class NN(nn.Module):
                     full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
 
-            plot_loss_diffs = len(loss_diffs) > 0
+            plot_loss_ratios = len(loss_ratios) > 0
             num_cols = 2
-            if plot_loss_diffs:
+            if plot_loss_ratios:
                 num_cols += 1
                 
             my_test_plot = plot.plot(nrows=1, ncols=num_cols, size=plot.default_size(len(full_obj)*2, len(full_obj)*2))
@@ -1641,13 +1641,13 @@ class NN(nn.Module):
             my_test_plot.set_axis_title([1], "Neural network")
             #my_test_plot.set_axis_title([2], "Raw frame")
 
-            if plot_loss_diffs:
-                loss_diffs = np.reshape(loss_diffs, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1)).T
-                loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
-                max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
+            if plot_loss_ratios:
+                loss_ratios = np.reshape(loss_ratios, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1)).T
+                loss_ratios = np.repeat(np.repeat(loss_ratios, 10, axis=1), 10, axis=0)
+                max_val = max(abs(np.max(loss_ratios)), abs(np.min(loss_ratios)))
                 my_test_plot.set_default_cmap(cmap_name="bwr")
-                my_test_plot.colormap(dat=loss_diffs, ax_index=[num_cols-1], vmin=-max_val, vmax=max_val, show_colorbar=True)
-                my_test_plot.set_axis_title([num_cols-1], "Losses")
+                my_test_plot.colormap(dat=loss_ratios, ax_index=[num_cols-1], vmin=-max_val, vmax=max_val, show_colorbar=True)
+                my_test_plot.set_axis_title([num_cols-1], "Loss ratio")
             
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
