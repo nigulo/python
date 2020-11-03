@@ -1543,7 +1543,7 @@ class NN(nn.Module):
                     my_test_plot.set_axis_title([0, 2], "MOMFBD PSF (defocus)")
                     my_test_plot.set_axis_title([0, 3], "NN PSF (defocus)")
                     my_test_plot.set_axis_title([0, 4], "MOMFBD wavefront")
-                    my_test_plot.set_axis_title([0, 5], "NN PSF wavefront")
+                    my_test_plot.set_axis_title([0, 5], "NN wavefront")
                     my_test_plot.save(f"{dir_name}/psf{obj_index_i}.png")
                     my_test_plot.close()
 
