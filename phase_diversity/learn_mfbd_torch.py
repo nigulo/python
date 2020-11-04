@@ -1361,7 +1361,7 @@ class NN(nn.Module):
 
         tip_tilt_means = np.mean(pred_alphas[:, :2], axis=0, keepdims=True)
         print("tip-tilt mean", tip_tilt_means)
-        tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros(pred_alphas.shape[0], pred_alphas.shape[1]-2)), axis=1)
+        tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros((pred_alphas.shape[0], pred_alphas.shape[1]-2))), axis=1)
         pred_alphas = pred_alphas - tip_tilt_means
 
         psf_f_np = psf_f[..., 0] + psf_f[..., 1]*1.j
