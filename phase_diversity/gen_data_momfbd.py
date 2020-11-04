@@ -179,11 +179,13 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         
         dx = tmp['dy'][indx[loop], indy[loop], 1]
         dy = tmp['dx'][indx[loop], indy[loop], 1]
-
-        if (indx[loop] == 0 or indx[loop] == npx-1 or indy[loop] == 0 or indy[loop] == npy-1):
-            dx = 0
-            dy = 0
-
+        
+        #print("dx, dy", dx, dy, indx[loop], indy[loop])
+        #if (indx[loop] == 0 or indx[loop] == npx-1 or indy[loop] == 0 or indy[loop] == npy-1):
+        #    dx = 0
+        #    dy = 0
+        
+        #    print("Setting zero")
         if objs is not None:
             if len(objs_momfbd) > indt[loop]:
                 objs[loop] = objs_momfbd[indt[loop]][indx[loop], indy[loop]]
@@ -194,7 +196,32 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         start_index = indt[loop]
         end_index = start_index + num_frames
         Ds[loop, :num_frames, 0] = images[start_index:end_index,x0:x0+nx,y0:y0+nx]
-        Ds[loop, :num_frames, 1] = images_defocus[start_index:end_index,x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
+        defocus_image = np.array(images_defocus[start_index:end_index,:,:])
+        x_left = x0+dx
+        x_right = x0+nx+dx
+        y_bottom = y0+dy
+        y_top = y0+nx+dy
+        pad_left = 0
+        pad_right = 0
+        pad_bottom = 0
+        pad_top = 0
+        if x_left < 0:
+            pad_left = abs(x_left)
+            x_left = 0
+            x_right += pad_left
+        if x_right > defocus_image.shape[1]:
+            pad_right = x_right - defocus_image.shape[1]
+        if y_bottom < 0:
+            pad_bottom = abs(y_bottom)
+            y_bottom = 0
+            y_top += pad_bottom
+        if y_top > defocus_image.shape[2]:
+            pad_top = y_top - defocus_image.shape[2]
+        print(x_left, x_right, y_bottom, y_top)
+        print(defocus_image.shape)
+        defocus_image = np.pad(defocus_image, ((0, 0), (pad_left, pad_right), (pad_bottom, pad_top)), mode='constant')
+        print(defocus_image.shape)
+        Ds[loop, :num_frames, 1] = defocus_image[:,x_left:x_right,y_bottom:y_top]
         momfbd_coefs[loop, :num_frames] = alphas[start_index:end_index,indx[loop],indy[loop],:]
         positions[loop, 0] = indx[loop]
         positions[loop, 1] = indy[loop]
