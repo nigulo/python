@@ -98,7 +98,7 @@ learning_rate = 5e-5
 weight_decay = 0.0
 scheduler_decay = 1.0
 scheduler_iterations = 20
-momentum=.1
+momentum=.9
 
 if nn_mode == MODE_1:
     
@@ -639,8 +639,8 @@ class NN(nn.Module):
             self.i2 = state['i2']
             self.data_index = state['data_index']
             self = self.to(device)
-            #self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
-            self.optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
+            self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            #self.optimizer = torch.optim.RMSprop(self.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
             self.optimizer.load_state_dict(state['optimizer_state_dict'])
         except Exception as e:
             print(e)
@@ -651,8 +651,8 @@ class NN(nn.Module):
             self.val_loss = float("inf")
             self.apply(weights_init)
             self = self.to(device)
-            #self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
-            self.optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
+            self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            #self.optimizer = torch.optim.RMSprop(self.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
 
     def init(self):
         self.load_state()
