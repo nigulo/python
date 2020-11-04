@@ -760,7 +760,11 @@ class NN(nn.Module):
 
         #alphas = alphas.view(-1, num_frames_input, self.jmax)
 
-        if zero_avg_tiptilt:
+        if tt_mean is not None:
+            tt_mean = tt_mean.repeat(alphas.size()[0], 1)
+            tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
+            alphas_tt_zero = alphas - tt_mean
+        else:
             tip_tilt_sums = torch.sum(alphas[:, :2], dim=(0), keepdims=True).repeat(alphas.size()[0], 1)
             
             if nn_mode == 1:
@@ -771,15 +775,9 @@ class NN(nn.Module):
                 tip_tilt_sums = tip_tilt_sums + tt_sums
                 tip_tilt_means = tip_tilt_sums / self.num_frames
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
-            alphas = alphas - tip_tilt_means
-            alphas_tt_zero = alphas
-        else:
-            if tt_mean is not None:
-                tt_mean = tt_mean.repeat(alphas.size()[0], 1)
-                tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
-                alphas_tt_zero = alphas - tt_mean
-            else:
-                alphas_tt_zero = alphas
+            alphas_tt_zero = alphas - tip_tilt_means
+            if zero_avg_tiptilt:
+                alphas = alphas_tt_zero
         
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
@@ -968,9 +966,9 @@ class NN(nn.Module):
         loss_sum = 0.
         count = 0.
         
-        all_alphas = []#np.empty((num_data, jmax))
         #num_data = data_loader.dataset.length()
         if not train:
+            all_alphas = []#np.empty((num_data, jmax))
             all_num = []#np.empty((num_data, nx, nx))
             all_DP_conj = []#np.empty((num_data, nx, nx), dtype="complex64")
             all_den = []#np.empty((num_data, nx, nx))
@@ -1017,13 +1015,13 @@ class NN(nn.Module):
                 
             ###################################################################
             
-            all_alphas.append(alphas.cpu().numpy())
             if train:
 
                 loss.backward()
                 self.optimizer.step()
 
             else:
+                all_alphas.append(alphas.cpu().numpy())
                 all_num.append(num.cpu().numpy())
                 all_den.append(den.cpu().numpy())
                 all_DP_conj.append(DP_conj.cpu().numpy())
@@ -1041,15 +1039,16 @@ class NN(nn.Module):
                 if prefix is not None:
                     progress_bar.set_postfix({prefix: loss_sum/count})
             
-        all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
-        tt_mean = np.mean(all_alphas[:, :2], axis=0, keepdims=True)
-        tip_tilt_means = np.tile(tt_mean, (all_alphas.shape[0], 1))
-        tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros((all_alphas.shape[0], all_alphas.shape[1]-2))), axis=1)
-        all_alphas = all_alphas - tip_tilt_means
         
         if train:        
-            return loss_sum/count, tt_mean
+            return loss_sum/count
         else:
+            all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
+            tt_mean = np.mean(all_alphas[:, :2], axis=0, keepdims=True)
+            tip_tilt_means = np.tile(tt_mean, (all_alphas.shape[0], 1))
+            tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros((all_alphas.shape[0], all_alphas.shape[1]-2))), axis=1)
+            all_alphas = all_alphas - tip_tilt_means
+
             all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
             all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
             all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
@@ -1080,9 +1079,9 @@ class NN(nn.Module):
         
         if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
-                loss, tt_mean = self.do_epoch(Ds_train_loader, tt_mean=tt_mean)
+                self.do_epoch(Ds_train_loader)
                 self.scheduler.step()
-                val_loss, _, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False, tt_mean=tt_mean)
+                val_loss, _, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
 
                 if True:#self.val_loss > history.history['val_loss'][-1]:
                     self.save_state({
