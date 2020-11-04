@@ -1359,7 +1359,7 @@ class NN(nn.Module):
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, alphas, Ds_diff)
             #pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
 
-        tip_tilt_means = np.mean(pred_alphas[:, :2], axis=0, keepdims=True)
+        tip_tilt_means = np.tile(np.mean(pred_alphas[:, :2], axis=0, keepdims=True), (pred_alphas.shape[0], 1))
         print("tip-tilt mean", tip_tilt_means)
         tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros((pred_alphas.shape[0], pred_alphas.shape[1]-2))), axis=1)
         pred_alphas = pred_alphas - tip_tilt_means
