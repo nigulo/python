@@ -764,7 +764,7 @@ class NN(nn.Module):
             tt_mean = tt_mean.repeat(alphas.size()[0], 1)
             tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
             alphas_tt_zero = alphas - tt_mean
-        else:
+        elif zero_avg_tiptilt:
             tip_tilt_sums = torch.sum(alphas[:, :2], dim=(0), keepdims=True).repeat(alphas.size()[0], 1)
             
             if nn_mode == 1:
@@ -776,9 +776,9 @@ class NN(nn.Module):
                 tip_tilt_means = tip_tilt_sums / self.num_frames
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
             alphas_tt_zero = alphas - tip_tilt_means
-            if zero_avg_tiptilt:
-                alphas = alphas_tt_zero
-        
+            alphas = alphas_tt_zero
+        else:
+            alphas_tt_zero = alphas
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
         # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
@@ -1080,6 +1080,8 @@ class NN(nn.Module):
         if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 self.do_epoch(Ds_train_loader)
+                _, _, _, _, _, _, _, _, tt_mean = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
+                self.do_epoch(Ds_train_loader, tt_mean=tt_mean)
                 self.scheduler.step()
                 val_loss, _, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
 
