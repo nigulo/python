@@ -680,7 +680,7 @@ class NN(nn.Module):
     def forward(self, data):
 
         if nn_mode == 1:
-            image_input, diversity_input = data
+            image_input, diversity_input, tt_mean = data
         elif nn_mode == 2:
             image_input, diversity_input, DD_DP_PP_input, tt_sums_input = data
         
@@ -772,6 +772,12 @@ class NN(nn.Module):
                 tip_tilt_means = tip_tilt_sums / self.num_frames
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
             alphas = alphas - tip_tilt_means
+            alphas_tt_zero = alphas
+        else:
+            if tt_mean is not None:
+                tt_mean = tt_mean.repeat(alphas.size()[0], 1)
+                tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
+                alphas_tt_zero = alphas - tt_mean
         
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
@@ -781,9 +787,9 @@ class NN(nn.Module):
         #image_input = torch.transpose(image_input, 1, 2)
         #image_input = torch.transpose(image_input, 0, 1)
         if nn_mode == 1:
-            loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas, diversity_input)
+            loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas_tt_zero, diversity_input)
         else:
-            loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas, diversity_input, DD_DP_PP=None)
+            loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas_tt_zero, diversity_input, DD_DP_PP=None)
 
         loss = torch.mean(loss)#/nx/nx
 
@@ -933,18 +939,20 @@ class NN(nn.Module):
                         alphas_in[i, jmax*j:jmax*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
-    def do_batch(self, Ds, diversity, train=True):
+    def do_batch(self, Ds, diversity, tt_mean=None, train=True):
         Ds = Ds.to(device)
         diversity = diversity.to(device)
+        if tt_mean is not None:
+            tt_mean = tt_mean.to(device)
         if train:
             self.optimizer.zero_grad()
-            result = self((Ds, diversity))
+            result = self((Ds, diversity, tt_mean))
         else:
             with torch.no_grad():
-                result = self((Ds, diversity))
+                result = self((Ds, diversity, tt_mean))
         return result
     
-    def do_epoch(self, data_loader, train=True, use_prefix=True, normalize=True):
+    def do_epoch(self, data_loader, train=True, use_prefix=True, normalize=True, tt_mean=None):
         prefix = None
         if train:
             prefix="Training error"
@@ -958,9 +966,9 @@ class NN(nn.Module):
         loss_sum = 0.
         count = 0.
         
+        all_alphas = []#np.empty((num_data, jmax))
         #num_data = data_loader.dataset.length()
         if not train:
-            all_alphas = []#np.empty((num_data, jmax))
             all_num = []#np.empty((num_data, nx, nx))
             all_DP_conj = []#np.empty((num_data, nx, nx), dtype="complex64")
             all_den = []#np.empty((num_data, nx, nx))
@@ -998,7 +1006,7 @@ class NN(nn.Module):
             #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
             #        my_test_plot.close()
             ###################################################################
-            result = self.do_batch(Ds, diversity, train)
+            result = self.do_batch(Ds, diversity, tt_mean=tt_mean, train=train)
             if nn_mode == 1:
                 loss, alphas, num, den, DP_conj, psf, wf, DD = result
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
@@ -1007,13 +1015,13 @@ class NN(nn.Module):
                 
             ###################################################################
             
+            all_alphas.append(alphas.cpu().numpy())
             if train:
 
                 loss.backward()
                 self.optimizer.step()
 
             else:
-                all_alphas.append(alphas.cpu().numpy())
                 all_num.append(num.cpu().numpy())
                 all_den.append(den.cpu().numpy())
                 all_DP_conj.append(DP_conj.cpu().numpy())
@@ -1031,10 +1039,15 @@ class NN(nn.Module):
                 if prefix is not None:
                     progress_bar.set_postfix({prefix: loss_sum/count})
             
+        all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
+        tt_mean = np.mean(all_alphas[:, :2], axis=0, keepdims=True)
+        tip_tilt_means = np.tile(tt_mean, (all_alphas.shape[0], 1))
+        tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros((all_alphas.shape[0], all_alphas.shape[1]-2))), axis=1)
+        all_alphas = all_alphas - tip_tilt_means
+        
         if train:        
-            return loss_sum/count
+            return loss_sum/count, tt_mean
         else:
-            all_alphas = np.reshape(np.asarray(all_alphas), [-1, jmax])
             all_num = np.reshape(np.asarray(all_num), [-1, nx, nx])
             all_den = np.reshape(np.asarray(all_den), [-1, nx, nx])
             all_DP_conj = np.reshape(np.asarray(all_DP_conj), [-1, nx, nx, 2]) # Complex array
@@ -1042,12 +1055,14 @@ class NN(nn.Module):
             all_wf = np.reshape(np.asarray(all_wf), [-1, nx, nx])
             all_DD = np.reshape(np.asarray(all_DD), [-1, nx, nx])
             
-            return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf, all_DD
+            return loss_sum/count, all_alphas, all_num, all_den, all_DP_conj, all_psf, all_wf, all_DD, tt_mean
             
 
     def do_train(self):
         jmax = self.jmax
         self.test = False
+        
+        tt_mean = None
 
 
         shuffle_epoch = True
@@ -1063,9 +1078,9 @@ class NN(nn.Module):
         
         if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
-                self.do_epoch(Ds_train_loader)
+                loss, tt_mean = self.do_epoch(Ds_train_loader, tt_mean=tt_mean)
                 self.scheduler.step()
-                val_loss, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
+                val_loss, _, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False, tt_mean=tt_mean)
 
                 if True:#self.val_loss > history.history['val_loss'][-1]:
                     self.save_state({
@@ -1125,7 +1140,7 @@ class NN(nn.Module):
         n_test = 1
 
         if nn_mode == MODE_1:
-            _, pred_alphas, _, den, num_conj, psf, wf, DD = self.do_epoch(Ds_validation_loader, train=False, use_prefix=False)
+            _, pred_alphas, _, den, num_conj, psf, wf, DD, tt_mean = self.do_epoch(Ds_validation_loader, train=False, use_prefix=False)
         elif nn_mode >= MODE_2:
             print("Not implemented")
             #input_data = [self.Ds, self.diversities, DD_DP_PP, tt_sums, alphas]
@@ -1346,7 +1361,8 @@ class NN(nn.Module):
 
         if nn_mode == MODE_1:
             
-            losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs = self.do_epoch(Ds_test_loader, train=False)
+            losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs, tt_mean = self.do_epoch(Ds_test_loader, train=False)
+            losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs, tt_mean = self.do_epoch(Ds_test_loader, train=False, tt_mean=tt_mean)
 
         elif nn_mode >= MODE_2:
             print("Not implemented")
@@ -1358,11 +1374,6 @@ class NN(nn.Module):
             #for epoch in np.arange(n_epochs_mode_2):
             #    self.predict_mode2(Ds, diversities, DD_DP_PP, obj_ids, tt_sums, alphas, Ds_diff)
             #pred_alphas = alphas_layer_model.predict(input_data, batch_size=batch_size)
-
-        tip_tilt_means = np.tile(np.mean(pred_alphas[:, :2], axis=0, keepdims=True), (pred_alphas.shape[0], 1))
-        print("tip-tilt mean", tip_tilt_means)
-        tip_tilt_means = np.concatenate((tip_tilt_means, np.zeros((pred_alphas.shape[0], pred_alphas.shape[1]-2))), axis=1)
-        pred_alphas = pred_alphas - tip_tilt_means
 
         psf_f_np = psf_f[..., 0] + psf_f[..., 1]*1.j
         psf = fft.ifft2(psf_f_np).real
