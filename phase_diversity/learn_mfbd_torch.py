@@ -1079,9 +1079,9 @@ class NN(nn.Module):
         
         if nn_mode == MODE_1:
             for epoch in np.arange(self.epoch, self.n_epochs_2):
-                self.do_epoch(Ds_train_loader)
-                _, _, _, _, _, _, _, _, tt_mean = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
-                self.do_epoch(Ds_train_loader, tt_mean=tt_mean)
+                #self.do_epoch(Ds_train_loader)
+                #_, _, _, _, _, _, _, _, tt_mean = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
+                self.do_epoch(Ds_train_loader, tt_mean=np.random.normal(size=2))#tt_mean)
                 self.scheduler.step()
                 val_loss, _, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
 
