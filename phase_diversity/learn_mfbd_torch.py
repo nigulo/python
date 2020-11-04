@@ -778,6 +778,8 @@ class NN(nn.Module):
                 tt_mean = tt_mean.repeat(alphas.size()[0], 1)
                 tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
                 alphas_tt_zero = alphas - tt_mean
+            else:
+                alphas_tt_zero = alphas
         
         
         # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
