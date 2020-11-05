@@ -2050,6 +2050,12 @@ else:
     my_test_plot.colormap(pupil, show_colorbar=True)
     my_test_plot.save(dir_name + "/pupil_test.png")
     my_test_plot.close()
+    
+    for i in range(len(Ds)):
+        my_test_plot = plot.plot()
+        my_test_plot.colormap(Ds[i, 0, 1], show_colorbar=True)
+        my_test_plot.save(f"{dir_name}/D{i}_d_test.png")
+        my_test_plot.close()
     ###########################################################################
 
     model = NN(jmax, nx, n_test_frames, pupil, modes)
