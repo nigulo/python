@@ -1,3 +1,5 @@
+#import matplotlib as mpl
+#mpl.use('Agg')
 import numpy as np
 from pyana import pyana as pa
 #import pyana as pa
@@ -9,6 +11,7 @@ import sys
 sys.path.append('../utils')
 import misc
 import utils
+#import plot
 from numcodecs import Blosc
 compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
 out_dir = "data_out"
@@ -223,6 +226,20 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         #print(defocus_image.shape)
         Ds[loop, :num_frames, 1] = defocus_image[:,x_left:x_right,y_bottom:y_top]
         momfbd_coefs[loop, :num_frames] = alphas[start_index:end_index,indx[loop],indy[loop],:]
+        #if abs(dx) > 5 or abs(dy) > 5:
+        #    my_test_plot = plot.plot()
+        #    my_test_plot.colormap(Ds[loop, 0, 0], show_colorbar=True)
+        #    my_test_plot.save(f"{out_dir}/image{loop}_focus.png")
+        #    my_test_plot.close()
+        #    my_test_plot = plot.plot()
+        #    my_test_plot.colormap(Ds[loop, 0, 1], show_colorbar=True)
+        #    my_test_plot.save(f"{out_dir}/image{loop}_defocus1.png")
+        #    my_test_plot.close()
+        #    my_test_plot = plot.plot()
+        #    my_test_plot.colormap(images_defocus[0,x0:x0+nx,y0:y0+nx], show_colorbar=True)
+        #    my_test_plot.save(f"{out_dir}/image{loop}_defocus2.png")
+        #    my_test_plot.close()
+        
         positions[loop, 0] = indx[loop]
         positions[loop, 1] = indy[loop]
         
