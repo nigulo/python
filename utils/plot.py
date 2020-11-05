@@ -203,7 +203,7 @@ class plot:
             if colorbar_prec is None:
                 l_f = self.default_colorbar
             else:
-                l_f = FormatStrFormatter('%' + str(colorbar_prec) +'f')
+                l_f = FormatStrFormatter(f'%{colorbar_prec}f')
                     
             #pos = ax.get_position(original=True).get_points()
             #x0 = pos[0, 0]
