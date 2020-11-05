@@ -180,7 +180,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         dx = tmp['dy'][indx[loop], indy[loop], 1]
         dy = tmp['dx'][indx[loop], indy[loop], 1]
         
-        #print("dx, dy", dx, dy, indx[loop], indy[loop])
+        #print("dx, dy", tmp['dy'][indx[loop], indy[loop]], tmp['dx'][indx[loop], indy[loop]], indx[loop], indy[loop])
         #if (indx[loop] == 0 or indx[loop] == npx-1 or indy[loop] == 0 or indy[loop] == npy-1):
         #    dx = 0
         #    dy = 0
@@ -217,10 +217,10 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
             y_top += pad_bottom
         if y_top > defocus_image.shape[2]:
             pad_top = y_top - defocus_image.shape[2]
-        print(x_left, x_right, y_bottom, y_top)
-        print(defocus_image.shape)
+        #print(x_left, x_right, y_bottom, y_top)
+        #print(defocus_image.shape)
         defocus_image = np.pad(defocus_image, ((0, 0), (pad_left, pad_right), (pad_bottom, pad_top)), mode='constant')
-        print(defocus_image.shape)
+        #print(defocus_image.shape)
         Ds[loop, :num_frames, 1] = defocus_image[:,x_left:x_right,y_bottom:y_top]
         momfbd_coefs[loop, :num_frames] = alphas[start_index:end_index,indx[loop],indy[loop],:]
         positions[loop, 0] = indx[loop]
