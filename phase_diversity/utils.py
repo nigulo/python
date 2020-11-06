@@ -301,7 +301,10 @@ class hanning:
         win[:num_pixel_padding] = 0.
         win[-num_pixel_padding:] = 0.
         win[num_pixel_padding:num_pixel_padding+num_pixels_apodization//2] = hanning[:num_pixels_apodization//2]
-        win[-num_pixels_apodization//2-num_pixel_padding:-num_pixel_padding] = hanning[-num_pixels_apodization//2:]
+        if num_pixel_padding > 0:
+            win[-num_pixels_apodization//2-num_pixel_padding:-num_pixel_padding] = hanning[-num_pixels_apodization//2:]
+        else:
+            win[-num_pixels_apodization//2:] = hanning[-num_pixels_apodization//2:]
         self.n_dim = n_dim
         if n_dim == 2:
             self.win = np.outer(win, win)
