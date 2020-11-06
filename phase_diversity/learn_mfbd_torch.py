@@ -263,7 +263,7 @@ class Dataset(torch.utils.data.Dataset):
         
         
         nx = datasets[0][0].shape[3]
-        self.hanning = utils.hanning(nx, 20)
+        self.hanning = utils.hanning(nx, 20)#, num_pixel_padding=6)
         if calc_median:
             self.median = self.calc_median()
         else:
@@ -529,7 +529,7 @@ class NN(nn.Module):
         self.i2 = None # See set_data method for meaning
         self.data_index = 0
         
-        self.hanning = utils.hanning(nx, 20)
+        self.hanning = utils.hanning(nx, 20)#, num_pixel_padding=6)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
@@ -996,15 +996,17 @@ class NN(nn.Module):
             
             ###################################################################
             # DEBUG
-            #if batch_idx == 0:
-            #    for i in np.arange(len(Ds)):
-            #        my_test_plot = plot.plot(nrows=2, ncols=2)
-            #        my_test_plot.colormap(Ds.numpy()[i, 0], [0, 0], show_colorbar=True)
-            #        my_test_plot.colormap(Ds.numpy()[i, 1], [0, 1], show_colorbar=True)
-            #        my_test_plot.colormap(diversity.numpy()[i, 0], [1, 0], show_colorbar=True)
-            #        my_test_plot.colormap(diversity.numpy()[i, 1], [1, 1], show_colorbar=True)
-            #        my_test_plot.save(f"{dir_name}/test_input_{i}.png")
-            #        my_test_plot.close()
+            ##if batch_idx == 0:
+            ##    for i in np.arange(len(Ds)):
+            #i = 0
+            #my_test_plot = plot.plot(nrows=2, ncols=2)
+            #my_test_plot.colormap(Ds.numpy()[i, 0], [0, 0], show_colorbar=True)
+            #my_test_plot.colormap(Ds.numpy()[i, 1], [0, 1], show_colorbar=True)
+            #my_test_plot.colormap(diversity.numpy()[i, 0], [1, 0], show_colorbar=True)
+            #my_test_plot.colormap(diversity.numpy()[i, 1], [1, 1], show_colorbar=True)
+            ##my_test_plot.save(f"{dir_name}/test_input_{i}.png")
+            #my_test_plot.save(f"{dir_name}/test_input_{batch_idx}.png")
+            #my_test_plot.close()
             ###################################################################
             result = self.do_batch(Ds, diversity, tt_mean=tt_mean, train=train)
             if nn_mode == 1:
@@ -2012,8 +2014,8 @@ else:
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
 
     # TODO: Comment out #######################################################
-    np.savez_compressed(dir_name + '/Ds_tmp', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
-                    alphas=true_coefs, positions=positions, coords=coords)
+    #np.savez_compressed(dir_name + '/Ds_tmp', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
+    #                alphas=true_coefs, positions=positions, coords=coords)
     ###########################################################################
     
     #hanning = utils.hanning(nx, 10)
