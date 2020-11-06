@@ -294,12 +294,14 @@ def read_images(dir="images", image_file=None, is_planet=False, image_size=None,
 
 class hanning:
     
-    def __init__(self, num_pixels, num_pixels_apodization, dtype='float32', n_dim=2):
+    def __init__(self, num_pixels, num_pixels_apodization, dtype='float32', n_dim=2, num_pixel_padding=0):
         assert(n_dim == 1 or n_dim == 2)
         hanning = np.hanning(num_pixels_apodization)
         win = np.ones(num_pixels, dtype='float32')
-        win[:num_pixels_apodization//2] = hanning[:num_pixels_apodization//2]
-        win[-num_pixels_apodization//2:] = hanning[-num_pixels_apodization//2:]
+        win[:num_pixel_padding] = 0.
+        win[-num_pixel_padding:] = 0.
+        win[num_pixel_padding:num_pixel_padding+num_pixels_apodization//2] = hanning[:num_pixels_apodization//2]
+        win[-num_pixels_apodization//2-num_pixel_padding:-num_pixel_padding] = hanning[-num_pixels_apodization//2:]
         self.n_dim = n_dim
         if n_dim == 2:
             self.win = np.outer(win, win)
