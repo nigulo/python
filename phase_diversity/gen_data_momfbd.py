@@ -163,8 +163,8 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     # Anyway, one should recompute the diversity in this case
     if shuffle:
         indt = np.random.randint(low=0, high=n_full_images-num_frames, size=num_objects)
-        indx = np.random.randint(low=0, high=npx, size=num_objects)
-        indy = np.random.randint(low=0, high=npy, size=num_objects)
+        indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
+        indy = np.random.randint(low=1, high=npy-1, size=num_objects) # Omit patches on the edges
     else:
         #assert(num_objects <= npx*npy)
         num_objects = npx*npy
