@@ -263,7 +263,7 @@ class Dataset(torch.utils.data.Dataset):
         
         
         nx = datasets[0][0].shape[3]
-        self.hanning = utils.hanning(nx, 20)#, num_pixel_padding=6)
+        self.hanning = utils.hanning(nx, 10)#, num_pixel_padding=6)
         if calc_median:
             self.median = self.calc_median()
         else:
@@ -529,7 +529,7 @@ class NN(nn.Module):
         self.i2 = None # See set_data method for meaning
         self.data_index = 0
         
-        self.hanning = utils.hanning(nx, 20)#, num_pixel_padding=6)
+        self.hanning = utils.hanning(nx, 10)#, num_pixel_padding=6)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
@@ -1142,6 +1142,7 @@ class NN(nn.Module):
         
         #######################################################################
         # Plot some of the training data results
+        return
         n_test = 1
 
         if nn_mode == MODE_1:
@@ -1231,7 +1232,7 @@ class NN(nn.Module):
             #print("pred_alphas", i, pred_alphas[i])
 
             num_rows = 0
-            if pred_alphas is not None:
+            if pred_alphas is not None and obj is not None:
                 num_rows += 1
             if pred_Ds is not None:
                 num_rows += 2
@@ -1239,7 +1240,7 @@ class NN(nn.Module):
             #my_test_plot.colormap(np.reshape(self.objs[i], (self.nx+1, self.nx+1)), [0])
             #my_test_plot.colormap(np.reshape(pred_objs[i], (self.nx+1, self.nx+1)), [1])
             row = 0
-            if pred_alphas is not None:
+            if pred_alphas is not None and obj is not None:
                 my_test_plot.colormap(obj, [row, 0], show_colorbar=True)
                 my_test_plot.colormap(obj_reconstr, [row, 1])
                 my_test_plot.colormap(obj - obj_reconstr, [row, 2])
