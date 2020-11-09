@@ -114,7 +114,7 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 32
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -580,7 +580,7 @@ class NN(nn.Module):
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=8*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
