@@ -114,11 +114,11 @@ if nn_mode == MODE_1:
     num_frames = 64
     
     batch_size = 64
-    n_channels = 64
+    n_channels = 32
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = False
+    zero_avg_tiptilt = True
     tip_tilt_separated = False
     
     fourier_input = False
@@ -580,7 +580,7 @@ class NN(nn.Module):
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=8*n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
@@ -1083,7 +1083,7 @@ class NN(nn.Module):
             for epoch in np.arange(self.epoch, self.n_epochs_2):
                 #self.do_epoch(Ds_train_loader)
                 #_, _, _, _, _, _, _, _, tt_mean = self.do_epoch(Ds_train_loader, train=False, use_prefix=False)
-                self.do_epoch(Ds_train_loader, tt_mean=np.random.normal(size=2))#tt_mean)
+                self.do_epoch(Ds_train_loader)#, tt_mean=np.random.normal(size=2))#tt_mean)
                 self.scheduler.step()
                 val_loss, _, _, _, _, _, _, _, _ = self.do_epoch(Ds_validation_loader, train=False)
 
