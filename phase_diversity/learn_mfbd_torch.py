@@ -90,6 +90,10 @@ i += 1
 if len(sys.argv) > i:
     start_index = int(sys.argv[i])
 
+state_file = "state.tar"
+i += 1
+if len(sys.argv) > i:
+    state_file = sys.argv[i]
 
 train_perc = 0.8
 #activation_fn = nn.ReLU
@@ -637,9 +641,9 @@ class NN(nn.Module):
             pass
         os.symlink(state_file, state_file_link)
 
-    def load_state(self):
+    def load_state(self, state_file="state.tar"):
         try:
-            state = torch.load(dir_name + "/state.tar", map_location=device)
+            state = torch.load(f"{dir_name}/{state_file}", map_location=device)
             self.load_state_dict(state['state_dict'])
             self.n_epochs_1 = state['n_epochs_1']
             self.n_epochs_2 = state['n_epochs_2']
@@ -665,7 +669,7 @@ class NN(nn.Module):
             #self.optimizer = torch.optim.RMSprop(self.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
 
     def init(self):
-        self.load_state()
+        self.load_state(state_file=state_file)
         #self.loss_fn = nn.MSELoss().to(device)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_iterations, gamma=scheduler_decay)
         #for p in self.parameters():
