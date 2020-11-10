@@ -10,6 +10,8 @@ import torch.nn as nn
 import torch.utils.data
 import torch.nn.functional as F
 
+import datetime
+
 #tf.compat.v1.disable_eager_execution()
 #from multiprocessing import Process
 
@@ -625,7 +627,15 @@ class NN(nn.Module):
         #######################################################################
         
     def save_state(self, state):
-        torch.save(state, dir_name + "/state.tar")
+        date = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        state_file = f"{dir_name}/state{date}.tar"
+        torch.save(state, state_file)
+        state_file_link = f"{dir_name}/state.tar"
+        try:
+            os.remove(state_file_link)
+        except:
+            pass
+        os.symlink(state_file, state_file_link)
 
     def load_state(self):
         try:
