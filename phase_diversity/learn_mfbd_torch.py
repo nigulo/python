@@ -770,11 +770,7 @@ class NN(nn.Module):
 
         #alphas = alphas.view(-1, num_frames_input, self.jmax)
 
-        if tt_mean is not None:
-            tt_mean = tt_mean.repeat(alphas.size()[0], 1)
-            tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
-            alphas_tt_zero = alphas - tt_mean
-        elif zero_avg_tiptilt:
+        if zero_avg_tiptilt:
             tip_tilt_sums = torch.sum(alphas[:, :2], dim=(0), keepdims=True).repeat(alphas.size()[0], 1)
             
             if nn_mode == 1:
@@ -787,6 +783,10 @@ class NN(nn.Module):
             tip_tilt_means = torch.cat([tip_tilt_means, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
             alphas_tt_zero = alphas - tip_tilt_means
             alphas = alphas_tt_zero
+        elif tt_mean is not None:
+            tt_mean = tt_mean.repeat(alphas.size()[0], 1)
+            tt_mean = torch.cat([tt_mean, torch.zeros(alphas.size()[0], alphas.size()[1]-2).to(device, dtype=torch.float32)], axis=1)
+            alphas_tt_zero = alphas - tt_mean
         else:
             alphas_tt_zero = alphas
         
