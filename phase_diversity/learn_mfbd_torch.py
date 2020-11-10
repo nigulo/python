@@ -123,7 +123,7 @@ if nn_mode == MODE_1:
     zero_avg_tiptilt = True
     tip_tilt_separated = False
     
-    fourier_input = False
+    fourier_input = True
     
 elif nn_mode == MODE_2:
 
@@ -628,8 +628,8 @@ class NN(nn.Module):
         
     def save_state(self, state):
         date = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
-        state_file = f"{dir_name}/state{date}.tar"
-        torch.save(state, state_file)
+        state_file = f"state{date}.tar"
+        torch.save(state, f"{dir_name}/{state_file}")
         state_file_link = f"{dir_name}/state.tar"
         try:
             os.remove(state_file_link)
