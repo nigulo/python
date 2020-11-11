@@ -184,7 +184,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
         indy = np.random.randint(low=1, high=npy-1, size=num_objects) # Omit patches on the edges
     else:
-        indo = 0
+        indo = np.zeros(num_objects)
         assert(len(all_images) == 1)
         #assert(num_objects <= npx*npy)
         num_objects = npx*npy
@@ -214,10 +214,12 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         #    Ds[loop, i, 0] = images[indt[loop]+i][x0:x0+nx,y0:y0+nx]
         #    Ds[loop, i, 1] = images_defocus[indt[loop]+i][x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
         #    momfbd_coefs[loop, i] = alphas[indt[loop]+i][indx[loop],indy[loop],:]
+        
+        obj_index = indo[loop]
         start_index = indt[loop]
         end_index = start_index + num_frames
-        Ds[loop, :num_frames, 0] = images[start_index:end_index,x0:x0+nx,y0:y0+nx]
-        defocus_image = np.array(images_defocus[start_index:end_index,:,:])
+        Ds[loop, :num_frames, 0] = all_images[obj_index, start_index:end_index,x0:x0+nx,y0:y0+nx]
+        defocus_image = np.array(images_defocus[obj_index, start_index:end_index,:,:])
         x_left = x0+dx
         x_right = x0+nx+dx
         y_bottom = y0+dy
