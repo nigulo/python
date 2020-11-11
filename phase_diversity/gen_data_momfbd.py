@@ -219,7 +219,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         start_index = indt[loop]
         end_index = start_index + num_frames
         Ds[loop, :num_frames, 0] = all_images[obj_index, start_index:end_index,x0:x0+nx,y0:y0+nx]
-        defocus_image = np.array(images_defocus[obj_index, start_index:end_index,:,:])
+        defocus_image = np.array(all_images_defocus[obj_index, start_index:end_index,:,:])
         x_left = x0+dx
         x_right = x0+nx+dx
         y_bottom = y0+dy
