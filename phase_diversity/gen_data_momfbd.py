@@ -49,9 +49,9 @@ if len(sys.argv) > 4:
 def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     
     # Count the number of available images for which we have all information
-    n_full_images = 0
     present_images = []
-    images = []
+    all_images = []
+    all_images_defocus = []
     images_defocus = []
     alphas = []
     objs_momfbd = []
@@ -66,7 +66,16 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         objs_momfbd.append(tmp['img']) # MOMBD Restored objects
         loop = 0
 
+        images = []
+        images_defocus = []
+        
+        n_frames = 0
         for i in tqdm(range(lower, upper+1)):
+            if len(all_images) > 0:
+                if n_frames >= len(all_images[0]):
+                    # Ensure that all objects have same number of frames
+                    break
+            n_frames += 1
             si = str(i)
             si = "0"*(9-len(si))+si
             if (os.path.isfile(f'{path}image.{si}.f0.ch1.cor.f0')):
@@ -82,14 +91,22 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
 
                 f = pa.fzread(f'{path}image.{si}.f0.ch2.cor.f0')
                 images_defocus.append(f['data'])
-                n_full_images += 1
 
-            loop += 1    
+            loop += 1
+        all_images.append(images)
+        all_images_defocus.append(images_defocus)
 
-    num_frames = min(num_frames, n_full_images)
+    all_images = np.asarray(all_images)
+    all_images_defocus = np.asarray(all_images_defocus)
 
-    print(f"Number of full images: {n_full_images}")
+    n_full_objs = all_images.shape[0]
+    n_full_frames = all_images.shape[1]
+    num_frames = min(num_frames, n_full_frames)
+    
+    print(f"Number of full objects: {n_full_objs}")
+    print(f"Number of full frames: {n_full_frames}")
     print(f"Number of frames: {num_frames}")
+    print(f"Number of objects: {num_objects}")
     nx_full = images[0].shape[1]
     ny_full = images[0].shape[0]
     print(f"Full image dimensions: {nx_full}, {ny_full}")
@@ -162,18 +179,19 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     # obtained with MOMFBD but since now we are training self-supervisedly, this is not a limitation anymore
     # Anyway, one should recompute the diversity in this case
     if shuffle:
-        indt = np.random.randint(low=0, high=n_full_images-num_frames, size=num_objects)
+        indo = np.random.randint(low=0, high=len(n_full_objs), size=num_objects)
+        indt = np.random.randint(low=0, high=n_full_frames-num_frames, size=num_objects)
         indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
         indy = np.random.randint(low=1, high=npy-1, size=num_objects) # Omit patches on the edges
     else:
+        indo = 0
+        assert(len(all_images) == 1)
         #assert(num_objects <= npx*npy)
         num_objects = npx*npy
         indt = np.zeros(num_objects, dtype="int")
         indx = np.repeat(np.arange(0, npx, dtype="int"), npy)
         indy = np.tile(np.arange(0, npy, dtype="int"), npx)
         
-    images = np.asarray(images)
-    images_defocus = np.asarray(images_defocus)
     alphas = np.asarray(alphas)
     for loop in tqdm(range(num_objects)):
 
