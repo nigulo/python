@@ -127,7 +127,7 @@ if nn_mode == MODE_1:
     zero_avg_tiptilt = True
     tip_tilt_separated = False
     
-    fourier_input = True
+    fourier_input = False
     
 elif nn_mode == MODE_2:
 
@@ -631,7 +631,7 @@ class NN(nn.Module):
         #######################################################################
         
     def save_state(self, state):
-        date = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        date = datetime.datetime.now().strftime("%Y-%m-%dT%H")#:%M:%S.%f")
         state_file = f"state{date}.tar"
         torch.save(state, f"{dir_name}/{state_file}")
         state_file_link = f"{dir_name}/state.tar"
@@ -1841,15 +1841,17 @@ if train:
     #Ds -= np.tile(np.reshape(Ds_mean, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
     #Ds /= np.tile(np.reshape(Ds_std, (Ds_mean.shape[0], Ds_mean.shape[0], 1, 1)), (1, 1, nx, nx))
     
-    my_test_plot = plot.plot()
-    my_test_plot.colormap(Ds[0, 0, 0], show_colorbar=True)
-    my_test_plot.save(dir_name + "/D0_train.png")
-    my_test_plot.close()
-    
-    my_test_plot = plot.plot()
-    my_test_plot.colormap(Ds[0, 0, 1])
-    my_test_plot.save(dir_name + "/D0_d_train.png")
-    my_test_plot.close()
+    #for j in range(len(Ds)):
+    #    for i in [0, num_frames-1]:#range(num_frames):
+    #        my_test_plot = plot.plot()
+    #        my_test_plot.colormap(Ds[j, i, 0], show_colorbar=True)
+    #        my_test_plot.save(f"{dir_name}/D{j}_{i}_train.png")
+    #        my_test_plot.close()
+    #
+    #    #my_test_plot = plot.plot()
+    #    #my_test_plot.colormap(Ds[0, i, 1])
+    #    #my_test_plot.save(f"{dir_name}/D{i}_d_train.png")
+    #    #my_test_plot.close()
     
     pupil_check = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
     #pupil_check[np.where(pupil_check < 0.001)] = 0.
