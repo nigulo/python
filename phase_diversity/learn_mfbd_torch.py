@@ -716,6 +716,8 @@ class NN(nn.Module):
             eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
             x_f = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
             print("x_f", x_f.size())
+            x_f = torch.unsqueeze(x_f, 1)
+            print("x_f", x_f.size())
             x = torch.cat([x_f[..., 0], x_f[..., 1]], dim=1)
             print("x", x.size())
 
