@@ -106,6 +106,10 @@ scheduler_decay = 1.0
 scheduler_iterations = 20
 momentum=.9
 
+INPUT_REAL = 0
+INPUT_FOURIER = 1
+INPUT_FOURIER_RATIO = 2
+
 if nn_mode == MODE_1:
     
     shuffle1 = False
@@ -127,7 +131,8 @@ if nn_mode == MODE_1:
     zero_avg_tiptilt = True
     tip_tilt_separated = False
     
-    fourier_input = False
+    input_type = INPUT_FOURIER_RATIO
+    
     
 elif nn_mode == MODE_2:
 
@@ -575,7 +580,7 @@ class NN(nn.Module):
                                       mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, device=device)
         
         num_in_channels = 2
-        if fourier_input:
+        if input_type == INPUT_FOURIER:
             num_in_channels = 6
 
         self.layers1 = nn.ModuleList()
@@ -700,9 +705,15 @@ class NN(nn.Module):
         
 
         x = image_input
-        if fourier_input:
+        if input_type == INPUT_FOURIER:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
+        elif input_type == INPUT_FOURIER_RATIO:
+            x_f = psf_torch.fft(psf_torch.to_complex(x))
+            x_f = psf_torch.mul(x_f, self.fltr)
+            eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
+            x_f = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
+            x = torch.cat([x_f[..., 0], x_f[..., 1]], dim=1)
 
         # Convolutional blocks
         for layer in self.layers1:
