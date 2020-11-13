@@ -582,6 +582,8 @@ class NN(nn.Module):
         num_in_channels = 2
         if input_type == INPUT_FOURIER:
             num_in_channels = 6
+        elif input_type == INPUT_FOURIER_RATIO:
+            num_channels = 4
 
         self.layers1 = nn.ModuleList()
 
@@ -712,9 +714,11 @@ class NN(nn.Module):
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter)).to(device, dtype=torch.float32))
             eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
-            x_f = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
-            x_f = torch.unsqueeze(x_f, 1)
-            x = torch.cat([x_f[..., 0], x_f[..., 1]], dim=1)
+            x_f1 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
+            x_f2 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
+            x_f1 = torch.unsqueeze(x_f1, 1)
+            x_f2 = torch.unsqueeze(x_f2, 1)
+            x = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
 
         # Convolutional blocks
         for layer in self.layers1:
