@@ -274,7 +274,7 @@ class Dataset(torch.utils.data.Dataset):
         
         
         nx = datasets[0][0].shape[3]
-        self.hanning = utils.hanning(nx, nx/4)#, num_pixel_padding=6)
+        self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
         if calc_median:
             self.median = self.calc_median()
         else:
@@ -421,7 +421,7 @@ class Dataset2(torch.utils.data.Dataset):
         self.diversities = diversities
         
         nx = Ds.shape[2]
-        self.hanning = utils.hanning(nx, nx/4)
+        self.hanning = utils.hanning(nx, nx//4)
         
                
     def __getitem__(self, index):
@@ -540,7 +540,7 @@ class NN(nn.Module):
         self.i2 = None # See set_data method for meaning
         self.data_index = 0
         
-        self.hanning = utils.hanning(nx, nx/4)#, num_pixel_padding=6)
+        self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
         self.filter = utils.create_filter(nx, freq_limit = 0.4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
