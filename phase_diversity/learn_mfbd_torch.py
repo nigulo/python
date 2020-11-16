@@ -121,14 +121,14 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 128
+    num_frames = 256
     
-    batch_size = 128
+    batch_size = 256
     n_channels = 32
     
     sum_over_batch = True
     
-    zero_avg_tiptilt = True
+    zero_avg_tiptilt = False
     tip_tilt_separated = False
     
     input_type = INPUT_FOURIER_RATIO
