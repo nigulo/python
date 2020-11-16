@@ -785,6 +785,10 @@ class NN(nn.Module):
             # Fully connected layers
             for layer in self.layers3:
                 x = layer(x)
+                
+            x_low = F.pad(x[1:, :2], (1,0,0,0), mode='constant', value=0.0)
+            x_high = x[:, 2:]
+            x = torch.cat([x_low, x_high], dim=-1)
         
         alphas = x
 
