@@ -121,9 +121,9 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 128
     
-    batch_size = 64
+    batch_size = 128
     n_channels = 32
     
     sum_over_batch = True
@@ -583,7 +583,7 @@ class NN(nn.Module):
         if input_type == INPUT_FOURIER:
             num_in_channels = 6
         elif input_type == INPUT_FOURIER_RATIO:
-            num_channels = 4
+            num_in_channels = 4
 
         self.layers1 = nn.ModuleList()
 

@@ -184,7 +184,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
         indy = np.random.randint(low=1, high=npy-1, size=num_objects) # Omit patches on the edges
     else:
-        indo = np.zeros(num_objects)
+        indo = np.zeros(num_objects, dtype=int)
         assert(len(all_images) == 1)
         #assert(num_objects <= npx*npy)
         num_objects = npx*npy
