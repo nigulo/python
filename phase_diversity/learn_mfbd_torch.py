@@ -714,7 +714,7 @@ class NN(nn.Module):
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
         elif input_type == INPUT_FOURIER_RATIO:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
-            x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter)).to(device, dtype=torch.float32))
+            #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter)).to(device, dtype=torch.float32))
             x_f_sum = torch.sum(x_f, dim=[0, 1], keepdim=True)
             eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
             x_f1 = psf_torch.div(x_f[:, 0], x_f_sum[:, 0] + eps)
