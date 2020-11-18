@@ -583,7 +583,7 @@ class NN(nn.Module):
         if input_type == INPUT_FOURIER:
             num_in_channels = 6
         elif input_type == INPUT_FOURIER_RATIO:
-            num_in_channels = 6
+            num_in_channels = 4
 
         self.layers1 = nn.ModuleList()
 
