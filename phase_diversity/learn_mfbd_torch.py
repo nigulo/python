@@ -999,8 +999,8 @@ class NN(nn.Module):
         diversity = diversity.to(device)
         if tt_mean is not None:
             tt_mean = torch.from_numpy(tt_mean).to(device, dtype=torch.float32)
-        if alphas_input is not None:
-            alphas_input = torch.from_numpy(alphas_input).to(device, dtype=torch.float32)
+        #if alphas_input is not None:
+        #    alphas_input = torch.from_numpy(alphas_input).to(device, dtype=torch.float32)
         if train:
             self.optimizer.zero_grad()
             result = self((Ds, diversity, tt_mean, alphas_input))
