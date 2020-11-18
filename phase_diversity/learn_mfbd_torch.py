@@ -121,15 +121,15 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 256
+    num_frames = 64
     
-    batch_size = 256
+    batch_size = 64
     n_channels = 32
     
     sum_over_batch = True
     
     zero_avg_tiptilt = False
-    tip_tilt_separated = False
+    tip_tilt_separated = True
     
     input_type = INPUT_FOURIER_RATIO
     
@@ -583,7 +583,7 @@ class NN(nn.Module):
         if input_type == INPUT_FOURIER:
             num_in_channels = 6
         elif input_type == INPUT_FOURIER_RATIO:
-            num_in_channels = 4
+            num_in_channels = 6
 
         self.layers1 = nn.ModuleList()
 
@@ -718,7 +718,7 @@ class NN(nn.Module):
             x_f2 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
             x_f1 = torch.unsqueeze(x_f1, 1)
             x_f2 = torch.unsqueeze(x_f2, 1)
-            x = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
+            x = torch.cat([x, x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
 
         # Convolutional blocks
         for layer in self.layers1:
@@ -750,7 +750,7 @@ class NN(nn.Module):
                 #    x_high = x_high*2.0
                     
 
-            x_low, _ = self.lstm_low(x)#x[:, 1:, :])
+            x_low, _ = self.lstm_low(x[:, 1:, :])
             #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
             x_low = x_low.squeeze()
     
@@ -772,7 +772,7 @@ class NN(nn.Module):
             x_high = x_high.view(-1, jmax-2)
             x_high = x_high.unsqueeze(dim=0)
     
-            #x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
+            x_low = F.pad(x_low, (0,0,1,0,0,0), mode='constant', value=0.0)
 
             x = torch.cat([x_low, x_high], dim=-1)
             x = x.view(-1, jmax)
@@ -791,6 +791,13 @@ class NN(nn.Module):
             x = torch.cat([x_low, x_high], dim=-1)
         
         alphas = x
+
+        #################################################
+        # To filter out only tip-tilt (for test purposes)
+        alphas = alphas[:, :2]
+        alphas = torch.cat([alphas, torch.zeros(alphas.size()[0], jmax-2).to(device, dtype=torch.float32)], axis = -1)
+        #################################################
+
 
         #alphas = alphas.view(-1, num_frames_input, self.jmax)
 
