@@ -1037,7 +1037,7 @@ class NN(nn.Module):
             if tt_calib:
                 dx = np.random.choice([1, -1, 2, -2])
                 dy = np.random.choice([1, -1, 2, -2])
-                Ds_shifted = np.roll(Ds, (dx, dy), axis=(-2, -1))
+                Ds_shifted = torch.roll(Ds, shifts=(dx, dy), dims=(-2, -1))
 
             if normalize:
                 med = np.array(data_loader.dataset.median)[None, None, None, None]
