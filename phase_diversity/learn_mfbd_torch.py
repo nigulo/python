@@ -1092,7 +1092,7 @@ class NN(nn.Module):
             
             if train:
 
-                loss.backward()
+                loss.backward(retain_graph=tt_calib)
                 self.optimizer.step()
 
                 if tt_calib:
