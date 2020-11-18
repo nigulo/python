@@ -834,6 +834,7 @@ class NN(nn.Module):
         
         if alphas_input is not None:
             loss = torch.mean((alphas_input - alphas)**2)
+            return loss
         else:
             # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
             # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
@@ -848,7 +849,7 @@ class NN(nn.Module):
     
             loss = torch.mean(loss)#/nx/nx
 
-        return loss, alphas, num, den, num_conj, psf, wf, DD
+            return loss, alphas, num, den, num_conj, psf, wf, DD
         
 
 
