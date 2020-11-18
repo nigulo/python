@@ -1096,8 +1096,7 @@ class NN(nn.Module):
                 self.optimizer.step()
 
                 if tt_calib:
-                    result = self.do_batch(Ds_shifted, diversity, tt_mean=tt_mean, train=train, alphas_input=alphas)
-                    loss1 = result[0]
+                    loss1 = self.do_batch(Ds_shifted, diversity, tt_mean=tt_mean, train=train, alphas_input=alphas)
                     loss1.backward()
                     self.optimizer.step()
 
