@@ -715,10 +715,18 @@ class NN(nn.Module):
             x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter)).to(device, dtype=torch.float32))
             eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
             x_f1 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
-            x_f2 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
+            #x_f2 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
+
+            x1 = psf_torch.ifft(x_f1)
+            #x2 = psf_torch.ifft(x_f2)
+
             x_f1 = torch.unsqueeze(x_f1, 1)
-            x_f2 = torch.unsqueeze(x_f2, 1)
-            x = torch.cat([x, x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
+            #x_f2 = torch.unsqueeze(x_f2, 1)
+            #x = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
+
+            x1 = torch.unsqueeze(x1, 1)
+            
+            x = torch.cat([x1[..., 0], x1[..., 1], x_f1[..., 0], x_f1[..., 1]], dim=1)
 
         # Convolutional blocks
         for layer in self.layers1:
