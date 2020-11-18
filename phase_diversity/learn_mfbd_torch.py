@@ -133,6 +133,8 @@ if nn_mode == MODE_1:
     
     input_type = INPUT_FOURIER_RATIO
     
+    tt_calib = True
+    
     
 elif nn_mode == MODE_2:
 
@@ -701,7 +703,7 @@ class NN(nn.Module):
     def forward(self, data):
 
         if nn_mode == 1:
-            image_input, diversity_input, tt_mean = data
+            image_input, diversity_input, tt_mean, alphas_input = data
         elif nn_mode == 2:
             image_input, diversity_input, DD_DP_PP_input, tt_sums_input = data
         
@@ -829,18 +831,22 @@ class NN(nn.Module):
         else:
             alphas_tt_zero = alphas
         
-        # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
-        # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
-        #image_input = torch.transpose(image_input, 0, 1)
-        #image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
-        #image_input = torch.transpose(image_input, 1, 2)
-        #image_input = torch.transpose(image_input, 0, 1)
-        if nn_mode == 1:
-            loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas_tt_zero, diversity_input)
+        
+        if alphas_input is not None:
+            loss = torch.mean((alphas_input - alphas)**2)
         else:
-            loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas_tt_zero, diversity_input, DD_DP_PP=None)
-
-        loss = torch.mean(loss)#/nx/nx
+            # image_input is [batch_size, num_objects*num_frames*2, nx, nx]
+            # mfbd_loss takes [batch_size, num_objects*num_frames, 2, nx, nx]
+            #image_input = torch.transpose(image_input, 0, 1)
+            #image_input = image_input.view(image_input.size()[0]//2, 2, image_input.size()[1], image_input.size()[2], image_input.size()[3])
+            #image_input = torch.transpose(image_input, 1, 2)
+            #image_input = torch.transpose(image_input, 0, 1)
+            if nn_mode == 1:
+                loss, num, den, num_conj, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas_tt_zero, diversity_input)
+            else:
+                loss, num, den, num_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = self.psf.mfbd_loss(image_input, alphas_tt_zero, diversity_input, DD_DP_PP=None)
+    
+            loss = torch.mean(loss)#/nx/nx
 
         return loss, alphas, num, den, num_conj, psf, wf, DD
         
@@ -988,17 +994,19 @@ class NN(nn.Module):
                         alphas_in[i, jmax*j:jmax*(j+1)] = alphas[i-num_alphas_input+j]
                         
     
-    def do_batch(self, Ds, diversity, tt_mean=None, train=True):
+    def do_batch(self, Ds, diversity, tt_mean=None, train=True, alphas_input=None):
         Ds = Ds.to(device)
         diversity = diversity.to(device)
         if tt_mean is not None:
             tt_mean = torch.from_numpy(tt_mean).to(device, dtype=torch.float32)
+        if alphas_input is not None:
+            alphas_input = torch.from_numpy(alphas_input).to(device, dtype=torch.float32)
         if train:
             self.optimizer.zero_grad()
-            result = self((Ds, diversity, tt_mean))
+            result = self((Ds, diversity, tt_mean, alphas_input))
         else:
             with torch.no_grad():
-                result = self((Ds, diversity, tt_mean))
+                result = self((Ds, diversity, tt_mean, alphas_input))
         return result
     
     def do_epoch(self, data_loader, train=True, use_prefix=True, normalize=True, tt_mean=None):
@@ -1025,14 +1033,28 @@ class NN(nn.Module):
             all_wf = []#np.empty((num_data, nx, nx))
             all_DD = []#np.empty((num_data, nx, nx))
         for batch_idx, (Ds, diversity) in enumerate(progress_bar):
+
+            if tt_calib:
+                dx = np.random.choice([1, -1, 2, -2])
+                dy = np.random.choice([1, -1, 2, -2])
+                Ds_shifted = np.roll(Ds, (dx, dy), axis=(-2, -1))
+
             if normalize:
                 med = np.array(data_loader.dataset.median)[None, None, None, None]
                 if med is None:
                     med = np.median(Ds, axis=(0, 1, 2, 3), keepdims=True)
+                    
+
                 Ds -= med
                 Ds = self.hanning.multiply(Ds, axis=2)
                 Ds += med
                 Ds /= med
+
+                if tt_calib:
+                    Ds_shifted -= med
+                    Ds_shifted = self.hanning.multiply(Ds_shifted, axis=2)
+                    Ds_shifted += med
+                    Ds_shifted /= med
                 
                 # Mirror randomly for data augmentation purposes
                 # Seemed not much useful
@@ -1063,13 +1085,20 @@ class NN(nn.Module):
                 #print("num, den, DP_conj, psf, wf", num.size(), den.size(), DP_conj.size(), psf.size(), wf.size())
             else:
                 loss, alphas, num, den, DP_conj, DD, DP_real, DP_imag, PP, psf, wf, DD = result
-                
+            
+            
             ###################################################################
             
             if train:
 
                 loss.backward()
                 self.optimizer.step()
+
+                if tt_calib:
+                    result = self.do_batch(Ds_shifted, diversity, tt_mean=tt_mean, train=train, alphas_input=alphas)
+                    loss1 = result[0]
+                    loss1.backward()
+                    self.optimizer.step()
 
             else:
                 all_alphas.append(alphas.cpu().numpy())
