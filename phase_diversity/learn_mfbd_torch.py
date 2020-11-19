@@ -121,9 +121,9 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 128
     
-    batch_size = 64
+    batch_size = 128
     n_channels = 32
     
     sum_over_batch = True
@@ -715,10 +715,10 @@ class NN(nn.Module):
         elif input_type == INPUT_FOURIER_RATIO:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter)).to(device, dtype=torch.float32))
-            x_f_sum = torch.sum(x_f, dim=[0, 1], keepdim=True)
+            x_f_mean = torch.mean(x_f, dim=[0, 1], keepdim=True)
             eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
-            x_f1 = psf_torch.div(x_f[:, 0], x_f_sum[:, 0] + eps)
-            x_f2 = psf_torch.div(x_f[:, 1], x_f_sum[:, 0] + eps)
+            x_f1 = psf_torch.div(x_f[:, 0], x_f_mean[:, 0] + eps)
+            x_f2 = psf_torch.div(x_f[:, 1], x_f_mean[:, 0] + eps)
             
             #x_f1 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
             #x_f2 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
@@ -808,8 +808,8 @@ class NN(nn.Module):
 
         #################################################
         # To filter out only tip-tilt (for test purposes)
-        alphas = alphas[:, :2]
-        alphas = torch.cat([alphas, torch.zeros(alphas.size()[0], jmax-2).to(device, dtype=torch.float32)], axis = -1)
+        #alphas = alphas[:, :2]
+        #alphas = torch.cat([alphas, torch.zeros(alphas.size()[0], jmax-2).to(device, dtype=torch.float32)], axis = -1)
         #################################################
 
 
