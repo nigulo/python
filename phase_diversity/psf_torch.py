@@ -581,9 +581,9 @@ class psf_torch():
         H = self.calc_filter(mul(DP, DP_conj), PP)
         F_image = mul(F_image, H)
         
-        #if self.fltr is not None:
-        #    #F_image = smart_fltr(F_image)
-        #    F_image = mul(F_image, self.fltr)
+        if self.fltr is not None:
+            #F_image = smart_fltr(F_image)
+            F_image = mul(F_image, self.fltr)
     
         if do_fft:
             image = real(ifft(F_image))
