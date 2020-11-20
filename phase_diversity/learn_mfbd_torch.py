@@ -129,7 +129,7 @@ if nn_mode == MODE_1:
     sum_over_batch = True
     
     zero_avg_tiptilt = False
-    tip_tilt_separated = True
+    tip_tilt_separated = False
     
     input_type = INPUT_FOURIER_RATIO
     
