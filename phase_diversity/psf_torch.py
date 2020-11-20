@@ -464,10 +464,19 @@ class psf_torch():
         The filter H as introduced in the papers
     '''
     def calc_filter(self, DP, PP):
-        H = torch.ones_like(PP).to(self.device, dtype=torch.float32) - div(PP, DP)
+        ret_complex = False
+        if len(DP.size()) == 3:
+            ret_complex = True
+            DP = real(DP)
+        if len(PP.size()) == 3:
+            ret_complex = True
+            PP = real(PP)
+        H = torch.ones_like(PP).to(self.device, dtype=torch.float32) - PP/(DP + self.eps)
         zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
         H = torch.where(H < 0.2, zeros, H)
         H = torch.where(H > 1.0, zeros, H)
+        if ret_complex:
+            H = to_complex(H)
         return H
 
     def aberrate(self, obj, alphas, diversity=None):
@@ -563,12 +572,13 @@ class psf_torch():
         #eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
         #F_image = (DP + eps)/(PP + eps)
         F_image = div(DP, PP + self.eps_complex)
+        DP_conj = conj(DP)
         
-        loss = -torch.sum(real(mul(F_image, conj(DP)))) # Without DD part
+        loss = -torch.sum(real(mul(F_image, DP_conj))) # Without DD part
         if DD is not None:
             loss += torch.sum(DD)
         
-        H = self.calc_filter(mul(DP, conj(DP)), PP)
+        H = self.calc_filter(mul(DP, DP_conj), PP)
         F_image = mul(F_image, H)
         
         #if self.fltr is not None:
@@ -700,13 +710,13 @@ class psf_torch():
         if self.sum_over_batch:
             den = torch.sum(den, axis=0)
             
-        H = self.calc_filter(to_complex(num), to_complex(den))
+        H = self.calc_filter(num, den)
 
         DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=1))
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            return real(H)*(DD - num/(den + self.eps)) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
+            return H*(DD - num/(den + self.eps)) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
