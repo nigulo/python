@@ -373,6 +373,9 @@ class psf_torch():
         self.tt_weight = torch.tensor(tt_weight).to(self.device, dtype=torch.float32)
         #self.zero_avg_tiptilt = zero_avg_tiptilt
         
+        self.eps = torch.tensor(1e-10).to(self.device, dtype=torch.float32)
+        self.eps_complex = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
+
 
     def set_num_frames(self, num_frames):
         self.num_frames = num_frames
@@ -545,22 +548,22 @@ class psf_torch():
 
         return obj
 
-    def reconstr_(self, DP, PP, do_fft = True, use_filter = True, DD = None, DP1 = None):
+    def reconstr_(self, DP, PP, do_fft = True, use_filter = True, DD = None):
         #eps = torch.tensor(1e-10).to(self.device, dtype=torch.complex64)
-        eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
+        #eps = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
         #F_image = (DP + eps)/(PP + eps)
-        F_image = div(DP + eps, PP + eps)
+        F_image = div(DP, PP + self.eps_complex)
         
-        if DP1 is None:
-            DP1 = DP
-        
-        loss = -torch.sum(real(mul(F_image, conj(DP1)))) # Without DD part
+        loss = -torch.sum(real(mul(F_image, conj(DP)))) # Without DD part
         if DD is not None:
             loss += torch.sum(DD)
         
-        if self.fltr is not None:
-            #F_image = smart_fltr(F_image)
-            F_image = mul(F_image, self.fltr)
+        H = self.calc_filter(mul(DP, conj(DP)), PP)
+        F_image = mul(F_image, H)
+        
+        #if self.fltr is not None:
+        #    #F_image = smart_fltr(F_image)
+        #    F_image = mul(F_image, self.fltr)
     
         if do_fft:
             image = real(ifft(F_image))
@@ -605,6 +608,14 @@ class psf_torch():
                            torch.tensor(diversity).to(self.device, dtype=torch.float32))
         return psf
     
+    
+    def calc_filter(self, DP, PP):
+        H = torch.ones_like(PP).to(self.device, dtype=torch.float32) - div(PP, DP)
+        zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
+        H = torch.where(H < 0.2, zeros, H)
+        H = torch.where(H > 1.0, zeros, H)
+        return H
+        
     '''
         Ds: [batch_size, num_frames, 2, nx, nx], where first dimension can be omitted
         alphas: [batch_size, num_frames, jmax], where first dimension can be omitted
@@ -685,14 +696,14 @@ class psf_torch():
 
         if self.sum_over_batch:
             den = torch.sum(den, axis=0)
+            
+        H = self.calc_filter(num, den)
 
-        eps = torch.tensor(1e-10, dtype=torch.float32)
-        
         DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=1))
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
-            return DD - (num + eps)/(den + eps) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
+            return H*(DD - num/(den + self.eps)) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:
             #DD1 = tf.slice(DD_DP_PP, [0, 0, 0, 0], [self.batch_size, 1, nx, nx])
@@ -706,7 +717,7 @@ class psf_torch():
             DD1 = DD + DD1 
             if self.sum_over_batch:
                 DD1 = torch.sum(DD1, axis=0)
-            loss = DD1 - (num + eps)/(den + eps)
+            loss = (DD1 - (num + self.eps)/(den + self.eps))*H
             
             #if self.sum_over_batch:
             #    loss = tf.tile(tf.reshape(loss, [1, 1, nx, nx]), [self.batch_size, 1, 1, 1])
