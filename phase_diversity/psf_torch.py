@@ -460,6 +460,16 @@ class psf_torch():
         return mul(obj_F, otf_vals)
 
 
+    '''
+        The filter H as introduced in the papers
+    '''
+    def calc_filter(self, DP, PP):
+        H = torch.ones_like(PP).to(self.device, dtype=torch.float32) - div(PP, DP)
+        zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
+        H = torch.where(H < 0.2, zeros, H)
+        H = torch.where(H > 1.0, zeros, H)
+        return H
+
     def aberrate(self, obj, alphas, diversity=None):
         #nx = self.nx
         #jmax = self.coh_trans_func.phase_aberr.jmax
@@ -609,13 +619,6 @@ class psf_torch():
         return psf
     
     
-    def calc_filter(self, DP, PP):
-        H = torch.ones_like(PP).to(self.device, dtype=torch.float32) - div(PP, DP)
-        zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
-        H = torch.where(H < 0.2, zeros, H)
-        H = torch.where(H > 1.0, zeros, H)
-        return H
-        
     '''
         Ds: [batch_size, num_frames, 2, nx, nx], where first dimension can be omitted
         alphas: [batch_size, num_frames, jmax], where first dimension can be omitted
@@ -697,7 +700,7 @@ class psf_torch():
         if self.sum_over_batch:
             den = torch.sum(den, axis=0)
             
-        H = self.calc_filter(num, den)
+        H = self.calc_filter(to_complex(num), to_complex(den))
 
         DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=1))
         if mode == 1:
