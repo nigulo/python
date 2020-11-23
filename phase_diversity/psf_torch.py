@@ -463,7 +463,7 @@ class psf_torch():
     '''
         The filter H as introduced in the papers
     '''
-    def calc_filter(self, DP, PP):
+    def calc_filter(self, DP, PP, smart_filter=True):
         ret_complex = False
         if len(DP.size()) == 3:
             ret_complex = True
@@ -475,6 +475,12 @@ class psf_torch():
         zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
         H = torch.where(H < 0.2, zeros, H)
         H = torch.where(H > 1.0, zeros, H)
+        
+        if smart_filter:
+            H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
+            
+        H = mul(H, self.fltr)
+        
         if ret_complex:
             H = to_complex(H)
         return H
@@ -579,11 +585,11 @@ class psf_torch():
             loss += torch.sum(DD)
         
         H = self.calc_filter(mul(DP, DP_conj), PP)
-        H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
+        #H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
         F_image = mul(F_image, H)
         
-        if self.fltr is not None:
-            F_image = mul(F_image, self.fltr)
+        #if self.fltr is not None:
+        #    F_image = mul(F_image, self.fltr)
     
         if do_fft:
             image = real(ifft(F_image))

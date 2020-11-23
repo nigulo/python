@@ -397,6 +397,7 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
                     mask[x, y] = 0.
                 elif mask[x, y] == 0.:
                     connected = False
+    #F_image = torch.where(mask == 0, zeros, F_image)
     F_image[mask == 0] = 0.
     if False:
         import time
