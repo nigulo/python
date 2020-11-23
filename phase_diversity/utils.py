@@ -326,7 +326,7 @@ class hanning:
             win = torch.tensor(win).to(device, dtype=torch.float32)
         return image * win
     
-
+'''
 def smart_fltr(F_image, threshold=0.4, shift=True):
     if shift:
         F_image = np.fft.fftshift(F_image)
@@ -368,4 +368,53 @@ def smart_fltr(F_image, threshold=0.4, shift=True):
     if shift:
         F_image = np.fft.ifftshift(F_image)
     return F_image
+'''
+
+def smart_fltr(F_image, threshold=0.2, shift=True):
+    if shift:
+        F_image = np.fft.fftshift(F_image)
+    if F_image.dtype == np.complex128 or F_image.dtype == np.complex64:
+        modulus = np.sqrt((F_image*F_image.conj()).real)
+    else:
+        modulus = F_image
+    #max_modulus = np.max(modulus)
+    mask = np.array(np.zeros_like(modulus))
+    mask[modulus > threshold] = 1.
+    nx = F_image.shape[0]
+    x0 = nx//2
+    y0 = x0
+    a = np.sqrt(2)*nx//2
+    d_phi = 1./a
+    for phi in np.arange(0, 2*np.pi, d_phi):
+        connected = True
+        for r in np.arange(1, a):
+            x = x0 + r * np.sin(phi)
+            y = y0 + r * np.cos(phi)
+            if x >= 0 and y >= 0 and x < nx and y < nx:
+                if not connected:
+                    mask[x, y] == 0.
+                elif mask[x, y] == 0.:
+                    connected = False
+    F_image[mask == 0] = 0.
+    if True:
+        import time
+        ts = time.time()
+        import plot
+        #my_plot = plot.plot()
+        #my_plot.colormap(modulus, show_colorbar=True, colorbar_prec="1.2")
+        #my_plot.save("orig_filter.png")
+        #my_plot = plot.plot()
+        #my_plot.close()
+        my_plot = plot.plot()
+        my_plot.colormap(F_image, show_colorbar=True, colorbar_prec="1.2")
+        my_plot.save(f"filtered{ts}.png")
+        my_plot.close()
+        my_plot = plot.plot()
+        my_plot.colormap(mask, show_colorbar=True, colorbar_prec="1.2")
+        my_plot.save(f"mask{ts}.png")
+        my_plot.close()
+    if shift:
+        F_image = np.fft.ifftshift(F_image)
+    return F_image
+
 
