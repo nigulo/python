@@ -371,6 +371,7 @@ def smart_fltr(F_image, threshold=0.4, shift=True):
 '''
 
 def smart_fltr(F_image, threshold=0.2, shift=True):
+    print("F_image", F_image.shape)
     if shift:
         F_image = np.fft.fftshift(F_image)
     if F_image.dtype == np.complex128 or F_image.dtype == np.complex64:
@@ -380,6 +381,7 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
     #max_modulus = np.max(modulus)
     mask = np.zeros_like(modulus)
     mask[modulus > threshold] = 1.
+    print("mask", mask.shape)
     nx = F_image.shape[0]
     x0 = nx//2
     y0 = x0
