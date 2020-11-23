@@ -388,8 +388,8 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
     for phi in np.arange(0, 2*np.pi, d_phi):
         connected = True
         for r in np.arange(1, a):
-            x = x0 + r * np.sin(phi)
-            y = y0 + r * np.cos(phi)
+            x = int(x0 + r * np.sin(phi))
+            y = int(y0 + r * np.cos(phi))
             if x >= 0 and y >= 0 and x < nx and y < nx:
                 if not connected:
                     mask[x, y] == 0.
