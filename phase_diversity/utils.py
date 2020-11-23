@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 #from astropy.io import fits
 import misc
 import torch
+import floodfill
 
 mode_scale = np.array([3.4211644e-07, 2.9869247e-07, 1.2330536e-07, 1.2948983e-07,\
     1.3634113e-07, 6.2635998e-08, 6.0679490e-08, 6.1960371e-08,\
@@ -325,4 +326,39 @@ class hanning:
             win = torch.tensor(win).to(device, dtype=torch.float32)
         return image * win
     
-    
+
+def smart_fltr(F_image, threshold=0.2, shift=True):
+    if shift:
+        F_image = np.fft.fftshift(F_image)
+    if F_image.dtype[:7] == 'complex':
+        modulus = np.sqrt((F_image*F_image.conj()).real)
+    else:
+        modulus = F_image
+    max_modulus = np.max(modulus)
+    mask = np.zeros_like(modulus)
+    mask[modulus > max_modulus*threshold] = 1
+    ff = floodfill.floodfill(mask)
+    ff.fill(mask.shape[0]//2, mask.shape[1]//2)
+    ff = floodfill.floodfill(ff.labels)#, compFunc = lambda x, y: x>=y)
+    ff.fill(0, 0)
+    ff = floodfill.floodfill(ff.labels, compFunc = lambda x, y: x<=y)
+    ff.fill(mask.shape[0]//2, mask.shape[1]//2)
+    F_image[ff.labels == 0] = 0.
+    if True:
+        import plot
+        my_plot = plot.plot()
+        my_plot.colormap(np.log((F_image*F_image.conj()).real+1))
+        my_plot.save("filtered.png")
+        my_plot.close()
+        my_plot = plot.plot()
+        my_plot.colormap(mask)
+        my_plot.save("mask.png")
+        my_plot.close()
+        my_plot = plot.plot()
+        my_plot.colormap(ff.labels)
+        my_plot.save("floodfill.png")
+        my_plot.close()
+    if shift:
+        F_image = np.fft.fftshift(F_image)
+    return F_image
+

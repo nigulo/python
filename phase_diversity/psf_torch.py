@@ -579,11 +579,11 @@ class psf_torch():
             loss += torch.sum(DD)
         
         H = self.calc_filter(mul(DP, DP_conj), PP)
+        H = torch.from_numpy(utils.smart_fltr(H.cpu().numpy())).to(self.device, dtype=torch.float32)
         F_image = mul(F_image, H)
         
-        if self.fltr is not None:
-            #F_image = smart_fltr(F_image)
-            F_image = mul(F_image, self.fltr)
+        #if self.fltr is not None:
+        #    #F_image = mul(F_image, self.fltr)
     
         if do_fft:
             image = real(ifft(F_image))
