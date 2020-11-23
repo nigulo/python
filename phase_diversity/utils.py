@@ -330,7 +330,7 @@ class hanning:
 def smart_fltr(F_image, threshold=0.2, shift=True):
     if shift:
         F_image = np.fft.fftshift(F_image)
-    if F_image.dtype[:7] == 'complex':
+    if F_image.dtype == np.complex128 or F_image.dtype == np.complex64:
         modulus = np.sqrt((F_image*F_image.conj()).real)
     else:
         modulus = F_image
