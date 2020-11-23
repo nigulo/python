@@ -582,8 +582,8 @@ class psf_torch():
         H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
         F_image = mul(F_image, H)
         
-        #if self.fltr is not None:
-        #    #F_image = mul(F_image, self.fltr)
+        if self.fltr is not None:
+            F_image = mul(F_image, self.fltr)
     
         if do_fft:
             image = real(ifft(F_image))

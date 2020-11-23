@@ -384,19 +384,21 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
     x0 = nx//2
     y0 = x0
     a = np.sqrt(2)*nx//2
-    d_phi = 1./a
+    d_phi = .5/a
     for phi in np.arange(0, 2*np.pi, d_phi):
         connected = True
+        sin_phi = np.sin(phi)
+        cos_phi = np.cos(phi)
         for r in np.arange(1, a):
-            x = int(x0 + r * np.sin(phi))
-            y = int(y0 + r * np.cos(phi))
+            x = int(x0 + r * cos_phi)
+            y = int(y0 + r * sin_phi)
             if x >= 0 and y >= 0 and x < nx and y < nx:
                 if not connected:
-                    mask[x, y] == 0.
+                    mask[x, y] = 0.
                 elif mask[x, y] == 0.:
                     connected = False
     F_image[mask == 0] = 0.
-    if True:
+    if False:
         import time
         ts = time.time()
         import plot

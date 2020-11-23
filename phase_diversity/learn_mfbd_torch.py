@@ -121,10 +121,10 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 128
+    num_frames = 64
     
-    batch_size = 128
-    n_channels = 32
+    batch_size = 64
+    n_channels = 64
     
     sum_over_batch = True
     
@@ -543,7 +543,7 @@ class NN(nn.Module):
         self.data_index = 0
         
         self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
-        self.filter = utils.create_filter(nx, freq_limit = 0.4)
+        self.filter = utils.create_filter(nx, freq_limit = 1.)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
 
@@ -591,11 +591,11 @@ class NN(nn.Module):
 
         l = ConvLayer(in_channels=num_in_channels, out_channels=n_channels, kernel=3, num_convs=1)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=2*n_channels, kernel=3)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=4*n_channels, kernel=3)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
         self.layers1.append(l)
-        l = ConvLayer(in_channels=l.out_channels, out_channels=8*n_channels)
+        l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels)
         self.layers1.append(l)
 
         self.layers2 = nn.ModuleList()
@@ -720,14 +720,17 @@ class NN(nn.Module):
             x_f1 = psf_torch.div(x_f[:, 0], x_f_mean[:, 0] + eps)
             x_f2 = psf_torch.div(x_f[:, 1], x_f_mean[:, 0] + eps)
             
-            #x_f1 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
-            #x_f2 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
+            #x_f3 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
+            #x_f4 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
 
             #x1 = psf_torch.ifft(x_f1)
             #x2 = psf_torch.ifft(x_f2)
 
             x_f1 = torch.unsqueeze(x_f1, 1)
             x_f2 = torch.unsqueeze(x_f2, 1)
+
+            #x_f3 = torch.unsqueeze(x_f3, 1)
+
             x = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
 
             #x1 = torch.unsqueeze(x1, 1)
@@ -1763,6 +1766,7 @@ class NN(nn.Module):
                 my_test_plot.colormap(dat=loss_ratios, ax_index=[num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
                 my_test_plot.set_axis_title([num_cols-1], "Loss ratio")
             
+            my_test_plot.toggle_axis()
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
             my_test_plot.save(f"{dir_name}/{file_prefix}.png")
             my_test_plot.close()
