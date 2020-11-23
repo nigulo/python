@@ -327,16 +327,16 @@ class hanning:
         return image * win
     
 
-def smart_fltr(F_image, threshold=0.2, shift=True):
+def smart_fltr(F_image, threshold=0.4, shift=True):
     if shift:
         F_image = np.fft.fftshift(F_image)
     if F_image.dtype == np.complex128 or F_image.dtype == np.complex64:
         modulus = np.sqrt((F_image*F_image.conj()).real)
     else:
         modulus = F_image
-    max_modulus = np.max(modulus)
-    mask = np.zeros_like(modulus)
-    mask[modulus > max_modulus*threshold] = 1
+    #max_modulus = np.max(modulus)
+    mask = np.array(np.zeros_like(modulus))
+    mask[modulus > threshold] = 1.
     ff = floodfill.floodfill(mask)
     ff.fill(mask.shape[0]//2, mask.shape[1]//2)
     ff = floodfill.floodfill(ff.labels)#, compFunc = lambda x, y: x>=y)
@@ -345,23 +345,27 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
     ff.fill(mask.shape[0]//2, mask.shape[1]//2)
     F_image[ff.labels == 0] = 0.
     if True:
+        import time
+        ts = time.time()
         import plot
+        #my_plot = plot.plot()
+        #my_plot.colormap(modulus, show_colorbar=True, colorbar_prec="1.2")
+        #my_plot.save("orig_filter.png")
+        #my_plot = plot.plot()
+        #my_plot.close()
         my_plot = plot.plot()
-        my_plot.colormap(modulus)
-        my_plot.save("orig_filter.png")
-        my_plot = plot.plot()
-        my_plot.colormap(np.log((F_image*F_image.conj()).real+1))
-        my_plot.save("filtered.png")
+        my_plot.colormap(F_image, show_colorbar=True, colorbar_prec="1.2")
+        my_plot.save(f"filtered{ts}.png")
         my_plot.close()
         my_plot = plot.plot()
-        my_plot.colormap(mask)
-        my_plot.save("mask.png")
+        my_plot.colormap(mask, show_colorbar=True, colorbar_prec="1.2")
+        my_plot.save(f"mask{ts}.png")
         my_plot.close()
         my_plot = plot.plot()
-        my_plot.colormap(ff.labels)
-        my_plot.save("floodfill.png")
+        my_plot.colormap(ff.labels, show_colorbar=True, colorbar_prec="1.2")
+        my_plot.save(f"floodfill{ts}.png")
         my_plot.close()
     if shift:
-        F_image = np.fft.fftshift(F_image)
+        F_image = np.fft.ifftshift(F_image)
     return F_image
 
