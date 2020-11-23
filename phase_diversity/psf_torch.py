@@ -365,7 +365,7 @@ class psf_torch():
         
         if fltr is not None:
             #self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.complex64)
-            self.fltr = to_complex(torch.from_numpy(fltr)).to(self.device, dtype=torch.float32)
+            self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.float32)
         else:
             self.fltr = None
             
@@ -477,7 +477,7 @@ class psf_torch():
         H = torch.where(H > 1.0, zeros, H)
         
         if smart_filter:
-            H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
+            H = torch.from_numpy(utils.smart_fltr(H.cpu().numpy())).to(self.device, dtype=torch.float32)
         
         if self.fltr is not None:
             H = mul(H, self.fltr)
