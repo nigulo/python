@@ -378,7 +378,7 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
     else:
         modulus = F_image
     #max_modulus = np.max(modulus)
-    mask = np.array(np.zeros_like(modulus))
+    mask = np.zeros_like(modulus)
     mask[modulus > threshold] = 1.
     nx = F_image.shape[0]
     x0 = nx//2

@@ -478,8 +478,9 @@ class psf_torch():
         
         if smart_filter:
             H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
-            
-        H = mul(H, self.fltr)
+        
+        if self.fltr is not None:
+            H = mul(H, self.fltr)
         
         if ret_complex:
             H = to_complex(H)
