@@ -717,7 +717,7 @@ class psf_torch():
         if self.sum_over_batch:
             den = torch.sum(den, axis=0)
             
-        H = self.calc_filter(num, den)
+        H = self.calc_filter(num, den, smart_filter=False)
 
         DD = real(torch.sum(mul(Ds_F, Ds_F_conj), axis=1))
         if mode == 1:
