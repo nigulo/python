@@ -347,6 +347,9 @@ def smart_fltr(F_image, threshold=0.2, shift=True):
     if True:
         import plot
         my_plot = plot.plot()
+        my_plot.colormap(modulus)
+        my_plot.save("orig_filter.png")
+        my_plot = plot.plot()
         my_plot.colormap(np.log((F_image*F_image.conj()).real+1))
         my_plot.save("filtered.png")
         my_plot.close()
