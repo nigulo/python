@@ -481,7 +481,7 @@ class psf_torch():
             H = torch.from_numpy(utils.smart_fltr(H.cpu().numpy())).to(self.device, dtype=torch.float32)
         
         if self.fltr is not None:
-            H = mul(H, self.fltr)
+            H = H*self.fltr
         
         if ret_complex:
             H = to_complex(H)
