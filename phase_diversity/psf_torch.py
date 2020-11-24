@@ -471,12 +471,13 @@ class psf_torch():
         if len(PP.size()) == 3:
             ret_complex = True
             PP = real(PP)
-        H = torch.ones_like(PP).to(self.device, dtype=torch.float32) - PP/(DP + self.eps)
-        zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
-        H = torch.where(H < 0.2, zeros, H)
-        H = torch.where(H > 1.0, zeros, H)
-        
+        H = torch.ones_like(PP).to(self.device, dtype=torch.float32)
         if smart_filter:
+            H = H - PP/(DP + self.eps)
+            zeros = torch.zeros_like(H).to(self.device, dtype=torch.float32)
+            H = torch.where(H < 0.2, zeros, H)
+            H = torch.where(H > 1.0, zeros, H)
+        
             H = torch.from_numpy(utils.smart_fltr(H.cpu().numpy())).to(self.device, dtype=torch.float32)
         
         if self.fltr is not None:
