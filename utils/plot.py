@@ -46,6 +46,7 @@ class plot:
         self.axis_units_font_size = 2*max(width, height)
         self.nrows = nrows
         self.ncols = ncols
+        self.used_axis = set()
         
         if smart_axis:
             for row in np.arange(nrows):
@@ -266,6 +267,7 @@ class plot:
             ax.set_title(self.title, fontsize=self.axis_title_font_size)
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
+        used_axis.add(ax)
         
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
         ax = self.get_ax(ax_index)
@@ -398,7 +400,11 @@ class plot:
         # Do some post-processing
         for row in np.arange(self.nrows):
             for col in np.arange(self.ncols):
-                self.process_colorbar([row, col])
+                ax_index = [row, col]
+                self.process_colorbar(ax_index)
+                ax = self.get_ax(ax_index)
+                if ax_index not in self.used_axis:
+                    ax.axis('off')
             
         self.fig.savefig(file_name)
 

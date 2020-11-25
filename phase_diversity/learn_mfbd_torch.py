@@ -1633,15 +1633,15 @@ class NN(nn.Module):
                             print("psf_true[j]", np.max(psf_true[j]), np.min(psf_true[j]))
                             print("psf[j]", np.max(psfs[j]), np.min(psfs[j]))
                             print("psf MSE", np.sum((psf_true[j] - psfs[j])**2))
-                            my_test_plot.colormap(utils.trunc(psf_true[j, 0, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 0], show_colorbar=True)
-                            my_test_plot.colormap(utils.trunc(psfs[j, 0, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 1], show_colorbar=True)
-                            my_test_plot.colormap(utils.trunc(psf_true[j, 1, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 2], show_colorbar=True)
-                            my_test_plot.colormap(utils.trunc(psfs[j, 1, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 3], show_colorbar=True)
+                            my_test_plot.colormap(utils.trunc(psf_true[j, 0, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 0], show_colorbar=False)
+                            my_test_plot.colormap(utils.trunc(psfs[j, 0, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 1], show_colorbar=False)
+                            my_test_plot.colormap(utils.trunc(psf_true[j, 1, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 2], show_colorbar=False)
+                            my_test_plot.colormap(utils.trunc(psfs[j, 1, zoom_start:zoom_end, zoom_start:zoom_end], 1e-3), [row, 3], show_colorbar=False)
                             #my_test_plot.colormap(np.abs(psf_true[j, 0]-psfs[j, 0]), [0, 2], show_colorbar=True)
                             #my_test_plot.colormap(obj_reconstr_true, [0, 3], show_colorbar=True)
                             #my_test_plot.colormap(obj_reconstr, [0, 4], show_colorbar=True)
-                            my_test_plot.colormap(wf_true[j], [row, 4], show_colorbar=True)
-                            my_test_plot.colormap(wfs[j], [row, 5], show_colorbar=True)
+                            my_test_plot.colormap(wf_true[j], [row, 4], show_colorbar=False)
+                            my_test_plot.colormap(wfs[j], [row, 5], show_colorbar=False)
                             #my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
                             row += 1
                     my_test_plot.set_axis_title([0, 0], "MOMFBD PSF (focus)")
@@ -1650,6 +1650,7 @@ class NN(nn.Module):
                     my_test_plot.set_axis_title([0, 3], "NN PSF (defocus)")
                     my_test_plot.set_axis_title([0, 4], "MOMFBD wavefront")
                     my_test_plot.set_axis_title([0, 5], "NN wavefront")
+                    my_test_plot.toggle_axis()
                     my_test_plot.save(f"{dir_name}/psf{obj_index_i}.png")
                     my_test_plot.close()
 
@@ -1657,11 +1658,8 @@ class NN(nn.Module):
                         cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 
                 if benchmarking_level >= 1:
-                    nrows = int(np.sqrt(jmax))
-                    for nrows in np.arange(nrows, 0, -1):
-                        if jmax % nrows == 0:
-                            break
-                    ncols = jmax // nrows
+                    ncols = int(np.round(np.sqrt(jmax)*2/3))
+                    nrows = int(np.ceil(jmax/ncols))
                     my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis=False)
                     row = 0
                     col = 0
