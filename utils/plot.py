@@ -445,7 +445,6 @@ class plot:
         last_in_column = dict()
         # Do some post-processing
         for row in np.arange(self.nrows):
-            last_in_column = set()
             for col in np.arange(self.ncols-1, -1, -1):
                 ax_index = [row, col]
                 self.process_colorbar(ax_index)
