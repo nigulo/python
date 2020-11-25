@@ -26,7 +26,7 @@ def default_size(nx, ny):
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., size=None, extent=[0., 1., 0., 1.], title=None, smart_axis=True):
+    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., size=None, extent=[0., 1., 0., 1.], title=None, smart_axis="xy"):
         if size is not None:
             width = size[0]
             height = size[1]
@@ -48,20 +48,28 @@ class plot:
         self.ncols = ncols
         self.used_axis = set()
         
-        if smart_axis:
+        if type(smart_axis) == str and len(smart_axis) > 0:
             for row in np.arange(nrows):
                 for col in np.arange(ncols):
                     
                     if row < nrows-1:
                         if col == 0:
-                            self.toggle_axis(ax_index = [row, col], on=[False, True])
+                            if "x" in smart_axis:
+                                self.toggle_axis(ax_index = [row, col], on=[False, True])
                         else:
-                            self.toggle_axis(ax_index = [row, col], on=False)
+                            if "x" in smart_axis:
+                                if "y" in smart_axis:
+                                    self.toggle_axis(ax_index = [row, col], on=False)
+                                else:
+                                    self.toggle_axis(ax_index = [row, col], on=[False, True])
+                            elif "y" in smart_axis:
+                                self.toggle_axis(ax_index = [row, col], on=[True, False])
                     else:
                         if col == 0:
                             self.toggle_axis(ax_index = [row, col], on=True)
                         else:
-                            self.toggle_axis(ax_index = [row, col], on=[True, False])
+                            if "y" in smart_axis:
+                                self.toggle_axis(ax_index = [row, col], on=[True, False])
 
         
     '''
