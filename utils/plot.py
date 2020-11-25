@@ -367,7 +367,7 @@ class plot:
             if ax is None or ax == ax1:
                 if labels is None:
                     ax1.set_xticklabels([])
-                    ax1.set_yticklabelsl([])
+                    ax1.set_yticklabels([])
                 else:                    
                     if isinstance(labels, (list, tuple, np.ndarray)):
                         if labels[0] is None:
