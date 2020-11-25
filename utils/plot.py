@@ -357,7 +357,7 @@ class plot:
             return label.get_text()
         return map(map_fn, ax.get_xticklabels()), map(map_fn, ax.get_yticklabels())
 
-    def set_axis_tick_labels(self, ax_index = None, labels = None):
+    def set_axis_tick_labels(self, ax_index = None, axis = "xy", labels = None):
         if ax_index is None:
             ax = None
         else:
@@ -368,21 +368,26 @@ class plot:
             axes = [self.axes]
         for ax1 in axes:
             if ax is None or ax == ax1:
-                if labels is None:
-                    ax1.set_xticklabels([])
-                    ax1.set_yticklabels([])
-                else:                    
-                    if isinstance(labels, (list, tuple, np.ndarray)):
-                        if labels[0] is None:
-                            ax1.set_xticklabels([])
-                        else:
+                if "x" in axis:
+                    if labels is None:
+                        ax1.set_xticklabels([])
+                    elif isinstance(labels, (list, tuple, np.ndarray)):
+                        if axis[0] == "x":
                             ax1.set_xticklabels(labels[0], fontsize=self.axis_units_font_size)
-                        if labels[1] is None:
-                            ax1.set_yticklabels([])
+                        else:
+                            ax1.set_xticklabels(labels[1], fontsize=self.axis_units_font_size)
+                    else:
+                        ax1.set_xticklabels(labels, fontsize=self.axis_units_font_size)
+                if "y" in axis:
+                    if labels is None:
+                        ax1.set_yticklabels([])
+                    elif isinstance(labels, (list, tuple, np.ndarray)):
+                        if axis[0] == "y":
+                            ax1.set_yticklabels(labels[0], fontsize=self.axis_units_font_size)
                         else:
                             ax1.set_yticklabels(labels[1], fontsize=self.axis_units_font_size)
                     else:
-                        raise "Identical text for both axis? Really?"
+                        ax1.set_yticklabels(labels, fontsize=self.axis_units_font_size)
 
     def set_axis_ticks(self, ax_index = None, ticks = None):
         if ax_index is None:
@@ -478,13 +483,13 @@ class plot:
                         if "y" in self.smart_axis:
                             print("siin1", row, col)
                             #self.toggle_axis(ax_index = ax_index, on=[True, False])
-                            self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
+                            self.set_axis_tick_labels(ax_index=ax_index, axis="y", labels=None)
                 else:
                     if first_in_row[row] == ax:
                         if "x" in self.smart_axis:
                             print("siin2", row, col)
                             #self.toggle_axis(ax_index = ax_index, on=[False, True])
-                            self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
+                            self.set_axis_tick_labels(ax_index=ax_index, axis="x", labels=None)
                     else:
                         if "x" in self.smart_axis:
                             if "y" in self.smart_axis:
@@ -494,11 +499,11 @@ class plot:
                             else:
                                 print("siin4", row, col)
                                 #self.toggle_axis(ax_index = ax_index, on=[False, True])
-                                self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
+                                self.set_axis_tick_labels(ax_index=ax_index, axis="x", labels=None)
                         elif "y" in self.smart_axis:
                             print("siin5", row, col)
                             #self.toggle_axis(ax_index = ax_index, on=[True, False])
-                            self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
+                            self.set_axis_tick_labels(ax_index=ax_index, axis="y", labels=None)
             
         self.fig.savefig(file_name)
         
