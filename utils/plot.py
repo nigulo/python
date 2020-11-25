@@ -54,6 +54,14 @@ class plot:
             self.smart_axis = ""
         
 
+    def set_axis_title_font_size(self, axis_title_font_size):
+        self.axis_title_font_size = axis_title_font_size
+
+    def set_axis_label_font_size(self, axis_label_font_size):
+        self.axis_label_font_size = axis_label_font_size
+
+    def set_axis_utits_font_size(self, axis_units_font_size):
+        self.axis_units_font_size = axis_units_font_size
         
     '''
         cmap - "bwr", "binary", "winter", "Greys", etc...
