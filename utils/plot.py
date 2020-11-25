@@ -441,10 +441,11 @@ class plot:
         
 
     def save(self, file_name):
-        first_in_rows = set()
-        last_in_columns = set()
+        first_in_row = dict()
+        last_in_column = dict()
         # Do some post-processing
         for row in np.arange(self.nrows):
+            last_in_column = set()
             for col in np.arange(self.ncols-1, -1, -1):
                 ax_index = [row, col]
                 self.process_colorbar(ax_index)
@@ -453,11 +454,9 @@ class plot:
                 # Remove empty subplots
                 if ax not in self.used_axis:
                     ax.axis('off')
-                
-                first_in_row = ax
-            first_in_rows.add(first_in_row)
-            last_in_column = ax
-        last_in_columns.add(last_in_column)
+                else:
+                    first_in_row[row] = ax
+                    last_in_column[col] = ax
 
         for row in np.arange(self.nrows):
             for col in np.arange(self.ncols):
@@ -466,8 +465,18 @@ class plot:
             
                 # Smart axis handling
                 x_tick_labels, y_tick_labels = self.get_axis_tick_labels(ax_index=ax_index)
-                if ax not in last_in_columns:
-                    if ax in first_in_rows:
+                
+                if row == self.nrows-1:
+                    if last_in_column[col] == ax:
+                        if first_in_row[row] == ax:
+                            #self.toggle_axis(ax_index = ax_index, on=True)
+                            pass
+                        else:
+                            if "y" in self.smart_axis:
+                                #self.toggle_axis(ax_index = ax_index, on=[True, False])
+                                self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
+                else:
+                    if first_in_row[row] == ax:
                         if "x" in self.smart_axis:
                             #self.toggle_axis(ax_index = ax_index, on=[False, True])
                             self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
@@ -480,14 +489,6 @@ class plot:
                                 #self.toggle_axis(ax_index = ax_index, on=[False, True])
                                 self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
                         elif "y" in self.smart_axis:
-                            #self.toggle_axis(ax_index = ax_index, on=[True, False])
-                            self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
-                else:
-                    if ax in first_in_rows:
-                        #self.toggle_axis(ax_index = ax_index, on=True)
-                        pass
-                    else:
-                        if "y" in self.smart_axis:
                             #self.toggle_axis(ax_index = ax_index, on=[True, False])
                             self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
             
