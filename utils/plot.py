@@ -26,7 +26,7 @@ def default_size(nx, ny):
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=4.3, height = 3., size=None, extent=[0., 1., 0., 1.], title=None, smart_axis="xy"):
+    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, extent=[0., 1., 0., 1.], title=None, smart_axis="xy"):
         if size is not None:
             width = size[0]
             height = size[1]
@@ -41,9 +41,9 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 4*max(width, height)
-        self.axis_label_font_size = 3*max(width, height)
-        self.axis_units_font_size = 2*max(width, height)
+        self.axis_title_font_size = 6*max(width, height)
+        self.axis_label_font_size = 3.75*max(width, height)
+        self.axis_units_font_size = 2.5*max(width, height)
         self.nrows = nrows
         self.ncols = ncols
         self.used_axis = set()
