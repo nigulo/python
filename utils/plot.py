@@ -41,8 +41,8 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 6*max(width, height)
-        self.axis_label_font_size = 3.75*max(width, height)
+        self.axis_title_font_size = 4*max(width, height)
+        self.axis_label_font_size = 3*max(width, height)
         self.axis_units_font_size = 2.5*max(width, height)
         self.nrows = nrows
         self.ncols = ncols

@@ -1624,7 +1624,7 @@ class NN(nn.Module):
                     psf_true = fft.ifftshift(psf_true, axes=(2, 3))
                     num_plot_frames = 5
                     frame_step = nf//num_plot_frames
-                    my_test_plot = plot.plot(nrows=num_plot_frames, ncols=6)
+                    my_test_plot = plot.plot(nrows=num_plot_frames, ncols=6, width=4.5, height=4)
                     row = 0
                     zoom_start = psf_true.shape[2]//3
                     zoom_end = psf_true.shape[2] - zoom_start
