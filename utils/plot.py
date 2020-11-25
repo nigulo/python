@@ -465,15 +465,14 @@ class plot:
                 # Smart axis handling
                 x_tick_labels, y_tick_labels = self.get_axis_tick_labels(ax_index=ax_index)
                 
-                if row == self.nrows-1:
-                    if last_in_column[col] == ax:
-                        if first_in_row[row] == ax:
-                            #self.toggle_axis(ax_index = ax_index, on=True)
-                            pass
-                        else:
-                            if "y" in self.smart_axis:
-                                #self.toggle_axis(ax_index = ax_index, on=[True, False])
-                                self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
+                if last_in_column[col] == ax:
+                    if first_in_row[row] == ax:
+                        #self.toggle_axis(ax_index = ax_index, on=True)
+                        pass
+                    else:
+                        if "y" in self.smart_axis:
+                            #self.toggle_axis(ax_index = ax_index, on=[True, False])
+                            self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
                 else:
                     if first_in_row[row] == ax:
                         if "x" in self.smart_axis:
