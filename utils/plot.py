@@ -352,7 +352,10 @@ class plot:
 
     def get_axis_tick_labels(self, ax_index = None):
         ax = self.get_ax(ax_index)
-        return ax.get_xticklabels(), ax.get_yticklabels()
+
+        def map_fn(label):
+            return label.get_text()
+        return map(map_fn, ax.get_xticklabels()), map(map_fn, ax.get_yticklabels())
 
     def set_axis_tick_labels(self, ax_index = None, labels = None):
         if ax_index is None:
@@ -456,7 +459,8 @@ class plot:
                 else:
                     first_in_row[row] = ax
                     last_in_column[col] = ax
-
+        print("first_in_row", first_in_row.keys())
+        print("last_incolumn", last_in_column.keys())
         for row in np.arange(self.nrows):
             for col in np.arange(self.ncols):
                 ax_index = [row, col]
@@ -464,29 +468,35 @@ class plot:
             
                 # Smart axis handling
                 x_tick_labels, y_tick_labels = self.get_axis_tick_labels(ax_index=ax_index)
-                
+                print("labels", row, col, x_tick_labels, y_tick_labels)
                 if last_in_column[col] == ax:
                     if first_in_row[row] == ax:
+                        print("siin", row, col)
                         #self.toggle_axis(ax_index = ax_index, on=True)
                         pass
                     else:
                         if "y" in self.smart_axis:
+                            print("siin1", row, col)
                             #self.toggle_axis(ax_index = ax_index, on=[True, False])
                             self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
                 else:
                     if first_in_row[row] == ax:
                         if "x" in self.smart_axis:
+                            print("siin2", row, col)
                             #self.toggle_axis(ax_index = ax_index, on=[False, True])
                             self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
                     else:
                         if "x" in self.smart_axis:
                             if "y" in self.smart_axis:
+                                print("siin3", row, col)
                                 #self.toggle_axis(ax_index = ax_index, on=False)
                                 self.set_axis_tick_labels(ax_index=ax_index, labels=None)
                             else:
+                                print("siin4", row, col)
                                 #self.toggle_axis(ax_index = ax_index, on=[False, True])
                                 self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
                         elif "y" in self.smart_axis:
+                            print("siin5", row, col)
                             #self.toggle_axis(ax_index = ax_index, on=[True, False])
                             self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
             
