@@ -403,7 +403,7 @@ class plot:
                 ax_index = [row, col]
                 self.process_colorbar(ax_index)
                 ax = self.get_ax(ax_index)
-                if ax_index not in self.used_axis:
+                if ax not in self.used_axis:
                     ax.axis('off')
             
         self.fig.savefig(file_name)
