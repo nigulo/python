@@ -48,28 +48,11 @@ class plot:
         self.ncols = ncols
         self.used_axis = set()
         
-        if type(smart_axis) == str and len(smart_axis) > 0:
-            for row in np.arange(nrows):
-                for col in np.arange(ncols):
-                    
-                    if row < nrows-1:
-                        if col == 0:
-                            if "x" in smart_axis:
-                                self.toggle_axis(ax_index = [row, col], on=[False, True])
-                        else:
-                            if "x" in smart_axis:
-                                if "y" in smart_axis:
-                                    self.toggle_axis(ax_index = [row, col], on=False)
-                                else:
-                                    self.toggle_axis(ax_index = [row, col], on=[False, True])
-                            elif "y" in smart_axis:
-                                self.toggle_axis(ax_index = [row, col], on=[True, False])
-                    else:
-                        if col == 0:
-                            self.toggle_axis(ax_index = [row, col], on=True)
-                        else:
-                            if "y" in smart_axis:
-                                self.toggle_axis(ax_index = [row, col], on=[True, False])
+        if type(smart_axis) == str :
+            self.smart_axis = smart_axis
+        else:
+            self.smart_axis = ""
+        
 
         
     '''
@@ -292,7 +275,7 @@ class plot:
         ax = self.get_ax(ax_index)
         return ax.get_xlabel(), ax.get_ylabel()
 
-    def toggle_axis(self, ax_index = None, on = False):
+    def toggle_axis(self, ax_index = None, on=False):
         if ax_index is None:
             ax = None
         else:
@@ -320,6 +303,7 @@ class plot:
                         ax1.get_xaxis().set_visible(False)
                         ax1.get_yaxis().set_visible(False)
                         
+
         
     def set_axis_limits(self, ax_index = None, limits = None):
         if ax_index is None:
@@ -366,6 +350,58 @@ class plot:
                     else:
                         raise "Identical text for both axis? Really?"
 
+    def get_axis_tick_labels(self, ax_index = None):
+        ax = self.get_ax(ax_index)
+        return ax.get_xticklabels(), ax.get_yticklabels()
+
+    def set_axis_tick_labels(self, ax_index = None, labels = None):
+        if ax_index is None:
+            ax = None
+        else:
+            ax = self.get_ax(ax_index)
+        if isinstance(self.axes, (list, tuple, np.ndarray)):
+            axes = self.axes.flatten()
+        else:
+            axes = [self.axes]
+        for ax1 in axes:
+            if ax is None or ax == ax1:
+                if labels is None:
+                    ax1.set_xticklabels([])
+                    ax1.set_yticklabelsl([])
+                else:                    
+                    if isinstance(labels, (list, tuple, np.ndarray)):
+                        if labels[0] is None:
+                            ax1.set_xticklabels([])
+                        else:
+                            ax1.set_xticklabels(labels[0], fontsize=self.axis_units_font_size)
+                        if labels[1] is None:
+                            ax1.set_yticklabels([])
+                        else:
+                            ax1.set_yticklabels(labels[1], fontsize=self.axis_units_font_size)
+                    else:
+                        raise "Identical text for both axis? Really?"
+
+    def set_axis_ticks(self, ax_index = None, ticks = None):
+        if ax_index is None:
+            ax = None
+        else:
+            ax = self.get_ax(ax_index)
+        if isinstance(self.axes, (list, tuple, np.ndarray)):
+            axes = self.axes.flatten()
+        else:
+            axes = [self.axes]
+        for ax1 in axes:
+            if ax is None or ax == ax1:
+                if ticks is None:
+                    ax1.set_xticks([])
+                    ax1.set_yticks([])
+                else:                    
+                    if isinstance(ticks, (list, tuple, np.ndarray)):
+                        ax1.set_xticks(ticks[0])
+                        ax1.set_yticks(ticks[1])
+                    else:
+                        raise "Identical text for both axis? Really?"
+
     def set_axis_title(self, ax_index = None, title = None):
         if ax_index is None:
             ax = None
@@ -405,16 +441,58 @@ class plot:
         
 
     def save(self, file_name):
+        first_in_rows = set()
+        last_in_columns = set()
         # Do some post-processing
         for row in np.arange(self.nrows):
-            for col in np.arange(self.ncols):
+            for col in np.arange(self.ncols-1, -1, -1):
                 ax_index = [row, col]
                 self.process_colorbar(ax_index)
                 ax = self.get_ax(ax_index)
+                
+                # Remove empty subplots
                 if ax not in self.used_axis:
                     ax.axis('off')
+                
+                first_in_row = ax
+            first_in_rows.add(first_in_row)
+            last_in_column = ax
+        last_in_columns.add(last_in_column)
+
+        for row in np.arange(self.nrows):
+            for col in np.arange(self.ncols):
+                ax_index = [row, col]
+                ax = self.get_ax(ax_index)
+            
+                # Smart axis handling
+                x_tick_labels, y_tick_labels = self.get_axis_tick_labels(ax_index=ax_index)
+                if ax not in last_in_columns:
+                    if ax in first_in_rows:
+                        if "x" in self.smart_axis:
+                            #self.toggle_axis(ax_index = ax_index, on=[False, True])
+                            self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
+                    else:
+                        if "x" in self.smart_axis:
+                            if "y" in self.smart_axis:
+                                #self.toggle_axis(ax_index = ax_index, on=False)
+                                self.set_axis_tick_labels(ax_index=ax_index, labels=None)
+                            else:
+                                #self.toggle_axis(ax_index = ax_index, on=[False, True])
+                                self.set_axis_tick_labels(ax_index=ax_index, labels=[None, y_tick_labels])
+                        elif "y" in self.smart_axis:
+                            #self.toggle_axis(ax_index = ax_index, on=[True, False])
+                            self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
+                else:
+                    if ax in first_in_rows:
+                        #self.toggle_axis(ax_index = ax_index, on=True)
+                        pass
+                    else:
+                        if "y" in self.smart_axis:
+                            #self.toggle_axis(ax_index = ax_index, on=[True, False])
+                            self.set_axis_tick_labels(ax_index=ax_index, labels=[x_tick_labels, None])
             
         self.fig.savefig(file_name)
+        
 
 
     def close(self):
