@@ -724,6 +724,7 @@ class psf_torch():
         if mode == 1:
             if self.sum_over_batch:
                 DD = torch.sum(DD, axis=0)
+            #return (DD - num/(den + self.eps)) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
             return H*(DD - num/(den + self.eps)) + self.tt_weight * tt_sum, num, den, DP_conj, Ps, wf, DD
             #return DD - tf.math.add(num, eps)/tf.math.add(den, eps)
         elif mode >= 2:

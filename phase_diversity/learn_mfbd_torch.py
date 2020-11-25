@@ -468,7 +468,7 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=3, activation=activation_fn):
+    def __init__(self, in_channels, out_channels, kernel=3, max_pooling=True, batch_normalization=True, num_convs=4, activation=activation_fn):
         super(ConvLayer, self).__init__()
 
         self.batch_normalization = batch_normalization
@@ -544,6 +544,7 @@ class NN(nn.Module):
         
         self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
         self.filter = utils.create_filter(nx, freq_limit = 1.)
+        self.filter2 = utils.create_filter(nx, freq_limit = .4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
 
@@ -589,7 +590,7 @@ class NN(nn.Module):
 
         self.layers1 = nn.ModuleList()
 
-        l = ConvLayer(in_channels=num_in_channels, out_channels=n_channels, kernel=3, num_convs=1)
+        l = ConvLayer(in_channels=num_in_channels, out_channels=n_channels, kernel=3, num_convs=2)
         self.layers1.append(l)
         l = ConvLayer(in_channels=l.out_channels, out_channels=n_channels, kernel=3)
         self.layers1.append(l)
@@ -602,11 +603,9 @@ class NN(nn.Module):
         
         size1 = 2048
         size = 1024
-        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, size1))#36*n_channels))
+        self.layers2.append(nn.Linear(l.out_channels*(nx//(2**len(self.layers1)))**2, size))#36*n_channels))
         self.layers2.append(activation_fn())
-        self.layers2.append(nn.Linear(size1, size))#36*n_channels, 1024))
-        self.layers2.append(activation_fn())
-        #self.layers2.append(nn.Linear(1024, size))
+        #self.layers2.append(nn.Linear(size1, size))#36*n_channels, 1024))
         #self.layers2.append(activation_fn())
 
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
@@ -714,8 +713,8 @@ class NN(nn.Module):
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
         elif input_type == INPUT_FOURIER_RATIO:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
-            #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter)).to(device, dtype=torch.float32))
             x_f_mean = torch.mean(x_f, dim=[0, 1], keepdim=True)
+            #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter2)).to(device, dtype=torch.float32))
             eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
             x_f1 = psf_torch.div(x_f[:, 0], x_f_mean[:, 0] + eps)
             x_f2 = psf_torch.div(x_f[:, 1], x_f_mean[:, 0] + eps)
