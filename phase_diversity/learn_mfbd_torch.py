@@ -319,8 +319,8 @@ class Dataset(torch.utils.data.Dataset):
                         if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
                             if pos[0] != pos_x or pos[1] != pos_y:
                                 Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
+                                ind_out += 2
                     ind += 1
-                    ind_out += 2
                 # Fill void patches if the object was on the edge of field
                 for ind_out in np.arange(ind_out, 18, step=2):
                     Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
