@@ -34,7 +34,7 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 MODE_3 = 3 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_1
 
-use_neighbours = True
+use_neighbours = False
 
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
@@ -308,8 +308,9 @@ class Dataset(torch.utils.data.Dataset):
         if use_neighbours:
             num_ch = 32
         Ds_out = np.empty((num_ch, Ds.shape[3], Ds.shape[4])).astype('float32')
+        Ds_out[:2] = np.array(Ds[obj_index, frame_index, :, :, :])
         if use_neighbours:
-            Ds_out[:num_ch//2] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (8, 1, 1))  
+            Ds_out[2:num_ch//2] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (num_ch//4-1, 1, 1))  
         
         #Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
         #Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
