@@ -263,10 +263,11 @@ class Dataset(torch.utils.data.Dataset):
         
         self.total_num_rows = 0
         self.num_rows = np.zeros(len(datasets), dtype=int)
+        self.max_pos = np.zeros((len(datasets), 2), dtype=int)
         #self.num_frames = None
         self.num_objs = 0
         for i in range(len(datasets)):
-            Ds = datasets[i][0]
+            Ds, objs, diversity, positions, coords = datasets[i]
             num_objects = Ds.shape[0]
             self.num_objs += num_objects
             num_frames = Ds.shape[1]
@@ -275,6 +276,7 @@ class Dataset(torch.utils.data.Dataset):
             #assert(self.num_frames >= num_frames)
             self.num_rows[i] = num_frames*num_objects
             self.total_num_rows += self.num_rows[i]
+            self.max_pos[i] = np.max(positions, axis = 0)
         
         
         nx = datasets[0][0].shape[3]
@@ -312,15 +314,40 @@ class Dataset(torch.utils.data.Dataset):
             pos_y = positions[obj_index, 1]
             
             if use_neighbours:
-                ind = 0
                 ind_out = num_ch // 2
-                for pos in positions:
+                max_pos = self.max_pos[data_index]
+                num_neighbours = 8
+                if pos_x == 0 or pos_x == max_pos[0]:
+                    num_neighbours -= 3
+                if pos_y == 0 or pos_y == max_pos[1]:
+                    num_neighbours -= 3
+                if num_neighbours == 2: # corner
+                    num_neighbours = 3
+                num_found = 0
+                # First look around the given object
+                for ind in np.arange(obj_index-num_neighbours, obj_index+num_neighbours+1):
+                    pos = positions[ind]
                     if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
                         if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
                             if pos[0] != pos_x or pos[1] != pos_y:
                                 Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
                                 ind_out += 2
-                    ind += 1
+                                num_found += 1
+                                if num_found == num_neighbours:
+                                    break
+                # Now make full search
+                if num_found < num_neighbours:
+                    ind = 0
+                    for pos in positions:
+                        if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
+                            if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
+                                if pos[0] != pos_x or pos[1] != pos_y:
+                                    Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
+                                    ind_out += 2
+                                    num_found += 1
+                                    if num_found == num_neighbours:
+                                        break
+                        ind += 1
                 # Fill void patches if the object was on the edge of field
                 for ind_out in np.arange(ind_out, num_ch, step=2):
                     Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
