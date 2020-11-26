@@ -34,6 +34,8 @@ MODE_2 = 2 # aberrated images --> wavefront coefs --> object (using MFBD formula
 MODE_3 = 3 # aberrated images --> wavefront coefs --> object (using MFBD formula) --> aberrated images
 nn_mode = MODE_1
 
+use_neighbours = True
+
 #logfile = open(dir_name + '/log.txt', 'w')
 #def print(*xs):
 #    for x in xs:
@@ -296,9 +298,33 @@ class Dataset(torch.utils.data.Dataset):
         obj_index = index//num_frames
         frame_index = index % num_frames
         #print("index, obj_index, frame_index", index, obj_index, frame_index, Ds.shape)
-        Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
-        Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
+        num_ch = 2
+        if use_neighbours:
+            num_ch *= 9
+        Ds_out = np.empty((num_ch, Ds.shape[3], Ds.shape[4])).astype('float32')
+        Ds_out[:2] = np.array(Ds[obj_index, frame_index, :, :, :])
+        
+        #Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
+        #Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
 
+        if positions is not None:
+            pos_x = positions[obj_index, 0]
+            pos_y = positions[obj_index, 1]
+            
+            if use_neighbours:
+                ind = 0
+                ind_out = 2
+                for pos in positions:
+                    if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
+                        if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
+                            if pos[0] != pos_x or pos[1] != pos_y:
+                                Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
+                    ind += 1
+                    ind_out += 2
+                # Fill void patches if the object was on the edge of field
+                for ind_out in np.arange(ind_out, 18, step=2):
+                    Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
+                    
 
         if diversity is not None:
             diversities_out = np.zeros((Ds.shape[2], Ds.shape[3], Ds.shape[4])).astype('float32')
@@ -318,7 +344,7 @@ class Dataset(torch.utils.data.Dataset):
                 #    #diversity_out[k, :, :, 0] = diversity_in[positions[i, 0], positions[i, 1], 0]
                 #    diversity_out[k, :, :, 1] += diversity_in[positions[i, 0], positions[i, 1], div_i]
                 #    #diversity_out[k, :, :, 1] = diversity_in[positions[i, 0], positions[i, 1], 1]
-                diversities_out[1, :, :] += diversity[positions[obj_index, 0], positions[obj_index, 1], 1]
+                diversities_out[1, :, :] += diversity[pos_x, pos_y, 1]
         else:
             diversities_out  = None
 
@@ -587,6 +613,9 @@ class NN(nn.Module):
             num_in_channels = 6
         elif input_type == INPUT_FOURIER_RATIO:
             num_in_channels = 4
+            
+        if use_neighbours:
+            num_in_channels *= 9
 
         self.layers1 = nn.ModuleList()
 
@@ -708,29 +737,39 @@ class NN(nn.Module):
         
 
         x = image_input
+        if use_neighbours:
+            image_input = image_input[:, :2]
         if input_type == INPUT_FOURIER:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
         elif input_type == INPUT_FOURIER_RATIO:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
-            x_f_mean = torch.mean(x_f, dim=[0, 1], keepdim=True)
-            #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter2)).to(device, dtype=torch.float32))
-            eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
-            x_f1 = psf_torch.div(x_f[:, 0], x_f_mean[:, 0] + eps)
-            x_f2 = psf_torch.div(x_f[:, 1], x_f_mean[:, 0] + eps)
             
-            #x_f3 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
-            #x_f4 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
-
-            #x1 = psf_torch.ifft(x_f1)
-            #x2 = psf_torch.ifft(x_f2)
-
-            x_f1 = torch.unsqueeze(x_f1, 1)
-            x_f2 = torch.unsqueeze(x_f2, 1)
-
-            #x_f3 = torch.unsqueeze(x_f3, 1)
-
-            x = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
+            x = None
+            
+            for ch_ind in np.arange(x_f.size()[1], step=2):
+                x_f_ch = x_f[:, ch_ind:ch_ind+2]
+            
+                x_f_mean = torch.mean(x_f_ch, dim=[0, 1], keepdim=True)
+                #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter2)).to(device, dtype=torch.float32))
+                eps = psf_torch.to_complex(torch.tensor(1e-10)).to(device, dtype=torch.float32)
+                x_f1 = psf_torch.div(x_f_ch[:, 0], x_f_mean[:, 0] + eps)
+                x_f2 = psf_torch.div(x_f_ch[:, 1], x_f_mean[:, 0] + eps)
+                
+                #x_f3 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
+                #x_f4 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
+    
+                #x1 = psf_torch.ifft(x_f1)
+                #x2 = psf_torch.ifft(x_f2)
+    
+                x_f1 = torch.unsqueeze(x_f1, 1)
+                x_f2 = torch.unsqueeze(x_f2, 1)
+    
+                #x_f3 = torch.unsqueeze(x_f3, 1)
+                if x is None:
+                    x = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
+                else:
+                    x = torch.cat([x, x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
 
             #x1 = torch.unsqueeze(x1, 1)
             

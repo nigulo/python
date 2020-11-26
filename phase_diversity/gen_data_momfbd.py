@@ -18,6 +18,7 @@ out_dir = "data_out"
 #nx = 96
 num_modes = 44
 use_zarr = True
+add_neighbours = True
 
 if use_zarr:
     import zarr
@@ -141,7 +142,10 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
 
     if num_objects is None:
         num_objects = npx*npy
-    if not shuffle:
+    if shuffle:
+        if add_neighbours:
+            num_objects *= 9
+    else:
         assert(num_objects <= npx*npy)
         npx *= num_objects/npx/npy
         npy *= num_objects/npx/npy
@@ -171,7 +175,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         coords = np.zeros((num_objects, 2), dtype=np.int16)
         handler = None
         
-
+    dixy = [0]
     # Randomly extract patches and times for selecting the bursts
     # This way of extracting the patches is slightly limited because I only consider
     # the MOMFBD patches. One can always extract patches of size 96x96 randomly
@@ -183,6 +187,9 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         indt = np.random.randint(low=0, high=n_full_frames-num_frames, size=num_objects)
         indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
         indy = np.random.randint(low=1, high=npy-1, size=num_objects) # Omit patches on the edges
+        
+        if add_neighbours:
+            dixy = [-1, 0, 1]
     else:
         indo = np.zeros(num_objects, dtype=int)
         assert(len(all_images) == 1)
@@ -191,15 +198,29 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         indt = np.zeros(num_objects, dtype="int")
         indx = np.repeat(np.arange(0, npx, dtype="int"), npy)
         indy = np.tile(np.arange(0, npy, dtype="int"), npx)
-        
+
+    dix = 0
+    diy = 0        
     alphas = np.asarray(alphas)
     for loop in tqdm(range(num_objects)):
 
-        x0 = xl[indx[loop]]
-        y0 = yl[indy[loop]]
+        ix = indx[loop]
+        iy = indy[loop]
+
+        ix += dixy[dix]
+        iy += dixy[diy]
+        dix += 1
+        if dix >= len(dixy):
+            dix = 0
+            diy += 1
+            if diy >= len(dixy):
+                diy = 0
         
-        dx = tmp['dy'][indx[loop], indy[loop], 1]
-        dy = tmp['dx'][indx[loop], indy[loop], 1]
+        x0 = xl[ix]
+        y0 = yl[iy]
+        
+        dx = tmp['dy'][ix, iy, 1]
+        dy = tmp['dx'][ix, iy, 1]
         
         #print("dx, dy", tmp['dy'][indx[loop], indy[loop]], tmp['dx'][indx[loop], indy[loop]], indx[loop], indy[loop])
         #if (indx[loop] == 0 or indx[loop] == npx-1 or indy[loop] == 0 or indy[loop] == npy-1):
@@ -209,7 +230,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         #    print("Setting zero")
         if objs is not None:
             if len(objs_momfbd) > indt[loop]:
-                objs[loop] = objs_momfbd[indt[loop]][indx[loop], indy[loop]]
+                objs[loop] = objs_momfbd[indt[loop]][ix, iy]
         #for i in range(num_frames):
         #    Ds[loop, i, 0] = images[indt[loop]+i][x0:x0+nx,y0:y0+nx]
         #    Ds[loop, i, 1] = images_defocus[indt[loop]+i][x0+dx:x0+nx+dx,y0+dy:y0+nx+dy]
@@ -245,7 +266,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         defocus_image = np.pad(defocus_image, ((0, 0), (pad_left, pad_right), (pad_bottom, pad_top)), mode='constant')
         #print(defocus_image.shape)
         Ds[loop, :num_frames, 1] = defocus_image[:,x_left:x_right,y_bottom:y_top]
-        momfbd_coefs[loop, :num_frames] = alphas[start_index:end_index,indx[loop],indy[loop],:]
+        momfbd_coefs[loop, :num_frames] = alphas[start_index:end_index,ix,iy,:]
         #if abs(dx) > 5 or abs(dy) > 5:
         #    my_test_plot = plot.plot()
         #    my_test_plot.colormap(Ds[loop, 0, 0], show_colorbar=True)
@@ -260,8 +281,8 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         #    my_test_plot.save(f"{out_dir}/image{loop}_defocus2.png")
         #    my_test_plot.close()
         
-        positions[loop, 0] = indx[loop]
-        positions[loop, 1] = indy[loop]
+        positions[loop, 0] = ix
+        positions[loop, 1] = iy
         
         coords[loop, 0] = x0
         coords[loop, 1] = y0
