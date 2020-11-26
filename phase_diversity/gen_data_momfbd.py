@@ -164,6 +164,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         momfbd_coefs = handler.create_dataset('alphas', shape=(num_objects, num_frames, num_modes), chunks=(max(num_objects//100, 1), num_frames, num_modes), compressor=None, dtype=np.float32)
         positions = handler.create_dataset('positions', shape=(num_objects, 2), dtype=np.int16, compressor=None)
         coords = handler.create_dataset('coords', shape=(num_objects, 2), dtype=np.int16, compressor=None)
+        neighbours = handler.create_dataset('neighbours', shape=(num_objects, 8), dtype=np.int16, compressor=None)
     else:
         Ds = np.zeros((num_objects, num_frames, 2, nx, nx), dtype=np.int16)
         if train:
@@ -173,6 +174,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         momfbd_coefs = np.zeros((num_objects, num_frames, num_modes), dtype=np.float32)
         positions = np.zeros((num_objects, 2), dtype=np.int16)
         coords = np.zeros((num_objects, 2), dtype=np.int16)
+        neighbours = np.zeros((num_objects, 8), dtype=np.int16)
         handler = None
         
     dixy = [0]
@@ -286,8 +288,27 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         
         coords[loop, 0] = x0
         coords[loop, 1] = y0
+    
+    neighbour_counts = np.zeros(num_objects, dtype="int")
+    for obj_ind1 in range(num_objects):
+        pos1 = positions[obj_ind1]
+        x1 = pos1[0]
+        y1 = pos1[1]
+        for obj_ind2 in np.arange(obj_ind1 + 1, num_objects):
+            pos1 = positions[obj_ind1]
+            x2 = pos1[0]
+            y2 = pos1[1]
+            if abs(x2 - x1) <= 1 and abs(y2 - y1) <= 1:
+                neighbours[obj_ind1, neighbour_counts[obj_ind1]] = obj_ind2
+                neighbour_counts[obj_ind1] = neighbour_counts[obj_ind1] + 1
+                neighbours[obj_ind2, neighbour_counts[obj_ind2]] = obj_ind1
+                neighbour_counts[obj_ind2] = neighbour_counts[obj_ind2] + 1
+    for obj_ind in range(num_objects):
+        for count in np.arange(neighbour_counts[obj_ind], 8):
+            neighbours[obj_ind, count] = -1
         
-    return Ds, objs, momfbd_coefs, positions, coords, handler
+        
+    return Ds, objs, momfbd_coefs, positions, coords, handler, neighbours
 
 
 if __name__ == '__main__':
@@ -299,7 +320,7 @@ if __name__ == '__main__':
     files.sort()
 
     # Training set
-    Ds, objs, momfbd_coefs, positions, coords, handler = generate_set(dir_name, files, num_objects=n_objects, num_frames=n_frames, shuffle=shuffle)
+    Ds, objs, momfbd_coefs, positions, coords, handler, neighbours = generate_set(dir_name, files, num_objects=n_objects, num_frames=n_frames, shuffle=shuffle)
 
     nx = Ds.shape[3]
     tmp = io.readsav(files[0])
@@ -328,7 +349,7 @@ if __name__ == '__main__':
 
     if not use_zarr:
         np.savez_compressed(out_dir + '/Ds', Ds=Ds, objs=objs, pupil=pupil, modes=modes, diversity=diversity, 
-                        alphas=momfbd_coefs, positions=positions, coords=coords)
+                        alphas=momfbd_coefs, positions=positions, coords=coords, neighbours=neighbours)
     else:
         pupil_zarr = handler.create_dataset('pupil', shape=pupil.shape, compressor=None)
         modes_zarr = handler.create_dataset('modes', shape=modes.shape, compressor=None)

@@ -251,7 +251,11 @@ def load_data(data_file):
         coords = loaded['coords'][:]
     except:
         coords = None
-    return Ds, objs, pupil, modes, diversity, coefs, positions, coords
+    try:
+        neighbours = loaded['neighbours'][:]
+    except:
+        neighbours = None
+    return Ds, objs, pupil, modes, diversity, coefs, positions, coords, neighbours
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -293,7 +297,7 @@ class Dataset(torch.utils.data.Dataset):
                 break
             index -= self.num_rows[data_index]
 
-        Ds, objs, diversity, positions, coords = self.datasets[data_index]
+        Ds, objs, diversity, positions, coords, neighbours = self.datasets[data_index]
 
         num_frames = Ds.shape[1]
         
@@ -315,30 +319,25 @@ class Dataset(torch.utils.data.Dataset):
             
             if use_neighbours:
                 ind_out = num_ch // 2
-                max_pos = self.max_pos[data_index]
-                num_neighbours = 8
-                if pos_x == 0 or pos_x == max_pos[0]:
-                    num_neighbours -= 3
-                if pos_y == 0 or pos_y == max_pos[1]:
-                    num_neighbours -= 3
-                if num_neighbours == 2: # corner
-                    num_neighbours = 3
-                num_found = 0
-                # First look around the given object
-                for ind in np.arange(max(obj_index-num_neighbours, 0), min(obj_index+num_neighbours+1, Ds.shape[0]-1)):
-                    pos = positions[ind]
-                    if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
-                        if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
-                            if pos[0] != pos_x or pos[1] != pos_y:
-                                Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
-                                ind_out += 2
-                                num_found += 1
-                                if num_found == num_neighbours:
-                                    break
-                # Now make full search
-                if num_found < num_neighbours:
-                    ind = 0
-                    for pos in positions:
+                if neighbours is not None:
+                    for ind in neighbours[obj_index]:
+                        if ind >= 0:
+                            Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
+                            ind_out += 2
+                else:
+                    # Just for backward compatibility
+                    max_pos = self.max_pos[data_index]
+                    num_neighbours = 8
+                    if pos_x == 0 or pos_x == max_pos[0]:
+                        num_neighbours -= 3
+                    if pos_y == 0 or pos_y == max_pos[1]:
+                        num_neighbours -= 3
+                    if num_neighbours == 2: # corner
+                        num_neighbours = 3
+                    num_found = 0
+                    # First look around the given object
+                    for ind in np.arange(max(obj_index-num_neighbours, 0), min(obj_index+num_neighbours+1, Ds.shape[0]-1)):
+                        pos = positions[ind]
                         if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
                             if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
                                 if pos[0] != pos_x or pos[1] != pos_y:
@@ -347,7 +346,19 @@ class Dataset(torch.utils.data.Dataset):
                                     num_found += 1
                                     if num_found == num_neighbours:
                                         break
-                        ind += 1
+                    # Now make full search
+                    if num_found < num_neighbours:
+                        ind = 0
+                        for pos in positions:
+                            if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
+                                if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
+                                    if pos[0] != pos_x or pos[1] != pos_y:
+                                        Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
+                                        ind_out += 2
+                                        num_found += 1
+                                        if num_found == num_neighbours:
+                                            break
+                            ind += 1
                 # Fill void patches if the object was on the edge of field
                 for ind_out in np.arange(ind_out, num_ch, step=2):
                     Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
@@ -1896,17 +1907,17 @@ if train:
 
     datasets = []
     
-    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords, neighbours = load_data(data_files[0])
     
-    datasets.append((Ds, objs, diversity, positions, coords))
+    datasets.append((Ds, objs, diversity, positions, coords, neighbours))
     
     for data_file in data_files[1:]:
-        Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3 = load_data(data_file)
+        Ds3, objs3, pupil3, modes3, diversity3, true_coefs3, positions3, coords3, neighbours3 = load_data(data_file)
         Ds3 = Ds3[:,:Ds.shape[1]]
         #Ds = np.concatenate((Ds, Ds3))
         #objs = np.concatenate((objs, objs3))
         #positions = np.concatenate((positions, positions3))
-        datasets.append((Ds3, objs3, diversity3, positions3, coords3))
+        datasets.append((Ds3, objs3, diversity3, positions3, coords3, neighbours3))
 
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -1917,14 +1928,16 @@ if train:
         num_data += len(d[0])
     
     try:
-        Ds_test, objs_test, _, _, _, _, positions_test, _ = load_data(data_files[0]+"_valid")
+        Ds_test, objs_test, _, _, _, _, positions_test, _, neighbours_test = load_data(data_files[0]+"_valid")
         n_test = min(Ds_test.shape[0], 10)
         Ds_test = Ds_test[:n_test, :min(Ds_test.shape[1], num_frames)]
         objs_test = objs_test[:n_test]
         positions_test = positions_test[:n_test]
+        neighbours_test = neighbours_test[:n_test]
 
         objs_train = objs
         positions_train = positions
+        neighbours_train = neighbours
 
         n_train = num_data
         print("validation set: ", data_files[0]+"_valid")
@@ -1938,9 +1951,9 @@ if train:
         print("n_train, n_test", n_train, n_test)
 
         if n_test == len(datasets[-1][0]):
-            Ds_test, objs_test, _, positions_test = datasets.pop()
+            Ds_test, objs_test, _, positions_test, _, neighbours_test = datasets.pop()
         else:
-            Ds_last, objs_last, diversity_last, positions_last, coords_last = datasets[-1]
+            Ds_last, objs_last, diversity_last, positions_last, coords_last, neighbours_last = datasets[-1]
             Ds_train = Ds_last[:-n_test]
             Ds_test = Ds_last[-n_test:]
             if objs_last is not None:
@@ -1961,7 +1974,13 @@ if train:
             else:
                 coords_train = None
                 coords_test = None
-            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train, coords_train)
+            if neighbours_last is not None:
+                neighbours_train = neighbours_last[:-n_test]
+                neighbours_test = neighbours_last[-n_test:]
+            else:
+                neighbours_train = None
+                neighbours_test = None
+            datasets[-1] = (Ds_train, objs_train, diversity_last, positions_train, coords_train, neighbours_train)
             
     print("num_frames", Ds.shape[1])
 
@@ -2076,7 +2095,7 @@ if train:
     model = NN(jmax, nx, num_frames, pupil, modes)
     model.init()
 
-    model.set_data([(Ds_test, objs_test, diversity, positions_test, coords)], train_data=False)
+    model.set_data([(Ds_test, objs_test, diversity, positions_test, coords, neighbours_test)], train_data=False)
     model.set_data(datasets, train_data=True)
     for rep in np.arange(0, num_reps):
         
@@ -2112,7 +2131,7 @@ else:
     #Ds, images, pupil, modes, diversity, true_coefs = gen_data.gen_data(images, n_test_frames, num_images=num_objs)
 
     
-    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords = load_data(data_files[0])
+    Ds, objs, pupil, modes, diversity, true_coefs, positions, coords, neighbours = load_data(data_files[0])
 
     nx = Ds.shape[3]
     jmax = len(modes)
@@ -2171,6 +2190,7 @@ else:
     objs = objs[filtr]
     positions = positions[filtr]
     coords = coords[filtr]
+    neighbours = neighbours[filtr]
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
 
     # TODO: Comment out #######################################################
@@ -2227,6 +2247,6 @@ else:
     model = NN(jmax, nx, n_test_frames, pupil, modes)
     model.init()
 
-    model.do_test((Ds, objs, diversity, positions, coords), "test", true_coefs=true_coefs)
+    model.do_test((Ds, objs, diversity, positions, coords, neighbours), "test", true_coefs=true_coefs)
 
 #logfile.close()
