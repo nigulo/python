@@ -46,13 +46,15 @@ class plot:
         self.axis_units_font_size = 2.5*max(width, height)
         self.nrows = nrows
         self.ncols = ncols
+        self.width = width
+        self.height = height
         self.used_axis = set()
         
         if type(smart_axis) == str :
             self.smart_axis = smart_axis
         else:
             self.smart_axis = ""
-        
+
 
     def set_axis_title_font_size(self, axis_title_font_size):
         self.axis_title_font_size = axis_title_font_size
@@ -62,6 +64,15 @@ class plot:
 
     def set_axis_utits_font_size(self, axis_units_font_size):
         self.axis_units_font_size = axis_units_font_size
+
+
+    def rescale_axis_title_font_size(self, scale):
+        self.axis_title_font_size *= scale
+    def rescale_axis_label_font_size(self, scale):
+        self.axis_label_font_size *= scale
+
+    def rescale_axis_utits_font_size(self, scale):
+        self.axis_units_font_size *= scale
         
     '''
         cmap - "bwr", "binary", "winter", "Greys", etc...
