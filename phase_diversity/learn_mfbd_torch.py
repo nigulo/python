@@ -1491,7 +1491,7 @@ class NN(nn.Module):
         if nn_mode == MODE_1:
             
             losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs, tt_mean = self.do_epoch(Ds_test_loader, train=False)
-            losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs, tt_mean = self.do_epoch(Ds_test_loader, train=False, tt_mean=tt_mean)
+            #losses, pred_alphas, _, dens, nums_conj, psf_f, wf, DDs, tt_mean = self.do_epoch(Ds_test_loader, train=False, tt_mean=tt_mean)
 
         elif nn_mode >= MODE_2:
             print("Not implemented")
@@ -1664,8 +1664,9 @@ class NN(nn.Module):
                     num_plot_frames = 5
                     frame_step = nf//num_plot_frames
                     my_test_plot = plot.plot(nrows=num_plot_frames, ncols=6, width=4.5, height=4)
+                    my_test_plot.rescale_axis_title_font_size(1.3)
                     row = 0
-                    zoom_start = psf_true.shape[2]//3
+                    zoom_start = psf_true.shape[2]//4
                     zoom_end = psf_true.shape[2] - zoom_start
                     for j in np.arange(nf):
                         if row < num_plot_frames and j % frame_step == 0:
@@ -1826,7 +1827,8 @@ class NN(nn.Module):
             #my_test_plot.save(f"{dir_name}/hanning.png")
             #my_test_plot.close()
 
-            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(400, 160))
+            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(500, 200))
+            my_test_plot.rescale_axis_utits_font_size(.5)
             
             
             #avg1 = np.mean(full_reconstr_true, axis=0)
