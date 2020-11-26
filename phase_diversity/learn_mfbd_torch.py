@@ -449,7 +449,7 @@ class Dataset(torch.utils.data.Dataset):
                 break
             index -= self.num_rows[data_index]
 
-        Ds, objs, diversity, positions, coords = self.datasets[data_index]
+        Ds, objs, diversity, positions, coords, neighbours = self.datasets[data_index]
 
         num_frames = Ds.shape[1]
         
