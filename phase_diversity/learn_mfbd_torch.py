@@ -300,9 +300,9 @@ class Dataset(torch.utils.data.Dataset):
         #print("index, obj_index, frame_index", index, obj_index, frame_index, Ds.shape)
         num_ch = 2
         if use_neighbours:
-            num_ch *= 9
+            num_ch = 32
         Ds_out = np.empty((num_ch, Ds.shape[3], Ds.shape[4])).astype('float32')
-        Ds_out[:2] = np.array(Ds[obj_index, frame_index, :, :, :])
+        Ds_out[:2] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (8, 1, 1))  
         
         #Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
         #Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
@@ -313,7 +313,7 @@ class Dataset(torch.utils.data.Dataset):
             
             if use_neighbours:
                 ind = 0
-                ind_out = 2
+                ind_out = num_ch // 2
                 for pos in positions:
                     if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
                         if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
@@ -322,7 +322,7 @@ class Dataset(torch.utils.data.Dataset):
                                 ind_out += 2
                     ind += 1
                 # Fill void patches if the object was on the edge of field
-                for ind_out in np.arange(ind_out, 18, step=2):
+                for ind_out in np.arange(ind_out, num_ch, step=2):
                     Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
                     
 
@@ -615,7 +615,7 @@ class NN(nn.Module):
             num_in_channels = 4
             
         if use_neighbours:
-            num_in_channels *= 9
+            num_in_channels = 32
 
         self.layers1 = nn.ModuleList()
 
