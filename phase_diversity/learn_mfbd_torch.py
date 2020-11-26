@@ -1787,7 +1787,7 @@ class NN(nn.Module):
             #my_test_plot.save(f"{dir_name}/hanning.png")
             #my_test_plot.close()
 
-            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(500, 200))
+            my_test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(400, 160))
             
             
             #avg1 = np.mean(full_reconstr_true, axis=0)
@@ -1806,13 +1806,15 @@ class NN(nn.Module):
             #spec = misc.normalize(spec, axis=1)
             #spec = fft.fftshift(spec)
             #freqs = fft.fftshift(freqs)
-            my_test_plot.plot(freqs, spec[0], params="k:")
+            
+            #my_test_plot.plot(freqs, spec[0], params="k:")
             my_test_plot.plot(freqs, spec[1], params="r-")
             my_test_plot.plot(freqs, spec[2], params="g-")
             my_test_plot.plot(freqs, spec[3], params="b-")
             my_test_plot.set_log()
             my_test_plot.set_axis_limits(limits = [[0, np.max(freqs)], [1e-9, 1]])
-            my_test_plot.legend(legends=["MOMFBD 1", "MOMFBD 2", "NN", "Raw"])
+            my_test_plot.legend(legends=["MOMFBD", "NN", "Raw"])
+            #my_test_plot.legend(legends=["MOMFBD 1", "MOMFBD 2", "NN", "Raw"])
 
             my_test_plot.save(f"{dir_name}/spec.png")
             my_test_plot.close()
