@@ -2192,7 +2192,8 @@ else:
     objs = objs[filtr]
     positions = positions[filtr]
     coords = coords[filtr]
-    neighbours = neighbours[filtr]
+    if neighbours is not None:
+        neighbours = neighbours[filtr]
     true_coefs = true_coefs[filtr, :stride*n_test_frames:stride]
 
     # TODO: Comment out #######################################################
