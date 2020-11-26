@@ -636,13 +636,17 @@ class NN(nn.Module):
                                       mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, device=device)
         
         num_in_channels = 2
+        if use_neighbours:
+            num_in_channels = 32
         if input_type == INPUT_FOURIER:
             num_in_channels = 6
+            if use_neighbours:
+                num_in_channels = 32 + 64
         elif input_type == INPUT_FOURIER_RATIO:
             num_in_channels = 4
             
-        if use_neighbours:
-            num_in_channels = 32
+            if use_neighbours:
+                num_in_channels = 64
 
         self.layers1 = nn.ModuleList()
 
