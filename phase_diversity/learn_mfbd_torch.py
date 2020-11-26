@@ -271,7 +271,7 @@ class Dataset(torch.utils.data.Dataset):
         #self.num_frames = None
         self.num_objs = 0
         for i in range(len(datasets)):
-            Ds, objs, diversity, positions, coords = datasets[i]
+            Ds, objs, diversity, positions, coords, neighbours = datasets[i]
             num_objects = Ds.shape[0]
             self.num_objs += num_objects
             num_frames = Ds.shape[1]
