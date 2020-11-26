@@ -325,7 +325,7 @@ class Dataset(torch.utils.data.Dataset):
                     num_neighbours = 3
                 num_found = 0
                 # First look around the given object
-                for ind in np.arange(max(obj_index-num_neighbours, 0), max(obj_index+num_neighbours+1, Ds.shape[0]-1)):
+                for ind in np.arange(max(obj_index-num_neighbours, 0), min(obj_index+num_neighbours+1, Ds.shape[0]-1)):
                     pos = positions[ind]
                     if pos[0] >= pos_x - 1 and pos[0] <= pos_x + 1:
                         if pos[1] >= pos_y - 1 and pos[1] <= pos_y + 1:
