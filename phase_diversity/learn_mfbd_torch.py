@@ -304,7 +304,7 @@ class Dataset(torch.utils.data.Dataset):
         if use_neighbours:
             num_ch = 32
         Ds_out = np.empty((num_ch, Ds.shape[3], Ds.shape[4])).astype('float32')
-        Ds_out[:2] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (8, 1, 1))  
+        Ds_out[:16] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (8, 1, 1))  
         
         #Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
         #Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
