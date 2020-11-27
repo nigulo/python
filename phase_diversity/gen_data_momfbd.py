@@ -185,7 +185,8 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     # obtained with MOMFBD but since now we are training self-supervisedly, this is not a limitation anymore
     # Anyway, one should recompute the diversity in this case
     if shuffle:
-        indo = np.random.randint(low=0, high=n_full_objs, size=num_objects)
+        indo = np.random.choice(n_full_objs, size=num_objects, replace=False)
+        #indo = np.random.randint(low=0, high=n_full_objs, size=num_objects)
         indt = np.random.randint(low=0, high=n_full_frames-num_frames, size=num_objects)
         indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
         indy = np.random.randint(low=1, high=npy-1, size=num_objects) # Omit patches on the edges
@@ -299,10 +300,12 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
             x2 = pos1[0]
             y2 = pos1[1]
             if abs(x2 - x1) <= 1 and abs(y2 - y1) <= 1:
-                neighbours[obj_ind1, neighbour_counts[obj_ind1]] = obj_ind2
-                neighbour_counts[obj_ind1] = neighbour_counts[obj_ind1] + 1
-                neighbours[obj_ind2, neighbour_counts[obj_ind2]] = obj_ind1
-                neighbour_counts[obj_ind2] = neighbour_counts[obj_ind2] + 1
+                if neighbour_counts[obj_ind1] < 8:
+                    neighbours[obj_ind1, neighbour_counts[obj_ind1]] = obj_ind2
+                    neighbour_counts[obj_ind1] = neighbour_counts[obj_ind1] + 1
+                if neighbour_counts[obj_ind2] < 8:
+                    neighbours[obj_ind2, neighbour_counts[obj_ind2]] = obj_ind1
+                    neighbour_counts[obj_ind2] = neighbour_counts[obj_ind2] + 1
     for obj_ind in range(num_objects):
         for count in np.arange(neighbour_counts[obj_ind], 8):
             neighbours[obj_ind, count] = -1
