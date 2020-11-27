@@ -185,7 +185,10 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
     # obtained with MOMFBD but since now we are training self-supervisedly, this is not a limitation anymore
     # Anyway, one should recompute the diversity in this case
     if shuffle:
-        indo = np.random.choice(n_full_objs, size=num_objects, replace=False)
+        replace = False
+        if num_objects > n_full_objs:
+            replace = True
+        indo = np.random.choice(n_full_objs, size=num_objects, replace=replace)
         #indo = np.random.randint(low=0, high=n_full_objs, size=num_objects)
         indt = np.random.randint(low=0, high=n_full_frames-num_frames, size=num_objects)
         indx = np.random.randint(low=1, high=npx-1, size=num_objects) # Omit patches on the edges
