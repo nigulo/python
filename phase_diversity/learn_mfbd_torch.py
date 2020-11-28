@@ -323,7 +323,9 @@ class Dataset(torch.utils.data.Dataset):
                 ind_out = num_ch // 2
                 if neighbours is not None:
                     for ind in neighbours[obj_index]:
-                        if ind >= 0:
+                        # The neighbouring patch may not exist in this dataset
+                        # due to the split to train and validation sets
+                        if ind >= 0 and ind < Ds.shape[0]:
                             Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
                             ind_out += 2
                 else:
