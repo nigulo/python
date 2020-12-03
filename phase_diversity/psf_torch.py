@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
 
-__DEBUG__ = False
+__DEBUG__ = True
 if __DEBUG__:
     import plot
 
@@ -363,19 +363,18 @@ class psf_torch():
         self.mode = mode
         self.sum_over_batch = sum_over_batch
         
-        if fltr is not None:
-            #self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.complex64)
-            self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.float32)
-        else:
-            self.fltr = self.critical_sampling()
-
-            
         self.jmax_used = None
         self.tt_weight = torch.tensor(tt_weight).to(self.device, dtype=torch.float32)
         #self.zero_avg_tiptilt = zero_avg_tiptilt
         
         self.eps = torch.tensor(1e-10).to(self.device, dtype=torch.float32)
         self.eps_complex = to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
+
+        if fltr is not None:
+            #self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.complex64)
+            self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.float32)
+        else:
+            self.fltr = self.critical_sampling()
 
 
     def set_num_frames(self, num_frames):
