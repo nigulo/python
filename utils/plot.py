@@ -285,6 +285,7 @@ class plot:
         if key is not None and key != '':
             ax.quiverkey(q, X=0.3, Y=1.1, U=10,
                  label=key, labelpos='E')
+        self.post_processing(ax)
 
     def get_axis_limits(self, ax_index = None):
         ax = self.get_ax(ax_index)
@@ -449,6 +450,7 @@ class plot:
         ax = self.get_ax(ax_index)
         hist, bin_edges = np.histogram(data, bins = bins)
         ax.bar(bin_edges[:-1], hist, width=(bin_edges[-1]-bin_edges[0])/bins)
+        self.post_processing(ax)
 
 
     def fill(self, x, y_lower, y_upper, ax_index = [], color="lightsalmon", alpha=0.8):
@@ -465,6 +467,7 @@ class plot:
         fig, ax = plt.subplots(nrows=samples.shape[1], ncols=samples.shape[1])
         fig.set_size_inches(6, 6)
         triangle.corner(samples[:,:], labels=labels, fig=self.fig)
+        self.post_processing(ax)
         
 
     def save(self, file_name):
