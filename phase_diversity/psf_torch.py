@@ -586,6 +586,7 @@ class psf_torch():
         if DD is not None:
             loss += torch.sum(DD)
         
+        self.critical_sampling()
         H = self.calc_filter(mul(DP, DP_conj), PP)
         #H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
         F_image = mul(F_image, H)
@@ -746,3 +747,27 @@ class psf_torch():
             return loss, num, den, DP_conj, DD, DP_real, DP_imag, PP, Ps, wf, DD
 
     
+    def critical_sampling(self, threshold=1e-3):
+    
+        otf = self.calc_airy(diversity=None)
+        
+        coefs = np.abs(otf[0, :, :])
+        
+        if __DEBUG__:
+            my_plot = plot.plot()
+            my_plot.hist(coefs, bins=100)
+            my_plot.save("transfer_func_hist.png")
+            my_plot.close()
+        
+        mask = np.ones_like(coefs)
+        zeros = torch.zeros_like(mask).to(self.device, dtype=torch.float32)
+        mask = mask.where(coefs < threshold, zeros, mask)
+        
+        if __DEBUG__:
+            my_plot = plot.plot(nrows=2)
+            my_plot.colormap(fft.fftshift(coefs), [0])
+            my_plot.colormap(fft.fftshift(mask), [1])
+            my_plot.save("transfer_func.png")
+            my_plot.close()
+        
+        return mask
