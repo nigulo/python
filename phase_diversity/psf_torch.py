@@ -750,23 +750,23 @@ class psf_torch():
     def critical_sampling(self, threshold=1e-3):
     
         otf = self.calc_airy(diversity=np.zeros((self.nx, self.nx)))
-        
-        coefs = np.abs(otf[0, :, :])
+        print("OFT", otf.size())
+        coefs = torch.abs(otf[0, :, :])
         
         if __DEBUG__:
             my_plot = plot.plot()
-            my_plot.hist(coefs, bins=100)
+            my_plot.hist(coefs.cpu().numpy(), bins=100)
             my_plot.save("transfer_func_hist.png")
             my_plot.close()
         
-        mask = np.ones_like(coefs)
+        mask = torch.ones_like(coefs)
         zeros = torch.zeros_like(mask).to(self.device, dtype=torch.float32)
         mask = mask.where(coefs < threshold, zeros, mask)
         
         if __DEBUG__:
             my_plot = plot.plot(nrows=2)
-            my_plot.colormap(fft.fftshift(coefs), [0])
-            my_plot.colormap(fft.fftshift(mask), [1])
+            my_plot.colormap(coefs.cpu().numpy(), [0])
+            my_plot.colormap(mask.cpu().numpy(), [1])
             my_plot.save("transfer_func.png")
             my_plot.close()
         
