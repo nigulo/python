@@ -136,6 +136,8 @@ if nn_mode == MODE_1:
     input_type = INPUT_FOURIER_RATIO
     
     tt_calib = False
+    pass_through = True
+    use_lstm = True
     
     
 elif nn_mode == MODE_2:
@@ -830,11 +832,14 @@ class NN(nn.Module):
         for layer in self.layers2:
             x = layer(x)
 
-        # We want to use LSTM over the whole batch,
-        # so we make first dimension of size 1
-        #num_chunks = batch_size//16
-        #x = x.view(num_chunks, x.size()[0]//num_chunks, x.size()[1])
-        x = x.unsqueeze(dim=0)
+        if tip_tilt_separated or use_lstm:
+            if pass_through:
+                x1 = x
+            # We want to use LSTM over the whole batch,
+            # so we make first dimension of size 1
+            #num_chunks = batch_size//16
+            #x = x.view(num_chunks, x.size()[0]//num_chunks, x.size()[1])
+            x = x.unsqueeze(dim=0)
         if tip_tilt_separated:
             x_high, _ = self.lstm_high(x)
             #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
@@ -854,7 +859,7 @@ class NN(nn.Module):
             x_low, _ = self.lstm_low(x[:, 1:, :])
             #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
             x_low = x_low.squeeze()
-    
+            
             i = len(self.layers3_low)
             # Fully connected layers
             for layer in self.layers3_low:
@@ -879,10 +884,13 @@ class NN(nn.Module):
             x = x.view(-1, jmax)
                 
         else:
-            x, _ = self.lstm(x)
-            #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
-            x = x.squeeze()
-    
+            if use_lstm:
+                x, _ = self.lstm(x)
+                #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
+                x = x.squeeze()
+            
+            if use_lstm and pass_through:
+                x = x + x1
             # Fully connected layers
             for layer in self.layers3:
                 x = layer(x)
