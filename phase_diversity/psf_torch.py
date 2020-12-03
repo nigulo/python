@@ -749,7 +749,7 @@ class psf_torch():
     
     def critical_sampling(self, threshold=1e-3):
     
-        otf = self.calc_airy(diversity=None)
+        otf = self.calc_airy(diversity=np.zeros((self.nx, self.nx)))
         
         coefs = np.abs(otf[0, :, :])
         
