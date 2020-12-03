@@ -751,7 +751,7 @@ class psf_torch():
     
         otf = self.calc_airy(diversity=np.zeros((self.nx, self.nx)))
         print("OFT", otf.size())
-        coefs = torch.abs(otf[0, :, :])
+        coefs = torch.sqrt(real(mul(otf[0], conj(otf[0]))))
         
         if __DEBUG__:
             my_plot = plot.plot()
@@ -761,7 +761,7 @@ class psf_torch():
         
         mask = torch.ones_like(coefs)
         zeros = torch.zeros_like(mask).to(self.device, dtype=torch.float32)
-        mask = mask.where(coefs < threshold, zeros, mask)
+        mask = torch.where(coefs < threshold, zeros, mask)
         
         if __DEBUG__:
             my_plot = plot.plot(nrows=2)
