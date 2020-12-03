@@ -209,7 +209,6 @@ print(f"Device : {device}")
 import config
 import misc
 import plot
-import psf
 import psf_torch
 import utils
 #import gen_images
@@ -613,8 +612,7 @@ class NN(nn.Module):
         self.data_index = 0
         
         self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
-        self.filter = utils.create_filter(nx, freq_limit = 1.)
-        self.filter2 = utils.create_filter(nx, freq_limit = .4)
+        #self.filter = utils.create_filter(nx, freq_limit = .4)
         #self.pupil = pupil[nx//4:nx*3//4,nx//4:nx*3//4]
         #self.modes = modes[:, nx//4:nx*3//4,nx//4:nx*3//4]
 
@@ -630,13 +628,13 @@ class NN(nn.Module):
         self.pupil_orig = pupil
 
          
-        pa_check = psf.phase_aberration(len(modes), start_index=1)
-        pa_check.set_terms(modes)
-        ctf_check = psf.coh_trans_func()
-        ctf_check.set_phase_aberr(pa_check)
-        ctf_check.set_pupil(pupil)
-        #ctf_check.set_diversity(diversity[i, j])
-        self.psf_check = psf.psf(ctf_check, corr_or_fft=False)
+        #pa_check = psf.phase_aberration(len(modes), start_index=1)
+        #pa_check.set_terms(modes)
+        #ctf_check = psf.coh_trans_func()
+        #ctf_check.set_phase_aberr(pa_check)
+        #ctf_check.set_pupil(pupil)
+        ##ctf_check.set_diversity(diversity[i, j])
+        #self.psf_check = psf.psf(ctf_check, corr_or_fft=False)
         
         pa = psf_torch.phase_aberration_torch(len(modes), start_index=1, device=device)
         pa.set_terms(modes)
@@ -646,11 +644,11 @@ class NN(nn.Module):
         #ctf.set_diversity(diversity[i, j])
         batch_size_per_gpu = max(1, batch_size//max(1, n_gpus))
         self.psf = psf_torch.psf_torch(ctf, num_frames=1, batch_size=batch_size_per_gpu, set_diversity=True, 
-                                 mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, tt_weight=tt_weight, device=device)
+                                 mode=nn_mode, sum_over_batch=sum_over_batch, tt_weight=tt_weight, device=device)
         print("batch_size_per_gpu", batch_size_per_gpu)
         
         self.psf_test = psf_torch.psf_torch(ctf, num_frames=n_test_frames, batch_size=1, set_diversity=True, 
-                                      mode=nn_mode, sum_over_batch=sum_over_batch, fltr=self.filter, device=device)
+                                      mode=nn_mode, sum_over_batch=sum_over_batch, device=device)
         
         num_in_channels = 2
         if use_neighbours:
@@ -1366,7 +1364,8 @@ class NN(nn.Module):
             #    DF[l, 0] = fft.fft2(D)
             #    DF[l, 1] = fft.fft2(D_d)
                 
-            DFs = []
+            Ds_ = []
+            #DFs = []
             alphas = []
             if pred_alphas is not None:
                 for j in range(i, self.Ds_validation.length()):
@@ -1376,9 +1375,10 @@ class NN(nn.Module):
                             D_d = self.Ds_validation[j][0][2*l+1, :, :]
                             #D = misc.sample_image(Ds[j, :, :, 2*l], (2.*self.pupil.shape[0] - 1)/nx)
                             #D_d = misc.sample_image(Ds[j, :, :, 2*l+1], (2.*self.pupil.shape[0] - 1)/nx)
-                            DF = fft.fft2(D)
-                            DF_d = fft.fft2(D_d)
-                            DFs.append(np.array([DF, DF_d]))
+                            Ds_.append(np.array([D, D_d]))
+                            #DF = fft.fft2(D)
+                            #DF_d = fft.fft2(D_d)
+                            #DFs.append(np.array([DF, DF_d]))
                             alphas.append(pred_alphas[j, l*jmax:(l+1)*jmax])
                             #if len(alphas) > 32:
                             #    break
@@ -1387,25 +1387,28 @@ class NN(nn.Module):
                             #    break
                     #if len(alphas) >= n_test_frames:
                     #    break
-            #Ds_ = np.asarray(Ds_)
-            DFs = np.asarray(DFs, dtype="complex")
+            Ds_ = np.asarray(Ds_)
+            #DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
                 
             print("tip-tilt mean", np.mean(alphas[:, :2], axis=0))
             
             if pred_alphas is not None and obj is not None:
-                diversity = self.Ds_validation[i][1]#self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
-                #diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
-                self.psf_check.coh_trans_func.set_diversity(diversity)
-                #obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
-                obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
-                obj_reconstr = fft.ifftshift(obj_reconstr)
+                #diversity = self.Ds_validation[i][1]#self.Ds_train.diversities[i]#np.concatenate((self.Ds_train.diversities[i, :, :, 0], self.Ds_train.diversities[i, :, :, 1]))
+                ##diversity = np.concatenate((self.diversities[i, :, :, 0][nx//4:nx*3//4,nx//4:nx*3//4], self.diversities[i, :, :, 1][nx//4:nx*3//4,nx//4:nx*3//4]))
+                #self.psf_check.coh_trans_func.set_diversity(diversity)
+                ##obj_reconstr = self.psf_check.deconvolve(DF, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)), gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+                #obj_reconstr = self.psf_check.deconvolve(DFs, alphas=alphas, gamma=gamma, do_fft = True, fft_shift_before = False, ret_all=False, a_est=None, normalize = False, fltr=self.filter)
+                #obj_reconstr = fft.ifftshift(obj_reconstr)
+                
+                obj_reconstr = self.deconvolve(Ds_, alphas=alphas, diversity=diversity)
                 
                 #obj_reconstr = self.deconvolve(num_frames_input, pred_alphas[i], self.diversities[i], self.Ds[i])
                 
                 objs_reconstr.append(obj_reconstr)
                 #pred_Ds = self.psf_check.convolve(obj, alphas=np.reshape(pred_alphas[i], (num_frames_input, jmax)))
-                pred_Ds = self.psf_check.convolve(obj, alphas=alphas)
+                #pred_Ds = self.psf_check.convolve(obj, alphas=alphas)
+                pred_Ds = self.psf_test.aberrate(obj, alphas=alphas)
             #print("pred_alphas", i, pred_alphas[i])
 
             num_rows = 0
@@ -2055,54 +2058,6 @@ if train:
     #    my_test_plot.close()
         
 
-    ###########################################################################
-    # Null check of deconvolution
-    pa_check = psf.phase_aberration([])#len(modes), start_index=1)
-    pa_check.set_terms(np.array([]))#np.zeros((jmax, nx//2, nx//2)))#modes)
-    ctf_check = psf.coh_trans_func()
-    ctf_check.set_phase_aberr(pa_check)
-    ctf_check.set_pupil(pupil_check)
-    #ctf_check.set_diversity(diversity[i, j])
-    psf_check = psf.psf(ctf_check)
-
-    D = misc.sample_image(Ds[0, 0, 0], (nx - 1)/nx)
-    #D = plt.imread("tests/psf_tf_test_input.png")[0:95, 0:95]
-    #D = psf_check.critical_sampling(D, threshold=1e-3)
-
-    #hanning = utils.hanning(D.shape[0], 20)
-    #med = np.median(D)
-    #D -= med
-    #D = hanning.multiply(D)
-    #D += med
-    #D /= med
-    
-    D_d = D
-
-    #D = misc.sample_image(Ds[0, 0, 0], (2.*nx - 1)/nx)
-    #D_d = misc.sample_image(Ds[0, 0, 1], (2.*nx - 1)/nx)
-    DF = fft.fft2(D)
-    #DF[np.where(np.abs(DF) < np.std(D)/10)] = 0.
-    DF[-90:, -90:] = 0.
-    D1 = fft.ifft2(DF).real
-    DF_d = DF#fft.fft2(D)#fft.fft2(D_d)
-            
-    #diversity = np.concatenate((diversity[0, :, :, 0], diversity[0, :, :, 1]))
-    #self.psf_check.coh_trans_func.set_diversity(diversity)
-    psf_check.coh_trans_func.set_diversity(np.zeros((2, nx//2, nx//2)))
-    obj_reconstr = psf_check.deconvolve(np.array([[DF, DF_d]]), alphas=None, gamma=gamma, do_fft = True, fft_shift_before = False, 
-                                        ret_all=False, a_est=None, normalize = False)
-    obj_reconstr = fft.ifftshift(obj_reconstr)
-    #D1 = psf_check.convolve(D)
-
-    my_test_plot = plot.plot(nrows=1, ncols=3)
-    my_test_plot.colormap(D, [0], show_colorbar=True)
-    my_test_plot.colormap(D1, [1])
-    my_test_plot.colormap(obj_reconstr, [2])
-
-    my_test_plot.save(f"{dir_name}/null_deconv.png")
-    my_test_plot.close()
-
-    ###########################################################################
     n_test_frames = Ds_test.shape[1] # Necessary to be set (TODO: refactor)
     model = NN(jmax, nx, num_frames, pupil, modes)
     model.init()

@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
 
-__DEBUG__ = True
+__DEBUG__ = False
 if __DEBUG__:
     import plot
 
@@ -367,7 +367,8 @@ class psf_torch():
             #self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.complex64)
             self.fltr = torch.from_numpy(fltr).to(self.device, dtype=torch.float32)
         else:
-            self.fltr = None
+            self.fltr = self.critical_sampling()
+
             
         self.jmax_used = None
         self.tt_weight = torch.tensor(tt_weight).to(self.device, dtype=torch.float32)
@@ -586,7 +587,6 @@ class psf_torch():
         if DD is not None:
             loss += torch.sum(DD)
         
-        self.critical_sampling()
         H = self.calc_filter(mul(DP, DP_conj), PP)
         #H = to_complex(torch.from_numpy(utils.smart_fltr(real(H).cpu().numpy())).to(self.device, dtype=torch.float32))
         F_image = mul(F_image, H)
@@ -750,7 +750,6 @@ class psf_torch():
     def critical_sampling(self, threshold=1e-3):
     
         otf = self.calc_airy(diversity=np.zeros((self.nx, self.nx)))
-        print("OFT", otf.size())
         coefs = torch.sqrt(real(mul(otf[0], conj(otf[0]))))
         
         if __DEBUG__:
