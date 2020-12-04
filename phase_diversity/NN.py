@@ -112,7 +112,7 @@ class NN(nn.Module):
         self.pupil = pupil
         self.modes = modes
 
-        self.num_modes == len(self.modes)
+        self.num_modes = len(self.modes)
         self.nx = nx # Should be part of config
         self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
         
