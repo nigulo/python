@@ -181,7 +181,7 @@ class NN(nn.Module):
             )
         
         file = open(f"{self.dir_name}/{conf_file}.json",'w')
-        conf = json.dump(conf, file)
+        json.dump(conf, file)
         file.close()
         return conf
         
