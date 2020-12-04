@@ -8,6 +8,7 @@ class Dataset(torch.utils.data.Dataset):
         super(Dataset, self).__init__()
         
         self.datasets = datasets
+        self.use_neighbours=use_neighbours
         
         self.total_num_rows = 0
         self.num_rows = np.zeros(len(datasets), dtype=int)
@@ -34,7 +35,6 @@ class Dataset(torch.utils.data.Dataset):
         else:
             self.median = None
             
-        self.use_neighbours=use_neighbours
         
                
     def __getitem__(self, index):
