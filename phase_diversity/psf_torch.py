@@ -16,8 +16,6 @@ if __DEBUG__:
     import plot
 
 
-from typing import Optional
-
 ###############################################################################
 # Methods for convenience until gradient propagation
 # supports complex numbers
@@ -182,13 +180,13 @@ class phase_aberration_torch():
         self.start_index= start_index
         self.device = device
         if len(np.shape(alphas)) == 0:
-            # alphas is an integer, representing jmax
+            # alphas is an integer, representing num_modes
             self.create_pols(alphas)
-            self.jmax = alphas
+            self.num_modes = alphas
         else:
             self.create_pols(len(alphas))
             self.set_alphas(torch.from_numpy(alphas).to(self.device, dtype=torch.float32))
-            self.jmax = len(alphas)
+            self.num_modes = len(alphas)
     
     def create_pols(self, num):
         self.pols = []
@@ -207,10 +205,9 @@ class phase_aberration_torch():
         self.terms = torch.from_numpy(terms).to(self.device, dtype=torch.float32)
 
     def set_alphas(self, alphas):
-        if len(self.pols) != self.jmax:
-            self.create_pols(self.jmax)
+        if len(self.pols) != self.num_modes:
+            self.create_pols(self.num_modes)
         self.alphas = alphas
-        #self.jmax = tf.shape(self.alphas).eval()[0]
     
             
     def __call__(self, alphas=None):
@@ -230,9 +227,7 @@ class phase_aberration_torch():
         shape1 = list(alphas.size()) + [1, 1]
         shape2 = [1]*len(alphas.size()) + [nx, nx]
         alphas = alphas.view(shape1).repeat(shape2)
-        #alphas1 = tf.complex(alphas1, tf.zeros((self.jmax, nx, nx)))
         vals = torch.sum(alphas * self.terms, dim=dim)
-        #vals = tf.math.reduce_sum(tf.math.multiply(self.terms, tf.reshape(self.alphas, [self.jmax, 1, 1])), 0)
         return vals
     
     def set_terms(self, terms):
@@ -363,7 +358,7 @@ class psf_torch():
         self.mode = mode
         self.sum_over_batch = sum_over_batch
         
-        self.jmax_used = None
+        self.num_modes_used = None
         self.tt_weight = torch.tensor(tt_weight).to(self.device, dtype=torch.float32)
         #self.zero_avg_tiptilt = zero_avg_tiptilt
         
@@ -383,8 +378,8 @@ class psf_torch():
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
 
-    def set_jmax_used(self, jmax_used):
-        self.jmax_used = jmax_used
+    def set_num_modes_used(self, num_modes_used):
+        self.num_modes_used = num_modes_used
 
     '''
         vals = fft.ifft2(coh_vals, axes=(-2, -1))
@@ -404,11 +399,11 @@ class psf_torch():
         #self.incoh_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         #self.otf_vals = tf.Variable(tf.zeros([self.num_frames*2, self.nx, self.nx], dtype="complex64"))
         
-        jmax = self.coh_trans_func.phase_aberr.jmax
+        num_modes = self.coh_trans_func.phase_aberr.num_modes
 
-        if self.jmax_used is not None and self.jmax_used < jmax:
-            mask1 = torch.ones(self.jmax_used)
-            mask2 = torch.zeros(jmax - self.jmax_used)
+        if self.num_modes_used is not None and self.num_modes_used < num_modes:
+            mask1 = torch.ones(self.num_modes_used)
+            mask2 = torch.zeros(num_modes - self.num_modes_used)
             mask = torch.cat([mask1, mask2], axis=0).to(self.device, dtype=torch.float32)
             alphas = alphas * mask
 
@@ -452,7 +447,7 @@ class psf_torch():
 
     '''
     dat_F.shape = [num_frames, 2, nx, nx]
-    alphas.shape = [num_frames, jmax]
+    alphas.shape = [num_frames, num_modes]
     '''
     def multiply(self, obj_F, alphas, diversity):
         otf_vals, _ = self.calc(alphas, diversity)
@@ -488,8 +483,6 @@ class psf_torch():
         return H
 
     def aberrate(self, obj, alphas, diversity=None):
-        #nx = self.nx
-        #jmax = self.coh_trans_func.phase_aberr.jmax
 
         obj = to_complex(obj.unsqueeze(0).repeat(self.num_frames*2, 1, 1))
         print("obj, alphas", obj.size(), alphas.size())
@@ -632,20 +625,19 @@ class psf_torch():
     
     
     def calc_airy(self, diversity):
-        psf, _ = self.calc(torch.zeros([1, self.coh_trans_func.phase_aberr.jmax]).to(self.device, dtype=torch.float32), 
+        psf, _ = self.calc(torch.zeros([1, self.coh_trans_func.phase_aberr.num_modes]).to(self.device, dtype=torch.float32), 
                            torch.tensor(diversity).to(self.device, dtype=torch.float32))
         return psf
     
     
     '''
         Ds: [batch_size, num_frames, 2, nx, nx], where first dimension can be omitted
-        alphas: [batch_size, num_frames, jmax], where first dimension can be omitted
+        alphas: [batch_size, num_frames, num_modes], where first dimension can be omitted
         diversity: [2, nx, nx]
     '''
     def mfbd_loss(self, Ds, alphas, diversity, DD_DP_PP=None):
         nx = self.nx
         mode = self.mode
-        #alphas = tf.reshape(tf.slice(x, [0], [size]), [self.batch_size, self.num_frames, jmax])
 
         if len(Ds.size()) == 3:
             Ds = torch.unsqueeze(Ds, 0)
