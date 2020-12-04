@@ -226,7 +226,7 @@ class NN(nn.Module):
             print("Using default activation function: ReLU")
             self.activation_fn = nn.ReLU
         
-    def init(self, conf):
+    def init(self):
         self.load_conf()
         
         pa = psf_torch.phase_aberration_torch(self.num_modes, start_index=1, device=self.device)
