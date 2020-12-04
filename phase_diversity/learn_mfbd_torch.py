@@ -123,9 +123,9 @@ if nn_mode == MODE_1:
     n_epochs_1 = 1
     
     # How many frames to use in training
-    num_frames = 64
+    num_frames = 128
     
-    batch_size = 64
+    batch_size = 128
     n_channels = 64
     
     sum_over_batch = True

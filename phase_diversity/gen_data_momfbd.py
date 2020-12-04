@@ -18,7 +18,7 @@ out_dir = "data_out"
 #nx = 96
 num_modes = 44
 use_zarr = True
-add_neighbours = True
+add_neighbours = False
 
 if use_zarr:
     import zarr
