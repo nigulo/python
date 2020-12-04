@@ -1010,7 +1010,7 @@ class NN(nn.Module):
                 true_alphas = true_coefs[obj_index_i]
                 nf = min(alphas.shape[0], true_alphas.shape[0])
 
-                if self.benchmarking_level >= 2:
+                if benchmarking_level >= 2:
                     obj_reconstr_true, psf_true, wf_true, loss_true = self.deconvolve(Ds_[:nf], true_alphas[:nf]/utils.mode_scale, diversity)
                     obj_reconstr_true = obj_reconstr_true.cpu().numpy()
                     
@@ -1059,7 +1059,7 @@ class NN(nn.Module):
                     if estimate_full_image:
                         cropped_reconstrs_true.append(obj_reconstr_true[top_left_delta[0]:bottom_right_delta[0], top_left_delta[1]:bottom_right_delta[1]])
                 
-                if self.benchmarking_level >= 1:
+                if benchmarking_level >= 1:
                     ncols = int(np.round(np.sqrt(self.num_modes)*0.7))
                     nrows = int(np.ceil(self.num_modes/ncols))
                     my_test_plot = plot.plot(nrows=nrows, ncols=ncols, smart_axis="x")
