@@ -134,8 +134,6 @@ class NN(nn.Module):
         try:
             state = torch.load(f"{self.dir_name}/{state_file}", map_location=self.device)
             self.load_state_dict(state["state_dict"])
-            self.n_epochs_1 = state["n_epochs_1"]
-            self.n_epochs_2 = state["n_epochs_2"]
             self.epoch = state["epoch"]
             self.val_loss = state["val_loss"]
             self.data_index = state["data_index"]
