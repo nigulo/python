@@ -1126,10 +1126,10 @@ class NN(nn.Module):
                 cropped_coords_2 = np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)).T
                 zoom_start_patch = cropped_coords_2.shape // 2 - 3
                 zoom_end_patch = zoom_start_patch + 5
-                zoom_x1 = cropped_coords_2[zoom_start_patch][0]-min_coord[0]
-                zoom_y1 = cropped_coords_2[zoom_start_patch][1]-min_coord[1]
-                zoom_x2 = cropped_coords_2[zoom_end_patch[0]-min_coord[0]
-                zoom_y2 = cropped_coords_2[zoom_end_patch[1]-min_coord[1]
+                zoom_x1 = cropped_coords_2[zoom_start_patch[0]]-min_coord[0]
+                zoom_y1 = cropped_coords_2[zoom_start_patch[1]]-min_coord[1]
+                zoom_x2 = cropped_coords_2[zoom_end_patch[0]]-min_coord[0]
+                zoom_y2 = cropped_coords_2[zoom_end_patch[1]]-min_coord[1]
                 
                 zoom_obj = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
                 zoom_reconstr = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
