@@ -1125,10 +1125,17 @@ class NN(nn.Module):
                 num_rows = 2
                 cropped_coords_2 = np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)).T
                 zoom_start_patch = cropped_coords_2.shape // 2 - 3
+                zoom_end_patch = zoom_start_patch + 5
                 zoom_x1 = cropped_coords_2[zoom_start_patch][0]-min_coord[0]
                 zoom_y1 = cropped_coords_2[zoom_start_patch][1]-min_coord[1]
-                zoom_x2 = cropped_coords_2[zoom_start_patch+5][0]-min_coord[0]
-                zoom_y2 = cropped_coords_2[zoom_start_patch+5][1]-min_coord[1]
+                zoom_x2 = cropped_coords_2[zoom_end_patch[0]-min_coord[0]
+                zoom_y2 = cropped_coords_2[zoom_end_patch[1]-min_coord[1]
+                
+                zoom_obj = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
+                zoom_reconstr = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
+                zoom_reconstr_true = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
+                zoom_D = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
+                
 
             for i in np.arange(len(cropped_objs)):
                 x = cropped_coords[i][0]-min_coord[0]
@@ -1142,6 +1149,16 @@ class NN(nn.Module):
                 else:
                     full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
+                
+                if x >= zoom_x1 and x < zoom_x2 and y >= zoom_y1 and y < zoom_y2:
+                    zoom_obj[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_objs[i]
+                    zoom_reconstr[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_reconstrs[i]
+                    if len(cropped_reconstrs_true) > 0:
+                        zoom_reconstr_true[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_reconstrs_true[i]
+                    else:
+                        zoom_reconstr_true[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_objs[i]
+                    zoom_D[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_Ds[i]
+                    
 
             plot_loss_ratios = len(loss_ratios) > 0
             num_cols = 2
@@ -1151,8 +1168,8 @@ class NN(nn.Module):
             my_test_plot = plot.plot(nrows=num_rows, ncols=num_cols, size=plot.default_size(len(full_obj)*2, len(full_obj)*2))
             my_test_plot.set_default_cmap(cmap_name="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
-            min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
-            max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
+            #min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
+            #max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
             #my_test_plot.colormap(utils.trunc(full_reconstr_true, 1e-3), [0])
             #my_test_plot.colormap(utils.trunc(full_reconstr, 1e-3), [1])
             my_test_plot.colormap(full_reconstr_true, [0, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
@@ -1176,8 +1193,22 @@ class NN(nn.Module):
                 my_test_plot.set_axis_title([0, num_cols-1], r"$L_{\rm NN}/L_{\rm MOMFBD}$")
             
             if zoomin:
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[1, 0], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[1, 1], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
+
+                my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
+                my_test_plot.colormap(zoom_reconstr, [1, 1])#, vmin=min_val, vmax=max_val)
+                if plot_loss_ratios:
+                    loss_ratios_zoom = loss_ratios[zoom_start_patch[0]:zoom_end_patch[0], zoom_start_patch[1]:zoom_end_patch[1]]
+                    max_loss_ratio = np.max(loss_ratios_zoom)
+                    min_loss_ratio = np.min(loss_ratios_zoom)                
+                    if min_loss_ratio < 1.:
+                        min_loss_ratio = 2. - min_loss_ratio
+                    max_val = max(max_loss_ratio, min_loss_ratio)
+                    my_test_plot.set_default_cmap(cmap_name="bwr")
+                    my_test_plot.colormap(dat=loss_ratios_zoom, ax_index=[1, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
+                    
+                    
             my_test_plot.toggle_axis()
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
             my_test_plot.save(f"{self.dir_name}/{file_prefix}.png")
