@@ -1123,13 +1123,14 @@ class NN(nn.Module):
             if len(cropped_objs) >= 100:
                 zoomin = True
                 num_rows = 2
-                cropped_coords_2 = np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)).T
-                zoom_start_patch = cropped_coords_2.shape // 2 - 3
+                cropped_coords_2 = np.transpose(np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)), (1, 0, 2))
+                zoom_start_patch = np.asarray(cropped_coords_2.shape) // 2 - 3
                 zoom_end_patch = zoom_start_patch + 5
-                zoom_x1 = cropped_coords_2[zoom_start_patch[0]]-min_coord[0]
-                zoom_y1 = cropped_coords_2[zoom_start_patch[1]]-min_coord[1]
-                zoom_x2 = cropped_coords_2[zoom_end_patch[0]]-min_coord[0]
-                zoom_y2 = cropped_coords_2[zoom_end_patch[1]]-min_coord[1]
+                print("TEST:", cropped_coords_2.shape, zoom_start_patch, zoom_end_patch)
+                zoom_x1 = cropped_coords_2[zoom_start_patch[0], zoom_start_patch[1], 0]-min_coord[0]
+                zoom_y1 = cropped_coords_2[zoom_start_patch[0], zoom_start_patch[1], 1]-min_coord[1]
+                zoom_x2 = cropped_coords_2[zoom_end_patch[0], zoom_end_patch[1], 0]-min_coord[0]
+                zoom_y2 = cropped_coords_2[zoom_end_patch[0], zoom_end_patch[1], 1]-min_coord[1]
                 
                 zoom_obj = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
                 zoom_reconstr = np.zeros((zoom_x2 - zoom_x1, zoom_y2 - zoom_y1))
@@ -1193,6 +1194,7 @@ class NN(nn.Module):
                 my_test_plot.set_axis_title([0, num_cols-1], r"$L_{\rm NN}/L_{\rm MOMFBD}$")
             
             if zoomin:
+                print("zoom_x1, zoom_y1, zoom_x2, zoom_y2", zoom_x1, zoom_y1, zoom_x2, zoom_y2)
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
 

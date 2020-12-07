@@ -146,11 +146,11 @@ class plot:
         ax.plot([x1, x2], [y1, y2], color=color, linestyle=linestyle, linewidth=linewidth)
         self.post_processing(ax)
         
-    def rectangle(self, x1, y1, x2, y2, angle=0., ax_index=None, facecolor=None, edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0):
+    def rectangle(self, x1, y1, x2, y2, angle=0., ax_index=None, facecolor="red", edgecolor="red", linestyle='--', linewidth=1.0, fill=False, alpha=1.0):
         ax = self.get_ax(ax_index)
         left, bottom, width, height = (x1, y1, x2-x1, y2-y1)
         rect = plt.Rectangle((left, bottom), width, height, angle=angle, facecolor=facecolor, edgecolor=edgecolor, 
-                             linestyle=linestyle, linewidth=linewidth, alpha=alpha)
+                             linestyle=linestyle, linewidth=linewidth, fill=fill, alpha=alpha)
         ax.add_patch(rect)        
         self.post_processing(ax)
         
