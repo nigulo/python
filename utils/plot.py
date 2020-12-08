@@ -8,6 +8,7 @@ from matplotlib.ticker import LogFormatterMathtext, FormatStrFormatter
 import matplotlib.colors as colors
 import matplotlib.ticker as ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.patches as patches
 #import pyhdust.triangle as triangle
 import numpy as np
 
@@ -148,10 +149,12 @@ class plot:
         
     def rectangle(self, x1, y1, x2, y2, angle=0., ax_index=None, facecolor="red", edgecolor="red", linestyle='--', linewidth=1.0, fill=False, alpha=1.0):
         ax = self.get_ax(ax_index)
-        left, bottom, width, height = (x1, y1, x2-x1, y2-y1)
-        rect = plt.Rectangle((left, bottom), width, height, angle=angle, facecolor=facecolor, edgecolor=edgecolor, 
+        min_x = min(x1, x2)
+        min_y = min(y1, y2)
+        left, bottom, width, height = (min_x, min_y, abs(x2-x1), abs(y2-y1))
+        rect = patches.Rectangle((left, bottom), width, height, angle=angle, facecolor=facecolor, edgecolor=edgecolor, 
                              linestyle=linestyle, linewidth=linewidth, fill=fill, alpha=alpha)
-        ax.add_patch(rect)        
+        ax.add_patch(rect)
         self.post_processing(ax)
         
     def set_log(self, ax_index=None, params="y"):
