@@ -1123,7 +1123,7 @@ class NN(nn.Module):
             if len(cropped_objs) >= 100:
                 zoomin = True
                 num_rows = 2
-                cropped_coords_2 = np.transpose(np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)), (1, 0, 2))
+                cropped_coords_2 = np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2))
                 zoom_start_patch = np.asarray(cropped_coords_2.shape) // 2 - 2
                 zoom_end_patch = zoom_start_patch + 5
 
@@ -1183,7 +1183,7 @@ class NN(nn.Module):
             #my_test_plot.set_axis_title([2], "Raw frame")
 
             if plot_loss_ratios:
-                loss_ratios = np.reshape(loss_ratios, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1)).T
+                loss_ratios = np.reshape(loss_ratios, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1))
                 loss_ratios10 = np.repeat(np.repeat(loss_ratios, 10, axis=1), 10, axis=0)
                 max_loss_ratio = np.max(loss_ratios)
                 min_loss_ratio = np.min(loss_ratios)                
@@ -1198,17 +1198,20 @@ class NN(nn.Module):
                 (x_low, x_high), (y_low, y_high) = my_test_plot.get_axis_limits(ax_index=[0, 0])
                 width = x_high - x_low
                 height = y_high - y_low
-                # Are x and y swapped?
-                zoom_y1 *= width/full_obj.shape[0]
-                zoom_y2 *= width/full_obj.shape[0]
-                zoom_x1 *= height/full_obj.shape[1]
-                zoom_x2 *= height/full_obj.shape[1]
-                zoom_y1 = x_low + zoom_x1
-                zoom_y2 = x_low + zoom_x2
-                zoom_x1 = y_high - zoom_y1
-                zoom_x2 = y_high - zoom_y2
-                my_test_plot.rectangle(zoom_y1, zoom_x1, zoom_y2, zoom_x2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
-                my_test_plot.rectangle(zoom_y1, zoom_x1, zoom_y2, zoom_x2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
+                #x and y swapped and y is reversed
+                #TODO should actually change labels above
+                zoom_x1, zoom_y1 = zoom_y1, zoom_x1
+                zoom_x2, zoom_y2 = zoom_y2, zoom_x2
+                zoom_y1 *= height/full_obj.shape[0]
+                zoom_y2 *= height/full_obj.shape[0]
+                zoom_x1 *= width/full_obj.shape[1]
+                zoom_x2 *= width/full_obj.shape[1]
+                zoom_y1 = y_high - zoom_y1
+                zoom_y2 = y_high - zoom_y2
+                zoom_x1 = x_low + zoom_x1
+                zoom_x2 = x_low + zoom_x2
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
 
                 my_test_plot.set_default_cmap(cmap_name="Greys")
                 my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)

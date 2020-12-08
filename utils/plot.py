@@ -275,8 +275,8 @@ class plot:
         #    plot_aspect=(self.extent[1]-self.extent[0])/(self.extent[3]-self.extent[2])#*2/3 
         #    ax.set_aspect(aspect=plot_aspect)
         if extent is None:
-            extent = [0, dat.shape[0], 0, dat.shape[1]]
-        aspect = dat.shape[1]/dat.shape[0]
+            extent = [0, dat.shape[1], 0, dat.shape[0]]
+        aspect = dat.shape[0]/dat.shape[1]
         ax.set_aspect(aspect=aspect)
 
         im = ax.imshow(dat[::-1], extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
