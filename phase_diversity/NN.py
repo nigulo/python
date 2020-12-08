@@ -1183,14 +1183,14 @@ class NN(nn.Module):
 
             if plot_loss_ratios:
                 loss_ratios = np.reshape(loss_ratios, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1)).T
-                loss_ratios = np.repeat(np.repeat(loss_ratios, 10, axis=1), 10, axis=0)
+                loss_ratios10 = np.repeat(np.repeat(loss_ratios, 10, axis=1), 10, axis=0)
                 max_loss_ratio = np.max(loss_ratios)
                 min_loss_ratio = np.min(loss_ratios)                
                 if min_loss_ratio < 1.:
                     min_loss_ratio = 2. - min_loss_ratio
                 max_val = max(max_loss_ratio, min_loss_ratio)
                 my_test_plot.set_default_cmap(cmap_name="bwr")
-                my_test_plot.colormap(dat=loss_ratios, ax_index=[0, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
+                my_test_plot.colormap(dat=loss_ratios10, ax_index=[0, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
                 my_test_plot.set_axis_title([0, num_cols-1], r"$L_{\rm NN}/L_{\rm MOMFBD}$")
             
             if zoomin:
@@ -1198,17 +1198,19 @@ class NN(nn.Module):
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
 
+                my_test_plot.set_default_cmap(cmap_name="Greys")
                 my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
                 my_test_plot.colormap(zoom_reconstr, [1, 1])#, vmin=min_val, vmax=max_val)
                 if plot_loss_ratios:
                     loss_ratios_zoom = loss_ratios[zoom_start_patch[0]:zoom_end_patch[0], zoom_start_patch[1]:zoom_end_patch[1]]
+                    loss_ratios10 = np.repeat(np.repeat(loss_ratios_zoom, 10, axis=1), 10, axis=0)
                     max_loss_ratio = np.max(loss_ratios_zoom)
                     min_loss_ratio = np.min(loss_ratios_zoom)                
                     if min_loss_ratio < 1.:
                         min_loss_ratio = 2. - min_loss_ratio
                     max_val = max(max_loss_ratio, min_loss_ratio)
                     my_test_plot.set_default_cmap(cmap_name="bwr")
-                    my_test_plot.colormap(dat=loss_ratios_zoom, ax_index=[1, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
+                    my_test_plot.colormap(dat=loss_ratios10, ax_index=[1, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
                     
                     
             my_test_plot.toggle_axis()
