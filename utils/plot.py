@@ -249,7 +249,7 @@ class plot:
     '''
         Plot colormap
     '''          
-    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True):
+    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True, aspect=None):
         ax = self.get_ax(ax_index)
         if self.get_defaut_colorbar() is None:
             z_min = np.min(dat)
@@ -269,12 +269,15 @@ class plot:
         else:
             cmap = create_cmap(cmap_name, reverse_cmap)
 
-        if self.extent is None:
-            left, right = ax.get_xlim()
-            bottom, top = ax.get_ylim()
-            self.extent = [left, right, bottom, top]
-            plot_aspect=(self.extent[1]-self.extent[0])/(self.extent[3]-self.extent[2])#*2/3 
-            ax.set_aspect(aspect=plot_aspect)
+        #if self.extent is None:
+        #    left, right = ax.get_xlim()
+        #    bottom, top = ax.get_ylim()
+        #    self.extent = [left, right, bottom, top]
+        #    plot_aspect=(self.extent[1]-self.extent[0])/(self.extent[3]-self.extent[2])#*2/3 
+        #    ax.set_aspect(aspect=plot_aspect)
+        if aspect is None:
+            aspect = dat.shape[0]/dat.shape[1]
+        ax.set_aspect(aspect=aspect)
 
 
         im = ax.imshow(dat[::-1], extent=self.extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
