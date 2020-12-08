@@ -1124,7 +1124,7 @@ class NN(nn.Module):
                 zoomin = True
                 num_rows = 2
                 cropped_coords_2 = np.transpose(np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)), (1, 0, 2))
-                zoom_start_patch = np.asarray(cropped_coords_2.shape) // 2 - 3
+                zoom_start_patch = np.asarray(cropped_coords_2.shape) // 2 - 2
                 zoom_end_patch = zoom_start_patch + 5
 
                 zoom_x1 = cropped_coords_2[zoom_start_patch[0], zoom_start_patch[1], 0]-min_coord[0]
@@ -1151,14 +1151,15 @@ class NN(nn.Module):
                     full_reconstr_true[x:x+s[0],y:y+s[1]] = cropped_objs[i]
                 full_D[x:x+s[0],y:y+s[1]] = cropped_Ds[i]
                 
-                if x >= zoom_x1 and x < zoom_x2 and y >= zoom_y1 and y < zoom_y2:
-                    zoom_obj[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_objs[i]
-                    zoom_reconstr[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_reconstrs[i]
-                    if len(cropped_reconstrs_true) > 0:
-                        zoom_reconstr_true[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_reconstrs_true[i]
-                    else:
-                        zoom_reconstr_true[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_objs[i]
-                    zoom_D[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_Ds[i]
+                if zoomin:
+                    if x >= zoom_x1 and x < zoom_x2 and y >= zoom_y1 and y < zoom_y2:
+                        zoom_obj[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_objs[i]
+                        zoom_reconstr[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_reconstrs[i]
+                        if len(cropped_reconstrs_true) > 0:
+                            zoom_reconstr_true[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_reconstrs_true[i]
+                        else:
+                            zoom_reconstr_true[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_objs[i]
+                        zoom_D[x-zoom_x1:x+s[0]-zoom_x1,y-zoom_y1:y+s[1]-zoom_y1] = cropped_Ds[i]
                     
 
             plot_loss_ratios = len(loss_ratios) > 0
@@ -1197,16 +1198,17 @@ class NN(nn.Module):
                 (x_low, x_high), (y_low, y_high) = my_test_plot.get_axis_limits(ax_index=[0, 0])
                 width = x_high - x_low
                 height = y_high - y_low
-                zoom_x1 *= width/full_obj.shape[0]
-                zoom_x2 *= width/full_obj.shape[0]
-                zoom_y1 *= height/full_obj.shape[1]
-                zoom_y2 *= height/full_obj.shape[1]
-                zoom_x1 = x_low + zoom_x1
-                zoom_x2 = x_low + zoom_x2
-                zoom_y1 = y_high - zoom_y1
-                zoom_y2 = y_high - zoom_y2
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
+                # Are x and y swapped?
+                zoom_y1 *= width/full_obj.shape[0]
+                zoom_y2 *= width/full_obj.shape[0]
+                zoom_x1 *= height/full_obj.shape[1]
+                zoom_x2 *= height/full_obj.shape[1]
+                zoom_y1 = x_low + zoom_x1
+                zoom_y2 = x_low + zoom_x2
+                zoom_x1 = y_high - zoom_y1
+                zoom_x2 = y_high - zoom_y2
+                my_test_plot.rectangle(zoom_y1, zoom_x1, zoom_y2, zoom_x2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_y1, zoom_x1, zoom_y2, zoom_x2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
 
                 my_test_plot.set_default_cmap(cmap_name="Greys")
                 my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
