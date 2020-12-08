@@ -1126,7 +1126,7 @@ class NN(nn.Module):
                 cropped_coords_2 = np.transpose(np.reshape(cropped_coords, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1, 2)), (1, 0, 2))
                 zoom_start_patch = np.asarray(cropped_coords_2.shape) // 2 - 3
                 zoom_end_patch = zoom_start_patch + 5
-                print("TEST:", cropped_coords_2.shape, zoom_start_patch, zoom_end_patch)
+
                 zoom_x1 = cropped_coords_2[zoom_start_patch[0], zoom_start_patch[1], 0]-min_coord[0]
                 zoom_y1 = cropped_coords_2[zoom_start_patch[0], zoom_start_patch[1], 1]-min_coord[1]
                 zoom_x2 = cropped_coords_2[zoom_end_patch[0], zoom_end_patch[1], 0]-min_coord[0]
@@ -1195,6 +1195,17 @@ class NN(nn.Module):
             
             if zoomin:
                 print("zoom_x1, zoom_y1, zoom_x2, zoom_y2", zoom_x1, zoom_y1, zoom_x2, zoom_y2)
+                (x_low, x_high), (y_low, y_high) = my_test_plot.get_axis_limits(ax_index=[0, 0])
+                width = x_high - x_low
+                height = y_high - y_low
+                zoom_x1 *= width/full_obj.shape[0]
+                zoom_x2 *= width/full_obj.shape[0]
+                zoom_y1 *= height/full_obj.shape[1]
+                zoom_y2 /= height/full_obj.shape[1]
+                zoom_x1 = x_low + zoom_x1
+                zoom_x2 = x_low + zoom_x2
+                zoom_y1 = y_high - zoom_y1
+                zoom_y2 = y_high - zoom_y2
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
 
