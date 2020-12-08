@@ -489,7 +489,9 @@ class plot:
         fig.set_size_inches(6, 6)
         triangle.corner(samples[:,:], labels=labels, fig=self.fig)
         self.post_processing(ax)
-        
+    
+    def tight_layout(self, pad=1.08, h_pad=None, w_pad=None, rect=None):
+        self.fig.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)
 
     def save(self, file_name):
         first_in_row = dict()

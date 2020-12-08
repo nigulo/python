@@ -1227,6 +1227,7 @@ class NN(nn.Module):
                     
             my_test_plot.toggle_axis()
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
+            my_test_plot.tight_layout()
             my_test_plot.save(f"{self.dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
