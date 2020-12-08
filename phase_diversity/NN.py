@@ -1201,13 +1201,14 @@ class NN(nn.Module):
                 zoom_x1 *= width/full_obj.shape[0]
                 zoom_x2 *= width/full_obj.shape[0]
                 zoom_y1 *= height/full_obj.shape[1]
-                zoom_y2 /= height/full_obj.shape[1]
+                zoom_y2 *= height/full_obj.shape[1]
                 zoom_x1 = x_low + zoom_x1
                 zoom_x2 = x_low + zoom_x2
                 zoom_y1 = y_high - zoom_y1
                 zoom_y2 = y_high - zoom_y2
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=1.0, alpha=1.0)
+                print("zoom_x1, zoom_y2, zoom_x2, zoom_y2", zoom_x1, zoom_y1, zoom_x2, zoom_y2)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=2.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=2.0, alpha=1.0)
 
                 my_test_plot.set_default_cmap(cmap_name="Greys")
                 my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
