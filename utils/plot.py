@@ -27,7 +27,7 @@ def default_size(nx, ny):
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, extent=[0., 1., 0., 1.], title=None, smart_axis="xy"):
+    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy"):
         if size is not None:
             width = size[0]
             height = size[1]
@@ -37,7 +37,6 @@ class plot:
             fig.suptitle(title, fontsize=16)
         self.fig = fig
         self.axes = axes
-        self.extent = extent
         self.title = None
         self.colorbars = dict()
         self.ims = dict()
@@ -249,7 +248,7 @@ class plot:
     '''
         Plot colormap
     '''          
-    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True, aspect=None):
+    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True, extent=None):
         ax = self.get_ax(ax_index)
         if self.get_defaut_colorbar() is None:
             z_min = np.min(dat)
@@ -275,12 +274,12 @@ class plot:
         #    self.extent = [left, right, bottom, top]
         #    plot_aspect=(self.extent[1]-self.extent[0])/(self.extent[3]-self.extent[2])#*2/3 
         #    ax.set_aspect(aspect=plot_aspect)
-        if aspect is None:
-            aspect = dat.shape[0]/dat.shape[1]
+        if extent is None:
+            extent = [0, dat.shape[0], 0, dat.shape[1]]
+        aspect = dat.shape[1]/dat.shape[0]
         ax.set_aspect(aspect=aspect)
 
-
-        im = ax.imshow(dat[::-1], extent=self.extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+        im = ax.imshow(dat[::-1], extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
         self.ims[ax] = im
 
         self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
