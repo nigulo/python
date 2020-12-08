@@ -1194,7 +1194,6 @@ class NN(nn.Module):
                 my_test_plot.set_axis_title([0, num_cols-1], r"$L_{\rm NN}/L_{\rm MOMFBD}$")
             
             if zoomin:
-                print("zoom_x1, zoom_y1, zoom_x2, zoom_y2", zoom_x1, zoom_y1, zoom_x2, zoom_y2)
                 (x_low, x_high), (y_low, y_high) = my_test_plot.get_axis_limits(ax_index=[0, 0])
                 width = x_high - x_low
                 height = y_high - y_low
@@ -1206,9 +1205,8 @@ class NN(nn.Module):
                 zoom_x2 = x_low + zoom_x2
                 zoom_y1 = y_high - zoom_y1
                 zoom_y2 = y_high - zoom_y2
-                print("zoom_x1, zoom_y2, zoom_x2, zoom_y2", zoom_x1, zoom_y1, zoom_x2, zoom_y2)
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=2.0, alpha=1.0)
-                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=2.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
+                my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
 
                 my_test_plot.set_default_cmap(cmap_name="Greys")
                 my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
@@ -1227,7 +1225,7 @@ class NN(nn.Module):
                     
             my_test_plot.toggle_axis()
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")
-            my_test_plot.tight_layout()
+            my_test_plot.tight_layout(pad=20, w_pad=15)
             my_test_plot.save(f"{self.dir_name}/{file_prefix}.png")
             my_test_plot.close()
             
