@@ -114,7 +114,6 @@ class NN(nn.Module):
 
         self.num_modes = len(self.modes)
         self.nx = nx # Should be part of config
-        self.hanning = utils.hanning(nx, nx//8)#, num_pixel_padding=6)
         
 
 
@@ -175,7 +174,9 @@ class NN(nn.Module):
             tt_calib = False,
             pass_through = True,
             use_lstm = True,
-            use_neighbours=False
+            use_neighbours=False,
+            num_pix_apod = self.nx//8,
+            num_pix_pad = 0
             )
         
         file = open(f"{self.dir_name}/{conf_file}.json",'w')
@@ -216,14 +217,17 @@ class NN(nn.Module):
         self.pass_through = conf["pass_through"]
         self.use_lstm = conf["use_lstm"]
         self.use_neighbours = conf["use_neighbours"]
-            
+        self.num_pix_apod = conf["num_pix_apod"]
+        self.num_pix_pad = conf["num_pix_pad"]
             
         if conf["activation_fn"] == "ELU" :
             self.activation_fn = nn.ELU
         else:
             print("Using default activation function: ReLU")
             self.activation_fn = nn.ReLU
-        
+
+        self.hanning = utils.hanning(nx, self.num_pix_apod, num_pixel_padding=self.num_pix_pad)
+
     def init(self):
         self.load_conf()
         
