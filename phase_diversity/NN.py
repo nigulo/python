@@ -114,7 +114,7 @@ class NN(nn.Module):
 
         self.num_modes = len(self.modes)
         self.nx = nx # Should be part of config
-        self.hanning = utils.hanning(nx, nx//4)#, num_pixel_padding=6)
+        self.hanning = utils.hanning(nx, nx//8)#, num_pixel_padding=6)
         
 
 
@@ -249,7 +249,7 @@ class NN(nn.Module):
             if self.use_neighbours:
                 num_in_channels = 32 + 64
         elif self.input_type == INPUT_FOURIER_RATIO:
-            num_in_channels = 8
+            num_in_channels = 4
             
             if self.use_neighbours:
                 num_in_channels *= 16
@@ -348,24 +348,17 @@ class NN(nn.Module):
                 x_f1 = psf_torch.div(x_f_ch[:, 0], x_f_mean[:, 0] + eps)
                 x_f2 = psf_torch.div(x_f_ch[:, 1], x_f_mean[:, 0] + eps)
 
-                x_f3 = psf_torch.ifft(x_f1)
-                x_f4 = psf_torch.ifft(x_f2)
+                #x_f3 = psf_torch.ifft(x_f1)
+                #x_f4 = psf_torch.ifft(x_f2)
                 
-                #x_f3 = psf_torch.div(x_f[:, 0], x_f[:, 1] + eps)
-                #x_f4 = psf_torch.div(x_f[:, 1], x_f[:, 0] + eps)
-    
-                #x1 = psf_torch.ifft(x_f1)
-                #x2 = psf_torch.ifft(x_f2)
-    
                 x_f1 = torch.unsqueeze(x_f1, 1)
                 x_f2 = torch.unsqueeze(x_f2, 1)
 
-                x_f3 = torch.unsqueeze(x_f3, 1)
-                x_f4 = torch.unsqueeze(x_f4, 1)
-    
                 #x_f3 = torch.unsqueeze(x_f3, 1)
+                #x_f4 = torch.unsqueeze(x_f4, 1)
+    
                 x1 = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
-                x1 = torch.cat([x1, x_f3[..., 0], x_f3[..., 1], x_f4[..., 0], x_f4[..., 1]], dim=1)
+                #x1 = torch.cat([x1, x_f3[..., 0], x_f3[..., 1], x_f4[..., 0], x_f4[..., 1]], dim=1)
                 if x is None:
                     x = x1
                 else:
