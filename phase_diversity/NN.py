@@ -226,7 +226,7 @@ class NN(nn.Module):
             print("Using default activation function: ReLU")
             self.activation_fn = nn.ReLU
 
-        self.hanning = utils.hanning(nx, self.num_pix_apod, num_pixel_padding=self.num_pix_pad)
+        self.hanning = utils.hanning(self.nx, self.num_pix_apod, num_pixel_padding=self.num_pix_pad)
 
     def init(self):
         self.load_conf()
