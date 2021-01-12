@@ -12,6 +12,15 @@ import numpy.random as random
 import time
 import os.path
 from astropy.io import fits
+import plot
+
+A = 14.713
+B = -2.396
+C = -1.787
+
+def diff_rot(lat):
+    lat *= np.pi / 180
+    return A + B*np.sin(lat)**2 + C*np.sin(lat)**4
 
 class quiet_sun:
     
@@ -19,6 +28,10 @@ class quiet_sun:
         self.path = '.'
         start_date = '2013.02.14'
         self.num_days = -1
+        
+        self.lat = 0
+        self.long = 0
+        self.size = 15
     
         i = 1
         
@@ -30,13 +43,17 @@ class quiet_sun:
         i += 1
         if len(sys.argv) > i:
             self.num_days = int(sys.argv[i])
+        i += 1
+        if len(sys.argv) > i:
+            self.lat = float(sys.argv[i])
+        i += 1
+        if len(sys.argv) > i:
+            self.long = float(sys.argv[i])
+        i += 1
+        if len(sys.argv) > i:
+            self.size = float(sys.argv[i])
         
-        
-        self.x = 0
-        self.y = 0
-        self.nx = 100
-        self.ny = 100
-                
+
         self.nt = 10 # The duration of quet segment requested
         
         self.all_files = list()
@@ -55,17 +72,38 @@ class quiet_sun:
             file = self.path + "/" + self.all_files[self.current_day]
             hdul = fits.open(file)
             hdul.info()
+            f = 1./(len(hdul) - 1)
+            nx_full, ny_full = hdul[1].shape
+            x_coef = nx_full/180.
+            y_coef = ny_full/180.
+            x = nx_full // 2 + (self.long - self.size/2)*x_coef
+            nx = int(x_coef*self.size)
+            ny = int(y_coef*self.size)
+            print(nx, ny)
             self.current_day += 1
-            self.data = np.empty((len(hdul) - 1, self.nx, self.ny), dtype=np.int16)
+            self.data = np.empty((len(hdul) - 1, nx, ny), dtype=np.float32)
             for i in np.arange(1, len(hdul)):
-                self.data[i-1] = fits.getdata(file, i)[self.x:self.x+self.nx, self.y:self.y+self.ny]
+                lat = self.lat + self.size/2
+                y = lat*y_coef
+                for j in np.arange(ny):
+                    lat = y/y_coef
+                    print(lat)
+                    x_shift = diff_rot(lat)*i*f*x_coef
+                    x1 = int(x + x_shift)
+                    y1 = int(y + ny_full // 2)
+                    self.data[i-1, :, j] = fits.getdata(file, i)[x1:x1+nx, y1]
+                    y -= 1
+                test_plot = plot.plot(nrows=1, ncols=1)
+                test_plot.colormap(self.data[i-1], cmap_name="bwr")
+                test_plot.save(f"test{i-1}.png")
+                test_plot.close()
                 print(i)
             print(self.data.shape)
             hdul.close()
         else:
             raise "No more files"
     
-    def is_quiet(self, t):
+    def is_quiet(self, t0):        
         return True
     
     def search(self):
@@ -79,7 +117,7 @@ class quiet_sun:
                     if t0 >= len(data):
                         self.fetch_next()
                         t0 = 0                
-                    if not is_quiet(data[t0]):
+                    if not is_quiet(t0):
                         quiet = False
                         t = t1 + 1
                         break
