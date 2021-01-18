@@ -38,3 +38,21 @@ def load(filename):
 def save(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f, protocol=4)
+
+def trunc(ds, perc):
+    p1 = np.percentile(ds, perc*100)
+    p2 = np.percentile(ds, (1.0-perc)*100)
+    #print(perc*100, (1.0-perc)*100, p1, p2)
+    ds_out = np.array(ds)
+    if perc < 0.5:
+        p1a = p1
+        p1 = p2
+        p2 = p1a
+    for i in np.arange(0, np.shape(ds_out)[0]):
+        for j in np.arange(np.shape(ds_out)[1]):
+            if ds_out[i, j] > p1:
+                ds_out[i, j] = p1
+            elif ds_out[i, j] < p2:
+                ds_out[i, j] = p2
+    return ds_out
+
