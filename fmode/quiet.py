@@ -54,31 +54,30 @@ def center_and_radius(snapshot):
     print(xc, yc, r)
     return xc, yc, r
 
-def _plot_segment(longs, lats, ax, cmap, alpha):
+def _plot_patch(longs, lats, ax, cmap, alpha):
     phi, theta = np.meshgrid(longs*np.pi/180, (90-lats)*np.pi/180)
     X = np.sin(theta) * np.cos(phi)
     Y = np.sin(theta) * np.sin(phi)
     Z = np.cos(theta)
     plot = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cmap, linewidth=0, antialiased=False, alpha=alpha)
 
-def plot_segment(longs, lats):
+def plot_patch(longs, lats):
     longs_all = np.linspace(0, 360, 100)
     lats_all = np.linspace(-90, 90, 50)
     
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1, projection='3d')
-    _plot_segment(longs_all, lats_all, ax, None, alpha=0.2)#plt.get_cmap('Greys'))
-    _plot_segment(longs, lats, ax, plt.get_cmap('jet'), alpha=0.8)
+    _plot_patch(longs_all, lats_all, ax, None, alpha=0.2)#plt.get_cmap('Greys'))
+    _plot_patch(longs, lats, ax, plt.get_cmap('jet'), alpha=0.8)
     fig.savefig("segment.png")
     plt.close(fig)
 
-def do_plot(xs, ys):
+def plot_patch_ortho(xs, ys, r_arcsec):
     print(xs.shape, ys.shape)
     test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(100, 100))
-    r = 900.
     phi = np.linspace(0, np.pi*2, 100)
-    xs1 = r*np.cos(phi)
-    ys1 = r*np.sin(phi)
+    xs1 = r_arcsec*np.cos(phi)
+    ys1 = r_arcsec*np.sin(phi)
     test_plot.plot(xs1, ys1, params="k-")
     test_plot.plot(xs, ys, params="k.")
     test_plot.save(f"segment_ortho.png")
@@ -147,8 +146,17 @@ class quiet_sun:
             file = self.path + "/" + self.all_files[self.current_day]
             print(day)
             hdul = fits.open(file)
-            from pprint import pprint
-            pprint(vars(hdul))
+            print(hdul[1].header)
+            coef_x = 1./hdul[1].header['CDELT2']
+            coef_y = 1./hdul[1].header['CDELT1']
+            xc = hdul[1].header['CRPIX2']
+            yc = hdul[1].header['CRPIX1']
+            sdo_lon = 0.#hdul[1].header['CRLN_OBS']
+            sdo_lat = hdul[1].header['CRLT_OBS']
+            sdo_dist = hdul[1].header['DSUN_OBS']
+            r_sun = hdul[1].header['RSUN_REF']
+            observer_1 = frames.HeliographicStonyhurst(sdo_lon*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=f"{day} 00:00:00")
+            self.long += sdo_lon
             #hdul.info()
             print(self.track)
             full_snapshot = fits.getdata(file, 1)
@@ -160,7 +168,10 @@ class quiet_sun:
             #test_plot.colormap(misc.trunc(full_snapshot, 1e-3), cmap_name="bwr")
             #test_plot.save(f"full_snapshot.png")
             #test_plot.close()
-            xc, yc, r = center_and_radius(full_snapshot)
+            print(xc, yc)
+            #xc_, yc_, r = center_and_radius(full_snapshot)
+            r_arcsec = np.arctan(r_sun/sdo_dist)*180/np.pi*3600
+            r_pix = r_arcsec*coef_x
             
             snapshots_per_day = len(hdul) - 1
             f = 1./snapshots_per_day
@@ -176,28 +187,28 @@ class quiet_sun:
             
             long1 = self.long - self.size/2
             long2 = long1 + self.size
-            num_long = int(r*self.size/90)
+            num_long = int(r_pix*self.size/90)
             num_lat = num_long
             longs = np.linspace(long1, long2, num_long)
             lats = np.linspace(lat1, lat2, num_lat)
-            plot_segment(longs, lats)
+            plot_patch(longs, lats)
             
             long_lat = np.transpose([np.tile(longs, len(lats)), np.repeat(lats, len(longs))])
 
             c0 = SkyCoord(long_lat[:, 0]*u.deg, long_lat[:, 1]*u.deg, frame=frames.HeliographicStonyhurst)
-            hpc_out = sunpy.coordinates.Helioprojective(observer="earth", obstime=f"{day} 00:00:00")
+            hpc_out = sunpy.coordinates.Helioprojective(observer=observer_1)#"earth", obstime=f"{day} 00:00:00")
             c1 = c0.transform_to(hpc_out)
             
             xs = c1.Tx.value
             ys = c1.Ty.value
-            dists = c1.distance.value
-            r_arcsec = np.arctan(radius_km / dists[0])*180/np.pi*3600
-            coef = r/r_arcsec
-            print(r_arcsec, coef)
+            #dists = c1.distance.value
+            #r_arcsec = np.arctan(radius_km / dists[0])*180/np.pi*3600
+            #coef = r/r_arcsec
+            #print(r_arcsec, coef)
             #xys = np.transpose([np.tile(xs, len(ys)), np.repeat(ys, len(xs))])
             nx = len(longs)
             ny = len(lats)
-            do_plot(xs, ys)
+            plot_patch_ortho(xs, ys, r_arcsec)
 
             '''
             c0 = SkyCoord(long1*u.deg, lat1*u.deg, frame=frames.HeliographicStonyhurst)
@@ -225,8 +236,8 @@ class quiet_sun:
             self.current_day += 1
             self.data = np.empty((len(hdul) - 1, ny, nx), dtype=np.float32)
             for i in np.arange(1, len(hdul)):
-                
-                hrs = (i - 1) *24/ (len(hdul) - 1)
+                                
+                hrs = (i - 1)*24/(len(hdul) - 1)
                 mins = (hrs - int(hrs))*60
                 hrs = int(hrs)
                 secs = int((mins - int(mins))*60)
@@ -236,20 +247,35 @@ class quiet_sun:
                 data = fits.getdata(file, i)
                 obstime = f"{day} {hrs}:{mins}:{secs}"
                 print(obstime)
+
+                coef_x = 1./hdul[1].header['CDELT2']
+                coef_y = 1./hdul[1].header['CDELT1']
+                xc = hdul[1].header['CRPIX2']
+                yc = hdul[1].header['CRPIX1']
+                print(coef_x, coef_y, xc, yc)
+
+                sdo_lon = 0.#hdul[i].header['CRLN_OBS']
+                sdo_lat = hdul[i].header['CRLT_OBS']
+                sdo_dist = hdul[i].header['DSUN_OBS']
+                observer_i = frames.HeliographicStonyhurst(sdo_lon*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 
                 #ys = np.linspace(y1, y2, ny)
                 #xs = np.linspace(x1, x2, nx)
                 
                 #xys = np.transpose([np.tile(xs, len(ys)), np.repeat(ys, len(xs))])
-
-                c1 = SkyCoord(xs*u.arcsec, ys*u.arcsec, frame=frames.Helioprojective, obstime=f"{day} 00:00:00", observer="earth")
-                c2 = c1.transform_to(frames.HeliographicCarrington)
-                c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, obstime=obstime, observer="earth")
-                c4 = c3.transform_to(frames.Helioprojective)
-                #print(c4)
-                
-                x_pix = (c4.Tx.value*coef + xc).astype(int)
-                y_pix = (c4.Ty.value*coef + yc).astype(int)
+                if self.track:
+                    c1 = SkyCoord(xs*u.arcsec, ys*u.arcsec, frame=frames.Helioprojective, observer=observer_1)#observer="earth", obstime=f"{day} 00:00:00")
+                    c2 = c1.transform_to(frames.HeliographicCarrington)
+                    c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
+                    c4 = c3.transform_to(frames.Helioprojective)
+                    #print(c4)
+                    
+                    x_pix = (c4.Tx.value*coef_x + xc).astype(int)
+                    y_pix = (c4.Ty.value*coef_y + yc).astype(int)
+                else:
+                    x_pix = (xs*coef_x + xc).astype(int)
+                    y_pix = (ys*coef_y + yc).astype(int)
+                    
                 #print(x_pix)
                 
                 l = 0
