@@ -47,7 +47,6 @@ class floodfill:
         if endCol > self.maxCol:
             self.maxCol = endCol
     
-    
         for col1 in np.arange(startCol, endCol+1):
             value = self.mat[row, col1]
             if row > 0 and self.labels[row - 1, col1] == 0:

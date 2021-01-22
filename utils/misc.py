@@ -55,4 +55,3 @@ def trunc(ds, perc):
             elif ds_out[i, j] < p2:
                 ds_out[i, j] = p2
     return ds_out
-

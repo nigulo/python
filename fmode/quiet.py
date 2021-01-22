@@ -12,6 +12,7 @@ import os.path
 from astropy.io import fits
 import plot
 import misc
+import floodfill
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -83,6 +84,42 @@ def plot_patch_ortho(xs, ys, r_arcsec):
     test_plot.save(f"segment_ortho.png")
     test_plot.close()
 
+def interp(x_pix, y_pix):
+    x0, y0 = x_pix[0], y_pix[0]
+    x1, y1 = x_pix[1], y_pix[1]
+    x2, y2 = x_pix[2], y_pix[2]
+    x3, y3 = x_pix[3], y_pix[3]
+    
+    min_x = np.min(x_pix)
+    max_x = np.max(x_pix)
+    min_y = np.min(y_pix)
+    max_y = np.max(y_pix)
+    
+    rect = np.zeros((max_y-min_y, max_x-min_x), dtype=int8)
+    ret_val = list()
+    
+    def num_pix(x_start, y_start, x_end, y_end):
+        return int(np.round(np.sqrt((x_end-x_start)**2+(y_end-y_start)**2)))
+        
+    edge1 = np.round(np.linspace([x0, y0], [x1, y1], num_pix(x0, y0, x1, y1)).astype(int)
+    edge2 = np.round(np.linspace([x0, y0], [x2, y2], num_pix(x0, y0, x2, y2)).astype(int)
+    edge3 = np.round(np.linspace([x1, y1], [x3, y3], num_pix(x1, y1, x3, y3)).astype(int)
+    edge4 = np.round(np.linspace([x2, y2], [x3, y3], num_pix(x2, y2, x3, y3)).astype(int)
+    rect[edge1] = 1
+    rect[edge2] = 1
+    rect[edge3] = 1
+    rect[edge4] = 1
+    myplot = plot.plot()
+    myplot.colormap(rect)#, vmin=min_val, vmax=max_val)
+    myplot.save("rect.png")
+    myplot.close()
+    
+    
+
+    x, y = x0, y0
+    ret_val.exten(coords)
+    for x in np.arange(x_start, x_end):
+        ret_val.append(x, )
 
 class quiet_sun:
     
@@ -187,7 +224,7 @@ class quiet_sun:
             
             long1 = self.long - self.size/2
             long2 = long1 + self.size
-            num_long = int(r_pix*self.size/90)
+            num_long = int(100*self.size/15)
             num_lat = num_long
             longs = np.linspace(long1, long2, num_long)
             lats = np.linspace(lat1, lat2, num_lat)
@@ -278,10 +315,12 @@ class quiet_sun:
                     
                 #print(x_pix)
                 
+                data2 = list()
                 l = 0
                 for j in np.arange(ny):
                     #y = y1+(y2-y1)*j/ny
-                    
+                    print("--------")
+                    l1 = l
                     for k in np.arange(nx):
                         #print(c4.Tx[l], c4.Ty[l])
                         #x = x1+(x2-x1)*k/nx
@@ -297,8 +336,13 @@ class quiet_sun:
                         #x_pix = int(x_*r/r_arcsec + xc)
                         #y_pix = int(y_*r/r_arcsec + yc)
                         #print(x_pix, y_pix)
-                
+                        print("y, x", y_pix[l], x_pix[l])
                         self.data[i-1, j, k] = data[y_pix[l], x_pix[l]]
+                        if k > 0:
+                            for x_pix1 in np.arange(x_pix[l-1] + 1, x_pix[l]):
+                                data2.append(y_pix[l], x_pix1)
+                                
+                        data2.append(y_pix[l], x_pix[l])
                         l += 1
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(self.data[i-1].shape[1], self.data[i-1].shape[0]))
                 test_plot.colormap(self.data[i-1], cmap_name="bwr")
