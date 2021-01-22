@@ -148,7 +148,6 @@ class track:
                 sdo_dist = hdul[i].header['DSUN_OBS']
                 observer_i = frames.HeliographicStonyhurst(sdo_lon*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 
-
                 c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_1)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
