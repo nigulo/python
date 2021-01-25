@@ -126,21 +126,53 @@ class track:
                 obstime = f"{day} {hrs}:{mins}:{secs}"
                 print(obstime)
 
-                arcsecs_per_pix_x = hdul[i].header['CDELT2']
-                arcsecs_per_pix_y = hdul[i].header['CDELT1']
+                a = hdul[i].header['CROTA2']*np.pi/180
+                nx = hdul[i].header['NAXIS1']
+                ny = hdul[i].header['NAXIS2']
+                dx = hdul[i].header['CRVAL1']
+                dy = hdul[i].header['CRVAL2']
+                arcsecs_per_pix_x = hdul[i].header['CDELT1']
+                arcsecs_per_pix_y = hdul[i].header['CDELT2']
                 coef_x = 1./arcsecs_per_pix_x
                 coef_y = 1./arcsecs_per_pix_y
-                xc = hdul[i].header['CRPIX2']
-                yc = hdul[i].header['CRPIX1']
+                xc = hdul[i].header['CRPIX1']
+                yc = hdul[i].header['CRPIX2']
+                
+                sin_a = np.sin(a)
+                cos_a = np.cos(a)
+                
+                def pix_to_image(xs, ys):
+                    #nx2 = (nx+1)/2
+                    #ny2 = (ny+1)/2
+                    #xc_arcsec = dx + arcsecs_per_pix_x*cos_a*(nx2 - xc) - arcsecs_per_pix_y*sin_a*(ny2 - yc)
+                    #yc_arcsec = dy + arcsecs_per_pix_x*sin_a*(nx2 - xc) + arcsecs_per_pix_y*cos_a*(ny2 - yc)
+                    
+                    xs_arcsec = dx + arcsecs_per_pix_x*cos_a*(xs - xc) - arcsecs_per_pix_y*sin_a*(ys - yc)
+                    ys_arcsec = dy + arcsecs_per_pix_x*sin_a*(xs - xc) + arcsecs_per_pix_y*cos_a*(ys - yc)
+                                        
+                    return xs_arcsec, ys_arcsec
+
+                def image_to_pix(xs_arcsec, ys_arcsec):
+                    xs_arcsec = xs_arcsec - dx
+                    ys_arcsec = ys_arcsec - dy
+                    #nx2 = (nx+1)/2
+                    #ny2 = (ny+1)/2
+                    #xc_arcsec = dx + arcsecs_per_pix_x*cos_a*(nx2 - xc) - arcsecs_per_pix_y*sin_a*(ny2 - yc)
+                    #yc_arcsec = dy + arcsecs_per_pix_x*sin_a*(nx2 - xc) + arcsecs_per_pix_y*cos_a*(ny2 - yc)
+                    
+                    xs = xc + coef_x*cos_a*(xs_arcsec) + coef_y*sin_a*(ys_arcsec)
+                    ys = yc - coef_x*sin_a*(xs_arcsec) + coef_y*cos_a*(ys_arcsec)
+                                        
+                    return xs_arcsec, ys_arcsec
+                    
                 print(coef_x, coef_y, xc, yc)
                 
-                ys = (np.arange(data.shape[0])-yc).astype(float) * arcsecs_per_pix_y
-                xs = (np.arange(data.shape[1])-xc).astype(float) * arcsecs_per_pix_x
+                xs = (np.arange(1, nx + 1).astype(float)
+                ys = (np.arange(1, ny + 1).astype(float)
+                xs_arcsec, ys_arcsec = pix_to_image
     
-                ny = len(ys)
-                nx = len(xs)
     
-                grid = np.transpose([np.tile(xs, ny), np.repeat(ys, nx)])
+                grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
                 
 
                 sdo_lon = 0.#hdul[i].header['CRLN_OBS']
@@ -153,8 +185,9 @@ class track:
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
                 c4 = c3.transform_to(frames.Helioprojective)
                 
-                x_pix = (c4.Tx.value*coef_x + xc).astype(int)
-                y_pix = (c4.Ty.value*coef_y + yc).astype(int)
+                x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value)
+                x_pix = np.round(x_pix).astype(int)
+                y_pix = np.round(y_pix).astype(int)
                     
                 data2 = np.empty((ny, nx), dtype=np.float32)
                 l = 0
@@ -164,7 +197,7 @@ class track:
                         print("y, x", y_pix[l], x_pix[l])
                         data2[j, k] = data[y_pix[l], x_pix[l]]
                         l += 1
-                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1], data2.shape[0]))
+                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
                 test_plot.colormap(data2, cmap_name="bwr")
                 test_plot.save(f"test{i-1}.png")
                 test_plot.close()
