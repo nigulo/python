@@ -146,9 +146,11 @@ class track:
                     #ny2 = (ny+1)/2
                     #xc_arcsec = dx + arcsecs_per_pix_x*cos_a*(nx2 - xc) - arcsecs_per_pix_y*sin_a*(ny2 - yc)
                     #yc_arcsec = dy + arcsecs_per_pix_x*sin_a*(nx2 - xc) + arcsecs_per_pix_y*cos_a*(ny2 - yc)
+                    xs = xs - xc
+                    ys = ys - yc
                     
-                    xs_arcsec = dx + arcsecs_per_pix_x*cos_a*(xs - xc) - arcsecs_per_pix_y*sin_a*(ys - yc)
-                    ys_arcsec = dy + arcsecs_per_pix_x*sin_a*(xs - xc) + arcsecs_per_pix_y*cos_a*(ys - yc)
+                    xs_arcsec = dx + arcsecs_per_pix_x*cos_a*xs - arcsecs_per_pix_y*sin_a*ys
+                    ys_arcsec = dy + arcsecs_per_pix_x*sin_a*xs + arcsecs_per_pix_y*cos_a*ys
                                         
                     return xs_arcsec, ys_arcsec
 
@@ -163,7 +165,7 @@ class track:
                     xs = xc + coef_x*cos_a*(xs_arcsec) + coef_y*sin_a*(ys_arcsec)
                     ys = yc - coef_x*sin_a*(xs_arcsec) + coef_y*cos_a*(ys_arcsec)
                                         
-                    return xs_arcsec, ys_arcsec
+                    return xs, ys
                     
                 print(coef_x, coef_y, xc, yc)
                 
