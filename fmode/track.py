@@ -192,9 +192,9 @@ class track:
                 data2 = np.empty((ny, nx), dtype=np.float32)
                 l = 0
                 for j in np.arange(ny):
-                    print("--------")
+                    #print("--------")
                     for k in np.arange(nx):
-                        print("y, x", y_pix[l], x_pix[l])
+                        #print("y, x", y_pix[l], x_pix[l])
                         if(np.isnan(y_pix[l]) or np.isnan(x_pix[l])):
                             data2[j, k] = np.nan
                         else:
