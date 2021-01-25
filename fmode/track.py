@@ -167,8 +167,8 @@ class track:
                     
                 print(coef_x, coef_y, xc, yc)
                 
-                xs = (np.arange(1, nx + 1).astype(float)
-                ys = (np.arange(1, ny + 1).astype(float)
+                xs = (np.arange(1, nx + 1)).astype(float)
+                ys = (np.arange(1, ny + 1)).astype(float)
                 xs_arcsec, ys_arcsec = pix_to_image
     
     
