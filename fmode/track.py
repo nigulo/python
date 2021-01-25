@@ -186,8 +186,8 @@ class track:
                 c4 = c3.transform_to(frames.Helioprojective)
                 
                 x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value)
-                x_pix = np.round(x_pix).astype(int)
-                y_pix = np.round(y_pix).astype(int)
+                x_pix = np.round(x_pix)
+                y_pix = np.round(y_pix)
                     
                 data2 = np.empty((ny, nx), dtype=np.float32)
                 l = 0
@@ -195,7 +195,10 @@ class track:
                     print("--------")
                     for k in np.arange(nx):
                         print("y, x", y_pix[l], x_pix[l])
-                        data2[j, k] = data[y_pix[l], x_pix[l]]
+                        if(np.isnan(y_pix[l]) or np.isnan(x_pix[l])):
+                            data2[j, k] = np.nan
+                        else:
+                            data2[j, k] = data[int(y_pix[l]), int(x_pix[l])]
                         l += 1
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
                 test_plot.colormap(data2, cmap_name="bwr")
