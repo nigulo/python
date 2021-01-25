@@ -113,7 +113,9 @@ class track:
             arcsecs_per_pix_y = hdul[1].header['CDELT1']
             #self.data = np.empty((len(hdul) - 1, ny, nx), dtype=np.float32)
             
-            for i in np.arange(1, len(hdul)):
+            num_frames = len(hdul) - 1
+            suffing_len = 1 + int(np.log10(num_frames))
+            for i in np.arange(1, num_frames + 1):
                                 
                 hrs = (i - 1)*24/(len(hdul) - 1)
                 mins = (hrs - int(hrs))*60
@@ -204,7 +206,8 @@ class track:
                         l += 1
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
                 test_plot.colormap(data2, cmap_name="bwr")
-                test_plot.save(f"test{i-1}.png")
+                suffix = format(i-1, f"0{suffing_len}")
+                test_plot.save(f"frame{suffix}.png")
                 test_plot.close()
                 print(i)
             print(self.data.shape)
