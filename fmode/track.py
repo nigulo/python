@@ -169,7 +169,7 @@ class track:
                 
                 xs = (np.arange(1, nx + 1)).astype(float)
                 ys = (np.arange(1, ny + 1)).astype(float)
-                xs_arcsec, ys_arcsec = pix_to_image
+                xs_arcsec, ys_arcsec = pix_to_image(xs, ys)
     
     
                 grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
