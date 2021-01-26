@@ -113,10 +113,10 @@ class track:
         self.mins = format(mins, "02")
         self.secs = format(secs, "02")
         
-    def get_obs_time():
+    def get_obs_time(self):
         return f"{self.day} {self.hrs}:{self.mins}:{self.secs}"
 
-    def get_obs_time2():
+    def get_obs_time2(self):
         return f"{self.day}_{self.hrs}_{self.mins}_{self.secs}"
         
     def process_frames(self):
