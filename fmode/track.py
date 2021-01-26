@@ -62,7 +62,7 @@ class track:
         self.num_frames = num_frames
         self.step = step
         
-        self.cube = None
+        self.stats = None
 
         print(self.path)
         
@@ -94,7 +94,7 @@ class track:
         cards = list()
         cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
         header = fits.Header(cards)
-        hdu = fitsImageHDU(data=stats, header=header, name='Statistics')
+        hdu = fits.ImageHDU(data=stats, header=header, name='Statistics')
         if self.stats is None:
             self.stats = fits.HDUList()
             self.stats_time = self.get_obs_time2()
@@ -260,7 +260,7 @@ class track:
                         if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
                             data_nt[j, k] = np.nan
                         else:
-                            data2_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
+                            data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                         l += 1
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(self.data.shape[1]//8, self.data.shape[0]//8))
                 test_plot.colormap(self.data, cmap_name="bwr", show_colorbar=True)
