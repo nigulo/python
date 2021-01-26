@@ -61,6 +61,8 @@ class track:
         self.num_days = num_days
         self.num_frames = num_frames
         self.step = step
+        
+        self.cube = None
 
         print(self.path)
         
@@ -73,10 +75,36 @@ class track:
                     self.all_files.append(file)
         self.all_files.sort()
 
+
+    def save_stats(self):
+        if self.stats is not None:
+            output_file = f"{self.stats_time}.fits"
+            self.stats.writeto(output_file, overwrite=True)
+            self.stats = None
+
+    def calc_stats(self):
+        abs_data = np.abs(self.data)
+        stats = np.array([np.mean(abs_data), np.std(abs_data))])
+        cards = list()
+        cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time")
+        header = fits.Header(cards)
+        hdu = fitsImageHDU(data=stats, header=header, name='Statistics')
+        if self.stats is None:
+            self.stats = fits.HDUList()
+            self.stats_time = self.get_obs_start_time()
+        self.stats.append(hdu)
+        if len(self.stats) >= self.num_frames:
+            self.save_stats()
     
-    def save_stats(self, data):
-        pass
+    def set_start_time(self):
+        self.set_time()
+        self.hrs_start = self.hrs
+        self.mins_start = self.mins
+        self.secs_start = self.secs
     
+    def get_obs_start_time(self):
+        return f"{self.day}_{self.hrs_start}__{self.mins_start}_{self.secs_start}"
+            
     def set_time(self):
         hrs = self.frame_index*24/self.num_frames_per_day
         mins = (hrs - int(hrs))*60
@@ -220,35 +248,33 @@ class track:
 
                 #######################
                     
-                data2 = np.empty((ny, nx), dtype=np.float32)
-                data2_nt = np.empty((ny, nx), dtype=np.float32)
+                self.data = np.empty((ny, nx), dtype=np.float32)
+                data_nt = np.empty((ny, nx), dtype=np.float32)
                 l = 0
                 for j in np.arange(ny):
                     #print("--------")
                     for k in np.arange(nx):
                         #print("y, x", y_pix[l], x_pix[l])
                         if np.isnan(y_pix[l]) or np.isnan(x_pix[l]):
-                            data2[j, k] = np.nan
+                            self.data[j, k] = np.nan
                         else:
-                            data2[j, k] = data[int(y_pix[l]), int(x_pix[l])]
+                            self.data[j, k] = data[int(y_pix[l]), int(x_pix[l])]
                         if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
-                            data2_nt[j, k] = np.nan
+                            data_nt[j, k] = np.nan
                         else:
                             data2_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                         l += 1
-                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
-                test_plot.colormap(data2, cmap_name="bwr", show_colorbar=True)
+                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(self.data.shape[1]//8, self.data.shape[0]//8))
+                test_plot.colormap(self.data, cmap_name="bwr", show_colorbar=True)
                 suffix = self.get_obs_time2()
                 test_plot.save(f"frame_{suffix}.png")
                 test_plot.close()
-                print("data min, max", np.nanmin(data2_nt), np.nanmax(data), np.nanargmax(data), np.nanargmin(data))
-                print("data2 min, max", np.nanmin(data2), np.nanmax(data2), np.nanargmax(data2), np.nanargmin(data2))
-                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
-                test_plot.colormap(data2_nt, cmap_name="bwr", show_colorbar=True)
+                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_nt.shape[1]//8, data_nt.shape[0]//8))
+                test_plot.colormap(data_nt, cmap_name="bwr", show_colorbar=True)
                 test_plot.save(f"frame_nt_{suffix}.png")
                 test_plot.close()
                 print(i)
-                self.save_stats()
+                self.calc_stats()
                 sys.stdout.flush()
                 self.frame_index += 1
             hdul.close()
