@@ -193,8 +193,19 @@ class track:
                 x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value)
                 x_pix = np.round(x_pix)
                 y_pix = np.round(y_pix)
+
+                #######################
+                # No tracking
+                c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_1, obstime=obstime)#, observer="earth")
+                c4 = c3.transform_to(frames.Helioprojective)
+                x_pix_nt, y_pix_nt = image_to_pix(c4.Tx.value, c4.Ty.value)
+                x_pix_nt = np.round(x_pix_nt)
+                y_pix_nt = np.round(y_pix_nt)
+
+                #######################
                     
                 data2 = np.empty((ny, nx), dtype=np.float32)
+                data2_nt = np.empty((ny, nx), dtype=np.float32)
                 l = 0
                 for j in np.arange(ny):
                     #print("--------")
@@ -204,18 +215,24 @@ class track:
                             data2[j, k] = np.nan
                         else:
                             data2[j, k] = data[int(y_pix[l]), int(x_pix[l])]
+                        if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
+                            data2_nt[j, k] = np.nan
+                        else:
+                            data2_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                         l += 1
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
                 test_plot.colormap(data2, cmap_name="bwr", show_colorbar=True)
                 suffix = format(i-1, f"0{suffing_len}")
                 test_plot.save(f"frame{suffix}.png")
                 test_plot.close()
-
+                print("data min, max", np.nanmin(data2_nt), np.nanmax(data), np.nanargmax(data), np.nanargmin(data))
+                print("data2 min, max", np.nanmin(data2), np.nanmax(data2), np.nanargmax(data2), np.nanargmin(data2))
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
-                test_plot.colormap(data, cmap_name="bwr", show_colorbar=True)
+                test_plot.colormap(data2_nt, cmap_name="bwr", show_colorbar=True)
                 test_plot.save(f"frame_notrack{suffix}.png")
                 test_plot.close()
                 print(i)
+                sys.stdout.flush()
             hdul.close()
             self.current_day += 1
         else:
