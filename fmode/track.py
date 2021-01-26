@@ -90,7 +90,7 @@ class track:
             sdo_lat1 = hdul[1].header['CRLT_OBS']
             sdo_dist = hdul[1].header['DSUN_OBS']
             #r_sun = hdul[1].header['RSUN_REF']
-            observer_1 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=f"{day} 00:00:00")
+            observer_1 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat1*u.deg, radius=sdo_dist*u.m, obstime=f"{day} 00:00:00")
 
             #full_snapshot = fits.getdata(file, 1)
             print(xc, yc)
@@ -115,7 +115,7 @@ class track:
 
             num_frames = len(hdul) - 1
             suffing_len = 1 + int(np.log10(num_frames))
-            for i in np.arange(1, num_frames + 1):
+            for i in np.arange(1, num_frames + 1, 10):
                                 
                 hrs = (i - 1)*24/(len(hdul) - 1)
                 mins = (hrs - int(hrs))*60
