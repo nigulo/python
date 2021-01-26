@@ -206,13 +206,13 @@ class track:
                             data2[j, k] = data[int(y_pix[l]), int(x_pix[l])]
                         l += 1
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
-                test_plot.colormap(data2, cmap_name="bwr")
+                test_plot.colormap(data2, cmap_name="bwr", show_colorbar=True)
                 suffix = format(i-1, f"0{suffing_len}")
                 test_plot.save(f"frame{suffix}.png")
                 test_plot.close()
 
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
-                test_plot.colormap(data, cmap_name="bwr")
+                test_plot.colormap(data, cmap_name="bwr", show_colorbar=True)
                 test_plot.save(f"frame_notrack{suffix}.png")
                 test_plot.close()
                 print(i)
