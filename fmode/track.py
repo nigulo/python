@@ -92,7 +92,7 @@ class track:
         abs_data = np.abs(self.data)
         stats = np.array([np.mean(abs_data), np.std(abs_data)])
         cards = list()
-        cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time")
+        cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
         header = fits.Header(cards)
         hdu = fitsImageHDU(data=stats, header=header, name='Statistics')
         if self.stats is None:
