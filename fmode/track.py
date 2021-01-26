@@ -86,17 +86,17 @@ class track:
             coef_y = 1./hdul[1].header['CDELT1']
             xc = hdul[1].header['CRPIX2']
             yc = hdul[1].header['CRPIX1']
-            sdo_lon = 0.#hdul[1].header['CRLN_OBS']
-            sdo_lat = hdul[1].header['CRLT_OBS']
+            sdo_lon1 = hdul[1].header['CRLN_OBS']
+            sdo_lat1 = hdul[1].header['CRLT_OBS']
             sdo_dist = hdul[1].header['DSUN_OBS']
-            r_sun = hdul[1].header['RSUN_REF']
-            observer_1 = frames.HeliographicStonyhurst(sdo_lon*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=f"{day} 00:00:00")
+            #r_sun = hdul[1].header['RSUN_REF']
+            observer_1 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=f"{day} 00:00:00")
 
-            full_snapshot = fits.getdata(file, 1)
+            #full_snapshot = fits.getdata(file, 1)
             print(xc, yc)
 
-            r_arcsec = np.arctan(r_sun/sdo_dist)*180/np.pi*3600
-            r_pix = r_arcsec*coef_x
+            #r_arcsec = np.arctan(r_sun/sdo_dist)*180/np.pi*3600
+            #r_pix = r_arcsec*coef_x
             
             snapshots_per_day = len(hdul) - 1
             f = 1./snapshots_per_day
@@ -112,7 +112,7 @@ class track:
             arcsecs_per_pix_x = hdul[1].header['CDELT2']
             arcsecs_per_pix_y = hdul[1].header['CDELT1']
             #self.data = np.empty((len(hdul) - 1, ny, nx), dtype=np.float32)
-            
+
             num_frames = len(hdul) - 1
             suffing_len = 1 + int(np.log10(num_frames))
             for i in np.arange(1, num_frames + 1):
@@ -179,10 +179,11 @@ class track:
                 grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
                 
 
-                sdo_lon = 0.#hdul[i].header['CRLN_OBS']
+                sdo_lon = hdul[i].header['CRLN_OBS']
                 sdo_lat = hdul[i].header['CRLT_OBS']
                 sdo_dist = hdul[i].header['DSUN_OBS']
-                observer_i = frames.HeliographicStonyhurst(sdo_lon*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
+                #observer_i = frames.HeliographicStonyhurst((sdo_lon-sdo_lon1)*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
+                observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 
                 c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_1)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
@@ -199,7 +200,7 @@ class track:
                     #print("--------")
                     for k in np.arange(nx):
                         #print("y, x", y_pix[l], x_pix[l])
-                        if(np.isnan(y_pix[l]) or np.isnan(x_pix[l])):
+                        if np.isnan(y_pix[l]) or np.isnan(x_pix[l]):
                             data2[j, k] = np.nan
                         else:
                             data2[j, k] = data[int(y_pix[l]), int(x_pix[l])]
@@ -209,8 +210,12 @@ class track:
                 suffix = format(i-1, f"0{suffing_len}")
                 test_plot.save(f"frame{suffix}.png")
                 test_plot.close()
+
+                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data2.shape[1]//8, data2.shape[0]//8))
+                test_plot.colormap(data, cmap_name="bwr")
+                test_plot.save(f"frame_notrack{suffix}.png")
+                test_plot.close()
                 print(i)
-            print(self.data.shape)
             hdul.close()
             self.current_day += 1
         else:
