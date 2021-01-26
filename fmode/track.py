@@ -81,6 +81,12 @@ class track:
             output_file = f"{self.stats_time}.fits"
             self.stats.writeto(output_file, overwrite=True)
             self.stats = None
+            self.start_frame_index += self.step
+            if self.start_frame_index >= self.num_frames_per_day:
+                self.start_frame_index = 0
+                self.start_day_index += 1
+            self.frame_index = self.start_frame_index
+            self.day_index = self.start_day_index
 
     def calc_stats(self):
         abs_data = np.abs(self.data)
@@ -91,19 +97,11 @@ class track:
         hdu = fitsImageHDU(data=stats, header=header, name='Statistics')
         if self.stats is None:
             self.stats = fits.HDUList()
-            self.stats_time = self.get_obs_start_time()
+            self.stats_time = self.get_obs_time2()
         self.stats.append(hdu)
         if len(self.stats) >= self.num_frames:
             self.save_stats()
     
-    def set_start_time(self):
-        self.set_time()
-        self.hrs_start = self.hrs
-        self.mins_start = self.mins
-        self.secs_start = self.secs
-    
-    def get_obs_start_time(self):
-        return f"{self.day}_{self.hrs_start}__{self.mins_start}_{self.secs_start}"
             
     def set_time(self):
         hrs = self.frame_index*24/self.num_frames_per_day
@@ -286,6 +284,8 @@ class track:
         
         
     def track(self):
+        self.start_day_index = 0
+        self.start_frame_index = 0
         self.day_index = 0
         self.frame_index = 0
         while True:
