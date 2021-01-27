@@ -116,7 +116,6 @@ class track:
             for lat in self.patch_lats:
                 stats[i] = self.calc_stats_patch(lon, lat)
                 i += 1
-        abs_data = np.abs(self.data)
         cards = list()
         cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
         cards.append(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
