@@ -165,7 +165,7 @@ class track:
             #self.data = np.empty((len(hdul) - 1, ny, nx), dtype=np.float32)
             
             print("Indices", self.start_day_index, self.start_frame_index, self.day_index, self.frame_index, self.num_frames, self.num_frames_per_day)
-            for i in np.arange(self.frame_index+1, min(self.num_frames, self.num_frames_per_day)+1):
+            for i in np.arange(self.frame_index+1, min(self.start_frame_index + self.num_frames, self.num_frames_per_day)+1):
                                 
                 self.set_time()
                 
