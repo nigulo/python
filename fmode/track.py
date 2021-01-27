@@ -89,6 +89,10 @@ class track:
             self.day_index = self.start_day_index
 
     def calc_stats(self):
+        self.frame_index += 1
+        if self.frame_index >= self.num_frames_per_day:
+            self.frame_index = 0
+            self.day_index += 1
         abs_data = np.abs(self.data)
         stats = np.array([np.mean(abs_data), np.std(abs_data)])
         cards = list()
@@ -274,11 +278,7 @@ class track:
                 print(i)
                 self.calc_stats()
                 sys.stdout.flush()
-                self.frame_index += 1
             hdul.close()
-            if self.frame_index >= self.num_frames_per_day:
-                self.frame_index = 0
-                self.day_index += 1
         else:
             raise "No more files"
         
