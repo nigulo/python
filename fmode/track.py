@@ -117,6 +117,8 @@ class track:
         self.hrs = format(hrs, "02")
         self.mins = format(mins, "02")
         self.secs = format(secs, "02")
+        if self.observer is None:
+            self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat1*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
         
     def get_obs_start_time(self):
         return f"{self.start_day} {self.hrs}:{self.mins}:{self.secs}"
@@ -137,7 +139,6 @@ class track:
             print(hdul[1].header)
 
             self.num_frames_per_day = len(hdul) - 1
-            self.set_time()
             
             coef_x = 1./hdul[1].header['CDELT2']
             coef_y = 1./hdul[1].header['CDELT1']
@@ -147,8 +148,6 @@ class track:
             sdo_lat1 = hdul[1].header['CRLT_OBS']
             sdo_dist = hdul[1].header['DSUN_OBS']
             #r_sun = hdul[1].header['RSUN_REF']
-            if self.observer is None:
-                self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat1*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
 
             #full_snapshot = fits.getdata(file, 1)
             print(xc, yc)
