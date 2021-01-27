@@ -78,17 +78,17 @@ class track:
 
 
     def save_stats(self):
-        if self.stats is not None:
-            output_file = f"{self.stats_time}.fits"
-            self.stats.writeto(output_file, overwrite=True)
-            self.stats = None
-            self.observer = None
-            self.start_frame_index += self.step
-            if self.start_frame_index >= self.num_frames_per_day:
-                self.start_frame_index = 0
-                self.start_day_index += 1
-            self.frame_index = self.start_frame_index
-            self.day_index = self.start_day_index
+        assert(self.stats is not None)
+        output_file = f"{self.stats_time}.fits"
+        self.stats.writeto(output_file, overwrite=True)
+        self.stats = None
+        self.observer = None
+        self.start_frame_index += self.step
+        if self.start_frame_index >= self.num_frames_per_day:
+            self.start_frame_index = 0
+            self.start_day_index += 1
+        self.frame_index = self.start_frame_index
+        self.day_index = self.start_day_index
 
     def calc_stats(self):
         self.frame_index += 1
@@ -107,6 +107,8 @@ class track:
         self.stats.append(hdu)
         if len(self.stats) >= self.num_frames:
             self.save_stats()
+            return True
+        return False
             
     def set_time(self):
         hrs = self.frame_index*24/self.num_frames_per_day
@@ -167,7 +169,8 @@ class track:
             #self.data = np.empty((len(hdul) - 1, ny, nx), dtype=np.float32)
             
             print("Indices", self.start_day_index, self.start_frame_index, self.day_index, self.frame_index, self.num_frames, self.num_frames_per_day)
-            for i in np.arange(self.frame_index+1, min(self.start_frame_index + self.num_frames, self.num_frames_per_day)+1):
+
+            for i in np.arange(self.frame_index+1, self.num_frames_per_day+1):
                                 
                 self.set_time()
                 
@@ -193,7 +196,7 @@ class track:
                 sdo_dist = hdul[i].header['DSUN_OBS']
                 
                 if self.observer is None:
-                    self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
+                    self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 
                 sin_a = np.sin(a)
                 cos_a = np.cos(a)
@@ -282,8 +285,9 @@ class track:
                 test_plot.save(f"frame_nt_{suffix}.png")
                 test_plot.close()
                 print(i)
-                self.calc_stats()
                 sys.stdout.flush()
+                if self.calc_stats():
+                    break
             hdul.close()
         else:
             raise "No more files"
