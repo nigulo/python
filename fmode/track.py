@@ -23,6 +23,8 @@ A = 14.713
 B = -2.396
 C = -1.787
 
+DEBUG = True
+
 radius_km = 695700
 
 def diff_rot(lat):
@@ -55,15 +57,24 @@ def center_and_radius(snapshot):
 
 class track:
     
-    def __init__(self, path='.', start_date='2013-02-14', num_days=-1, num_frames=8*5, step=10):
+    def __init__(self, path='.', start_date='2013-02-14', num_days=-1, num_frames=8*5, step=10, num_patches=100, patch_size=15):
         self.path = path
         self.start_date = start_date
         self.num_days = num_days
         self.num_frames = num_frames
         self.step = step
+        self.num_patches = num_patches
+        self.patch_size = patch_size
+        
+        
+        # Here we already assume that tracked sequences are 8hrs
+        assert(self.patch_size < 170.)
+        self.patch_lons = np.linspace(-85. + patch_size/2, 85 - patch_size/2, num_patches)
+        self.patch_lats = self.patch_lons
         
         self.stats = None
         self.observer = None
+        self.frame = None
 
         print(self.path)
         
@@ -90,13 +101,22 @@ class track:
         self.frame_index = self.start_frame_index
         self.day_index = self.start_day_index
 
+    def calc_stats_patch(self, lon, lat):
+        lon_filter = (self.lons >= lon) * (self.lons < lon + self.path_size)
+        lat_filter = (self.lats >= lat) * (self.lats < lat + self.path_size)
+        patch = self.frame[lon_filter * lat_filter]
+        abs_patch = np.abs(patch)
+        stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
+        return stats
+
     def calc_stats(self):
-        self.frame_index += 1
-        if self.frame_index >= self.num_frames_per_day:
-            self.frame_index = 0
-            self.day_index += 1
+        stats = np.empty(self.num_patches**2, dtype=np.float32)
+        i = 0
+        for lon in self.patch_lons:
+            for lat in self.patch_lats:
+                stats[i] = calc_stats_patch(self, lon, lat)
+                i += 1
         abs_data = np.abs(self.data)
-        stats = np.array([np.mean(abs_data), np.std(abs_data)])
         cards = list()
         cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
         header = fits.Header(cards)
@@ -105,6 +125,14 @@ class track:
             self.stats = fits.HDUList()
             self.stats_time = self.get_obs_time2()
         self.stats.append(hdu)
+
+    def process_frame(self):
+        self.frame_index += 1
+        if self.frame_index >= self.num_frames_per_day:
+            self.frame_index = 0
+            self.day_index += 1
+        
+        self.calc_stats()
         if len(self.stats) >= self.num_frames:
             self.save_stats()
             return True
@@ -242,6 +270,8 @@ class track:
                 
                 c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=self.observer)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
+                self.lons = c2.lon.value
+                self.lats = c2.lat.value
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
                 c4 = c3.transform_to(frames.Helioprojective)
                 
@@ -258,35 +288,45 @@ class track:
                 y_pix_nt = np.round(y_pix_nt)
 
                 #######################
-                    
-                self.data = np.empty((ny, nx), dtype=np.float32)
-                data_nt = np.empty((ny, nx), dtype=np.float32)
+                if DEBUG:
+                    data_for_plot = np.empty((ny, nx), dtype=np.float32)
+                    data_nt = np.empty((ny, nx), dtype=np.float32)
+                
+                if self.frame is None:
+                    self.frame = np.empty(nx*ny, dtype=np.float32)
                 l = 0
                 for j in np.arange(ny):
                     #print("--------")
                     for k in np.arange(nx):
                         #print("y, x", y_pix[l], x_pix[l])
                         if np.isnan(y_pix[l]) or np.isnan(x_pix[l]):
-                            self.data[j, k] = np.nan
+                            if DEBUG:
+                                data_for_plot[j, k] = np.nan
+                            self.frame[l] = np.nan
                         else:
-                            self.data[j, k] = data[int(y_pix[l]), int(x_pix[l])]
-                        if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
-                            data_nt[j, k] = np.nan
-                        else:
-                            data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
+                            if DEBUG:
+                                data_for_plot[j, k] = data[int(y_pix[l]), int(x_pix[l])]
+                            self.frame[l] = data[int(y_pix[l]), int(x_pix[l])]
+                        if DEBUG:
+                            if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
+                                data_nt[j, k] = np.nan
+                            else:
+                                data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                         l += 1
-                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(self.data.shape[1]//8, self.data.shape[0]//8))
-                test_plot.colormap(self.data, cmap_name="bwr", show_colorbar=True)
-                suffix = self.get_obs_time2()
-                test_plot.save(f"frame_{suffix}.png")
-                test_plot.close()
-                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_nt.shape[1]//8, data_nt.shape[0]//8))
-                test_plot.colormap(data_nt, cmap_name="bwr", show_colorbar=True)
-                test_plot.save(f"frame_nt_{suffix}.png")
-                test_plot.close()
+
+                if DEBUG:
+                    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
+                    test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True)
+                    suffix = self.get_obs_time2()
+                    test_plot.save(f"frame_{suffix}.png")
+                    test_plot.close()
+                    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_nt.shape[1]//8, data_nt.shape[0]//8))
+                    test_plot.colormap(data_nt, cmap_name="bwr", show_colorbar=True)
+                    test_plot.save(f"frame_nt_{suffix}.png")
+                    test_plot.close()
                 print(i)
                 sys.stdout.flush()
-                if self.calc_stats():
+                if self.process_frame():
                     break
             hdul.close()
         else:
@@ -328,8 +368,14 @@ if (__name__ == '__main__'):
     i += 1
     if len(sys.argv) > i:
         step = int(sys.argv[i])
+    i += 1
+    if len(sys.argv) > i:
+        num_patches = int(sys.argv[i])
+    i += 1
+    if len(sys.argv) > i:
+        patch_size = float(sys.argv[i])
     
-    tr = track(path=path, start_date=start_date, num_days=num_days, num_frames=num_frames, step=step)
+    tr = track(path=path, start_date=start_date, num_days=num_days, num_frames=num_frames, step=step, num_patches=num_patches, patch_size=patch_size)
     tr.track()
 
         
