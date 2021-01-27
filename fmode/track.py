@@ -63,6 +63,7 @@ class track:
         self.step = step
         
         self.stats = None
+        self.observer = None
 
         print(self.path)
         
@@ -81,6 +82,7 @@ class track:
             output_file = f"{self.stats_time}.fits"
             self.stats.writeto(output_file, overwrite=True)
             self.stats = None
+            self.observer = None
             self.start_frame_index += self.step
             if self.start_frame_index >= self.num_frames_per_day:
                 self.start_frame_index = 0
@@ -105,7 +107,6 @@ class track:
         self.stats.append(hdu)
         if len(self.stats) >= self.num_frames:
             self.save_stats()
-    
             
     def set_time(self):
         hrs = self.frame_index*24/self.num_frames_per_day
@@ -117,6 +118,9 @@ class track:
         self.mins = format(mins, "02")
         self.secs = format(secs, "02")
         
+    def get_obs_start_time(self):
+        return f"{self.start_day} {self.hrs}:{self.mins}:{self.secs}"
+
     def get_obs_time(self):
         return f"{self.day} {self.hrs}:{self.mins}:{self.secs}"
 
@@ -143,7 +147,8 @@ class track:
             sdo_lat1 = hdul[1].header['CRLT_OBS']
             sdo_dist = hdul[1].header['DSUN_OBS']
             #r_sun = hdul[1].header['RSUN_REF']
-            observer_1 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat1*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
+            if self.observer is None:
+                self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat1*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
 
             #full_snapshot = fits.getdata(file, 1)
             print(xc, yc)
@@ -231,7 +236,7 @@ class track:
                 #observer_i = frames.HeliographicStonyhurst((sdo_lon-sdo_lon1)*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 
-                c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_1)#observer="earth", obstime=f"{day} 00:00:00")
+                c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=self.observer)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
                 c4 = c3.transform_to(frames.Helioprojective)
@@ -242,7 +247,7 @@ class track:
 
                 #######################
                 # No tracking
-                c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_1, obstime=obstime)#, observer="earth")
+                c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=self.observer, obstime=obstime)#, observer="earth")
                 c4 = c3.transform_to(frames.Helioprojective)
                 x_pix_nt, y_pix_nt = image_to_pix(c4.Tx.value, c4.Ty.value)
                 x_pix_nt = np.round(x_pix_nt)
