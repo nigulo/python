@@ -114,7 +114,7 @@ class track:
         i = 0
         for lon in self.patch_lons:
             for lat in self.patch_lats:
-                stats[i] = calc_stats_patch(self, lon, lat)
+                stats[i] = self.calc_stats_patch(lon, lat)
                 i += 1
         abs_data = np.abs(self.data)
         cards = list()
