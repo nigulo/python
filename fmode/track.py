@@ -117,8 +117,6 @@ class track:
         self.hrs = format(hrs, "02")
         self.mins = format(mins, "02")
         self.secs = format(secs, "02")
-        if self.observer is None:
-            self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat1*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
         
     def get_obs_start_time(self):
         return f"{self.start_day} {self.hrs}:{self.mins}:{self.secs}"
@@ -140,17 +138,17 @@ class track:
 
             self.num_frames_per_day = len(hdul) - 1
             
-            coef_x = 1./hdul[1].header['CDELT2']
-            coef_y = 1./hdul[1].header['CDELT1']
-            xc = hdul[1].header['CRPIX2']
-            yc = hdul[1].header['CRPIX1']
-            sdo_lon1 = hdul[1].header['CRLN_OBS']
-            sdo_lat1 = hdul[1].header['CRLT_OBS']
-            sdo_dist = hdul[1].header['DSUN_OBS']
+            #coef_x = 1./hdul[1].header['CDELT2']
+            #coef_y = 1./hdul[1].header['CDELT1']
+            #xc = hdul[1].header['CRPIX2']
+            #yc = hdul[1].header['CRPIX1']
+            #sdo_lon1 = hdul[1].header['CRLN_OBS']
+            #sdo_lat1 = hdul[1].header['CRLT_OBS']
+            #sdo_dist = hdul[1].header['DSUN_OBS']
             #r_sun = hdul[1].header['RSUN_REF']
 
             #full_snapshot = fits.getdata(file, 1)
-            print(xc, yc)
+            #print(xc, yc)
 
             #r_arcsec = np.arctan(r_sun/sdo_dist)*180/np.pi*3600
             #r_pix = r_arcsec*coef_x
@@ -189,6 +187,13 @@ class track:
                 coef_y = 1./arcsecs_per_pix_y
                 xc = hdul[i].header['CRPIX1']
                 yc = hdul[i].header['CRPIX2']
+                
+                sdo_lon = hdul[i].header['CRLN_OBS']
+                sdo_lat = hdul[i].header['CRLT_OBS']
+                sdo_dist = hdul[i].header['DSUN_OBS']
+                
+                if self.observer is None:
+                    self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=self.get_obs_time())
                 
                 sin_a = np.sin(a)
                 cos_a = np.cos(a)
@@ -229,9 +234,6 @@ class track:
                 grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
                 
 
-                sdo_lon = hdul[i].header['CRLN_OBS']
-                sdo_lat = hdul[i].header['CRLT_OBS']
-                sdo_dist = hdul[i].header['DSUN_OBS']
                 #observer_i = frames.HeliographicStonyhurst((sdo_lon-sdo_lon1)*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 
