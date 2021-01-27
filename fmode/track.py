@@ -110,7 +110,7 @@ class track:
         return stats
 
     def calc_stats(self):
-        stats = np.empty(self.num_patches**2, dtype=np.float32)
+        stats = np.empty((self.num_patches**2, 2), dtype=np.float32)
         i = 0
         for lon in self.patch_lons:
             for lat in self.patch_lats:
