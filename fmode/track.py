@@ -102,8 +102,8 @@ class track:
         self.day_index = self.start_day_index
 
     def calc_stats_patch(self, lon, lat):
-        lon_filter = (self.lons >= lon) * (self.lons < lon + self.path_size)
-        lat_filter = (self.lats >= lat) * (self.lats < lat + self.path_size)
+        lon_filter = (self.lons >= lon) * (self.lons < lon + self.patch_size)
+        lat_filter = (self.lats >= lat) * (self.lats < lat + self.patch_size)
         patch = self.frame[lon_filter * lat_filter]
         abs_patch = np.abs(patch)
         stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
