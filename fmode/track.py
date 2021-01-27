@@ -96,8 +96,8 @@ class track:
         self.observer = None
         self.start_frame_index += self.step
         if self.start_frame_index >= self.num_frames_per_day:
-            self.start_frame_index = 0
-            self.start_day_index += 1
+            self.start_day_index += self.start_frame_index//self.num_frames_per_day
+            self.start_frame_index = self.start_frame_index % self.num_frames_per_day
         self.frame_index = self.start_frame_index
         self.day_index = self.start_day_index
 
@@ -119,6 +119,7 @@ class track:
         abs_data = np.abs(self.data)
         cards = list()
         cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
+        cards.append(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
         header = fits.Header(cards)
         hdu = fits.ImageHDU(data=stats, header=header, name='Statistics')
         if self.stats is None:
@@ -219,7 +220,7 @@ class track:
                 xc = hdul[i].header['CRPIX1']
                 yc = hdul[i].header['CRPIX2']
                 
-                sdo_lon = hdul[i].header['CRLN_OBS']
+                self.sdo_lon = hdul[i].header['CRLN_OBS']
                 sdo_lat = hdul[i].header['CRLT_OBS']
                 sdo_dist = hdul[i].header['DSUN_OBS']
                 
