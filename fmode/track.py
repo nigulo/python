@@ -31,29 +31,6 @@ def diff_rot(lat):
     #lat *= np.pi / 180
     return (A + B*np.sin(lat)**2 + C*np.sin(lat)**4)*np.pi/180
 
-def center_and_radius(snapshot):
-    nx_full, ny_full = snapshot.shape
-    xc = nx_full//2
-    yc = ny_full//2
-    for xl in np.arange(nx_full):
-        if not np.isnan(snapshot[xl, yc]):
-            break
-    for xr in np.arange(nx_full - 1, 0, -1):
-        if not np.isnan(snapshot[xr, yc]):
-            break
-    for yb in np.arange(ny_full):
-        if not np.isnan(snapshot[xc, yb]):
-            break
-    for yt in np.arange(ny_full - 1, 0, -1):
-        if not np.isnan(snapshot[xc, yt]):
-            break
-    xc = (xl + xr)/2
-    yc = (yb + yt)/2
-    r = ((xr - xl) + (yt - yb))/4
-    print(xl, xr, yb, yt)
-    print(xc, yc, r)
-    return xc, yc, r
-
 
 class track:
     
@@ -112,10 +89,23 @@ class track:
     def calc_stats(self):
         stats = np.empty((self.num_patches**2, 2), dtype=np.float32)
         i = 0
+        if DEBUG:
+            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(100, 100))
+            phi = np.linspace(0, np.pi*2, 100)
+            xs1 = self.xc + self.r_sun_pix*np.cos(phi)
+            ys1 = self.yc + self.r_sun_pix*np.sin(phi)
+            test_plot.plot(xs1, ys1, params="r-")
+            colors = "rb"
         for lon in self.patch_lons:
             for lat in self.patch_lats:
                 stats[i] = self.calc_stats_patch(lon, lat)
+                if DEBUG:
+                    color = colors[((i // self.num_patches) % 2 + i % 2) % 2]
+                    test_plot.plot(self.x_pix[l], self.y_pix[l], params=f"{color}.")
                 i += 1
+        if DEBUG:
+            test_plot.save(f"patches.png")
+            test_plot.close()
         cards = list()
         cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
         cards.append(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
@@ -144,6 +134,12 @@ class track:
         hrs = int(hrs)
         secs = int(round((mins - int(mins))*60))
         mins = int(mins)
+        if secs == 60:
+            secs = 0
+            mins += 1
+            if mins == 60:
+                mins = 0
+                hrs += 1
         self.hrs = format(hrs, "02")
         self.mins = format(mins, "02")
         self.secs = format(secs, "02")
@@ -201,6 +197,7 @@ class track:
             for i in np.arange(self.frame_index+1, self.num_frames_per_day+1):
                                 
                 self.set_time()
+                self.header = hdul[i].header
                 
                 obstime = self.get_obs_time()
                 print(obstime)
@@ -222,6 +219,11 @@ class track:
                 self.sdo_lon = hdul[i].header['CRLN_OBS']
                 sdo_lat = hdul[i].header['CRLT_OBS']
                 sdo_dist = hdul[i].header['DSUN_OBS']
+                
+                if DEBUG:
+                    r_sun = hdul[i].header['RSUN_REF']
+                    self.self_r_sun_pix = int(round(np.arctan(r_sun/sdo_dist)*180/np.pi*3600*coef_x))
+                    self.xc, self.yc = xc, yc        
                 
                 if self.observer is None:
                     self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
@@ -276,16 +278,17 @@ class track:
                 c4 = c3.transform_to(frames.Helioprojective)
                 
                 x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value)
-                x_pix = np.round(x_pix)
-                y_pix = np.round(y_pix)
+                self.x_pix = np.round(x_pix)
+                self.y_pix = np.round(y_pix)
 
                 #######################
                 # No tracking
-                c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=self.observer, obstime=obstime)#, observer="earth")
-                c4 = c3.transform_to(frames.Helioprojective)
-                x_pix_nt, y_pix_nt = image_to_pix(c4.Tx.value, c4.Ty.value)
-                x_pix_nt = np.round(x_pix_nt)
-                y_pix_nt = np.round(y_pix_nt)
+                if DEBUG:
+                    c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=self.observer, obstime=obstime)#, observer="earth")
+                    c4 = c3.transform_to(frames.Helioprojective)
+                    x_pix_nt, y_pix_nt = image_to_pix(c4.Tx.value, c4.Ty.value)
+                    x_pix_nt = np.round(x_pix_nt)
+                    y_pix_nt = np.round(y_pix_nt)
 
                 #######################
                 if DEBUG:
@@ -299,14 +302,14 @@ class track:
                     #print("--------")
                     for k in np.arange(nx):
                         #print("y, x", y_pix[l], x_pix[l])
-                        if np.isnan(y_pix[l]) or np.isnan(x_pix[l]):
+                        if np.isnan(self.y_pix[l]) or np.isnan(self.x_pix[l]):
                             if DEBUG:
                                 data_for_plot[j, k] = np.nan
                             self.frame[l] = np.nan
                         else:
                             if DEBUG:
-                                data_for_plot[j, k] = data[int(y_pix[l]), int(x_pix[l])]
-                            self.frame[l] = data[int(y_pix[l]), int(x_pix[l])]
+                                data_for_plot[j, k] = data[int(self.y_pix[l]), int(self.x_pix[l])]
+                            self.frame[l] = data[int(self.y_pix[l]), int(self.x_pix[l])]
                         if DEBUG:
                             if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
                                 data_nt[j, k] = np.nan
