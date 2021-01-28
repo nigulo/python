@@ -95,11 +95,11 @@ class track:
         stats = np.empty((self.num_patches**2, 2), dtype=np.float32)
         i = 0
         if DEBUG:
-            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(100, 100))
-            phi = np.linspace(0, np.pi*2, 100)
-            xs1 = self.xc + self.r_sun_pix*np.cos(phi)
-            ys1 = self.yc + self.r_sun_pix*np.sin(phi)
-            test_plot.plot(xs1, ys1, params="r-")
+            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(200, 200))
+            #phi = np.linspace(0, np.pi*2, 100)
+            #xs1 = self.xc + self.r_sun_pix*np.cos(phi)
+            #ys1 = self.yc + self.r_sun_pix*np.sin(phi)
+            #test_plot.plot(xs1, ys1, params="r-")
             colors = "rb"
         for lon in self.patch_lons:
             for lat in self.patch_lats:
@@ -110,7 +110,8 @@ class track:
                     stats[i] = self.calc_stats_patch(lon, lat)
                 i += 1
         if DEBUG:
-            test_plot.save(f"patches.png")
+            suffix = self.get_obs_time2()
+            test_plot.save(f"patches{suffix}.png")
             test_plot.close()
         cards = list()
         cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
@@ -233,6 +234,7 @@ class track:
                 
                 if self.observer is None:
                     self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
+                    self.sdo_lon0 = self.sdo_lon
                 
                 sin_a = np.sin(a)
                 cos_a = np.cos(a)
@@ -278,7 +280,7 @@ class track:
                 
                 c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=self.observer)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
-                self.lons = c2.lon.value - self.sdo_lon
+                self.lons = c2.lon.value - self.sdo_lon0
                 #np.savetxt("lons.csv", self.lons, delimiter=",")
                 self.lats = c2.lat.value
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
