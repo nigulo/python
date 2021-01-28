@@ -104,7 +104,7 @@ class track:
                 if DEBUG:
                     color = colors[((i // self.num_patches) % 2 + i % 2) % 2]
                     stats[i] = self.calc_stats_patch(lon, lat, test_plot, color)
-                else
+                else:
                     stats[i] = self.calc_stats_patch(lon, lat)
                 i += 1
         if DEBUG:
