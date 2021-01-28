@@ -78,10 +78,13 @@ class track:
         self.frame_index = self.start_frame_index
         self.day_index = self.start_day_index
 
-    def calc_stats_patch(self, lon, lat):
+    def calc_stats_patch(self, lon, lat, plt = None, color = None):
         lon_filter = (self.lons >= lon) * (self.lons < lon + self.patch_size)
         lat_filter = (self.lats >= lat) * (self.lats < lat + self.patch_size)
-        patch = self.frame[lon_filter * lat_filter]
+        fltr = lon_filter * lat_filter
+        if DEBUG:
+            plt.plot(self.x_pix[fltr], self.y_pix[fltr], params=f"{color}.")
+        patch = self.frame[fltr]
         abs_patch = np.abs(patch)
         stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
         return stats
@@ -98,10 +101,11 @@ class track:
             colors = "rb"
         for lon in self.patch_lons:
             for lat in self.patch_lats:
-                stats[i] = self.calc_stats_patch(lon, lat)
                 if DEBUG:
                     color = colors[((i // self.num_patches) % 2 + i % 2) % 2]
-                    test_plot.plot(self.x_pix[i], self.y_pix[i], params=f"{color}.")
+                    stats[i] = self.calc_stats_patch(lon, lat, test_plot, color)
+                else
+                    stats[i] = self.calc_stats_patch(lon, lat)
                 i += 1
         if DEBUG:
             test_plot.save(f"patches.png")
