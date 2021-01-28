@@ -101,7 +101,7 @@ class track:
                 stats[i] = self.calc_stats_patch(lon, lat)
                 if DEBUG:
                     color = colors[((i // self.num_patches) % 2 + i % 2) % 2]
-                    test_plot.plot(self.x_pix[l], self.y_pix[l], params=f"{color}.")
+                    test_plot.plot(self.x_pix[i], self.y_pix[i], params=f"{color}.")
                 i += 1
         if DEBUG:
             test_plot.save(f"patches.png")
