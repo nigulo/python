@@ -79,10 +79,12 @@ class track:
         self.day_index = self.start_day_index
 
     def calc_stats_patch(self, lon, lat, plt = None, color = None):
+        print("calc_stats_patch", lon, lat, np.nanmin(self.lons), np.nanmax(self.lons), np.nanmin(self.lats), np.nanmax(self.lats))
         lon_filter = (self.lons >= lon) * (self.lons < lon + self.patch_size)
         lat_filter = (self.lats >= lat) * (self.lats < lat + self.patch_size)
         fltr = lon_filter * lat_filter
         if DEBUG:
+            print(self.x_pix[fltr], self.y_pix[fltr])
             plt.plot(self.x_pix[fltr], self.y_pix[fltr], params=f"{color}.")
         patch = self.frame[fltr]
         abs_patch = np.abs(patch)
@@ -276,7 +278,8 @@ class track:
                 
                 c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=self.observer)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
-                self.lons = c2.lon.value
+                self.lons = c2.lon.value - self.sdo_lon
+                #np.savetxt("lons.csv", self.lons, delimiter=",")
                 self.lats = c2.lat.value
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
                 c4 = c3.transform_to(frames.Helioprojective)
@@ -335,6 +338,7 @@ class track:
                 sys.stdout.flush()
                 if self.process_frame():
                     break
+                sys.stdout.flush()
             hdul.close()
         else:
             raise "No more files"
