@@ -222,7 +222,7 @@ class track:
                 
                 if DEBUG:
                     r_sun = hdul[i].header['RSUN_REF']
-                    self.self_r_sun_pix = int(round(np.arctan(r_sun/sdo_dist)*180/np.pi*3600*coef_x))
+                    self.r_sun_pix = int(round(np.arctan(r_sun/sdo_dist)*180/np.pi*3600*coef_x))
                     self.xc, self.yc = xc, yc        
                 
                 if self.observer is None:
