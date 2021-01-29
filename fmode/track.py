@@ -280,7 +280,7 @@ class track:
                 
                 c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=self.observer)#observer="earth", obstime=f"{day} 00:00:00")
                 c2 = c1.transform_to(frames.HeliographicCarrington)
-                self.lons = c2.lon.value - self.sdo_lon0
+                self.lons = c2.lon.value - self.sdo_lon
                 #np.savetxt("lons.csv", self.lons, delimiter=",")
                 self.lats = c2.lat.value
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
