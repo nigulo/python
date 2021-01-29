@@ -85,7 +85,7 @@ class track:
         if DEBUG:
             print(self.x_pix[fltr], self.y_pix[fltr])
             plt.plot(self.x_pix[fltr], -self.y_pix[fltr] + self.ny, params=f"{color}.")
-        patch = self.data[int(self.y_pix[fltr]), int(self.x_pix[fltr])]
+        patch = self.data[self.y_pix[fltr].astype(int), self.x_pix[fltr].astype(int)]
         abs_patch = np.abs(patch)
         stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
         return stats
