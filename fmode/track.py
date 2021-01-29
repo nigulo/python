@@ -23,7 +23,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
 
 radius_km = 695700
 
@@ -95,7 +95,7 @@ class track:
         stats = np.empty((self.num_patches**2, 2), dtype=np.float32)
         i = 0
         if DEBUG:
-            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(200, 200))
+            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
             #phi = np.linspace(0, np.pi*2, 100)
             #xs1 = self.xc + self.r_sun_pix*np.cos(phi)
             #ys1 = self.yc + self.r_sun_pix*np.sin(phi)
@@ -130,9 +130,12 @@ class track:
             self.day_index += 1
         
         self.calc_stats()
+        print(f"time 6: {time.perf_counter()}")
         if len(self.stats) >= self.num_frames:
             self.save_stats()
+            print(f"time 7: {time.perf_counter()}")
             return True
+        print(f"time 7: {time.perf_counter()}")
         return False
             
     def set_time(self):
@@ -202,7 +205,7 @@ class track:
             print("Indices", self.start_day_index, self.start_frame_index, self.day_index, self.frame_index, self.num_frames, self.num_frames_per_day)
 
             for i in np.arange(self.frame_index+1, self.num_frames_per_day+1):
-                                
+                print(f"time 1: {time.perf_counter()}")                                
                 self.set_time()
                 self.header = hdul[i].header
                 
@@ -276,6 +279,7 @@ class track:
     
                 grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
                 
+                print(f"time 2: {time.perf_counter()}")        
 
                 #observer_i = frames.HeliographicStonyhurst((sdo_lon-sdo_lon1)*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
                 observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
@@ -287,6 +291,8 @@ class track:
                 self.lats = c2.lat.value
                 c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obstime)#, observer="earth")
                 c4 = c3.transform_to(frames.Helioprojective)
+
+                print(f"time 3: {time.perf_counter()}")
                 
                 x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value)
                 self.x_pix = np.round(x_pix)
@@ -306,6 +312,8 @@ class track:
                     data_for_plot = np.empty((ny, nx), dtype=np.float32)
                     data_nt = np.empty((ny, nx), dtype=np.float32)
                 
+                print(f"time 4: {time.perf_counter()}")
+
                 if self.frame is None:
                     self.frame = np.empty(nx*ny, dtype=np.float32)
                 l = 0
@@ -327,6 +335,8 @@ class track:
                             else:
                                 data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                         l += 1
+
+                print(f"time 5: {time.perf_counter()}")
 
                 if DEBUG:
                     test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
