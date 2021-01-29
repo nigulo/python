@@ -51,7 +51,6 @@ class track:
         
         self.stats = None
         self.observer = None
-        self.frame = None
 
         print(self.path)
         
@@ -86,7 +85,7 @@ class track:
         if DEBUG:
             print(self.x_pix[fltr], self.y_pix[fltr])
             plt.plot(self.x_pix[fltr], -self.y_pix[fltr] + self.ny, params=f"{color}.")
-        patch = self.frame[fltr]
+        patch = self.data[int(self.y_pix[fltr]), int(self.x_pix[fltr])]
         abs_patch = np.abs(patch)
         stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
         return stats
@@ -170,37 +169,12 @@ class track:
             print(self.day)
 
             hdul = fits.open(file)
-            print(hdul[1].header)
+            #print(hdul[1].header)
 
             self.num_frames_per_day = len(hdul) - 1
-            
-            #coef_x = 1./hdul[1].header['CDELT2']
-            #coef_y = 1./hdul[1].header['CDELT1']
-            #xc = hdul[1].header['CRPIX2']
-            #yc = hdul[1].header['CRPIX1']
-            #sdo_lon1 = hdul[1].header['CRLN_OBS']
-            #sdo_lat1 = hdul[1].header['CRLT_OBS']
-            #sdo_dist = hdul[1].header['DSUN_OBS']
-            #r_sun = hdul[1].header['RSUN_REF']
-
-            #full_snapshot = fits.getdata(file, 1)
-            #print(xc, yc)
-
-            #r_arcsec = np.arctan(r_sun/sdo_dist)*180/np.pi*3600
-            #r_pix = r_arcsec*coef_x
-            
-            #snapshots_per_day = len(hdul) - 1
-            #f = 1./snapshots_per_day
-            #self.nt = int(snapshots_per_day*self.num_hrs/24)
-
-            #c0 = SkyCoord(long_lat[:, 0]*u.deg, long_lat[:, 1]*u.deg, frame=frames.HeliographicStonyhurst)
-            #hpc_out = sunpy.coordinates.Helioprojective(observer=observer_1)#"earth", obstime=f"{day} 00:00:00")
-            #c1 = c0.transform_to(hpc_out)
-            
 
             arcsecs_per_pix_x = hdul[1].header['CDELT2']
             arcsecs_per_pix_y = hdul[1].header['CDELT1']
-            #self.data = np.empty((len(hdul) - 1, ny, nx), dtype=np.float32)
             
             print("Indices", self.start_day_index, self.start_frame_index, self.day_index, self.frame_index, self.num_frames, self.num_frames_per_day)
 
@@ -212,7 +186,7 @@ class track:
                 obstime = self.get_obs_time()
                 print(obstime)
 
-                data = fits.getdata(file, i)
+                self.data = fits.getdata(file, i)
 
                 a = hdul[i].header['CROTA2']*np.pi/180
                 nx = hdul[i].header['NAXIS1']
@@ -245,10 +219,6 @@ class track:
                 cos_a = np.cos(a)
                 
                 def pix_to_image(xs, ys):
-                    #nx2 = (nx+1)/2
-                    #ny2 = (ny+1)/2
-                    #xc_arcsec = dx + arcsecs_per_pix_x*cos_a*(nx2 - xc) - arcsecs_per_pix_y*sin_a*(ny2 - yc)
-                    #yc_arcsec = dy + arcsecs_per_pix_x*sin_a*(nx2 - xc) + arcsecs_per_pix_y*cos_a*(ny2 - yc)
                     xs = xs - xc
                     ys = ys - yc
                     
@@ -260,17 +230,13 @@ class track:
                 def image_to_pix(xs_arcsec, ys_arcsec):
                     xs_arcsec = xs_arcsec - dx
                     ys_arcsec = ys_arcsec - dy
-                    #nx2 = (nx+1)/2
-                    #ny2 = (ny+1)/2
-                    #xc_arcsec = dx + arcsecs_per_pix_x*cos_a*(nx2 - xc) - arcsecs_per_pix_y*sin_a*(ny2 - yc)
-                    #yc_arcsec = dy + arcsecs_per_pix_x*sin_a*(nx2 - xc) + arcsecs_per_pix_y*cos_a*(ny2 - yc)
                     
                     xs = xc + coef_x*cos_a*(xs_arcsec) + coef_y*sin_a*(ys_arcsec)
                     ys = yc - coef_x*sin_a*(xs_arcsec) + coef_y*cos_a*(ys_arcsec)
                                         
                     return xs, ys
                     
-                print(coef_x, coef_y, xc, yc)
+                #print(coef_x, coef_y, xc, yc)
                 
                 xs = (np.arange(1, nx + 1)).astype(float)
                 ys = (np.arange(1, ny + 1)).astype(float)
@@ -314,8 +280,6 @@ class track:
                 
                 print(f"time 4: {time.perf_counter()}")
 
-                if self.frame is None:
-                    self.frame = np.empty(nx*ny, dtype=np.float32)
                 l = 0
                 for j in np.arange(ny):
                     #print("--------")
@@ -324,16 +288,14 @@ class track:
                         if np.isnan(self.y_pix[l]) or np.isnan(self.x_pix[l]):
                             if DEBUG:
                                 data_for_plot[j, k] = np.nan
-                            self.frame[l] = np.nan
                         else:
                             if DEBUG:
-                                data_for_plot[j, k] = data[int(self.y_pix[l]), int(self.x_pix[l])]
-                            self.frame[l] = data[int(self.y_pix[l]), int(self.x_pix[l])]
+                                data_for_plot[j, k] = self.data[int(self.y_pix[l]), int(self.x_pix[l])]
                         if DEBUG:
                             if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
                                 data_nt[j, k] = np.nan
                             else:
-                                data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
+                                data_nt[j, k] = self.data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                         l += 1
 
                 print(f"time 5: {time.perf_counter()}")
@@ -348,7 +310,6 @@ class track:
                     test_plot.colormap(data_nt, cmap_name="bwr", show_colorbar=True)
                     test_plot.save(f"frame_nt_{suffix}.png")
                     test_plot.close()
-                print(i)
                 sys.stdout.flush()
                 if self.process_frame():
                     break
