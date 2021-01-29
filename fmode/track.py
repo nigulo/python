@@ -79,7 +79,7 @@ class track:
         self.day_index = self.start_day_index
 
     def calc_stats_patch(self, lon, lat, plt = None, color = None):
-        print("calc_stats_patch", lon, lat, np.nanmin(self.lons), np.nanmax(self.lons), np.nanmin(self.lats), np.nanmax(self.lats))
+        #print("calc_stats_patch", lon, lat, np.nanmin(self.lons), np.nanmax(self.lons), np.nanmin(self.lats), np.nanmax(self.lats))
         lon_filter = (self.lons >= lon) * (self.lons < lon + self.patch_size)
         lat_filter = (self.lats >= lat) * (self.lats < lat + self.patch_size)
         fltr = lon_filter * lat_filter
