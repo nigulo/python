@@ -85,7 +85,7 @@ class track:
         fltr = lon_filter * lat_filter
         if DEBUG:
             print(self.x_pix[fltr], self.y_pix[fltr])
-            plt.plot(self.x_pix[fltr], self.y_pix[fltr], params=f"{color}.")
+            plt.plot(self.x_pix[fltr], -self.y_pix[fltr] + self.ny, params=f"{color}.")
         patch = self.frame[fltr]
         abs_patch = np.abs(patch)
         stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
@@ -214,6 +214,8 @@ class track:
                 a = hdul[i].header['CROTA2']*np.pi/180
                 nx = hdul[i].header['NAXIS1']
                 ny = hdul[i].header['NAXIS2']
+                self.nx = nx
+                self.ny = ny
                 dx = hdul[i].header['CRVAL1']
                 dy = hdul[i].header['CRVAL2']
                 arcsecs_per_pix_x = hdul[i].header['CDELT1']
