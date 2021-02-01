@@ -94,12 +94,13 @@ class stats:
     def process_pixel(self, lon, lat, value):
         
         lon_start, lon_end, lat_start, lat_end = self.get_indices(lon, lat)
+        lon_end += 1
+        lat_end += 1
         
         abs_value = np.abs(value)
-        entries = self.data[lon_start:lon_end+1, lat_start:lat_end+1]
-        entries[0] += abs_value
-        entries[1] += abs_value**2
-        entries[2] += 1
+        self.data[lon_start:lon_end, lat_start:lat_end, 0] += abs_value
+        self.data[lon_start:lon_end, lat_start:lat_end, 1] += abs_value**2
+        self.data[lon_start:lon_end, lat_start:lat_end, 2] += 1
 
         
     def frame_processed(self):
