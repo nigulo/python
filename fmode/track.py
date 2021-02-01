@@ -73,14 +73,19 @@ class stats:
     def set_header(self, header):
         if header is None:
             self.header = fits.Header(header.get_cards())
-
-    def process_pixel(self, lon, lat, value):
-        
+            
+    def get_indices(self, lon, lat)
         lon_end = int((lon - self.patch_lons[0])/self.patch_step)
         lon_start = max(0, lon_end_index - int(self.patch_size/self.patch_step))
         
         lat_end = int((lat - self.patch_lats[0])/self.patch_step)
         lat_start = max(0, lat_end_index - int(self.patch_size/self.patch_step))
+        
+        return lon_start, lon_end, lat_start, lat_end
+
+    def process_pixel(self, lon, lat, value):
+        
+        lon_start, lon_end, lat_start, lat_end = self.get_indices(lon, lat)
         
         abs_value = np.abs(value)
         entries = self.data[lon_start:lon_end+1, lat_start:lat_end+1]
@@ -195,11 +200,12 @@ class track:
             #test_plot.plot(xs1, ys1, params="r-")
             colors = "rb"
         for i in range(len(self.lons)):
-            if np.isnan(self.x_pix[i]) or np.isnan(self.y_pix[i]):
-                value = np.nan
-            else:
-                value = self.data[int(self.y_pix[i]), int(self.x_pix[i])]
-            self.stats.process_pixel(self.lons[i], self.lats[i], value)
+            if self.lons[i] is not np.nan and self.lats[i] is not np.nan:
+                if np.isnan(self.x_pix[i]) or np.isnan(self.y_pix[i]):
+                    value = np.nan
+                else:
+                    value = self.data[int(self.y_pix[i]), int(self.x_pix[i])]
+                self.stats.process_pixel(self.lons[i], self.lats[i], value)
         #i = 0
         #for lon in self.patch_lons:
         #    for lat in self.patch_lats:
