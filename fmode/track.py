@@ -199,7 +199,6 @@ class track:
     def save_stats(self):
         assert(self.stats is not None)
         self.stats.save()
-        self.stats = None
         self.observer = None
         self.start_frame_index += self.step
         if self.start_frame_index >= self.num_frames_per_day:
