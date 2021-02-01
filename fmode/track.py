@@ -74,7 +74,7 @@ class stats:
         if header is None:
             self.header = fits.Header(header.get_cards())
             
-    def get_indices(self, lon, lat)
+    def get_indices(self, lon, lat):
         lon_end = int((lon - self.patch_lons[0])/self.patch_step)
         lon_start = max(0, lon_end_index - int(self.patch_size/self.patch_step))
         
