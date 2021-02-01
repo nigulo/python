@@ -75,11 +75,19 @@ class stats:
             self.header = fits.Header(header.get_cards())
             
     def get_indices(self, lon, lat):
-        lon_end = int((lon - self.patch_lons[0])/self.patch_step)
-        lon_start = max(0, lon_end_index - int(self.patch_size/self.patch_step))
+        lon_end1 = (lon - self.patch_lons[0])/self.patch_step
+        lon_end = int(lon_end1)
+        lon_delta = (lon_end1 - lon_end)*self.patch_step
+
+        #lon_start = max(0, int((lon - lon_delta - self.patch_lons[0] - self.patch_size)/self.patch_step))
+        lon_start = max(0, lon_end - int((self.patch_size - lon_delta)/self.patch_step))
         
-        lat_end = int((lat - self.patch_lats[0])/self.patch_step)
-        lat_start = max(0, lat_end_index - int(self.patch_size/self.patch_step))
+        lat_end1 = (lat - self.patch_lats[0])/self.patch_step
+        lat_end = int(lat_end1)
+        lat_delta = (lat_end1 - lat_end)*self.patch_step
+
+        #lat_start = max(0, int((lat - lat_delta - self.patch_lats[0] - self.patch_size)/self.patch_step))
+        lat_start = max(0, lat_end - int((self.patch_size - lat_delta)/self.patch_step))
         
         return lon_start, lon_end, lat_start, lat_end
 
