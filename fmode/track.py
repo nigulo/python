@@ -25,12 +25,67 @@ C = -1.787
 
 DEBUG = False
 
+stats_file_mode = "daily"
+
 radius_km = 695700
 
 def diff_rot(lat):
     #lat *= np.pi / 180
     return (A + B*np.sin(lat)**2 + C*np.sin(lat)**4)*np.pi/180
 
+
+class stats_header:
+    
+    def __init__(self):
+        self.cards = list()
+        self.data = None
+     
+    def add_card(self, card):
+        self.cards.append(card)
+                
+    def get_cards(self):
+        return self.cards
+    
+
+class stats:
+
+    def __init__(self, date):
+        self.storage = fits.open(f"{date}.fits", mode="append")
+        self.data = None
+        self.header = None
+        self.date = date
+        self.num_frames = 0
+        
+    def is_new(self):
+        return self.header is None
+    
+    def get_date(self):
+        return self.date
+    
+    def get_num_frames(self):
+        return self.num_frames
+    
+    def set_header(self, header):
+        if header is None:
+            self.header = fits.Header(header.get_cards())
+        
+    def add_data(self, data):
+        if self.data is None:
+            self.data = data
+        self.data += data
+        self.num_frames += 1
+
+    def save(self):
+        means = self.data[:, 0]/self.data[:, 2]
+        stds = np.sqrt((self.data[:, 1] - self.data[:, 0]**2)/self.data[:, 2])
+        hdu = fits.ImageHDU(data=np.array([means, stds]), header=self.header, name='Statistics')
+        self.storage.append(hdu)
+        self.storage.flush()
+        self.data = None
+        self.header = None
+        
+    def close():
+        self.storage.close()
 
 class track:
     
@@ -45,8 +100,8 @@ class track:
         
         
         # Here we already assume that tracked sequences are 8hrs
-        assert(self.patch_size < 170.)
-        self.patch_lons = np.linspace(-85. + patch_size/2, 85 - patch_size/2, num_patches)
+        assert(self.patch_size < 160)
+        self.patch_lons = np.linspace(-80, 80 - patch_size, num_patches)
         self.patch_lats = self.patch_lons
         
         self.stats = None
@@ -66,8 +121,7 @@ class track:
 
     def save_stats(self):
         assert(self.stats is not None)
-        output_file = f"{self.stats_time}.fits"
-        self.stats.writeto(output_file, overwrite=True)
+        self.stats.save()
         self.stats = None
         self.observer = None
         self.start_frame_index += self.step
@@ -87,11 +141,33 @@ class track:
             plt.plot(self.x_pix[fltr], -self.y_pix[fltr] + self.ny, params=f"{color}.")
         patch = self.data[self.y_pix[fltr].astype(int), self.x_pix[fltr].astype(int)]
         abs_patch = np.abs(patch)
-        stats = np.array([np.mean(abs_patch), np.std(abs_patch)])
-        return stats
+        return np.array([np.sum(abs_patch), np.sum(abs_patch**2), len(abs_patch)])
+
+    def create_stats(self):
+        if self.stats is None:
+            self.stats = stats(self.get_obs_time2())
+        create_new = False
+        if stats_file_mode == "daily":
+            if self.date > self.stats.get_date():
+                create_new = True
+        if stats_file_mode == "monthly":
+            if self.date[:7] > self.stats.get_date()[:7]:
+                create_new = True
+        if stats_file_mode == "yearly":
+            if self.date[:4] > self.stats.get_date()[:4]:
+                create_new = True
+        if create_new:
+            self.stats.close()
+            self.stats = stats(self.get_obs_time2())
+            
 
     def calc_stats(self):
-        stats = np.empty((self.num_patches**2, 2), dtype=np.float32)
+        if self.stats.is_new():
+            header = stats_header()
+            header.add_card(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
+            header.add_card(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
+            stats.set_header(header)
+        sums_counts = np.empty((self.num_patches**2, 3))
         i = 0
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
@@ -104,23 +180,16 @@ class track:
             for lat in self.patch_lats:
                 if DEBUG:
                     color = colors[((i // self.num_patches) % 2 + i % 2) % 2]
-                    stats[i] = self.calc_stats_patch(lon, lat, test_plot, color)
+                    sums_counts[i] = self.calc_stats_patch(lon, lat, test_plot, color)
                 else:
-                    stats[i] = self.calc_stats_patch(lon, lat)
+                    sums_counts[i] = self.calc_stats_patch(lon, lat)
                 i += 1
         if DEBUG:
             suffix = self.get_obs_time2()
             test_plot.save(f"patches{suffix}.png")
             test_plot.close()
-        cards = list()
-        cards.append(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
-        cards.append(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
-        header = fits.Header(cards)
-        hdu = fits.ImageHDU(data=stats, header=header, name='Statistics')
-        if self.stats is None:
-            self.stats = fits.HDUList()
-            self.stats_time = self.get_obs_time2()
-        self.stats.append(hdu)
+            
+        self.stats.add_data(sums_counts)
 
     def process_frame(self):
         self.frame_index += 1
@@ -130,7 +199,7 @@ class track:
         
         self.calc_stats()
         print(f"time 6: {time.perf_counter()}")
-        if len(self.stats) >= self.num_frames:
+        if self.stats.get_num_frames() >= self.num_frames:
             self.save_stats()
             print(f"time 7: {time.perf_counter()}")
             return True
@@ -157,16 +226,16 @@ class track:
         return f"{self.start_day} {self.hrs}:{self.mins}:{self.secs}"
 
     def get_obs_time(self):
-        return f"{self.day} {self.hrs}:{self.mins}:{self.secs}"
+        return f"{self.date} {self.hrs}:{self.mins}:{self.secs}"
 
     def get_obs_time2(self):
-        return f"{self.day}_{self.hrs}_{self.mins}_{self.secs}"
+        return f"{self.date}_{self.hrs}_{self.mins}_{self.secs}"
         
     def process_frames(self):
         if self.num_days <= 0 or self.day_index <= self.num_days:
-            self.day = self.all_files[self.day_index][:10]            
+            self.date = self.all_files[self.day_index][:10]            
             file = self.path + "/" + self.all_files[self.day_index]
-            print(self.day)
+            print(self.date)
 
             hdul = fits.open(file)
             #print(hdul[1].header)
@@ -175,6 +244,8 @@ class track:
 
             arcsecs_per_pix_x = hdul[1].header['CDELT2']
             arcsecs_per_pix_y = hdul[1].header['CDELT1']
+            
+            self.create_stats()
             
             print("Indices", self.start_day_index, self.start_frame_index, self.day_index, self.frame_index, self.num_frames, self.num_frames_per_day)
 
@@ -361,7 +432,8 @@ if (__name__ == '__main__'):
     if len(sys.argv) > i:
         patch_size = float(sys.argv[i])
     
-    tr = track(path=path, start_date=start_date, num_days=num_days, num_frames=num_frames, step=step, num_patches=num_patches, patch_size=patch_size)
+    tr = track(path=path, start_date=start_date, num_days=num_days, num_frames=num_frames, step=step, 
+               num_patches=num_patches, patch_size=patch_size)
     tr.track()
 
         
