@@ -208,7 +208,7 @@ class track:
             #test_plot.plot(xs1, ys1, params="r-")
             colors = "rb"
         for i in range(len(self.lons)):
-            if self.lons[i] is not np.nan and self.lats[i] is not np.nan:
+            if (not np.isnan(self.lons[i])) and (not np.isnan(self.lats[i])):
                 if np.isnan(self.x_pix[i]) or np.isnan(self.y_pix[i]):
                     value = np.nan
                 else:
