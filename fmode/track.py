@@ -23,7 +23,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 
 stats_file_mode = "daily"
 
@@ -144,7 +144,7 @@ class stats:
         self.header = None
         self.num_frames = 0
         
-    def close():
+    def close(self):
         self.storage.close()
 
 class track:
