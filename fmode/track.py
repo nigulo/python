@@ -130,9 +130,9 @@ class track:
         self.num_patches = num_patches
         self.patch_size = patch_size
         
-        
         # Here we already assume that tracked sequences are 8hrs
         assert(self.patch_size < 160)
+        assert(self.patch_size >= 160/num_patches)
         self.patch_lons = np.linspace(-80, 80 - patch_size, num_patches)
         self.patch_lats = self.patch_lons
         
