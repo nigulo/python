@@ -76,10 +76,10 @@ class stats:
 
     def process_pixel(self, lon, lat, value):
         
-        lon_end = int((lon - self.lons[0])/self.batch_step)
+        lon_end = int((lon - self.patch_lons[0])/self.batch_step)
         lon_start = max(0, lon_end_index - int(self.batch_size/self.batch_step))
         
-        lat_end = int((lat - self.lats[0])/self.batch_step)
+        lat_end = int((lat - self.patch_lats[0])/self.batch_step)
         lat_start = max(0, lat_end_index - int(self.batch_size/self.batch_step))
         
         abs_value = np.abs(value)
