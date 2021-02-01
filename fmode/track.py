@@ -56,6 +56,8 @@ class stats:
         self.num_frames = 0
         self.patch_lons = patch_lons
         self.patch_lats = patch_lats
+        self.patch_lons0 = patch_lons[0]
+        self.patch_lats0 = patch_lats[0]
         self.patch_size = patch_size
         self.patch_step = patch_lons[1] - patch_lons[0]
         self.num_patches = len(patch_lons)*len(patch_lats)
@@ -73,20 +75,19 @@ class stats:
     def set_header(self, header):
         if header is None:
             self.header = fits.Header(header.get_cards())
-            
+    
+    '''
     def get_indices(self, lon, lat):
-        lon_end1 = (lon - self.patch_lons[0])/self.patch_step
+        lon_end1 = (lon - self.patch_lons0)/self.patch_step
         lon_end = int(lon_end1)
         lon_delta = (lon_end1 - lon_end)*self.patch_step
 
-        #lon_start = max(0, int((lon - lon_delta - self.patch_lons[0] - self.patch_size)/self.patch_step))
         lon_start = max(0, lon_end - int((self.patch_size - lon_delta)/self.patch_step))
         
-        lat_end1 = (lat - self.patch_lats[0])/self.patch_step
+        lat_end1 = (lat - self.patch_lats0)/self.patch_step
         lat_end = int(lat_end1)
         lat_delta = (lat_end1 - lat_end)*self.patch_step
 
-        #lat_start = max(0, int((lat - lat_delta - self.patch_lats[0] - self.patch_size)/self.patch_step))
         lat_start = max(0, lat_end - int((self.patch_size - lat_delta)/self.patch_step))
         
         return lon_start, lon_end, lat_start, lat_end
@@ -98,13 +99,42 @@ class stats:
         lat_end += 1
         
         abs_value = np.abs(value)
-        self.data[lon_start:lon_end, lat_start:lat_end, 0] += abs_value
-        self.data[lon_start:lon_end, lat_start:lat_end, 1] += abs_value**2
-        self.data[lon_start:lon_end, lat_start:lat_end, 2] += 1
-
-        
-    def frame_processed(self):
+        self.data[lon_start:lon_end, lat_start:lat_end] += [abs_value, abs_value**2, 1]
+    '''
+    
+    def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time=None):
+        if DEBUG:
+            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+        for i in range(len(self.patch_lons)):
+            patch_lon = self.patch_lons[i]
+            lon_filter = (lons >= patch_lon) * (lons < patch_lon + self.patch_size)
+            lons1 = lons[lon_filter]
+            lats1 = lats[lon_filter]
+            x_pix1 = x_pix[lon_filter]
+            y_pix1 = y_pix[lon_filter]
+            data1 = data[x_pix1.astype(int), y_pix1.astype(int)]
+            for j in range(len(self.patch_lats)):
+                patch_lat = self.patch_lats[j]
+                lat_filter = (lats1 >= patch_lat) * (lats1 < patch_lat + self.patch_size)
+                lons2 = lons1[lat_filter]
+                lats2 = lats1[lat_filter]
+                x_pix2 = x_pix1[lat_filter]
+                y_pix2 = y_pix1[lat_filter]
+                data2 = data1[x_pix2.astype(int), y_pix2.astype(int)]
+                abs_data = np.abs(data2)
+                self.data[i, j] += [np.sum(abs_data), np.sum(abs_data**2), len(abs_data)]
+                if DEBUG:
+                    k = i*len(self.patch_lats)+j
+                    color = "rb"[(k // self.num_patches) % 2 + k % 2) % 2]
+                    test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
+        if DEBUG:
+            test_plot.save(f"patches{obs_time}.png")
+            test_plot.close()
         self.num_frames += 1
+    
+        
+    #def frame_processed(self):
+    #    self.num_frames += 1
 
     def save(self):
         means = self.data[:, :, 0]/self.data[:, :, 2]
@@ -200,21 +230,20 @@ class track:
             header.add_card(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
             header.add_card(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
             self.stats.set_header(header)
+        #######################################################################
+        #for i in range(len(self.lons)):
+        #    if (not np.isnan(self.lons[i])) and (not np.isnan(self.lats[i])):
+        #        if np.isnan(self.x_pix[i]) or np.isnan(self.y_pix[i]):
+        #            value = np.nan
+        #        else:
+        #            value = self.data[int(self.y_pix[i]), int(self.x_pix[i])]
+        #        self.stats.process_pixel(self.lons[i], self.lats[i], value)
+        #self.stats.frame_processed()
+        #######################################################################
         #sums_counts = np.empty((self.num_patches**2, 3))
-        if DEBUG:
-            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-            #phi = np.linspace(0, np.pi*2, 100)
-            #xs1 = self.xc + self.r_sun_pix*np.cos(phi)
-            #ys1 = self.yc + self.r_sun_pix*np.sin(phi)
-            #test_plot.plot(xs1, ys1, params="r-")
-            colors = "rb"
-        for i in range(len(self.lons)):
-            if (not np.isnan(self.lons[i])) and (not np.isnan(self.lats[i])):
-                if np.isnan(self.x_pix[i]) or np.isnan(self.y_pix[i]):
-                    value = np.nan
-                else:
-                    value = self.data[int(self.y_pix[i]), int(self.x_pix[i])]
-                self.stats.process_pixel(self.lons[i], self.lats[i], value)
+        #if DEBUG:
+        #    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+        #    colors = "rb"
         #i = 0
         #for lon in self.patch_lons:
         #    for lat in self.patch_lats:
@@ -224,12 +253,13 @@ class track:
         #        else:
         #            sums_counts[i] = self.calc_stats_patch(lon, lat)
         #        i += 1
-        if DEBUG:
-            suffix = self.get_obs_time2()
-            test_plot.save(f"patches{suffix}.png")
-            test_plot.close()
+        #if DEBUG:
+        #    suffix = self.get_obs_time2()
+        #    test_plot.save(f"patches{suffix}.png")
+        #    test_plot.close()
+        #######################################################################
+        self.stats.process_frame(self.lons, self.lats, self.x_pix, self.y_pix, self.data, obs_time=self.get_obs_time2())
             
-        self.stats.frame_processed()
 
     def process_frame(self):
         self.frame_index += 1
