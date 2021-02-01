@@ -60,7 +60,7 @@ class stats:
         self.patch_lats0 = patch_lats[0]
         self.patch_size = patch_size
         self.patch_step = patch_lons[1] - patch_lons[0]
-        self.num_patches = len(patch_lons)*len(patch_lats)
+        self.num_patches = len(patch_lons)
         self.data = np.zeros((self.num_patches, self.num_patches, 3))
         
     def is_new(self):
@@ -73,7 +73,7 @@ class stats:
         return self.num_frames
     
     def set_header(self, header):
-        if header is None:
+        if self.header is None:
             self.header = fits.Header(header.get_cards())
     
     '''
