@@ -267,6 +267,7 @@ class track:
 
             self.num_frames_per_day = len(hdul) - 1
 
+            self.set_time()
             self.create_stats()
             
             print("Indices", self.start_day_index, self.start_frame_index, self.day_index, self.frame_index, self.num_frames, self.num_frames_per_day)
