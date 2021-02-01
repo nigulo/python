@@ -125,7 +125,7 @@ class stats:
                 self.data[i, j] += [np.sum(abs_data), np.sum(abs_data**2), len(abs_data)]
                 if DEBUG:
                     k = i*len(self.patch_lats)+j
-                    color = "rb"[(k // self.num_patches) % 2 + k % 2) % 2]
+                    color = "rb"[((k // self.num_patches) % 2 + k % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
         if DEBUG:
             test_plot.save(f"patches{obs_time}.png")
