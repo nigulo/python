@@ -112,7 +112,12 @@ class stats:
             lats1 = lats[lon_filter]
             x_pix1 = x_pix[lon_filter]
             y_pix1 = y_pix[lon_filter]
-            data1 = data[x_pix1.astype(int), y_pix1.astype(int)]
+            print("x_pix1", x_pix1.shape, y_pix1)
+            data1 = data[y_pix1.astype(int), x_pix1.astype(int)]
+            if len(y_pix1) == 1:
+                data1 = data1[None, :]
+            if len(x_pix1) == 1:
+                data1 = data1[:, None]
             for j in range(len(self.patch_lats)):
                 patch_lat = self.patch_lats[j]
                 lat_filter = (lats1 >= patch_lat) * (lats1 < patch_lat + self.patch_size)
@@ -120,9 +125,9 @@ class stats:
                 lats2 = lats1[lat_filter]
                 x_pix2 = x_pix1[lat_filter]
                 y_pix2 = y_pix1[lat_filter]
-                data2 = data1[x_pix2.astype(int), y_pix2.astype(int)]
+                data2 = data1[y_pix2.astype(int), x_pix2.astype(int)]
                 abs_data = np.abs(data2)
-                self.data[i, j] += [np.sum(abs_data), np.sum(abs_data**2), len(abs_data)]
+                self.data[i, j] += [np.sum(abs_data), np.sum(abs_data**2), np.product(abs_data.shape)]
                 if DEBUG:
                     k = i*len(self.patch_lats)+j
                     color = "rb"[((k // self.num_patches) % 2 + k % 2) % 2]
