@@ -49,7 +49,6 @@ class stats_header:
 class stats:
 
     def __init__(self, patch_lons, patch_lats, patch_size):
-        self.storage = fits.open(f"{date}.fits", mode="append")
         self.header = None
         self.num_frames = 0
         self.patch_lons = patch_lons
@@ -61,8 +60,9 @@ class stats:
         self.num_patches = len(patch_lons)
         self.data = np.zeros((self.num_patches, self.num_patches, 3))
 
-    def set_date(self, date):
+    def init(self, date):
         self.date = date
+        self.storage = fits.open(f"{date}.fits", mode="append")
 
     def get_date(self):
         return self.date
@@ -308,9 +308,10 @@ class track:
         all_files.sort()
 
         self.state = state(step, num_days, num_frames, path, all_files)
-        self.state.set_stats(stats(self.patch_lons, self.patch_lats, self.patch_size))
+        sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+        self.state.set_stats(sts)
         self.state.next()
-        self.state.get_stats().set_date(self.state.get_obs_time2())
+        sts.init(self.state.get_obs_time2())
 
         metadata = self.state.get_metadata()
 
@@ -451,8 +452,9 @@ class track:
                     create_new_stats = True
             if create_new:
                 self.state.get_stats().close()
-                self.state.set_stats(stats(self.patch_lons, self.patch_lats, self.patch_size))
-                self.state.get_stats().set_date(self.state.get_obs_time2())
+                sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+                self.state.set_stats(sts)
+                sts.init(self.state.get_obs_time2())
             self.process_frame()
         self.state.close()
 
