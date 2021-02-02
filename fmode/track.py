@@ -258,7 +258,7 @@ class state:
             self.state.end_tracking()
             
     def is_done(self):
-        return day_index >= len(self.files) or (self.num_days > 0 and self.day_index >= self.num_days)
+        return self.day_index >= len(self.files) or (self.num_days > 0 and self.day_index >= self.num_days)
     
     def close():
         self.hdul.close()
