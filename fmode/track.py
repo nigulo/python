@@ -30,7 +30,6 @@ stats_file_mode = "daily"
 radius_km = 695700
 
 def diff_rot(lat):
-    #lat *= np.pi / 180
     return (A + B*np.sin(lat)**2 + C*np.sin(lat)**4)*np.pi/180
 
 
@@ -46,7 +45,6 @@ class stats_header:
     def get_cards(self):
         return self.cards
     
-#------------------------------------------------------------------------------
 
 class stats:
 
@@ -73,33 +71,7 @@ class stats:
     def set_header(self, header):
         assert(self.header is None)
         self.header = fits.Header(header.get_cards())
-    
-    '''
-    def get_indices(self, lon, lat):
-        lon_end1 = (lon - self.patch_lons0)/self.patch_step
-        lon_end = int(lon_end1)
-        lon_delta = (lon_end1 - lon_end)*self.patch_step
-
-        lon_start = max(0, lon_end - int((self.patch_size - lon_delta)/self.patch_step))
         
-        lat_end1 = (lat - self.patch_lats0)/self.patch_step
-        lat_end = int(lat_end1)
-        lat_delta = (lat_end1 - lat_end)*self.patch_step
-
-        lat_start = max(0, lat_end - int((self.patch_size - lat_delta)/self.patch_step))
-        
-        return lon_start, lon_end, lat_start, lat_end
-
-    def process_pixel(self, lon, lat, value):
-        
-        lon_start, lon_end, lat_start, lat_end = self.get_indices(lon, lat)
-        lon_end += 1
-        lat_end += 1
-        
-        abs_value = np.abs(value)
-        self.data[lon_start:lon_end, lat_start:lat_end] += [abs_value, abs_value**2, 1]
-    '''
-    
     def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time=None):
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
@@ -127,10 +99,6 @@ class stats:
             test_plot.save(f"patches{obs_time}.png")
             test_plot.close()
         self.num_frames += 1
-    
-        
-    #def frame_processed(self):
-    #    self.num_frames += 1
 
     def save(self):
         means = self.data[:, :, 0]/self.data[:, :, 2]
@@ -145,7 +113,6 @@ class stats:
     def close(self):
         self.storage.close()
 
-#------------------------------------------------------------------------------
 
 class state:
     
@@ -293,8 +260,8 @@ class state:
         self.hdul.close()
         self.stats.close()
 
-#------------------------------------------------------------------------------
-def pix_to_image(xs, ys):
+
+def pix_to_image(xs, ys, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y):
     xs = xs - xc
     ys = ys - yc
     
@@ -303,7 +270,7 @@ def pix_to_image(xs, ys):
                         
     return xs_arcsec, ys_arcsec
 
-def image_to_pix(xs_arcsec, ys_arcsec):
+def image_to_pix(xs_arcsec, ys_arcsec, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y):
     xs_arcsec = xs_arcsec - dx
     ys_arcsec = ys_arcsec - dy
     
@@ -311,7 +278,7 @@ def image_to_pix(xs_arcsec, ys_arcsec):
     ys = yc - coef_x*sin_a*(xs_arcsec) + coef_y*cos_a*(ys_arcsec)
                         
     return xs, ys
-#------------------------------------------------------------------------------
+
 
 class track:
     
@@ -339,159 +306,21 @@ class track:
         self.state = state(step, num_days, num_frames, path, all_files)
 
         metadata = self.state.get_metadata()
-        #print(hdul[1].header)
+
         self.nx = metadata['NAXIS1']
         self.ny = metadata['NAXIS2']
         
-        #print(coef_x, coef_y, xc, yc)
-        
-        xs = (np.arange(1, self.nx + 1)).astype(float)
-        ys = (np.arange(1, self.ny + 1)).astype(float)
-        xs_arcsec, ys_arcsec = pix_to_image(xs, ys)
-
-        self.grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
+        self.xs = (np.arange(1, self.nx + 1)).astype(float)
+        self.ys = (np.arange(1, self.ny + 1)).astype(float)
         self.state.set_stats(stats(self.state.get_obs_time2(), self.patch_lons, self.patch_lats, self.patch_size))
 
 
-    '''
-    def is_tracking():
-        return self.observer is not None
-    
-    def start_tracking(self, sdo_lat, sdo_dist, obs_time):
-        self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
-
-    def end_tracking(self):
-        assert(self.stats is not None)
-        self.stats.save()
-        self.observer = None
-        self.start_frame_index += self.step
-        if self.start_frame_index >= self.num_frames_per_day:
-            self.start_day_index += self.start_frame_index//self.num_frames_per_day
-            self.start_frame_index = self.start_frame_index % self.num_frames_per_day
-        self.frame_index = self.start_frame_index
-        self.day_index = self.start_day_index
-    '''    
-        
-
-    '''
-    def calc_stats_patch(self, lon, lat, plt = None, color = None):
-        #print("calc_stats_patch", lon, lat, np.nanmin(self.lons), np.nanmax(self.lons), np.nanmin(self.lats), np.nanmax(self.lats))
-        lon_filter = (self.lons >= lon) * (self.lons < lon + self.patch_size)
-        lat_filter = (self.lats >= lat) * (self.lats < lat + self.patch_size)
-        fltr = lon_filter * lat_filter
-        if DEBUG:
-            print(self.x_pix[fltr], self.y_pix[fltr])
-            plt.plot(self.x_pix[fltr], -self.y_pix[fltr] + self.ny, params=f"{color}.")
-        patch = self.data[self.y_pix[fltr].astype(int), self.x_pix[fltr].astype(int)]
-        abs_patch = np.abs(patch)
-        return np.array([np.sum(abs_patch), np.sum(abs_patch**2), len(abs_patch)])
-    '''
-
-    '''
-    def calc_stats(self):
-        if self.stats.is_new():
-            header = stats_header()
-            header.add_card(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
-            header.add_card(fits.Card(keyword="CLON", value=self.sdo_lon, comment="Carrington longitude"))
-            self.stats.set_header(header)
-        #######################################################################
-        #for i in range(len(self.lons)):
-        #    if (not np.isnan(self.lons[i])) and (not np.isnan(self.lats[i])):
-        #        if np.isnan(self.x_pix[i]) or np.isnan(self.y_pix[i]):
-        #            value = np.nan
-        #        else:
-        #            value = self.data[int(self.y_pix[i]), int(self.x_pix[i])]
-        #        self.stats.process_pixel(self.lons[i], self.lats[i], value)
-        #self.stats.frame_processed()
-        #######################################################################
-        #sums_counts = np.empty((self.num_patches**2, 3))
-        #if DEBUG:
-        #    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-        #    colors = "rb"
-        #i = 0
-        #for lon in self.patch_lons:
-        #    for lat in self.patch_lats:
-        #        if DEBUG:
-        #            color = colors[((i // self.num_patches) % 2 + i % 2) % 2]
-        #            sums_counts[i] = self.calc_stats_patch(lon, lat, test_plot, color)
-        #        else:
-        #            sums_counts[i] = self.calc_stats_patch(lon, lat)
-        #        i += 1
-        #if DEBUG:
-        #    suffix = self.get_obs_time2()
-        #    test_plot.save(f"patches{suffix}.png")
-        #    test_plot.close()
-        #######################################################################
-        self.stats.process_frame(self.lons, self.lats, self.x_pix, self.y_pix, self.data, obs_time=self.get_obs_time2())
-    '''        
-
-    '''
-    def process_frame(self):
-        #self.frame_index += 1
-        #if self.frame_index >= self.num_frames_per_day:
-        #    self.frame_index = 0
-        #    self.day_index += 1
-        
-        if self.stats.is_new():
-            header = stats_header()
-            header.add_card(fits.Card(keyword="TIME", value=self.state.get_obs_time(), comment="Observation time"))
-            header.add_card(fits.Card(keyword="CLON", value=self.state.get_sdo_lon(), comment="Carrington longitude"))
-            self.stats.set_header(header)
-        self.stats.process_frame(self.lons, self.lats, self.x_pix, self.y_pix, self.data, obs_time=self.state.get_obs_time2())
-        
-        self.state.frame_processed()
-
-        print(f"time 6: {time.perf_counter()}")
-        if self.stats.get_num_frames() >= self.num_frames:
-            assert(self.stats is not None)
-            self.stats.save()
-            self.state.end_tracking()
-            print(f"time 7: {time.perf_counter()}")
-            return True
-        print(f"time 7: {time.perf_counter()}")
-        return False
-    '''
-
-    '''
-    def set_time(self, header):
-        t_rec = header['T_REC']
-        
-        self.date = t_rec[:10]
-        self.hrs = t_rec[11:13]
-        self.mins = t_rec[14:16]
-        self.secs = t_rec[17:19]
-        self.obstime = t_rec[:19]
-        
-        self.obs_time = f"{self.date} {self.hrs}:{self.mins}:{self.secs}"
-        self.obs_time2 = f"{self.date}_{self.hrs}:{self.mins}:{self.secs}"
-        
-        if DEBUG:
-            hrs = self.frame_index*24/self.num_frames_per_day
-            mins = (hrs - int(hrs))*60
-            hrs = int(hrs)
-            secs = int(round((mins - int(mins))*60))
-            mins = int(mins)
-            if secs == 60:
-                secs = 0
-                mins += 1
-                if mins == 60:
-                    mins = 0
-                    hrs += 1
-            hrs = format(hrs, "02")
-            mins = format(mins, "02")
-            secs = format(secs, "02")
-            
-            assert(self.hrs = hrs)
-            assert(self.mins = mins)
-            assert(self.secs = secs)
-    '''
-        
     def process_frame(self):
         print(self.state.get_date())
         self.create_stats()
 
         print(f"time 1: {time.perf_counter()}")
-        metadata = self.state.get_metadata()#hdul[i].metadata
+        metadata = self.state.get_metadata()
         
         obs_time = self.state.get_obs_time()
         print(obs_time)
@@ -519,41 +348,28 @@ class track:
         coef_y = 1./arcsecs_per_pix_y
         xc = metadata['CRPIX1']
         yc = metadata['CRPIX2']
-        
-        #sdo_lon = metadata['CRLN_OBS']
-        #sdo_lat = metadata['CRLT_OBS']
-        #sdo_dist = metadata['DSUN_OBS']
-        
-        if DEBUG:
-            r_sun = metadata['RSUN_REF']
-            self.r_sun_pix = int(round(np.arctan(r_sun/sdo_dist)*180/np.pi*3600*coef_x))
-            self.xc, self.yc = xc, yc        
-        
-        #if self.observer is None:
-        #    self.observer = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
-        #    #self.sdo_lon0 = self.sdo_lon
-        
+                
         sin_a = np.sin(a)
         cos_a = np.cos(a)
         
+        xs_arcsec, ys_arcsec = pix_to_image(xs, ys, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y)
+        grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
         
         print(f"time 2: {time.perf_counter()}")        
 
         observer = self.state.get_observer()
-        #observer_i = frames.HeliographicStonyhurst((sdo_lon-sdo_lon1)*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obstime)
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
         
-        c1 = SkyCoord(self.grid[:, 0]*u.arcsec, self.grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer)#observer="earth", obstime=f"{day} 00:00:00")
+        c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer)
         c2 = c1.transform_to(frames.HeliographicCarrington)
         lons = c2.lon.value - self.state.get_sdo_lon()
-        #np.savetxt("lons.csv", self.lons, delimiter=",")
         lats = c2.lat.value
-        c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)#, observer="earth")
+        c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
         c4 = c3.transform_to(frames.Helioprojective)
 
         print(f"time 3: {time.perf_counter()}")
         
-        x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value)
+        x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
 
@@ -575,9 +391,7 @@ class track:
 
         l = 0
         for j in np.arange(ny):
-            #print("--------")
             for k in np.arange(nx):
-                #print("y, x", y_pix[l], x_pix[l])
                 if np.isnan(y_pix[l]) or np.isnan(x_pix[l]):
                     if DEBUG:
                         data_for_plot[j, k] = np.nan
