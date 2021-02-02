@@ -48,10 +48,9 @@ class stats_header:
 
 class stats:
 
-    def __init__(self, date, patch_lons, patch_lats, patch_size):
+    def __init__(self, patch_lons, patch_lats, patch_size):
         self.storage = fits.open(f"{date}.fits", mode="append")
         self.header = None
-        self.date = date
         self.num_frames = 0
         self.patch_lons = patch_lons
         self.patch_lats = patch_lats
@@ -61,6 +60,9 @@ class stats:
         self.patch_step = patch_lons[1] - patch_lons[0]
         self.num_patches = len(patch_lons)
         self.data = np.zeros((self.num_patches, self.num_patches, 3))
+
+    def set_date(self, date):
+        self.date = date
 
     def get_date(self):
         return self.date
@@ -124,16 +126,17 @@ class state:
         self.path = path
         self.files = files
         
-        self.hdul = fits.open(self.path + "/" + self.files[0])
-        self.num_frames_per_day = len(self.hdul) - 1
+        hdul = fits.open(self.path + "/" + self.files[0])
+        self.num_frames_per_day = len(hdul) - 1
+        hdul.close()
         
         self.start_day_index = 0
         self.start_frame_index = 0
         self.day_index = 0
         self.frame_index = 0
         self.observer = None
-        self.metadata = self.hdul[1].header
         self.file = None
+        self.hdul = None
         
     def get_num_frames_per_day(self):
         return self.num_frames_per_day
@@ -148,16 +151,17 @@ class state:
         if self.file is None or file != self.file:
             if self.hdul is not None:
                 self.hdul.close()
-                self.file = file
-                self.hdul = fits.open(self.file)
+            self.file = file
+            self.hdul = fits.open(self.file)
         
-        assert(self.num_frames_per_day == len(hdul) - 1)
+        assert(self.num_frames_per_day == len(self.hdul) - 1)
         
         self.metadata = self.hdul[self.frame_index + 1].header
 
         t_rec = self.metadata['T_REC']
         
-        self.date = t_rec[:10]
+        date = t_rec[:10]
+        self.date = date[:4] + "-" + date[5:7] + "-" +date[8:10]
         assert(file_date == self.date)
         
         self.hrs = t_rec[11:13]
@@ -188,9 +192,9 @@ class state:
             assert(self.mins == mins)
             assert(self.secs == secs)
 
-        self.sdo_lon = header['CRLN_OBS']
-        self.sdo_lat = header['CRLT_OBS']
-        self.sdo_dist = header['DSUN_OBS']
+        self.sdo_lon = self.metadata['CRLN_OBS']
+        self.sdo_lat = self.metadata['CRLT_OBS']
+        self.sdo_dist = self.metadata['DSUN_OBS']
 
         if not self.is_tracking():
             self.start_tracking()
@@ -222,7 +226,7 @@ class state:
     def get_sdo_lon(self):
         return self.sdo_lon
     
-    def is_tracking():
+    def is_tracking(self):
         return self.observer is not None
     
     def start_tracking(self):
@@ -304,6 +308,9 @@ class track:
         all_files.sort()
 
         self.state = state(step, num_days, num_frames, path, all_files)
+        self.state.set_stats(stats(self.patch_lons, self.patch_lats, self.patch_size))
+        self.state.next()
+        self.state.get_stats().set_date(self.state.get_obs_time2())
 
         metadata = self.state.get_metadata()
 
@@ -312,7 +319,6 @@ class track:
         
         self.xs = (np.arange(1, self.nx + 1)).astype(float)
         self.ys = (np.arange(1, self.ny + 1)).astype(float)
-        self.state.set_stats(stats(self.state.get_obs_time2(), self.patch_lons, self.patch_lats, self.patch_size))
 
 
     def process_frame(self):
@@ -445,7 +451,8 @@ class track:
                     create_new_stats = True
             if create_new:
                 self.state.get_stats().close()
-                self.state.set_stats(stats(self.state.get_obs_time2(), self.patch_lons, self.patch_lats, self.patch_size))
+                self.state.set_stats(stats(self.patch_lons, self.patch_lats, self.patch_size))
+                self.state.get_stats().set_date(self.state.get_obs_time2())
             self.process_frame()
         self.state.close()
 
