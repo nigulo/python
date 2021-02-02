@@ -261,7 +261,7 @@ class state:
         self.stats.close()
 
 
-def pix_to_image(xs, ys, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y):
+def pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y):
     xs = xs - xc
     ys = ys - yc
     
@@ -270,7 +270,7 @@ def pix_to_image(xs, ys, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y):
                         
     return xs_arcsec, ys_arcsec
 
-def image_to_pix(xs_arcsec, ys_arcsec, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y):
+def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y):
     xs_arcsec = xs_arcsec - dx
     ys_arcsec = ys_arcsec - dy
     
@@ -352,7 +352,7 @@ class track:
         sin_a = np.sin(a)
         cos_a = np.cos(a)
         
-        xs_arcsec, ys_arcsec = pix_to_image(xs, ys, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y)
+        xs_arcsec, ys_arcsec = pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
         
         print(f"time 2: {time.perf_counter()}")        
@@ -369,7 +369,7 @@ class track:
 
         print(f"time 3: {time.perf_counter()}")
         
-        x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy xc, yc, cos_a, sin_a, coef_x, coef_y)
+        x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
 
