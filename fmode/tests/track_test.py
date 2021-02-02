@@ -5,6 +5,14 @@ import numpy as np
 import unittest
 import track
 
+
+class test_track(unittest.TestCase):
+    
+    def test(self):
+        
+        
+
+'''
 class test_stats_get_indices(unittest.TestCase):
     
     def get_indices(self, lon, lat):
@@ -40,6 +48,7 @@ class test_stats_get_indices(unittest.TestCase):
                 #print("indices", indices)
 
                 np.testing.assert_array_equal(indices, indices_expected)
+'''
 
 if __name__ == '__main__':
     unittest.main()
