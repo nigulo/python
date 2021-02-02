@@ -146,7 +146,7 @@ class stats:
 
 class state:
     
-    def __init__(self, step, num_days, num_frames, path, files, stats):
+    def __init__(self, step, num_days, num_frames, path, files):
         self.step = step
         self.num_days = num_days
         self.num_frames = num_frames
@@ -154,16 +154,15 @@ class state:
         self.path = path
         self.files = files
         
-        hdul = fits.open(self.path + "/" + self.files[0])
-        self.num_frames_per_day = len(hdul) - 1
+        self.hdul = fits.open(self.path + "/" + self.files[0])
+        self.num_frames_per_day = len(self.hdul) - 1
         
         self.start_day_index = 0
         self.start_frame_index = 0
         self.day_index = 0
         self.frame_index = 0
         self.observer = None
-        self.metadata = hdul[1]
-        hdul.close()
+        self.metadata = self.hdul[1].header
         self.file = None
         
     def get_num_frames_per_day(self):
@@ -184,7 +183,7 @@ class state:
         
         assert(self.num_frames_per_day == len(hdul) - 1)
         
-        self.metadata = self.hdul[self.frame_index + 1]
+        self.metadata = self.hdul[self.frame_index + 1].header
 
         t_rec = self.metadata['T_REC']
         
@@ -215,9 +214,9 @@ class state:
             mins = format(mins, "02")
             secs = format(secs, "02")
             
-            assert(self.hrs = hrs)
-            assert(self.mins = mins)
-            assert(self.secs = secs)
+            assert(self.hrs == hrs)
+            assert(self.mins == mins)
+            assert(self.secs == secs)
 
         self.sdo_lon = header['CRLN_OBS']
         self.sdo_lat = header['CRLT_OBS']
