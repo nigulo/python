@@ -5,10 +5,29 @@ import numpy as np
 import unittest
 import track
 
+from astropy.io import fits
+
 
 class test_track(unittest.TestCase):
     
     def test(self):
+        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_frames=12, step=10, num_patches=100, patch_size=15)
+        
+        hdul = fits.open("2013-02-03.fits")
+        data_0 = hdul[1].data
+        
+        for i in range(120):
+            tr.state.next()
+            lons, lats, x_pix, y_pix, data = tr.transform()
+            tr.state.frame_processed()
+            l = 0
+            for i in range(data_0.shape[0]):
+                for j in range(data_0.shape[1]):
+                    if (not np.isnan(y_pix[l])) and (not np.isnan(x_pix[l])):
+                        np.testing.assert_equal(data[int(y_pix[l]), int(x_pix[l])], data_0[i, j])
+                    l += 1
+            
+            
         
         
 

@@ -19,9 +19,13 @@ import sunpy.coordinates
 from sunpy.coordinates import frames
 import track
 
+downsample_coef = .05
+
 hdul = fits.open("2013-02-03_hmi.M_720s.fits")
 
-output = fits.open(f"test_data.fits", mode="append")
+output = fits.open(f"2013-02-03.fits", mode="append")
+hdu = fits.ImageHDU(data=None, header=None)
+output.append(hdu)
 
 metadata = hdul[1].header
 
@@ -42,18 +46,16 @@ sdo_dist_0 = metadata['DSUN_OBS']
 
 observer_0 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat_0*u.deg, radius=sdo_dist_0*u.m, obstime=obs_time_0)
 
+nx = int(round(metadata['NAXIS1']*downsample_coef))
+ny = int(round(metadata['NAXIS2']*downsample_coef))
+
+xs = (np.arange(1, nx + 1)).astype(float)
+ys = (np.arange(1, ny + 1)).astype(float)
+
 for i in np.arange(1, len(hdul), 10):
     metadata = hdul[i].header
     data = hdul[i].data
 
-    downsample_coef = .1
-
-    nx = int(round(metadata['NAXIS1']*downsample_coef))
-    ny = int(round(metadata['NAXIS2']*downsample_coef))
-    
-    xs = (np.arange(1, nx + 1)).astype(float)
-    ys = (np.arange(1, ny + 1)).astype(float)
-    
     a = metadata['CROTA2']*np.pi/180
         
     dx = metadata['CRVAL1']
@@ -62,8 +64,8 @@ for i in np.arange(1, len(hdul), 10):
     arcsecs_per_pix_y = metadata['CDELT2']/downsample_coef
     coef_x = 1./arcsecs_per_pix_x
     coef_y = 1./arcsecs_per_pix_y
-    xc = int(round(metadata['CRPIX1']*downsample_coef))
-    yc = int(round(metadata['CRPIX2']*downsample_coef))
+    xc = metadata['CRPIX1']*downsample_coef
+    yc = metadata['CRPIX2']*downsample_coef
     
     t_rec = metadata['T_REC']
     
@@ -101,7 +103,7 @@ for i in np.arange(1, len(hdul), 10):
     x_pix, y_pix = track.image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
     x_pix = np.round(x_pix)
     y_pix = np.round(y_pix)
-
+    
     data = np.zeros((ny, nx))
 
     ###########################################################################
@@ -183,10 +185,19 @@ for i in np.arange(1, len(hdul), 10):
 
     ###########################################################################
         
-    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-    test_plot.colormap(data, show_colorbar=True)
-    test_plot.save(f"output{i}.png")
-    test_plot.close()
+    #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+    #test_plot.colormap(data, show_colorbar=True)
+    #test_plot.save(f"output{i}.png")
+    #test_plot.close()
+    
+    
+    metadata['NAXIS1'] = nx
+    metadata['NAXIS2'] = ny
+
+    metadata['CDELT1'] = arcsecs_per_pix_x
+    metadata['CDELT2'] = arcsecs_per_pix_y
+    metadata['CRPIX1'] = xc
+    metadata['CRPIX2'] = yc
     
     hdu = fits.ImageHDU(data=data, header=metadata)
 

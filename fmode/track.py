@@ -185,7 +185,7 @@ class state:
             hrs = format(hrs, "02")
             mins = format(mins, "02")
             secs = format(secs, "02")
-            
+
             assert(self.hrs == hrs)
             assert(self.mins == mins)
             assert(self.secs == secs)
@@ -289,9 +289,8 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 
 class track:
-    
-    def __init__(self, path='.', start_date='2013-02-14', num_days=-1, num_frames=8*5, step=10, num_patches=100, patch_size=15):
-        self.start_date = start_date
+
+    def __init__(self, path, files, num_days=-1, num_frames=8*5, step=10, num_patches=100, patch_size=15):
         self.num_patches = num_patches
         self.patch_size = patch_size
         
@@ -303,15 +302,7 @@ class track:
         
         print(path)
         
-        all_files = list()
-        
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                if file >= start_date:
-                    all_files.append(file)
-        all_files.sort()
-
-        self.state = state(step, num_days, num_frames, path, all_files)
+        self.state = state(step, num_days, num_frames, path, files)
         sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
         self.state.set_stats(sts)
         self.state.next()
@@ -326,7 +317,7 @@ class track:
         self.ys = (np.arange(1, self.ny + 1)).astype(float)
 
 
-    def process_frame(self):
+    def transform(self):
         print(self.state.get_date())
 
         print(f"time 1: {time.perf_counter()}")
@@ -382,7 +373,7 @@ class track:
         x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
-
+        
         #######################
         # No tracking
         if DEBUG:
@@ -428,6 +419,12 @@ class track:
             test_plot.save(f"frame_nt_{suffix}.png")
             test_plot.close()
         sys.stdout.flush()
+        
+        return lons, lats, x_pix, y_pix, data
+
+    def process_frame(self):
+
+        lons, lats, x_pix, y_pix, data = self.transform()
 
         self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time2())
         
@@ -493,7 +490,15 @@ if (__name__ == '__main__'):
     if len(sys.argv) > i:
         patch_size = float(sys.argv[i])
     
-    tr = track(path=path, start_date=start_date, num_days=num_days, num_frames=num_frames, step=step, 
+    all_files = list()
+    
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file >= start_date:
+                all_files.append(file)
+    all_files.sort()    
+    
+    tr = track(path=path, files=all_files, num_days=num_days, num_frames=num_frames, step=step, 
                num_patches=num_patches, patch_size=patch_size)
     tr.track()
 
