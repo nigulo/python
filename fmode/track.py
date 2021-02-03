@@ -225,6 +225,12 @@ class state:
     
     def get_sdo_lon(self):
         return self.sdo_lon
+
+    def get_sdo_lat(self):
+        return self.sdo_lat
+
+    def get_sdo_dist(self):
+        return self.sdo_dist
     
     def is_tracking(self):
         return self.observer is not None
@@ -265,7 +271,7 @@ class state:
         self.stats.close()
 
 
-def pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y):
+def pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y):
     xs = xs - xc
     ys = ys - yc
     
@@ -324,7 +330,6 @@ class track:
 
     def process_frame(self):
         print(self.state.get_date())
-        self.create_stats()
 
         print(f"time 1: {time.perf_counter()}")
         metadata = self.state.get_metadata()
@@ -359,13 +364,13 @@ class track:
         sin_a = np.sin(a)
         cos_a = np.cos(a)
         
-        xs_arcsec, ys_arcsec = pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
+        xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
         grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
         
         print(f"time 2: {time.perf_counter()}")        
 
         observer = self.state.get_observer()
-        observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
+        observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
         
         c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer)
         c2 = c1.transform_to(frames.HeliographicCarrington)
@@ -385,7 +390,7 @@ class track:
         if DEBUG:
             c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer, obstime=obs_time)#, observer="earth")
             c4 = c3.transform_to(frames.Helioprojective)
-            x_pix_nt, y_pix_nt = image_to_pix(c4.Tx.value, c4.Ty.value)
+            x_pix_nt, y_pix_nt = image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
             x_pix_nt = np.round(x_pix_nt)
             y_pix_nt = np.round(y_pix_nt)
 
@@ -440,7 +445,7 @@ class track:
             self.state.next()
             create_new_stats = False
             date = self.state.get_date()
-            stats_date = self.state.set_stats().get_date()
+            stats_date = self.state.get_stats().get_date()
             if stats_file_mode == "daily":
                 if date > stats_date:
                     create_new_stats = True
@@ -450,7 +455,7 @@ class track:
             if stats_file_mode == "yearly":
                 if date[:4] > stats_date[:4]:
                     create_new_stats = True
-            if create_new:
+            if create_new_stats:
                 self.state.get_stats().close()
                 sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
                 self.state.set_stats(sts)
