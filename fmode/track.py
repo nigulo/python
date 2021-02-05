@@ -22,7 +22,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
 
 stats_file_mode = "daily"
 
@@ -259,7 +259,7 @@ class state:
 
         if self.stats.get_num_frames() >= self.num_frames:
             self.stats.save()
-            self.state.end_tracking()
+            self.end_tracking()
             
     def is_done(self):
         return self.day_index >= len(self.files) or (self.num_days > 0 and self.day_index >= self.num_days)
