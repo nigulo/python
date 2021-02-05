@@ -107,88 +107,23 @@ for i in np.arange(1, len(hdul), 10):
     data = np.zeros((ny, nx))
 
     ###########################################################################
-
-    lon_filter = (lons > -70) * (lons < -50)
-    lat_filter = (lats > -70) * (lats < -50)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
     
-    ###########################################################################
-
-    lon_filter = (lons < 70) * (lons > 50)
-    lat_filter = (lats > -70) * (lats < -50)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons > -70) * (lons < -50)
-    lat_filter = (lats < 70) * (lats > 50)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons < 70) * (lons > 50)
-    lat_filter = (lats < 70) * (lats > 50)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons > -30) * (lons < -10)
-    lat_filter = (lats > -30) * (lats < -10)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-    
-    ###########################################################################
-
-    lon_filter = (lons < 30) * (lons > 10)
-    lat_filter = (lats > -30) * (lats < -10)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons > -30) * (lons < -10)
-    lat_filter = (lats < 30) * (lats > 10)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons < 30) * (lons > 10)
-    lat_filter = (lats < 30) * (lats > 10)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons > -70) * (lons < -50)
-    lat_filter = (lats < 5) * (lats > -5)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons < 70) * (lons > 50)
-    lat_filter = (lats < 5) * (lats > -5)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
-
-    lon_filter = (lons < 5) * (lons > -5)
-    lat_filter = (lats < 5) * (lats > -5)
-    fltr = lon_filter * lat_filter
-    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = 1.
-
-    ###########################################################################
+    j = 0
+    for lon in np.linspace(-80, 65, 10):
+        k = 0
+        lon_filter = (lons >= lon) * (lons < lon + 15)
+        for lat in np.linspace(-80, 65, 10):
+            lat_filter = (lats >= lat) * (lats < lat + 15)
+            fltr = lon_filter * lat_filter
+            value = [1., 0.][(j % 2 + k % 2) % 2]
+            data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
+            k += 1
+        j += 1
         
-    #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-    #test_plot.colormap(data, show_colorbar=True)
-    #test_plot.save(f"output{i}.png")
-    #test_plot.close()
+    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+    test_plot.colormap(data, show_colorbar=True)
+    test_plot.save(f"output{i}.png")
+    test_plot.close()
     
     
     metadata['NAXIS1'] = nx
