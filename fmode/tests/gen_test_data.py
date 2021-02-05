@@ -22,7 +22,12 @@ downsample_coef = .05
 
 hdul = fits.open("2013-02-03_hmi.M_720s.fits")
 
-output = fits.open(f"2013-02-03.fits", mode="append")
+try:
+    os.remove("2013-02-03.fits")
+except:
+    pass
+
+output = fits.open("2013-02-03.fits", mode="append")
 hdu = fits.ImageHDU(data=None, header=None)
 output.append(hdu)
 
