@@ -10,7 +10,6 @@ import time
 import os.path
 from astropy.io import fits
 import plot
-import misc
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
