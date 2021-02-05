@@ -442,23 +442,24 @@ class track:
         while not self.state.is_done():
             self.state.next()
             self.process_frame()
-            create_new_stats = False
-            date = self.state.get_date()
-            stats_date = self.state.get_stats().get_date()
-            if stats_file_mode == "daily":
-                if date > stats_date:
-                    create_new_stats = True
-            if stats_file_mode == "monthly":
-                if date[:7] > stats_date[:7]:
-                    create_new_stats = True
-            if stats_file_mode == "yearly":
-                if date[:4] > stats_date[:4]:
-                    create_new_stats = True
-            if create_new_stats:
-                self.state.get_stats().close()
-                sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
-                self.state.set_stats(sts)
-                sts.init(self.state.get_obs_time2())
+            if not self.state.is_tracking():
+                create_new_stats = False
+                date = self.state.get_date()
+                stats_date = self.state.get_stats().get_date()
+                if stats_file_mode == "daily":
+                    if date > stats_date:
+                        create_new_stats = True
+                if stats_file_mode == "monthly":
+                    if date[:7] > stats_date[:7]:
+                        create_new_stats = True
+                if stats_file_mode == "yearly":
+                    if date[:4] > stats_date[:4]:
+                        create_new_stats = True
+                if create_new_stats:
+                    self.state.get_stats().close()
+                    sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+                    self.state.set_stats(sts)
+                    sts.init(self.state.get_obs_time2())
         self.state.close()
 
 
