@@ -6,10 +6,11 @@ import unittest
 import track
 
 import plot
+import os
 
 from astropy.io import fits
 
-
+'''
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -65,8 +66,45 @@ class test_track(unittest.TestCase):
             test_plot.colormap(data_tracked, show_colorbar=True)
             test_plot.save(f"track{i+1}.png")
             test_plot.close()
+'''
+
+class test_stats(unittest.TestCase):
+    
+    def test(self):
+        try:
+            os.remove("2013-02-03_00:00:00.fits")
+        except:
+            pass
+        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_frames=6, step=3, num_patches=10, patch_size=15)
+
+        hdul = fits.open("2013-02-03.fits")
+
+        for i in range(12):
+            tr.state.next()
+            lons, lats, x_pix, y_pix, data = tr.transform()
+            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time2())
+            tr.state.frame_processed()
+
+        print(tr.state.get_stats().storage[0].header["TIME"])
+        print(tr.state.get_stats().storage[1].header["TIME"])
+        np.testing.assert_equal(len(tr.state.get_stats().storage), 4)
+        for i in [0, 3, 6, 9]:
+            t_rec = hdul[i].header["T_REC"]
+            t_rec = t_rec[:4] + "-" + t_rec[5:7] + "-" + t_rec[8:10]
+            np.testing.assert_equal(tr.state.get_stats().storage[i].header["TIME"], t_rec)
+            np.testing.assert_equal(tr.state.get_stats().storage[i].header["CLON"], hdul[i].header["CRLN_OBS"])
+            np.testing.assert_equal(tr.state.get_stats().storage[i].data.shape, (2, 10, 10))
+
+        # Tracking second time should have no effect
+        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_frames=6, step=3, num_patches=10, patch_size=15)
+        for i in range(12):
+            tr.state.next()
+            lons, lats, x_pix, y_pix, data = tr.transform()
+            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time2())
+            tr.state.frame_processed()
+        np.testing.assert_equal(len(tr.state.get_stats().storage), 4)
             
-        
+
         
 
 '''

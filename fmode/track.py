@@ -62,6 +62,9 @@ class stats:
     def init(self, date):
         self.date = date
         self.storage = fits.open(f"{date}.fits", mode="append")
+        self.tracked_times = set()
+        for entry in self.storage:
+            self.tracked_times.add(entry.header["TIME"])
 
     def get_date(self):
         return self.date
@@ -104,8 +107,10 @@ class stats:
         means = self.data[:, :, 0]/self.data[:, :, 2]
         stds = np.sqrt((self.data[:, :, 1] - self.data[:, :, 0]**2)/self.data[:, :, 2])
         hdu = fits.ImageHDU(data=np.array([means, stds]), header=self.header, name='Statistics')
-        self.storage.append(hdu)
-        self.storage.flush()
+        if hdu.header["TIME"] not in self.tracked_times:
+            self.tracked_times.add(hdu.header["TIME"])
+            self.storage.append(hdu)
+            self.storage.flush()
         self.data = np.zeros((self.num_patches, self.num_patches, 3))
         self.header = None
         self.num_frames = 0
@@ -159,7 +164,7 @@ class state:
         t_rec = self.metadata['T_REC']
         
         date = t_rec[:10]
-        self.date = date[:4] + "-" + date[5:7] + "-" +date[8:10]
+        self.date = date[:4] + "-" + date[5:7] + "-" + date[8:10]
         assert(file_date == self.date)
         
         self.hrs = t_rec[11:13]
@@ -296,7 +301,6 @@ class track:
         
         # Here we already assume that tracked sequences are 8hrs
         assert(self.patch_size < 160)
-        assert(self.patch_size >= 160/num_patches)
         self.patch_lons = np.linspace(-80, 80 - patch_size, num_patches)
         self.patch_lats = self.patch_lons
         
