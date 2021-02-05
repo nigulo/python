@@ -103,6 +103,7 @@ class stats:
         self.num_frames += 1
 
     def save(self):
+        assert(self.header is not None)
         means = self.data[:, :, 0]/self.data[:, :, 2]
         stds = np.sqrt((self.data[:, :, 1] - self.data[:, :, 0]**2)/self.data[:, :, 2])
         hdu = fits.ImageHDU(data=np.array([means, stds]), header=self.header, name='Statistics')
@@ -468,7 +469,9 @@ if (__name__ == '__main__'):
     start_date = '2013-02-14'
     num_days = -1 # How many days to track
     num_frames = 8*5
-    step = 10 # Step in number of frames between tracked sequences of num_hrs length
+    step = 5 # Step in number of frames between tracked sequences of num_hrs length
+    num_patches = 100
+    patch_size = 15
     
     i = 1
     
