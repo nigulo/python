@@ -442,6 +442,7 @@ class track:
     def track(self):
         while not self.state.is_done():
             self.state.next()
+            self.process_frame()
             create_new_stats = False
             date = self.state.get_date()
             stats_date = self.state.get_stats().get_date()
@@ -459,7 +460,6 @@ class track:
                 sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
                 self.state.set_stats(sts)
                 sts.init(self.state.get_obs_time2())
-            self.process_frame()
         self.state.close()
 
 
