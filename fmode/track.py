@@ -330,7 +330,6 @@ class track:
 
 
     def transform(self):
-        print(self.state.get_date())
 
         print(f"time 1: {time.perf_counter()}")
         metadata = self.state.get_metadata()
