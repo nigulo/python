@@ -15,6 +15,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 import sunpy.coordinates
 from sunpy.coordinates import frames
+from datetime import datetime, timedelta
 
 A = 14.713
 B = -2.396
@@ -118,27 +119,44 @@ class stats:
         self.storage.close()
 
 
+def parse_t_rec(t_rec):
+    year = t_rec[:4] 
+    month = t_rec[5:7]
+    day = t_rec[8:10]
+    
+    hrs = t_rec[11:13]
+    mins = t_rec[14:16]
+    secs = t_rec[17:19]
+    
+    return year, month, day, hrs, mins, secs
+
 class state:
     
-    def __init__(self, step, num_days, num_frames, path, files):
+    def __init__(self, step, num_days, num_hrs, path, files):
         self.step = step
-        self.num_days = num_days
-        self.num_frames = num_frames
+        self.num_hrs = num_hrs
         
         self.path = path
         self.files = files
         
         hdul = fits.open(self.path + "/" + self.files[0])
-        self.num_frames_per_day = len(hdul) - 1
+        #self.num_frames_per_day = len(hdul) - 1
+        t_rec = self.metadata['T_REC']
+        year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
+        self.start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+        self.end_time = self.start_time + timedelta(hours=self.num_hrs)
+        self.file_time = self.start_time
+        
+        if num_days > 0:
+            self.done_time = self.start_time + timedelta(days=num_days)
+        
         hdul.close()
         
-        self.start_day_index = 0
-        self.start_frame_index = 0
-        self.day_index = 0
         self.frame_index = 0
         self.observer = None
         self.file = None
         self.hdul = None
+        
         
     def get_num_frames_per_day(self):
         return self.num_frames_per_day
@@ -146,9 +164,10 @@ class state:
     def get_frame_index(self):
         return self.frame_index
 
-    def next(self):    
-        file_date = self.files[self.day_index][:10]
-        file = self.path + "/" + self.files[self.day_index]
+    def next(self):
+        files = self.files[self.files >= str(self.file_time)[:10]]
+        file_date = files[0][:10]
+        file = self.path + "/" + files[0]
         
         if self.file is None or file != self.file:
             if self.hdul is not None:
@@ -156,44 +175,25 @@ class state:
             self.file = file
             self.hdul = fits.open(self.file)
         
-        assert(self.num_frames_per_day == len(self.hdul) - 1)
+        self.num_frames_per_day = len(self.hdul) - 1
         
         self.metadata = self.hdul[self.frame_index + 1].header
 
         t_rec = self.metadata['T_REC']
         
-        date = t_rec[:10]
-        self.date = date[:4] + "-" + date[5:7] + "-" + date[8:10]
-        assert(file_date == self.date)
+        year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
+        date = year + "-" + month + "-" + day
+        assert(file_date == date)
         
-        self.hrs = t_rec[11:13]
-        self.mins = t_rec[14:16]
-        self.secs = t_rec[17:19]
-        self.obstime = t_rec[:19]
-        
-        self.obs_time = f"{self.date} {self.hrs}:{self.mins}:{self.secs}"
-        self.obs_time2 = f"{self.date}_{self.hrs}:{self.mins}:{self.secs}"
-        
-        if DEBUG:
-            hrs = self.frame_index*24/self.num_frames_per_day
-            mins = (hrs - int(hrs))*60
-            hrs = int(hrs)
-            secs = int(round((mins - int(mins))*60))
-            mins = int(mins)
-            if secs == 60:
-                secs = 0
-                mins += 1
-                if mins == 60:
-                    mins = 0
-                    hrs += 1
-            hrs = format(hrs, "02")
-            mins = format(mins, "02")
-            secs = format(secs, "02")
+        self.hrs = hrs
+        self.mins = mins
+        self.secs = secs
 
-            assert(self.hrs == hrs)
-            assert(self.mins == mins)
-            assert(self.secs == secs)
-
+        self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+        
+        self.obs_time_str = f"{date} {self.hrs}:{self.mins}:{self.secs}"
+        self.obs_time_str2 = f"{date}_{self.hrs}:{self.mins}:{self.secs}"
+        
         self.sdo_lon = self.metadata['CRLN_OBS']
         self.sdo_lat = self.metadata['CRLT_OBS']
         self.sdo_dist = self.metadata['DSUN_OBS']
@@ -213,14 +213,14 @@ class state:
     def get_data(self):
         return fits.getdata(self.file, self.frame_index + 1)
 
-    def get_date(self):
-        return self.date
-
     def get_obs_time(self):
         return self.obs_time
 
-    def get_obs_time2(self):
-        return self.obs_time2
+    def get_obs_time_str(self):
+        return self.obs_time_str
+
+    def get_obs_time_str2(self):
+        return self.obs_time_str2
     
     def get_observer(self):
         return self.observer
@@ -239,34 +239,31 @@ class state:
     
     def start_tracking(self):
         assert(self.observer is None)
-        self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.obs_time)
+        self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()
-        header.add_card(fits.Card(keyword="TIME", value=self.get_obs_time(), comment="Observation time"))
+        header.add_card(fits.Card(keyword="TIME", value=self.get_obs_time_str(), comment="Observation time"))
         header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude"))
         self.stats.set_header(header)
 
     def end_tracking(self):
         self.observer = None
-        self.start_frame_index += self.step
-        if self.start_frame_index >= self.num_frames_per_day:
-            self.start_day_index += self.start_frame_index//self.num_frames_per_day
-            self.start_frame_index = self.start_frame_index % self.num_frames_per_day
-        self.frame_index = self.start_frame_index
-        self.day_index = self.start_day_index
+        self.start_time = self.start_time + timedelta(hours=self.step)
+        self.end_time = self.start_time + timedelta(hours=self.num_hrs)
+        self.files = self.files[self.files >= str(self.start_time)[:10]]
         
     def frame_processed(self):
         self.frame_index += 1
         if self.frame_index >= self.num_frames_per_day:
             self.frame_index = 0
-            self.day_index += 1
+            self.file_time = self.file_time + timedelta(days=1)
 
-        if self.stats.get_num_frames() >= self.num_frames:
+        if self.obs_time >= self.end_time:
             self.stats.save()
             self.end_tracking()
             
     def is_done(self):
-        return self.day_index >= len(self.files) or (self.num_days > 0 and self.day_index >= self.num_days)
+        return len(self.files) == 0 or self.file_time >= self.done_time
     
     def close():
         self.hdul.close()
@@ -294,7 +291,7 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class track:
 
-    def __init__(self, path, files, num_days=-1, num_frames=8*5, step=10, num_patches=100, patch_size=15):
+    def __init__(self, path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15):
         self.num_patches = num_patches
         self.patch_size = patch_size
         
@@ -305,11 +302,11 @@ class track:
         
         print(path)
         
-        self.state = state(step, num_days, num_frames, path, files)
+        self.state = state(step, num_days, num_hrs, path, files)
         sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
         self.state.set_stats(sts)
         self.state.next()
-        sts.init(self.state.get_obs_time2())
+        sts.init(self.state.get_obs_time_str2())
 
         metadata = self.state.get_metadata()
 
@@ -326,7 +323,7 @@ class track:
         print(f"time 1: {time.perf_counter()}")
         metadata = self.state.get_metadata()
         
-        obs_time = self.state.get_obs_time()
+        obs_time = self.state.get_obs_time_str()
         print(obs_time)
 
         data = self.state.get_data()
@@ -414,7 +411,7 @@ class track:
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
             test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True)
-            suffix = self.state.get_obs_time2()
+            suffix = self.state.get_obs_time_str2()
             test_plot.save(f"frame_{suffix}.png")
             test_plot.close()
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_nt.shape[1]//8, data_nt.shape[0]//8))
@@ -429,7 +426,7 @@ class track:
 
         lons, lats, x_pix, y_pix, data = self.transform()
 
-        self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time2())
+        self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time_str2())
         
         self.state.frame_processed()
 
@@ -444,7 +441,7 @@ class track:
             self.process_frame()
             if not self.state.is_tracking():
                 create_new_stats = False
-                date = self.state.get_date()
+                date = self.state.get_obs_time_str()[:10]
                 stats_date = self.state.get_stats().get_date()
                 if stats_file_mode == "daily":
                     if date > stats_date:
@@ -459,7 +456,7 @@ class track:
                     self.state.get_stats().close()
                     sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
                     self.state.set_stats(sts)
-                    sts.init(self.state.get_obs_time2())
+                    sts.init(self.state.get_obs_time_str2())
         self.state.close()
 
 
@@ -467,9 +464,9 @@ if (__name__ == '__main__'):
     
     path = '.'
     start_date = '2013-02-14'
-    num_days = -1 # How many days to track
-    num_frames = 8*5
-    step = 5 # Step in number of frames between tracked sequences of num_hrs length
+    num_days = -1 # For how many days to run the script
+    num_hrs = 8 # Duration of tracking
+    step = 1 # Step in hours between tracked sequences of num_hrs length
     num_patches = 100
     patch_size = 15
     
@@ -485,10 +482,10 @@ if (__name__ == '__main__'):
         num_days = int(sys.argv[i])
     i += 1
     if len(sys.argv) > i:
-        num_frames = int(sys.argv[i])
+        num_hrs = float(sys.argv[i])
     i += 1
     if len(sys.argv) > i:
-        step = int(sys.argv[i])
+        step = float(sys.argv[i])
     i += 1
     if len(sys.argv) > i:
         num_patches = int(sys.argv[i])
@@ -504,7 +501,7 @@ if (__name__ == '__main__'):
                 all_files.append(file)
     all_files.sort()    
     
-    tr = track(path=path, files=all_files, num_days=num_days, num_frames=num_frames, step=step, 
+    tr = track(path=path, files=all_files, num_days=num_days, num_hrs=num_hrs, step=step, 
                num_patches=num_patches, patch_size=patch_size)
     tr.track()
 

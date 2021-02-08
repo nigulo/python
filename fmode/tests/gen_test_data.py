@@ -53,12 +53,11 @@ observer_0 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat_0*u.deg, radius=sdo
 nx = int(round(metadata['NAXIS1']*downsample_coef))
 ny = int(round(metadata['NAXIS2']*downsample_coef))
 
-xs = (np.arange(1, nx + 1)).astype(float)
-ys = (np.arange(1, ny + 1)).astype(float)
+xs1 = (np.arange(1, nx + 1)).astype(float)
+ys1 = (np.arange(1, ny + 1)).astype(float)
 
-for i in np.arange(1, len(hdul), 10):
+for i in np.arange(1, len(hdul)):
     metadata = hdul[i].header
-    data = hdul[i].data
 
     a = metadata['CROTA2']*np.pi/180
         
@@ -87,17 +86,23 @@ for i in np.arange(1, len(hdul), 10):
     sdo_dist = metadata['DSUN_OBS']
     
     
-    sin_a = np.sin(a)
-    cos_a = np.cos(a)
+    if i == 1:
+        sin_a = np.sin(a)
+        cos_a = np.cos(a)
+            
+        print(obs_time)
+        xs_arcsec, ys_arcsec = track.pix_to_image(xs1, ys1, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
+        grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
         
-    print(obs_time)
-    xs_arcsec, ys_arcsec = track.pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
-    grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
-
+        xs = grid[:, 0]*u.arcsec
+        ys = grid[:, 1]*u.arcsec
+        
+        
     
     observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
     
-    c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
+    #c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
+    c1 = SkyCoord(xs, ys, frame=frames.Helioprojective, observer=observer_0)
     c2 = c1.transform_to(frames.HeliographicCarrington)
     lons = c2.lon.value - sdo_lon_0
     lats = c2.lat.value
@@ -108,40 +113,45 @@ for i in np.arange(1, len(hdul), 10):
     x_pix = np.round(x_pix)
     y_pix = np.round(y_pix)
     
+    observer_0 = observer_i
+    #sdo_lon_0 = sdo_lon
+    xs = c4.Tx
+    ys = c4.Ty
+    
     data = np.zeros((ny, nx))
-
+    
     ###########################################################################
-    
-    j = 0
-    for lon in np.linspace(-80, 65, 10):
-        k = 0
-        lon_filter = (lons >= lon) * (lons < lon + 15)
-        for lat in np.linspace(-80, 65, 10):
-            lat_filter = (lats >= lat) * (lats < lat + 15)
-            fltr = lon_filter * lat_filter
-            value = [1., 0.][(j % 2 + k % 2) % 2]
-            data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
-            k += 1
-        j += 1
+    if (i - 1) % 10 == 0:
+        j = 0
+        for lon in np.linspace(-80, 65, 10):
+            k = 0
+            lon_filter = (lons >= lon) * (lons < lon + 15)
+            for lat in np.linspace(-80, 65, 10):
+                lat_filter = (lats >= lat) * (lats < lat + 15)
+                fltr = lon_filter * lat_filter
+                value = [1., -1.][(j % 2 + k % 2) % 2]
+                data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
+                k += 1
+            j += 1
+            
+        test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+        test_plot.colormap(data, show_colorbar=True)
+        test_plot.save(f"output{i}.png")
+        test_plot.close()
         
-    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-    test_plot.colormap(data, show_colorbar=True)
-    test_plot.save(f"output{i}.png")
-    test_plot.close()
+        
+        metadata['NAXIS1'] = nx
+        metadata['NAXIS2'] = ny
     
+        metadata['CDELT1'] = arcsecs_per_pix_x
+        metadata['CDELT2'] = arcsecs_per_pix_y
+        metadata['CRPIX1'] = xc
+        metadata['CRPIX2'] = yc
+        
+        hdu = fits.ImageHDU(data=data, header=metadata)
     
-    metadata['NAXIS1'] = nx
-    metadata['NAXIS2'] = ny
-
-    metadata['CDELT1'] = arcsecs_per_pix_x
-    metadata['CDELT2'] = arcsecs_per_pix_y
-    metadata['CRPIX1'] = xc
-    metadata['CRPIX2'] = yc
-    
-    hdu = fits.ImageHDU(data=data, header=metadata)
-
-    output.append(hdu)
-    output.flush()
+        output.append(hdu)
+        output.flush()
 
 output.close()
 hdul.close()    
