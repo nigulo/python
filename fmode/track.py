@@ -141,7 +141,7 @@ class state:
         
         hdul = fits.open(self.path + "/" + self.files[0])
         #self.num_frames_per_day = len(hdul) - 1
-        t_rec = self.metadata['T_REC']
+        t_rec = hdul[1].header['T_REC']
         year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
         self.start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
