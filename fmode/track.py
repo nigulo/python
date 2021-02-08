@@ -174,7 +174,7 @@ class state:
         return self.frame_index
 
     def next(self):
-        files = filter_files(self.files, str(self.file_time)[:10]])
+        files = filter_files(self.files, str(self.file_time)[:10])
         file_date = files[0][:10]
         file = self.path + "/" + files[0]
         
@@ -260,7 +260,7 @@ class state:
         self.start_time = self.start_time + timedelta(hours=self.step)
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
-        self.files = filter_files(self.files, str(self.file_time)[:10]])
+        self.files = filter_files(self.files, str(self.file_time)[:10])
         
     def frame_processed(self):
         self.frame_index += 1
