@@ -93,7 +93,7 @@ class stats:
                 x_pix2 = x_pix1[lat_filter]
                 y_pix2 = y_pix1[lat_filter]
                 abs_data = np.abs(data[y_pix2.astype(int), x_pix2.astype(int)])
-                self.data[i, j] += [np.sum(abs_data), np.sum(abs_data**2), np.product(abs_data.shape)]
+                self.data[i, j] += [np.nansum(abs_data), np.nansum(abs_data**2), np.product(abs_data.shape)]
                 if DEBUG:
                     color = "rb"[(i % 2 + k % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
@@ -209,6 +209,10 @@ class state:
         self.sdo_lat = self.metadata['CRLT_OBS']
         self.sdo_dist = self.metadata['DSUN_OBS']
 
+        if self.obs_time >= self.end_time:
+            self.stats.save()
+            self.end_tracking()
+
         if not self.is_tracking():
             self.start_tracking()
     
@@ -232,6 +236,12 @@ class state:
 
     def get_obs_time_str2(self):
         return self.obs_time_str2
+
+    def get_end_time(self):
+        return self.end_time
+
+    def get_end_time_str(self):
+        return str(self.end_time)[:19]
     
     def get_observer(self):
         return self.observer
@@ -253,8 +263,9 @@ class state:
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()
-        header.add_card(fits.Card(keyword="TIME", value=self.get_obs_time_str(), comment="Observation time"))
-        header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude"))
+        header.add_card(fits.Card(keyword="START_TIME", value=self.get_obs_time_str(), comment="Tracking start time"))
+        header.add_card(fits.Card(keyword="END_TIME", value=self.get_end_time_str(), comment="Tracking end time"))
+        header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
         self.stats.set_header(header)
 
     def end_tracking(self):
@@ -269,10 +280,6 @@ class state:
         if self.frame_index >= self.num_frames_per_day:
             self.frame_index = 0
             self.file_time = self.file_time + timedelta(days=1)
-
-        if self.obs_time >= self.end_time:
-            self.stats.save()
-            self.end_tracking()
             
     def is_done(self):
         return len(self.files) == 0 or (self.done_time is not None and self.file_time >= self.done_time)
