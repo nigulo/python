@@ -130,6 +130,15 @@ def parse_t_rec(t_rec):
     
     return year, month, day, hrs, mins, secs
 
+def filter_files(files, time):
+    i = 0
+    for f in files:
+        if f >= time:
+            break
+        i += 1
+    return files[i:]
+
+
 class state:
     
     def __init__(self, step, num_days, num_hrs, path, files):
@@ -165,7 +174,7 @@ class state:
         return self.frame_index
 
     def next(self):
-        files = self.files[self.files >= str(self.file_time)[:10]]
+        files = filter_files(self.files, str(self.file_time)[:10]])
         file_date = files[0][:10]
         file = self.path + "/" + files[0]
         
@@ -250,7 +259,8 @@ class state:
         self.observer = None
         self.start_time = self.start_time + timedelta(hours=self.step)
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
-        self.files = self.files[self.files >= str(self.start_time)[:10]]
+        self.file_time = self.start_time
+        self.files = filter_files(self.files, str(self.file_time)[:10]])
         
     def frame_processed(self):
         self.frame_index += 1
