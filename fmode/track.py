@@ -158,6 +158,8 @@ class state:
         
         if num_days > 0:
             self.done_time = self.start_time + timedelta(days=num_days)
+        else:
+            self.done_time = None
         
         hdul.close()
         
@@ -273,7 +275,7 @@ class state:
             self.end_tracking()
             
     def is_done(self):
-        return len(self.files) == 0 or self.file_time >= self.done_time
+        return len(self.files) == 0 or (self.done_time is not None and self.file_time >= self.done_time)
     
     def close():
         self.hdul.close()
