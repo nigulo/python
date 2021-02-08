@@ -63,7 +63,7 @@ class stats:
         self.storage = fits.open(f"{date}.fits", mode="append")
         self.tracked_times = set()
         for entry in self.storage:
-            self.tracked_times.add(entry.header["TIME"])
+            self.tracked_times.add(entry.header["START_TIME"])
 
     def get_date(self):
         return self.date
@@ -107,8 +107,8 @@ class stats:
         means = self.data[:, :, 0]/self.data[:, :, 2]
         stds = np.sqrt((self.data[:, :, 1] - self.data[:, :, 0]**2)/self.data[:, :, 2])
         hdu = fits.ImageHDU(data=np.array([means, stds]), header=self.header, name='Statistics')
-        if hdu.header["TIME"] not in self.tracked_times:
-            self.tracked_times.add(hdu.header["TIME"])
+        if hdu.header["START_TIME"] not in self.tracked_times:
+            self.tracked_times.add(hdu.header["START_TIME"])
             self.storage.append(hdu)
             self.storage.flush()
         self.data = np.zeros((self.num_patches, self.num_patches, 3))
