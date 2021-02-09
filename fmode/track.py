@@ -75,7 +75,7 @@ class stats:
         assert(self.header is None)
         self.header = fits.Header(header.get_cards())
         
-    def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time=None):
+    def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time, plot_file=None):
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
         for i in range(len(self.patch_lons)):
@@ -102,7 +102,7 @@ class stats:
                     color = "rb"[(i % 2 + k % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
         if DEBUG:
-            test_plot.save(f"patches{obs_time}.png")
+            test_plot.save(f"patches_{plot_file}.png")
             test_plot.close()
         self.num_frames += 1
 
@@ -161,11 +161,18 @@ class state:
         self.start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
+ 
+        self.obs_time = self.start_time
         
+        self.obs_time_str = f"{year}-{month}-{day} {hrs}:{mins}:{secs}"
+        self.obs_time_str2 = f"{year}-{month}-{day}_{hrs}:{mins}:{secs}"
+       
         if num_days > 0:
             self.done_time = self.start_time + timedelta(days=num_days)
         else:
             self.done_time = None
+
+        self.metadata = hdul[1].header
         
         hdul.close()
         
@@ -184,12 +191,15 @@ class state:
         return self.frame_index
 
     def next_frame(self):
+        print("frame_index 1", self.frame_index)
         self.frame_index += 1
         if self.frame_index >= self.num_frames_per_day:
             self.frame_index = -1
             self.file_time = self.file_time + timedelta(days=1)
             #print("next-file")
+            print("next_frame False")
             return False
+        print("next_frame True")
         return True
 
     def next(self):
@@ -209,9 +219,10 @@ class state:
         
         self.num_frames_per_day = len(self.hdul) - 1
 
+        print("frame_index 2", self.frame_index)
         if not self.next_frame():
             return False
-        
+        print("frame_index 3", self.frame_index)
         self.metadata = self.hdul[self.frame_index + 1].header
 
         t_rec = self.metadata['T_REC']
@@ -224,9 +235,8 @@ class state:
         self.mins = mins
         self.secs = secs
 
-        if self.obs_time is not None:
-            # This field is only for debug purposes
-            self.last_obs_time = self.obs_time
+        # This field is only for debug purposes
+        self.last_obs_time = self.obs_time
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         
         if self.get_obs_time() < self.get_start_time():
@@ -239,14 +249,14 @@ class state:
         self.sdo_lat = self.metadata['CRLT_OBS']
         self.sdo_dist = self.metadata['DSUN_OBS']
 
-        if self.is_tracking() and self.obs_time > self.end_time:
+        if self.is_tracking() and self.obs_time >= self.end_time:
             self.stats.save()
             self.end_tracking()
             return False
 
         if not self.is_tracking():
             self.start_tracking()
-            
+        
         return True
     
     def set_stats(self, stats):
@@ -353,7 +363,7 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class track:
 
-    def __init__(self, path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15):
+    def __init__(self, path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15, stats_dbg = None):
         self.num_patches = num_patches
         self.patch_size = patch_size
         
@@ -365,9 +375,11 @@ class track:
         print(path)
         
         self.state = state(step, num_days, num_hrs, path, files)
-        sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+        if stats_dbg is None:
+            sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+        else:
+            sts = stats_dbg
         self.state.set_stats(sts)
-        self.state.next()
         sts.init(self.state.get_obs_time_str2())
 
         metadata = self.state.get_metadata()
@@ -487,7 +499,7 @@ class track:
 
         lons, lats, x_pix, y_pix, data = self.transform()
 
-        self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time_str2())
+        self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
         
         print(f"time 6: {time.perf_counter()}")
         #self.state.frame_processed()
