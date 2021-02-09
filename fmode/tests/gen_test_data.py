@@ -20,55 +20,21 @@ import track
 
 downsample_coef = .05
 
-hdul = fits.open("2013-02-03_hmi.M_720s.fits")
 
-try:
-    os.remove("2013-02-03.fits")
-except:
-    pass
+for file_date in ["2013-02-03", "2013-02-04"]:
 
-output = fits.open("2013-02-03.fits", mode="append")
-hdu = fits.ImageHDU(data=None, header=None)
-output.append(hdu)
-
-metadata = hdul[1].header
-
-t_rec = metadata['T_REC']
-
-date = t_rec[:10]
-date = date[:4] + "-" + date[5:7] + "-" +date[8:10]
-
-hrs = t_rec[11:13]
-mins = t_rec[14:16]
-secs = t_rec[17:19]
-
-obs_time_0 = f"{date} {hrs}:{mins}:{secs}"    
-
-sdo_lon_0 = metadata['CRLN_OBS']
-sdo_lat_0 = metadata['CRLT_OBS']
-sdo_dist_0 = metadata['DSUN_OBS']
-
-observer_0 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat_0*u.deg, radius=sdo_dist_0*u.m, obstime=obs_time_0)
-
-nx = int(round(metadata['NAXIS1']*downsample_coef))
-ny = int(round(metadata['NAXIS2']*downsample_coef))
-
-xs1 = (np.arange(1, nx + 1)).astype(float)
-ys1 = (np.arange(1, ny + 1)).astype(float)
-
-for i in np.arange(1, len(hdul)):
-    metadata = hdul[i].header
-
-    a = metadata['CROTA2']*np.pi/180
-        
-    dx = metadata['CRVAL1']
-    dy = metadata['CRVAL2']
-    arcsecs_per_pix_x = metadata['CDELT1']/downsample_coef
-    arcsecs_per_pix_y = metadata['CDELT2']/downsample_coef
-    coef_x = 1./arcsecs_per_pix_x
-    coef_y = 1./arcsecs_per_pix_y
-    xc = metadata['CRPIX1']*downsample_coef
-    yc = metadata['CRPIX2']*downsample_coef
+    hdul = fits.open(f"{file_date}_hmi.M_720s.fits")
+    
+    try:
+        os.remove(f"{file_date}.fits")
+    except:
+        pass
+    
+    output = fits.open(f"{file_date}.fits", mode="append")
+    hdu = fits.ImageHDU(data=None, header=None)
+    output.append(hdu)
+    
+    metadata = hdul[1].header
     
     t_rec = metadata['T_REC']
     
@@ -79,79 +45,120 @@ for i in np.arange(1, len(hdul)):
     mins = t_rec[14:16]
     secs = t_rec[17:19]
     
-    obs_time = f"{date} {hrs}:{mins}:{secs}"    
-           
-    sdo_lon = metadata['CRLN_OBS']
-    sdo_lat = metadata['CRLT_OBS']
-    sdo_dist = metadata['DSUN_OBS']
+    obs_time_0 = f"{date} {hrs}:{mins}:{secs}"    
     
+    sdo_lon_0 = metadata['CRLN_OBS']
+    sdo_lat_0 = metadata['CRLT_OBS']
+    sdo_dist_0 = metadata['DSUN_OBS']
     
-    if i == 1:
-        sin_a = np.sin(a)
-        cos_a = np.cos(a)
+    observer_0 = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat_0*u.deg, radius=sdo_dist_0*u.m, obstime=obs_time_0)
+    
+    nx = int(round(metadata['NAXIS1']*downsample_coef))
+    ny = int(round(metadata['NAXIS2']*downsample_coef))
+    
+    xs1 = (np.arange(1, nx + 1)).astype(float)
+    ys1 = (np.arange(1, ny + 1)).astype(float)
+    
+    for i in np.arange(1, len(hdul)):
+        metadata = hdul[i].header
+    
+        a = metadata['CROTA2']*np.pi/180
             
-        print(obs_time)
-        xs_arcsec, ys_arcsec = track.pix_to_image(xs1, ys1, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
-        grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
+        dx = metadata['CRVAL1']
+        dy = metadata['CRVAL2']
+        arcsecs_per_pix_x = metadata['CDELT1']/downsample_coef
+        arcsecs_per_pix_y = metadata['CDELT2']/downsample_coef
+        coef_x = 1./arcsecs_per_pix_x
+        coef_y = 1./arcsecs_per_pix_y
+        xc = metadata['CRPIX1']*downsample_coef
+        yc = metadata['CRPIX2']*downsample_coef
         
-        xs = grid[:, 0]*u.arcsec
-        ys = grid[:, 1]*u.arcsec
+        t_rec = metadata['T_REC']
+        
+        date = t_rec[:10]
+        date = date[:4] + "-" + date[5:7] + "-" +date[8:10]
+        
+        hrs = t_rec[11:13]
+        mins = t_rec[14:16]
+        secs = t_rec[17:19]
+        
+        obs_time = f"{date} {hrs}:{mins}:{secs}"    
+               
+        sdo_lon = metadata['CRLN_OBS']
+        sdo_lat = metadata['CRLT_OBS']
+        sdo_dist = metadata['DSUN_OBS']
         
         
-    
-    observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
-    
-    #c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
-    c1 = SkyCoord(xs, ys, frame=frames.Helioprojective, observer=observer_0)
-    c2 = c1.transform_to(frames.HeliographicCarrington)
-    lons = c2.lon.value - sdo_lon_0
-    lats = c2.lat.value
-    c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
-    c4 = c3.transform_to(frames.Helioprojective)
-
-    x_pix, y_pix = track.image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
-    x_pix = np.round(x_pix)
-    y_pix = np.round(y_pix)
-    
-    observer_0 = observer_i
-    #sdo_lon_0 = sdo_lon
-    xs = c4.Tx
-    ys = c4.Ty
-    
-    data = np.zeros((ny, nx))
-    
-    ###########################################################################
-    if (i - 1) % 10 == 0:
-        j = 0
-        for lon in np.linspace(-80, 65, 10):
-            k = 0
-            lon_filter = (lons >= lon) * (lons < lon + 15)
-            for lat in np.linspace(-80, 65, 10):
-                lat_filter = (lats >= lat) * (lats < lat + 15)
-                fltr = lon_filter * lat_filter
-                value = [1., -1.][(j % 2 + k % 2) % 2]
-                data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
-                k += 1
-            j += 1
+        if i == 1:
+            sin_a = np.sin(a)
+            cos_a = np.cos(a)
+                
+            print(obs_time)
+            xs_arcsec, ys_arcsec = track.pix_to_image(xs1, ys1, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
+            grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
             
-        test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-        test_plot.colormap(data, show_colorbar=True)
-        test_plot.save(f"output{i}.png")
-        test_plot.close()
+            xs = grid[:, 0]*u.arcsec
+            ys = grid[:, 1]*u.arcsec
+            
+            
         
+        observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
         
-        metadata['NAXIS1'] = nx
-        metadata['NAXIS2'] = ny
+        #c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
+        c1 = SkyCoord(xs, ys, frame=frames.Helioprojective, observer=observer_0)
+        c2 = c1.transform_to(frames.HeliographicCarrington)
+        lons = c2.lon.value - sdo_lon_0
+        lats = c2.lat.value
+        c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
+        c4 = c3.transform_to(frames.Helioprojective)
     
-        metadata['CDELT1'] = arcsecs_per_pix_x
-        metadata['CDELT2'] = arcsecs_per_pix_y
-        metadata['CRPIX1'] = xc
-        metadata['CRPIX2'] = yc
+        x_pix, y_pix = track.image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
+        x_pix = np.round(x_pix)
+        y_pix = np.round(y_pix)
         
-        hdu = fits.ImageHDU(data=data, header=metadata)
+        observer_0 = observer_i
+        #sdo_lon_0 = sdo_lon
+        xs = c4.Tx
+        ys = c4.Ty
+        
+        data = np.empty((ny, nx))
+        data[:, :] = np.nan
+        
+        ###########################################################################
+        if (i - 1) % 10 == 0:
+            j = 0
+            num_patches = 5
+            patch_size = 20
+            for lon in np.linspace(-80, 65, num_patches):
+                k = 0
+                lon_filter = (lons >= lon) * (lons < lon + patch_size)
+                for lat in np.linspace(-80, 65, num_patches):
+                    lat_filter = (lats >= lat) * (lats < lat + patch_size)
+                    fltr = lon_filter * lat_filter
+                    value = j * num_patches + k
+                    #value = [1., -1.][(j % 2 + k % 2) % 2]
+                    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
+                    k += 1
+                j += 1
+                
+            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+            test_plot.colormap(data, show_colorbar=True)
+            test_plot.save(f"output{date}_{i}.png")
+            test_plot.close()
+            
+            
+            metadata['NAXIS1'] = nx
+            metadata['NAXIS2'] = ny
+        
+            metadata['CDELT1'] = arcsecs_per_pix_x
+            metadata['CDELT2'] = arcsecs_per_pix_y
+            metadata['CRPIX1'] = xc
+            metadata['CRPIX2'] = yc
+            
+            hdu = fits.ImageHDU(data=data, header=metadata)
+        
+            output.append(hdu)
+            output.flush()
     
-        output.append(hdu)
-        output.flush()
-
-output.close()
-hdul.close()    
+    output.close()
+    hdul.close()    

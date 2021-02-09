@@ -92,7 +92,11 @@ class stats:
                 lats2 = lats1[lat_filter]
                 x_pix2 = x_pix1[lat_filter]
                 y_pix2 = y_pix1[lat_filter]
+                #assert(len(x_pix2) == len(y_pix2))
                 abs_data = np.abs(data[y_pix2.astype(int), x_pix2.astype(int)])
+                #abs_data = abs_data.flatten()
+                len_before = len(abs_data)
+                abs_data = abs_data[np.logical_not(np.isnan(abs_data))]
                 self.data[i, j] += [np.nansum(abs_data), np.nansum(abs_data**2), np.product(abs_data.shape)]
                 if DEBUG:
                     color = "rb"[(i % 2 + k % 2) % 2]
@@ -105,7 +109,7 @@ class stats:
     def save(self):
         assert(self.header is not None)
         means = self.data[:, :, 0]/self.data[:, :, 2]
-        stds = np.sqrt((self.data[:, :, 1] - self.data[:, :, 0]**2)/self.data[:, :, 2])
+        stds = np.sqrt(self.data[:, :, 1]/self.data[:, :, 2] - means**2)
         hdu = fits.ImageHDU(data=np.array([means, stds]), header=self.header, name='Statistics')
         if hdu.header["START_TIME"] not in self.tracked_times:
             self.tracked_times.add(hdu.header["START_TIME"])
@@ -131,8 +135,10 @@ def parse_t_rec(t_rec):
     return year, month, day, hrs, mins, secs
 
 def filter_files(files, time):
+    #print("filter_files", files, time)
     i = 0
     for f in files:
+        #print("f", f, time)
         if f >= time:
             break
         i += 1
@@ -163,7 +169,7 @@ class state:
         
         hdul.close()
         
-        self.frame_index = 0
+        self.frame_index = -1
         self.observer = None
         self.file = None
         self.hdul = None
@@ -174,6 +180,15 @@ class state:
     
     def get_frame_index(self):
         return self.frame_index
+
+    def next_frame(self):
+        self.frame_index += 1
+        if self.frame_index >= self.num_frames_per_day:
+            self.frame_index = -1
+            self.file_time = self.file_time + timedelta(days=1)
+            #print("next-file")
+            return False
+        return True
 
     def next(self):
         files = filter_files(self.files, str(self.file_time)[:10])
@@ -187,6 +202,9 @@ class state:
             self.hdul = fits.open(self.file)
         
         self.num_frames_per_day = len(self.hdul) - 1
+
+        if not self.next_frame():
+            return False
         
         self.metadata = self.hdul[self.frame_index + 1].header
 
@@ -202,6 +220,9 @@ class state:
 
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         
+        if self.get_obs_time() < self.get_start_time():
+            return False
+        
         self.obs_time_str = f"{date} {self.hrs}:{self.mins}:{self.secs}"
         self.obs_time_str2 = f"{date}_{self.hrs}:{self.mins}:{self.secs}"
         
@@ -209,12 +230,15 @@ class state:
         self.sdo_lat = self.metadata['CRLT_OBS']
         self.sdo_dist = self.metadata['DSUN_OBS']
 
-        if self.obs_time >= self.end_time:
+        if self.is_tracking() and self.obs_time > self.end_time:
             self.stats.save()
             self.end_tracking()
+            return False
 
         if not self.is_tracking():
             self.start_tracking()
+            
+        return True
     
     def set_stats(self, stats):
         self.stats = stats
@@ -236,6 +260,12 @@ class state:
 
     def get_obs_time_str2(self):
         return self.obs_time_str2
+
+    def get_start_time(self):
+        return self.start_time
+
+    def get_start_time_str(self):
+        return str(self.start_time)[:19]
 
     def get_end_time(self):
         return self.end_time
@@ -260,10 +290,12 @@ class state:
     
     def start_tracking(self):
         assert(self.observer is None)
+        print(self.get_start_time(), self.get_obs_time())
+        assert(self.get_start_time() == self.get_obs_time())
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()
-        header.add_card(fits.Card(keyword="START_TIME", value=self.get_obs_time_str(), comment="Tracking start time"))
+        header.add_card(fits.Card(keyword="START_TIME", value=self.get_start_time_str(), comment="Tracking start time"))
         header.add_card(fits.Card(keyword="END_TIME", value=self.get_end_time_str(), comment="Tracking end time"))
         header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
         self.stats.set_header(header)
@@ -273,18 +305,17 @@ class state:
         self.start_time = self.start_time + timedelta(hours=self.step)
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
+        print("file_time", self.file_time)
         self.files = filter_files(self.files, str(self.file_time)[:10])
-        
-    def frame_processed(self):
-        self.frame_index += 1
-        if self.frame_index >= self.num_frames_per_day:
-            self.frame_index = 0
-            self.file_time = self.file_time + timedelta(days=1)
-            
+        self.frame_index = -1
+                    
     def is_done(self):
         return len(self.files) == 0 or (self.done_time is not None and self.file_time >= self.done_time)
     
-    def close():
+    def close(self):
+        if self.is_tracking():
+            self.stats.save()
+            self.end_tracking()
         self.hdul.close()
         self.stats.close()
 
@@ -446,16 +477,22 @@ class track:
 
         self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time_str2())
         
-        self.state.frame_processed()
-
         print(f"time 6: {time.perf_counter()}")
-        print(f"time 7: {time.perf_counter()}")        
+        #self.state.frame_processed()
+
+        #print(f"time 7: {time.perf_counter()}")        
         sys.stdout.flush()
         
         
     def track(self):
         while not self.state.is_done():
-            self.state.next()
+            do_break = False
+            while not self.state.next():
+                if self.state.is_done():
+                    do_break = True
+                    break
+            if do_break:
+                break
             self.process_frame()
             if not self.state.is_tracking():
                 create_new_stats = False

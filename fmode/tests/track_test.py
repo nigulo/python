@@ -9,6 +9,7 @@ import plot
 import os
 
 from astropy.io import fits
+from datetime import datetime, timedelta
 
 '''
 class test_track(unittest.TestCase):
@@ -70,42 +71,141 @@ class test_track(unittest.TestCase):
 
 class test_stats(unittest.TestCase):
     
-    def test(self):
+    def test1(self):
+        num_patches = 5
+        patch_size = 20
         try:
             os.remove("2013-02-03_00:00:00.fits")
         except:
             pass
-        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_frames=6, step=3, num_patches=10, patch_size=15)
+        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_hrs=12, step=4, num_patches=num_patches, patch_size=patch_size)
 
         hdul = fits.open("2013-02-03.fits")
+        print(len(hdul))
+        assert(len(hdul) == 13)
 
-        for i in range(12):
-            tr.state.next()
+        while not tr.state.is_done():
+            do_break = False
+            while not tr.state.next():
+                if tr.state.is_done():
+                    do_break = True
+                    break
+            if do_break:
+                break
             lons, lats, x_pix, y_pix, data = tr.transform()
-            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time2())
-            tr.state.frame_processed()
+            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time_str2())
+            #tr.state.frame_processed()
+        tr.state.close()
 
-        print(tr.state.get_stats().storage[0].header["TIME"])
-        print(tr.state.get_stats().storage[1].header["TIME"])
-        np.testing.assert_equal(len(tr.state.get_stats().storage), 4)
-        for i in [0, 3, 6, 9]:
+        storage = tr.state.get_stats().storage
+        np.testing.assert_equal(len(storage), 4)
+        j = 0
+        for i in [1, 3, 5, 7]:
             t_rec = hdul[i].header["T_REC"]
-            t_rec = t_rec[:4] + "-" + t_rec[5:7] + "-" + t_rec[8:10]
-            np.testing.assert_equal(tr.state.get_stats().storage[i].header["TIME"], t_rec)
-            np.testing.assert_equal(tr.state.get_stats().storage[i].header["CLON"], hdul[i].header["CRLN_OBS"])
-            np.testing.assert_equal(tr.state.get_stats().storage[i].data.shape, (2, 10, 10))
+            print(i, t_rec)
+            year, month, day, hrs, mins, secs = track.parse_t_rec(t_rec)
+            start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+            end_time = start_time + timedelta(hours=12)
+            np.testing.assert_equal(storage[j].header["START_TIME"], str(start_time)[:19])
+            np.testing.assert_equal(storage[j].header["END_TIME"], str(end_time)[:19])
+            np.testing.assert_equal(storage[j].header["CLON"], hdul[i].header["CRLN_OBS"])
+            
+            np.testing.assert_equal(storage[j].data.shape, (2, num_patches, num_patches))
+            for lon_i in np.arange(num_patches):
+                for lat_i in np.arange(num_patches):
+                    mean = storage[j].data[0, lon_i, lat_i]
+                    std = storage[j].data[1, lon_i, lat_i]
+                    if lon_i == num_patches-1 and lat_i == num_patches-1:
+                        #We omit the last patch
+                        continue
+                    if lon_i == num_patches-1:
+                        np.testing.assert_almost_equal(mean, lon_i * num_patches + lat_i, 0)
+                        #np.testing.assert_almost_equal(std, 0, 0)
+                        continue
+                    np.testing.assert_almost_equal(mean, lon_i * num_patches + lat_i, 1)
+                    #np.testing.assert_almost_equal(std, 0, 1)
+            j += 1
 
         # Tracking second time should have no effect
-        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_frames=6, step=3, num_patches=10, patch_size=15)
-        for i in range(12):
-            tr.state.next()
+        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_hrs=12, step=4, num_patches=num_patches, patch_size=patch_size)
+        while not tr.state.is_done():
+            do_break = False
+            while not tr.state.next():
+                if tr.state.is_done():
+                    do_break = True
+                    break
+            if do_break:
+                break
             lons, lats, x_pix, y_pix, data = tr.transform()
-            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time2())
-            tr.state.frame_processed()
-        np.testing.assert_equal(len(tr.state.get_stats().storage), 4)
-            
-
+            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time_str2())
+            #tr.state.frame_processed()
         
+        storage2 = tr.state.get_stats().storage
+        data2 = list()
+        for i in range(len(storage2)):
+            data2.append(storage2[i].data)
+            
+        tr.state.close()
+            
+        np.testing.assert_equal(len(storage2), 4)
+        for i in range(len(storage2)):
+            np.testing.assert_equal(storage2[i].header["START_TIME"], storage[i].header["START_TIME"])
+            np.testing.assert_equal(storage2[i].header["END_TIME"], storage[i].header["END_TIME"])
+            np.testing.assert_equal(storage2[i].header["CLON"], storage[i].header["CLON"])
+            #storage2[i].data
+            storage[i].data
+            np.testing.assert_array_equal(data2[i], storage[i].data)
+            
+    def test2(self):
+        num_patches = 5
+        patch_size = 20
+        try:
+            os.remove("2013-02-03_00:00:00.fits")
+        except:
+            pass
+        tr = track.track(".", ["2013-02-03.fits", "2013-02-04.fits"], num_days=-1, num_hrs=8, step=13, num_patches=num_patches, patch_size=patch_size)
+
+        hdul1 = fits.open("2013-02-03.fits")
+        hdul2 = fits.open("2013-02-04.fits")
+
+        while not tr.state.is_done():
+            do_break = False
+            while not tr.state.next():
+                if tr.state.is_done():
+                    do_break = True
+                    break
+            if do_break:
+                break
+            lons, lats, x_pix, y_pix, data = tr.transform()
+            tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time_str2())
+            #tr.state.frame_processed()
+        tr.state.close()
+
+        storage = tr.state.get_stats().storage
+        np.testing.assert_equal(len(storage), 4)
+        for j in range(4):
+            if j < 2:
+                hdul = hdul1
+                if j == 0:
+                    i = 1
+                else:
+                    i = 13
+            else:
+                hdul = hdul2
+                if j == 2:
+                    i = 3
+                else:
+                    i = 15
+            t_rec = hdul[i].header["T_REC"]
+            print(i, t_rec)
+            year, month, day, hrs, mins, secs = track.parse_t_rec(t_rec)
+            start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+            end_time = start_time + timedelta(hours=12)
+            np.testing.assert_equal(storage[j].header["START_TIME"], str(start_time)[:19])
+            np.testing.assert_equal(storage[j].header["END_TIME"], str(end_time)[:19])
+            np.testing.assert_equal(storage[j].header["CLON"], hdul[i].header["CRLN_OBS"])
+
+
 
 '''
 class test_stats_get_indices(unittest.TestCase):
