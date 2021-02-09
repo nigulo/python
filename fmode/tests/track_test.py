@@ -70,7 +70,7 @@ class test_track(unittest.TestCase):
 '''
 
 class test_stats(unittest.TestCase):
-    
+
     def test1(self):
         num_patches = 5
         patch_size = 20
@@ -155,6 +155,7 @@ class test_stats(unittest.TestCase):
             #storage2[i].data
             storage[i].data
             np.testing.assert_array_equal(data2[i], storage[i].data)
+
             
     def test2(self):
         num_patches = 5
@@ -189,20 +190,28 @@ class test_stats(unittest.TestCase):
                 if j == 0:
                     i = 1
                 else:
-                    i = 13
+                    i = 8
             else:
                 hdul = hdul2
                 if j == 2:
-                    i = 3
+                    i = 2
                 else:
-                    i = 15
-            t_rec = hdul[i].header["T_REC"]
-            print(i, t_rec)
-            year, month, day, hrs, mins, secs = track.parse_t_rec(t_rec)
-            start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-            end_time = start_time + timedelta(hours=12)
-            np.testing.assert_equal(storage[j].header["START_TIME"], str(start_time)[:19])
-            np.testing.assert_equal(storage[j].header["END_TIME"], str(end_time)[:19])
+                    i = 9
+            print(i, j)
+            if j == 0:
+                start_time = "2013-02-03 00:00:00"
+                end_time = "2013-02-03 08:00:00"
+            elif j == 1:
+                start_time = "2013-02-03 13:00:00"
+                end_time = "2013-02-03 21:00:00"
+            elif j == 2:
+                start_time = "2013-02-04 02:00:00"
+                end_time = "2013-02-04 10:00:00"
+            elif j == 3:
+                start_time = "2013-02-04 15:00:00"
+                end_time = "2013-02-04 23:00:00"
+            np.testing.assert_equal(storage[j].header["START_TIME"], start_time)
+            np.testing.assert_equal(storage[j].header["END_TIME"], end_time)
             np.testing.assert_equal(storage[j].header["CLON"], hdul[i].header["CRLN_OBS"])
 
 

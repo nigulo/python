@@ -135,7 +135,7 @@ def parse_t_rec(t_rec):
     return year, month, day, hrs, mins, secs
 
 def filter_files(files, time):
-    #print("filter_files", files, time)
+    print("filter_files", files, time)
     i = 0
     for f in files:
         #print("f", f, time)
@@ -174,7 +174,9 @@ class state:
         self.file = None
         self.hdul = None
         
-        
+        self.obs_time = None
+        self.last_obs_time = None
+   
     def get_num_frames_per_day(self):
         return self.num_frames_per_day
     
@@ -192,6 +194,10 @@ class state:
 
     def next(self):
         files = filter_files(self.files, str(self.file_time)[:10])
+        if len(files) == 0:
+            self.stats.save()
+            self.end_tracking()
+            return False
         file_date = files[0][:10]
         file = self.path + "/" + files[0]
         
@@ -218,6 +224,9 @@ class state:
         self.mins = mins
         self.secs = secs
 
+        if self.obs_time is not None:
+            # This field is only for debug purposes
+            self.last_obs_time = self.obs_time
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         
         if self.get_obs_time() < self.get_start_time():
@@ -261,6 +270,9 @@ class state:
     def get_obs_time_str2(self):
         return self.obs_time_str2
 
+    def get_last_obs_time(self):
+        return self.last_obs_time
+
     def get_start_time(self):
         return self.start_time
 
@@ -290,8 +302,8 @@ class state:
     
     def start_tracking(self):
         assert(self.observer is None)
-        print(self.get_start_time(), self.get_obs_time())
-        assert(self.get_start_time() == self.get_obs_time())
+        print("start_tracking", self.get_start_time(), self.get_obs_time())
+        assert(self.get_start_time() <= self.get_obs_time() and (self.get_last_obs_time() is None or self.get_start_time() > self.get_last_obs_time()))
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()
@@ -305,7 +317,7 @@ class state:
         self.start_time = self.start_time + timedelta(hours=self.step)
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
-        print("file_time", self.file_time)
+        print("end_tracking", self.file_time)
         self.files = filter_files(self.files, str(self.file_time)[:10])
         self.frame_index = -1
                     
