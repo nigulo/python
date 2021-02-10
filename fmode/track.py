@@ -93,11 +93,10 @@ class stats:
                 #assert(len(x_pix2) == len(y_pix2))
                 abs_data = np.abs(data[y_pix2.astype(int), x_pix2.astype(int)])
                 #abs_data = abs_data.flatten()
-                len_before = len(abs_data)
                 abs_data = abs_data[np.logical_not(np.isnan(abs_data))]
                 self.data[i, j] += [np.nansum(abs_data), np.nansum(abs_data**2), np.product(abs_data.shape)]
                 if DEBUG:
-                    color = "rb"[(i % 2 + k % 2) % 2]
+                    color = "rb"[(i % 2 + j % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
         if DEBUG:
             test_plot.save(f"patches_{plot_file}.png")
@@ -200,8 +199,8 @@ class state:
         self.nx = self.metadata['NAXIS1']
         self.ny = self.metadata['NAXIS2']
         
-        self.xs = (np.arange(1, self.nx + 1)).astype(float)
-        self.ys = (np.arange(1, self.ny + 1)).astype(float)
+        self.xs = np.arange(1, self.nx + 1)
+        self.ys = np.arange(1, self.ny + 1)
         
    
     def get_num_frames_per_day(self):
@@ -359,15 +358,28 @@ class state:
         
         sin_a = np.sin(a)
         cos_a = np.cos(a)
-            
+        
+
         xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
         grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
+        
+        fltr = np.logical_not(np.isnan(self.get_data())).flatten()
+        grid = grid[fltr]
         
         self.xs_arcsec = grid[:, 0]*u.arcsec
         self.ys_arcsec = grid[:, 1]*u.arcsec
         
+        if DEBUG:
+            grid = np.transpose([np.tile(self.xs, ny), np.repeat(self.ys, nx)])
+            grid = grid[fltr]
+            self.xys = grid
+        
+        
     def get_xs_ys_arcsec(self):
         return self.xs_arcsec, self.ys_arcsec
+
+    def get_xys(self):
+        return self.xys
         
     def get_nx_ny(self):
         return self.nx, self.ny
@@ -489,6 +501,8 @@ class track:
         x_pix, y_pix = image_to_pix(xs_arcsec.value, ys_arcsec.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
+
+        print(f"time 4: {time.perf_counter()}")
         
         #######################
         # No tracking
@@ -499,27 +513,23 @@ class track:
             x_pix_nt = np.round(x_pix_nt)
             y_pix_nt = np.round(y_pix_nt)
 
-        #######################
-        if DEBUG:
             data_for_plot = np.empty((ny, nx), dtype=np.float32)
             data_nt = np.empty((ny, nx), dtype=np.float32)
+            data_for_plot[:, :] = np.nan
+            data_nt[:, :] = np.nan
         
-        print(f"time 4: {time.perf_counter()}")
-
-        l = 0
-        for j in np.arange(ny):
-            for k in np.arange(nx):
+            xys = self.state.get_xys()
+            for l in range(len(x_pix)):
+                j = xys[l, 1]
+                k = xys[l, 0]
                 if np.isnan(y_pix[l]) or np.isnan(x_pix[l]):
-                    if DEBUG:
-                        data_for_plot[j, k] = np.nan
+                    data_for_plot[j, k] = np.nan
                 else:
-                    if DEBUG:
-                        data_for_plot[j, k] = data[int(y_pix[l]), int(x_pix[l])]
-                if DEBUG:
-                    if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
-                        data_nt[j, k] = np.nan
-                    else:
-                        data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
+                    data_for_plot[j, k] = data[int(y_pix[l]), int(x_pix[l])]
+                if np.isnan(y_pix_nt[l]) or np.isnan(x_pix_nt[l]):
+                    data_nt[j, k] = np.nan
+                else:
+                    data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                 l += 1
 
         print(f"time 5: {time.perf_counter()}")

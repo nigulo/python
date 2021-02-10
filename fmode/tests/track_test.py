@@ -60,31 +60,12 @@ class test_track(unittest.TestCase):
             
             data_tracked = np.zeros_like(data)
             
-            l = 0
-            for j in range(data_0.shape[0]):
-                for k in range(data_0.shape[1]):
-                    if (not np.isnan(y_pix[l])) and (not np.isnan(x_pix[l])):
-                        data_tracked[j, k] = data[int(y_pix[l]), int(x_pix[l])]
-                        #if data[int(y_pix[l]), int(x_pix[l])] != data_0[j, k]:
-                        #    test_plot.plot([int(x_pix[l])], [data_0.shape[0] - 1 - int(y_pix[l])], params="r+")
-                        #    test_plot.plot([k], [data_0.shape[0] - j - 1], params="go")
-                        #    test_plot.save(f"track{i+1}.png")
-                        #
-                        #    test_plot0.plot([int(x_pix[l])], [data_0.shape[0] - 1 - int(y_pix[l])], params="r+")
-                        #    test_plot0.plot([k], [data_0.shape[0] - j - 1], params="go")
-                        #    test_plot0.save(f"track{0}.png")
-                        #    print("j, k", j, k, data[int(y_pix[l]), int(x_pix[l])], data_0[j, k])
-                        #if i == 0:
-                        #    if int(y_pix[l]) != j or int(x_pix[l]) != k:
-                        #        test_plot.plot([int(x_pix[l])], [int(y_pix[l])], params="r+")
-                        #        test_plot.plot([k], [j], params="go")
-                        #        test_plot.save(f"track{i+1}.png")
-                        #        print("j, k", j, k)
-                        #        
-                        #    assert(int(y_pix[l]) == j and int(x_pix[l]) == k)
-                        pass
-                        #np.testing.assert_equal(data[int(y_pix[l]), int(x_pix[l])], data_0[j, k])
-                    l += 1
+            xys = tr.state.get_xys()
+            for l in range(len(x_pix)):
+                j = xys[l, 1]
+                k = xys[l, 0]
+                if (not np.isnan(y_pix[l])) and (not np.isnan(x_pix[l])):
+                    data_tracked[j, k] = data[int(y_pix[l]), int(x_pix[l])]
             
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
             test_plot.colormap(data_tracked, show_colorbar=True)
