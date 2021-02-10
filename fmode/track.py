@@ -133,15 +133,30 @@ def parse_t_rec(t_rec):
     return year, month, day, hrs, mins, secs
 
 def filter_files(files, time):
-    print("filter_files", files, time)
     i = 0
     for f in files:
-        #print("f", f, time)
         if f >= time:
             break
         i += 1
     return files[i:]
 
+def pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y):
+    xs = xs - xc
+    ys = ys - yc
+    
+    xs_arcsec = dx + arcsecs_per_pix_x*cos_a*xs - arcsecs_per_pix_y*sin_a*ys
+    ys_arcsec = dy + arcsecs_per_pix_x*sin_a*xs + arcsecs_per_pix_y*cos_a*ys
+                        
+    return xs_arcsec, ys_arcsec
+
+def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y):
+    xs_arcsec = xs_arcsec - dx
+    ys_arcsec = ys_arcsec - dy
+    
+    xs = xc + coef_x*cos_a*(xs_arcsec) + coef_y*sin_a*(ys_arcsec) - 1
+    ys = yc - coef_x*sin_a*(xs_arcsec) + coef_y*cos_a*(ys_arcsec) - 1
+                        
+    return xs, ys
 
 class state:
     
@@ -181,6 +196,13 @@ class state:
         
         self.obs_time = None
         self.last_obs_time = None
+        
+        self.nx = self.metadata['NAXIS1']
+        self.ny = self.metadata['NAXIS2']
+        
+        self.xs = (np.arange(1, self.nx + 1)).astype(float)
+        self.ys = (np.arange(1, self.ny + 1)).astype(float)
+        
    
     def get_num_frames_per_day(self):
         return self.num_frames_per_day
@@ -319,6 +341,41 @@ class state:
         header.add_card(fits.Card(keyword="END_TIME", value=self.get_end_time_str(), comment="Tracking end time"))
         header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
         self.stats.set_header(header)
+        
+        metadata = self.get_metadata()
+        a = metadata['CROTA2']*np.pi/180
+        nx = metadata['NAXIS1']
+        ny = metadata['NAXIS2']
+        assert(nx == self.nx and ny == self.ny)
+        
+        dx = metadata['CRVAL1']
+        dy = metadata['CRVAL2']
+        arcsecs_per_pix_x = metadata['CDELT1']
+        arcsecs_per_pix_y = metadata['CDELT2']
+        coef_x = 1./arcsecs_per_pix_x
+        coef_y = 1./arcsecs_per_pix_y
+        xc = metadata['CRPIX1']
+        yc = metadata['CRPIX2']
+        
+        sin_a = np.sin(a)
+        cos_a = np.cos(a)
+            
+        xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
+        grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
+        
+        self.xs_arcsec = grid[:, 0]*u.arcsec
+        self.ys_arcsec = grid[:, 1]*u.arcsec
+        
+    def get_xs_ys_arcsec(self):
+        return self.xs_arcsec, self.ys_arcsec
+        
+    def get_nx_ny(self):
+        return self.nx, self.ny
+
+    def frame_processed(self, xs_arcsec, ys_arcsec, observer):
+        self.xs_arcsec = xs_arcsec
+        self.ys_arcsec = ys_arcsec
+        self.observer = observer
 
     def end_tracking(self):
         self.observer = None
@@ -338,25 +395,6 @@ class state:
             self.end_tracking()
         self.hdul.close()
         self.stats.close()
-
-
-def pix_to_image(xs, ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y):
-    xs = xs - xc
-    ys = ys - yc
-    
-    xs_arcsec = dx + arcsecs_per_pix_x*cos_a*xs - arcsecs_per_pix_y*sin_a*ys
-    ys_arcsec = dy + arcsecs_per_pix_x*sin_a*xs + arcsecs_per_pix_y*cos_a*ys
-                        
-    return xs_arcsec, ys_arcsec
-
-def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y):
-    xs_arcsec = xs_arcsec - dx
-    ys_arcsec = ys_arcsec - dy
-    
-    xs = xc + coef_x*cos_a*(xs_arcsec) + coef_y*sin_a*(ys_arcsec) - 1
-    ys = yc - coef_x*sin_a*(xs_arcsec) + coef_y*cos_a*(ys_arcsec) - 1
-                        
-    return xs, ys
 
 
 class track:
@@ -381,13 +419,12 @@ class track:
         self.state.set_stats(sts)
         sts.init(self.state.get_start_time_str())
 
-        metadata = self.state.get_metadata()
-
-        self.nx = metadata['NAXIS1']
-        self.ny = metadata['NAXIS2']
+        #metadata = self.state.get_metadata()
+        #self.nx = metadata['NAXIS1']
+        #self.ny = metadata['NAXIS2']
         
-        self.xs = (np.arange(1, self.nx + 1)).astype(float)
-        self.ys = (np.arange(1, self.ny + 1)).astype(float)
+        #self.xs = (np.arange(1, self.nx + 1)).astype(float)
+        #self.ys = (np.arange(1, self.ny + 1)).astype(float)
 
         self.stats_file_mode = stats_file_mode
 
@@ -401,18 +438,21 @@ class track:
 
         data = self.state.get_data()
         
-        ctype1 = metadata['CTYPE1']
-        ctype2 = metadata['CTYPE2']
-        assert(ctype1 == "HPLN-TAN" and ctype2 == "HPLT-TAN")
+        if DEBUG:
+            ctype1 = metadata['CTYPE1']
+            ctype2 = metadata['CTYPE2']
+            assert(ctype1 == "HPLN-TAN" and ctype2 == "HPLT-TAN")
+    
+            cunit1 = metadata['CUNIT1']
+            cunit2 = metadata['CUNIT2']
+            assert(cunit1 == "arcsec" and cunit2 == "arcsec")
 
-        cunit1 = metadata['CUNIT1']
-        cunit2 = metadata['CUNIT2']
-        assert(cunit1 == "arcsec" and cunit2 == "arcsec")
+        xs_arcsec, ys_arcsec = self.state.get_xs_ys_arcsec()
 
         a = metadata['CROTA2']*np.pi/180
         nx = metadata['NAXIS1']
         ny = metadata['NAXIS2']
-        assert(nx == self.nx and ny == self.ny)
+        assert((nx, ny) == self.state.get_nx_ny())
         
         dx = metadata['CRVAL1']
         dy = metadata['CRVAL2']
@@ -426,24 +466,27 @@ class track:
         sin_a = np.sin(a)
         cos_a = np.cos(a)
         
-        xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
-        grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
+        #xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
+        #grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
         
         print(f"time 2: {time.perf_counter()}")        
 
         observer = self.state.get_observer()
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
         
-        c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer)
+        c1 = SkyCoord(xs_arcsec, ys_arcsec, frame=frames.Helioprojective, observer=observer)
         c2 = c1.transform_to(frames.HeliographicCarrington)
         lons = c2.lon.value - self.state.get_sdo_lon()
         lats = c2.lat.value
         c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
         c4 = c3.transform_to(frames.Helioprojective)
+        
+        xs_arcsec = c4.Tx
+        ys_arcsec = c4.Ty
 
         print(f"time 3: {time.perf_counter()}")
         
-        x_pix, y_pix = image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
+        x_pix, y_pix = image_to_pix(xs_arcsec.value, ys_arcsec.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
         
@@ -492,6 +535,8 @@ class track:
             test_plot.save(f"frame_nt_{suffix}.png")
             test_plot.close()
         sys.stdout.flush()
+        
+        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i)
         
         return lons, lats, x_pix, y_pix, data
 
