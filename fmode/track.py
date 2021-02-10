@@ -23,8 +23,6 @@ C = -1.787
 
 DEBUG = False
 
-stats_file_mode = "daily"
-
 radius_km = 695700
 
 def diff_rot(lat):
@@ -56,7 +54,6 @@ class stats:
         self.patch_size = patch_size
         self.patch_step = patch_lons[1] - patch_lons[0]
         self.num_patches = len(patch_lons)
-        self.data = np.zeros((self.num_patches, self.num_patches, 3))
 
     def init(self, date):
         self.date = date
@@ -64,6 +61,7 @@ class stats:
         self.tracked_times = set()
         for entry in self.storage:
             self.tracked_times.add(entry.header["START_TIME"])
+        self.data = np.zeros((self.num_patches, self.num_patches, 3))
 
     def get_date(self):
         return self.date
@@ -363,7 +361,8 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class track:
 
-    def __init__(self, path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15, stats_dbg = None):
+    def __init__(self, path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15, stats_dbg = None, stats_file_mode="burst"):
+        assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
         
@@ -380,7 +379,7 @@ class track:
         else:
             sts = stats_dbg
         self.state.set_stats(sts)
-        sts.init(self.state.get_obs_time_str2())
+        sts.init(self.state.get_start_time_str())
 
         metadata = self.state.get_metadata()
 
@@ -390,6 +389,7 @@ class track:
         self.xs = (np.arange(1, self.nx + 1)).astype(float)
         self.ys = (np.arange(1, self.ny + 1)).astype(float)
 
+        self.stats_file_mode = stats_file_mode
 
     def transform(self):
 
@@ -510,32 +510,32 @@ class track:
         
     def track(self):
         while not self.state.is_done():
-            do_break = False
-            while not self.state.next():
+            if self.state.next():
+                self.process_frame()
+            else:
                 if self.state.is_done():
-                    do_break = True
                     break
-            if do_break:
-                break
-            self.process_frame()
             if not self.state.is_tracking():
                 create_new_stats = False
-                date = self.state.get_obs_time_str()[:10]
+                date = self.state.get_start_time_str()[:10]
                 stats_date = self.state.get_stats().get_date()
-                if stats_file_mode == "daily":
+                print("Change file", date, stats_date)
+                if self.stats_file_mode == "burst":
+                    create_new_stats = True
+                elif self.stats_file_mode == "day":
                     if date > stats_date:
                         create_new_stats = True
-                if stats_file_mode == "monthly":
+                elif self.stats_file_mode == "month":
                     if date[:7] > stats_date[:7]:
                         create_new_stats = True
-                if stats_file_mode == "yearly":
+                elif self.stats_file_mode == "year":
                     if date[:4] > stats_date[:4]:
                         create_new_stats = True
                 if create_new_stats:
                     self.state.get_stats().close()
-                    sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
-                    self.state.set_stats(sts)
-                    sts.init(self.state.get_obs_time_str2())
+                    #sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+                    #self.state.set_stats(sts)
+                    self.state.get_stats().init(self.state.get_start_time_str())
         self.state.close()
 
 
