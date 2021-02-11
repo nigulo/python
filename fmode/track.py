@@ -175,7 +175,7 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class state:
     
-    def __init__(self, num_hrs, step, num_bursts, path, files):
+    def __init__(self, num_hrs, step, num_bursts, path, files, start_time):
         self.step = step
         self.num_hrs = num_hrs
         self.num_bursts = num_bursts
@@ -184,10 +184,13 @@ class state:
         self.files = files
         
         hdul = fits.open(self.path + "/" + self.files[0])
-        #self.num_frames_per_day = len(hdul) - 1
-        t_rec = hdul[1].header['T_REC']
-        year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
-        self.start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+        if start_time is None:
+            t_rec = hdul[1].header['T_REC']
+            year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
+            self.start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+        else:
+            self.start_time = start_time
+            year, month, day, hrs, mins, secs = parse_t_rec(str(start_time))
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
  
@@ -196,11 +199,6 @@ class state:
         self.obs_time_str = f"{year}-{month}-{day} {hrs}:{mins}:{secs}"
         self.obs_time_str2 = f"{year}-{month}-{day}_{hrs}:{mins}:{secs}"
        
-        #if num_days > 0:
-        #    self.done_time = self.start_time + timedelta(days=num_days)
-        #else:
-        #    self.done_time = None
-
         self.metadata = hdul[1].header
         
         hdul.close()
@@ -438,7 +436,8 @@ class state:
 
 class track:
 
-    def __init__(self, input_path, output_path, files, num_hrs=8, step=1, num_bursts=-1, num_patches=100, patch_size=15, stats_dbg = None, stats_file_mode="burst"):
+    def __init__(self, input_path, output_path, files, num_hrs=8, step=1, num_bursts=-1, num_patches=100, patch_size=15, 
+                 stats_dbg = None, stats_file_mode="burst", start_time=None):
         assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
@@ -451,7 +450,7 @@ class track:
         print(f"Input path: {input_path}")
         print(f"Output path: {output_path}")
         
-        self.state = state(num_hrs, step, num_bursts, input_path, files)
+        self.state = state(num_hrs, step, num_bursts, input_path, files, start_time)
         if stats_dbg is None:
             sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
@@ -660,14 +659,22 @@ if (__name__ == '__main__'):
         patch_size = float(sys.argv[i])
     
     if len(start_date < 4):
-        start_date = ""
+        last_file = ""
         for root, dirs, files in os.walk(output_path):
             for file in files:
                 if file[-5:] == ".fits":
-                    if file >= start_date:
-                        start_date = file
+                    if file > last_file:
+                        last_file = file
 
-    print("Start date", start_date)        
+    hdul = fits.open(output_path + "/" + last_file)
+    start_time = hdul[-1].header["START_TIME"]
+    hdul.close()
+    
+    year, month, day, hrs, mins, secs = parse_t_rec(start_time)
+    start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+    start_time = start_time + timedelta(hours=step)
+    
+    print("Start time", str(start_time))
         
     all_files = list()
     
@@ -677,8 +684,8 @@ if (__name__ == '__main__'):
                 all_files.append(file)
     all_files.sort()
     
-    tr = track(input_path=input_path, output_path=output_path, files=all_files, num_days=num_days, num_hrs=num_hrs, step=step, 
-               num_patches=num_patches, patch_size=patch_size)
+    tr = track(input_path=input_path, output_path=output_path, files=all_files, num_bursts=num_bursts, num_hrs=num_hrs, step=step, 
+               num_patches=num_patches, patch_size=patch_size, start_time=start_time)
     tr.track()
 
         
