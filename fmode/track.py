@@ -658,17 +658,21 @@ if (__name__ == '__main__'):
     if len(sys.argv) > i:
         patch_size = float(sys.argv[i])
     
-    if len(start_date < 4):
+    if len(start_date) < 4:
         last_file = ""
         for root, dirs, files in os.walk(output_path):
             for file in files:
                 if file[-5:] == ".fits":
                     if file > last_file:
-                        last_file = file
+                        try:
+                            hdul = fits.open(output_path + "/" + last_file)
+                            start_time = hdul[-1].header["START_TIME"]
+                            hdul.close()
+                            last_file = file
+                        except:
+                            # Corrupted fits file
+                            pass    
 
-    hdul = fits.open(output_path + "/" + last_file)
-    start_time = hdul[-1].header["START_TIME"]
-    hdul.close()
     
     year, month, day, hrs, mins, secs = parse_t_rec(start_time)
     start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
