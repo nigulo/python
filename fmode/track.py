@@ -63,7 +63,8 @@ class stats:
         self.date = date
         with FileLock("track.lock"):
             f = f"{self.output_path}/{date}.fits"
-            if os.path.isfile(f):                
+            if os.path.isfile(f):      
+                print("File exists", f)
                 return
             self.storage = fits.open(f, mode="append")
         # Just to ensure that the tracking is done only once.
@@ -133,7 +134,7 @@ class stats:
             self.storage = None
 
     def is_open(self):
-        return self.sorage is not None
+        return self.storage is not None
 
 def parse_t_rec(t_rec):
     year = t_rec[:4] 
@@ -174,9 +175,10 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class state:
     
-    def __init__(self, step, num_days, num_hrs, path, files):
+    def __init__(self, num_hrs, step, num_bursts, path, files):
         self.step = step
         self.num_hrs = num_hrs
+        self.num_bursts = num_bursts
         
         self.path = path
         self.files = files
@@ -194,10 +196,10 @@ class state:
         self.obs_time_str = f"{year}-{month}-{day} {hrs}:{mins}:{secs}"
         self.obs_time_str2 = f"{year}-{month}-{day}_{hrs}:{mins}:{secs}"
        
-        if num_days > 0:
-            self.done_time = self.start_time + timedelta(days=num_days)
-        else:
-            self.done_time = None
+        #if num_days > 0:
+        #    self.done_time = self.start_time + timedelta(days=num_days)
+        #else:
+        #    self.done_time = None
 
         self.metadata = hdul[1].header
         
@@ -241,11 +243,11 @@ class state:
         if len(files) == 0:
             self.stats.save()
             self.end_tracking()
+            self.num_bursts -= 1
             return False
         if not self.stats.is_open():
             self.end_tracking()
             return False
-            
         file_date = files[0][:10]
         file = self.path + "/" + files[0]
         
@@ -278,6 +280,7 @@ class state:
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         
         if self.get_obs_time() < self.get_start_time():
+            print("Return 1")
             return False
         
         self.obs_time_str = f"{date} {self.hrs}:{self.mins}:{self.secs}"
@@ -290,11 +293,14 @@ class state:
         if self.is_tracking() and self.obs_time >= self.end_time:
             self.stats.save()
             self.end_tracking()
+            self.num_bursts -= 1
+            print("Return 2")
             return False
 
         if not self.is_tracking():
             self.start_tracking()
         
+        print("Return 3")
         return True
     
     def set_stats(self, stats):
@@ -418,19 +424,21 @@ class state:
         self.frame_index = -1
                     
     def is_done(self):
-        return len(self.files) == 0 or (self.done_time is not None and self.file_time >= self.done_time)
+        return len(self.files) == 0 or self.num_bursts == 0
     
     def close(self):
+        print("Close")
         if self.is_tracking():
             self.stats.save()
             self.end_tracking()
-        self.hdul.close()
+        if self.hdul is not None:
+            self.hdul.close()
         self.stats.close()
 
 
 class track:
 
-    def __init__(self, input_path, output_path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15, stats_dbg = None, stats_file_mode="burst"):
+    def __init__(self, input_path, output_path, files, num_hrs=8, step=1, num_bursts=-1, num_patches=100, patch_size=15, stats_dbg = None, stats_file_mode="burst"):
         assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
@@ -443,7 +451,7 @@ class track:
         print(f"Input path: {input_path}")
         print(f"Output path: {output_path}")
         
-        self.state = state(step, num_days, num_hrs, input_path, files)
+        self.state = state(num_hrs, step, num_bursts, input_path, files)
         if stats_dbg is None:
             sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
@@ -587,18 +595,18 @@ class track:
         while not self.state.is_done():
             if self.state.next():
                 self.process_frame()
-            else:
-                if self.state.is_done():
-                    break
+            if self.state.is_done():
+                break
             if not self.state.is_tracking():
                 create_new_stats = False
-                date = self.state.get_start_time_str()[:10]
+                date = self.state.get_start_time_str()
                 stats_date = self.state.get_stats().get_date()
                 print("Change file", date, stats_date)
                 if self.stats_file_mode == "burst":
-                    create_new_stats = True
-                elif self.stats_file_mode == "day":
                     if date > stats_date:
+                        create_new_stats = True
+                elif self.stats_file_mode == "day":
+                    if date[:10] > stats_date[:10]:
                         create_new_stats = True
                 elif self.stats_file_mode == "month":
                     if date[:7] > stats_date[:7]:
@@ -619,9 +627,9 @@ if (__name__ == '__main__'):
     input_path = '.'
     output_path = '.'
     start_date = '2013-02-14'
-    num_days = -1 # For how many days to run the script
     num_hrs = 8 # Duration of tracking
     step = 1 # Step in hours between tracked sequences of num_hrs length
+    num_bursts = -1 # For how many days to run the script
     num_patches = 100
     patch_size = 15
     
@@ -637,13 +645,13 @@ if (__name__ == '__main__'):
         start_date = sys.argv[i]
     i += 1
     if len(sys.argv) > i:
-        num_days = int(sys.argv[i])
-    i += 1
-    if len(sys.argv) > i:
         num_hrs = float(sys.argv[i])
     i += 1
     if len(sys.argv) > i:
         step = float(sys.argv[i])
+    i += 1
+    if len(sys.argv) > i:
+        num_bursts = int(sys.argv[i])
     i += 1
     if len(sys.argv) > i:
         num_patches = int(sys.argv[i])

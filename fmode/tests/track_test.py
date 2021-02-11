@@ -24,7 +24,7 @@ class stats(track.stats):
 
     def save(self):
         super(stats, self).save()
-        print(self.obs_times, self.obs_times_expected[0])
+        print(self.obs_times, self.obs_times_expected)
         np.testing.assert_equal(len(self.obs_times), len(self.obs_times_expected[0]))
         for i in range(len(self.obs_times)):
             np.testing.assert_equal(self.obs_times[i], self.obs_times_expected[0][i])
@@ -34,11 +34,17 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-
+'''
 class test_track(unittest.TestCase):
     
     def test(self):
-        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_hrs=24, step=1, num_patches=100, patch_size=15)
+        
+        try:
+            os.remove("2013-02-03 00:00:00.fits")
+        except:
+            pass
+        
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=24, step=1, num_bursts=1, num_patches=100, patch_size=15)
         
         hdul = fits.open("2013-02-03.fits")
         data_0 = hdul[1].data
@@ -71,7 +77,7 @@ class test_track(unittest.TestCase):
             test_plot.colormap(data_tracked, show_colorbar=True)
             test_plot.save(f"track{i+1}.png")
             test_plot.close()
-
+'''
 
 class test_stats(unittest.TestCase):
 
@@ -107,7 +113,7 @@ class test_stats(unittest.TestCase):
 
         sts = stats(patch_lons, patch_lats, patch_size)
         sts.set_obs_times_expected(obs_times_expected)
-        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_hrs=12, step=4, num_patches=num_patches, patch_size=patch_size, stats_dbg = sts)
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=12, step=4, num_bursts=4, num_patches=num_patches, patch_size=patch_size, stats_dbg = sts)
 
         hdul = fits.open("2013-02-03.fits")
         print(len(hdul))
@@ -115,19 +121,6 @@ class test_stats(unittest.TestCase):
         print("First time", hdul[1].header["T_REC"])
 
         tr.track()
-
-        #while not tr.state.is_done():
-        #    do_break = False
-        #    while not tr.state.next():
-        #        if tr.state.is_done():
-        #            do_break = True
-        #            break
-        #    if do_break:
-        #        break
-        #    lons, lats, x_pix, y_pix, data = tr.transform()
-        #    tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time(), plot_file=tr.state.get_obs_time_str2())
-        #    #tr.state.frame_processed()
-        #tr.state.close()
         
         np.testing.assert_equal(len(tr.state.get_stats().obs_times_expected), 0)
 
@@ -157,6 +150,9 @@ class test_stats(unittest.TestCase):
                     if lon_i == num_patches-1 and lat_i == num_patches-1:
                         #We omit the last patch
                         continue
+                    if (lon_i == 0 or lon_i == 4) and lat_i == num_patches-1:
+                        #We omit the last patch
+                        continue
                     if lon_i == num_patches-1:
                         np.testing.assert_almost_equal(mean, lon_i * num_patches + lat_i, 0)
                         #np.testing.assert_almost_equal(std, 0, 0)
@@ -166,23 +162,9 @@ class test_stats(unittest.TestCase):
             i += 2
 
         # Tracking second time should have no effect
-        tr = track.track(".", ["2013-02-03.fits"], num_days=1, num_hrs=12, step=4, num_patches=num_patches, patch_size=patch_size)
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=12, step=4, num_bursts=4, num_patches=num_patches, patch_size=patch_size)
         tr.track()
         
-        #while not tr.state.is_done():
-        #    do_break = False
-        #    while not tr.state.next():
-        #        if tr.state.is_done():
-        #            do_break = True
-        #            break
-        #    if do_break:
-        #        break
-        #    lons, lats, x_pix, y_pix, data = tr.transform()
-        #    tr.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=tr.state.get_obs_time(), plot_file=tr.state.get_obs_time_str2())
-        #    #tr.state.frame_processed()
-        #tr.state.close()
-
-
         i = 0
         for f in ["2013-02-03 00:00:00.fits", "2013-02-03 04:00:00.fits", "2013-02-03 08:00:00.fits", "2013-02-03 12:00:00.fits"]:
             np.testing.assert_equal(os.path.isfile(f), True)
@@ -197,6 +179,8 @@ class test_stats(unittest.TestCase):
             i += 1
             storage.close()
             storage2.close()
+
+        hdul.close()
 
 
     def test2(self):
@@ -235,7 +219,7 @@ class test_stats(unittest.TestCase):
         sts = stats(patch_lons, patch_lats, patch_size)
         sts.set_obs_times_expected(obs_times_expected)
         
-        tr = track.track(".", ["2013-02-03.fits", "2013-02-04.fits"], num_days=-1, num_hrs=8, step=9, num_patches=num_patches, 
+        tr = track.track(".", ".", ["2013-02-03.fits", "2013-02-04.fits"], num_hrs=8, step=9, num_bursts=6, num_patches=num_patches, 
                          patch_size=patch_size, stats_dbg=sts, stats_file_mode="day")
 
         hdul1 = fits.open("2013-02-03.fits")
@@ -305,6 +289,9 @@ class test_stats(unittest.TestCase):
         
         storage1.close()
         storage2.close()
+        
+        hdul1.close()
+        hdul2.close()
 
 
 if __name__ == '__main__':
