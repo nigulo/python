@@ -17,6 +17,8 @@ import sunpy.coordinates
 from sunpy.coordinates import frames
 from datetime import datetime, timedelta
 
+from filelock import FileLock
+
 A = 14.713
 B = -2.396
 C = -1.787
@@ -44,7 +46,7 @@ class stats_header:
 
 class stats:
 
-    def __init__(self, patch_lons, patch_lats, patch_size):
+    def __init__(self, patch_lons, patch_lats, patch_size, output_path="."):
         self.header = None
         self.num_frames = 0
         self.patch_lons = patch_lons
@@ -54,10 +56,19 @@ class stats:
         self.patch_size = patch_size
         self.patch_step = patch_lons[1] - patch_lons[0]
         self.num_patches = len(patch_lons)
+        self.output_path = output_path
+        self.storage = None
 
     def init(self, date):
         self.date = date
-        self.storage = fits.open(f"{date}.fits", mode="append")
+        with FileLock("track.lock"):
+            f = f"{self.output_path}/{date}.fits"
+            if os.path.isfile(f):                
+                return
+            self.storage = fits.open(f, mode="append")
+        # Just to ensure that the tracking is done only once.
+        # This is not needed anymore, as we use file lock and pass tracking
+        # entirely
         self.tracked_times = set()
         for entry in self.storage:
             self.tracked_times.add(entry.header["START_TIME"])
@@ -117,8 +128,12 @@ class stats:
         self.num_frames = 0
         
     def close(self):
-        self.storage.close()
+        if self.storage is not None:
+            self.storage.close()
+            self.storage = None
 
+    def is_open(self):
+        return self.sorage is not None
 
 def parse_t_rec(t_rec):
     year = t_rec[:4] 
@@ -227,6 +242,10 @@ class state:
             self.stats.save()
             self.end_tracking()
             return False
+        if not self.stats.is_open():
+            self.end_tracking()
+            return False
+            
         file_date = files[0][:10]
         file = self.path + "/" + files[0]
         
@@ -411,7 +430,7 @@ class state:
 
 class track:
 
-    def __init__(self, path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15, stats_dbg = None, stats_file_mode="burst"):
+    def __init__(self, input_path, output_path, files, num_days=-1, num_hrs=8, step=1, num_patches=100, patch_size=15, stats_dbg = None, stats_file_mode="burst"):
         assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
@@ -421,11 +440,12 @@ class track:
         self.patch_lons = np.linspace(-80, 80 - patch_size, num_patches)
         self.patch_lats = self.patch_lons
         
-        print(path)
+        print(f"Input path: {input_path}")
+        print(f"Output path: {output_path}")
         
-        self.state = state(step, num_days, num_hrs, path, files)
+        self.state = state(step, num_days, num_hrs, input_path, files)
         if stats_dbg is None:
-            sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
+            sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
             sts = stats_dbg
         self.state.set_stats(sts)
@@ -596,7 +616,8 @@ class track:
 
 if (__name__ == '__main__'):
     
-    path = '.'
+    input_path = '.'
+    output_path = '.'
     start_date = '2013-02-14'
     num_days = -1 # For how many days to run the script
     num_hrs = 8 # Duration of tracking
@@ -607,7 +628,10 @@ if (__name__ == '__main__'):
     i = 1
     
     if len(sys.argv) > i:
-        path = sys.argv[i]
+        input_path = sys.argv[i]
+    i += 1
+    if len(sys.argv) > i:
+        output_path = sys.argv[i]
     i += 1
     if len(sys.argv) > i:
         start_date = sys.argv[i]
@@ -635,7 +659,7 @@ if (__name__ == '__main__'):
                 all_files.append(file)
     all_files.sort()    
     
-    tr = track(path=path, files=all_files, num_days=num_days, num_hrs=num_hrs, step=step, 
+    tr = track(input_path=input_path, output_path=output_path, files=all_files, num_days=num_days, num_hrs=num_hrs, step=step, 
                num_patches=num_patches, patch_size=patch_size)
     tr.track()
 
