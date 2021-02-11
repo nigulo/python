@@ -659,13 +659,22 @@ if (__name__ == '__main__'):
     if len(sys.argv) > i:
         patch_size = float(sys.argv[i])
     
+    if len(start_date < 4):
+        start_date = ""
+        for root, dirs, files in os.walk(output_path):
+            for file in files:
+                if file >= start_date:
+                    start_date = file
+
+    print("Start date", start_date)        
+        
     all_files = list()
     
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(input_path):
         for file in files:
             if file >= start_date:
                 all_files.append(file)
-    all_files.sort()    
+    all_files.sort()
     
     tr = track(input_path=input_path, output_path=output_path, files=all_files, num_days=num_days, num_hrs=num_hrs, step=step, 
                num_patches=num_patches, patch_size=patch_size)
