@@ -663,8 +663,9 @@ if (__name__ == '__main__'):
         start_date = ""
         for root, dirs, files in os.walk(output_path):
             for file in files:
-                if file >= start_date:
-                    start_date = file
+                if file[-5:] == ".fits":
+                    if file >= start_date:
+                        start_date = file
 
     print("Start date", start_date)        
         
