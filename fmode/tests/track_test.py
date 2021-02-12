@@ -142,7 +142,7 @@ class test_stats(unittest.TestCase):
             np.testing.assert_equal(storage[0].header["END_TIME"], str(end_time)[:19])
             np.testing.assert_equal(storage[0].header["CLON"], hdul[i].header["CRLN_OBS"])
             
-            np.testing.assert_equal(storage[0].data.shape, (2, num_patches, num_patches))
+            np.testing.assert_equal(storage[0].data.shape, (10, num_patches, num_patches))
             for lon_i in np.arange(num_patches):
                 for lat_i in np.arange(num_patches):
                     mean = storage[0].data[0, lon_i, lat_i]

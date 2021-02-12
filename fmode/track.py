@@ -103,10 +103,16 @@ class stats:
                 x_pix2 = x_pix1[lat_filter]
                 y_pix2 = y_pix1[lat_filter]
                 #assert(len(x_pix2) == len(y_pix2))
-                abs_data = np.abs(data[y_pix2.astype(int), x_pix2.astype(int)])
+                filtered_data = data[y_pix2.astype(int), x_pix2.astype(int)]
+                filtered_data = filtered_data[np.logical_not(np.isnan(filtered_data))]
+                filtered_data2 = filtered_data**2
+                filtered_data3 = filtered_data2*filtered_data
+                filtered_data4 = filtered_data2**2
+                abs_data = np.abs(filtered_data)
+                abs_data3 = np.abs(filtered_data3)
                 #abs_data = abs_data.flatten()
-                abs_data = abs_data[np.logical_not(np.isnan(abs_data))]
-                self.data[i, j] += [np.nansum(abs_data), np.nansum(abs_data**2), np.product(abs_data.shape)]
+                self.data[i, j] += [np.sum(filtered_data), np.sum(filtered_data2), np.sum(filtered_data3), np.sum(filtered_data4)
+                         np.sum(abs_data), np.sum(abs_data3), np.product(filtered_data.shape)]
                 if DEBUG:
                     color = "rb"[(i % 2 + j % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
@@ -117,9 +123,28 @@ class stats:
 
     def save(self):
         assert(self.header is not None)
-        means = self.data[:, :, 0]/self.data[:, :, 2]
-        stds = np.sqrt(self.data[:, :, 1]/self.data[:, :, 2] - means**2)
-        hdu = fits.ImageHDU(data=np.array([means, stds]), header=self.header, name='Statistics')
+        n = self.data[:, :, 6]
+        mean = self.data[:, :, 0]/n
+        abs_mean = self.data[:, :, 4]/n
+        data2_mean = self.data[:, :, 1]/n
+        data3_mean = self.data[:, :, 2]/n
+        data4_mean = self.data[:, :, 3]/n
+        abs_data3_mean = self.data[:, :, 5]/n
+        var = data2_mean - mean**2
+        abs_var = data2_mean - abs_mean**2
+        mean3 = mean**3
+        abs_mean3 = abs_mean**3
+        std = np.sqrt(var)
+        std3 = var * std
+        abs_std = np.sqrt(abs_var)
+        abs_std3 = abs_var * abs_std
+        abs_var3 = abs_var * np.sqrt(abs_var)
+        skew = (data3_mean - 3*mean*var - mean3)/std3
+        kurt = (data4_mean - mean*(2*data3_mean - mean3))/(var**2) - 2*mean*skew
+        abs_skew = (abs_data3_mean - 3*abs_mean*abs_var - abs_mean3)/abs_std3
+        abs_kurt = (data4_mean - abs_mean*(2*abs_data3_mean - abs_mean3))/(abs_var**2) - 2*abs_mean*abs_skew
+
+        hdu = fits.ImageHDU(data=np.array([mean, std, var, skew, kurt, abs_mean, abs_std, abs_var, abs_skew, abs_kurt]), header=self.header, name='Statistics')
         if hdu.header["START_TIME"] not in self.tracked_times:
             self.tracked_times.add(hdu.header["START_TIME"])
             self.storage.append(hdu)
