@@ -73,7 +73,7 @@ class stats:
         self.tracked_times = set()
         for entry in self.storage:
             self.tracked_times.add(entry.header["START_TIME"])
-        self.data = np.zeros((self.num_patches, self.num_patches, 3))
+        self.data = np.zeros((self.num_patches, self.num_patches, 7))
 
     def get_date(self):
         return self.date
@@ -111,7 +111,7 @@ class stats:
                 abs_data = np.abs(filtered_data)
                 abs_data3 = np.abs(filtered_data3)
                 #abs_data = abs_data.flatten()
-                self.data[i, j] += [np.sum(filtered_data), np.sum(filtered_data2), np.sum(filtered_data3), np.sum(filtered_data4)
+                self.data[i, j] += [np.sum(filtered_data), np.sum(filtered_data2), np.sum(filtered_data3), np.sum(filtered_data4),
                          np.sum(abs_data), np.sum(abs_data3), np.product(filtered_data.shape)]
                 if DEBUG:
                     color = "rb"[(i % 2 + j % 2) % 2]
@@ -149,7 +149,7 @@ class stats:
             self.tracked_times.add(hdu.header["START_TIME"])
             self.storage.append(hdu)
             self.storage.flush()
-        self.data = np.zeros((self.num_patches, self.num_patches, 3))
+        self.data = np.zeros((self.num_patches, self.num_patches, 7))
         self.header = None
         self.num_frames = 0
         
