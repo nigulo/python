@@ -417,10 +417,12 @@ class state:
         self.xs_arcsec = grid[:, 0]*u.arcsec
         self.ys_arcsec = grid[:, 1]*u.arcsec
         
-        if DEBUG:
-            grid = np.transpose([np.tile(self.xs, ny), np.repeat(self.ys, nx)])
-            grid = grid[fltr]
-            self.xys = grid
+        grid = np.transpose([np.tile(self.xs, ny), np.repeat(self.ys, nx)])
+        grid = grid[fltr]
+        self.xys = grid
+        
+        self.tracking_stack = []
+        self.num_added = 0
         
         
     def get_xs_ys_arcsec(self):
@@ -428,14 +430,27 @@ class state:
 
     def get_xys(self):
         return self.xys
+
+    def get_j(self, i):
+        j = i
+        for indices_deleted in self.tracking_stack[::-1]:
+            for ind in indices_deleted:
+                if ind <= i:
+                    j += 1
+            i = j
+        if j >= len(self.xys) - self.num_added:
+            return -1
+        return j
         
     def get_nx_ny(self):
         return self.nx, self.ny
 
-    def frame_processed(self, xs_arcsec, ys_arcsec, observer):
+    def frame_processed(self, xs_arcsec, ys_arcsec, observer, indices_deleted, num_added):
         self.xs_arcsec = xs_arcsec
         self.ys_arcsec = ys_arcsec
         self.observer = observer
+        self.tracking_stack.append(indices_deleted)
+        self.num_added += num_added
 
     def end_tracking(self):
         self.observer = None
@@ -458,6 +473,97 @@ class state:
             self.hdul.close()
         self.stats.close()
 
+def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, image_params):
+        pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
+        #xys_dict = {(xys[i, 0], xys[i, 1]) : i for i in range(len(xys))}
+        #nan_indices_to_delete = []
+        indices_to_delete = []
+        #count = 0
+        #limb_pixels = dict()
+        for i in range(len(x_pix)):
+            #if (x_pix[i], y_pix[i]) not in xys_dict:
+            #    count += 1
+            #    #print("What's happening:", (x_pix[i], y_pix[i]), i)
+            remove = False
+            #is_nan = False
+            if np.isnan(x_pix[i]) or np.isnan(x_pix[i]):
+                remove = True
+                #is_nan = True
+                #print(f"Removing nan pixel: {i}")
+            else:
+                ind = pix_dict[(x_pix[i], y_pix[i])]
+                if ind != i:
+                    remove = True
+                    #print(f"Removing duplicate pixel: {i}!={ind}, {x_pix[i]}, {y_pix[i]}")
+            if remove:
+                indices_to_delete.append(i)
+                #if is_nan:
+                #    nan_indices_to_delete.append(i)
+            #if not is_nan:
+            #    if y_pix[i] not in limb_pixels:
+            #        limb_pixels[y_pix[i]] = x_pix[i]
+            #    if x_pix[i] > limb_pixels[y_pix[i]]:
+            #        limb_pixels[y_pix[i]] = x_pix[i]
+        x_pix = np.delete(x_pix, indices_to_delete)
+        y_pix = np.delete(y_pix, indices_to_delete)
+        xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
+        ys_arcsec = np.delete(ys_arcsec, indices_to_delete)
+        lons = np.delete(lons, indices_to_delete)
+        lats = np.delete(lats, indices_to_delete)
+        print("Number of pixels removed", len(indices_to_delete))
+        #print(limb_pixels)
+        #print("Strange pixels", count)
+        
+        xs = xys[:, 0]
+        ys = xys[:, 1]
+        xs = np.delete(xs, indices_to_delete)
+        ys = np.delete(ys, indices_to_delete)
+               
+        added_x_pix = []
+        added_y_pix = []
+
+        #added_x_pix2 = []
+        #added_y_pix2 = []
+        #print(pix_dict)
+        for x, y in xys:
+            if (x, y) not in pix_dict:
+                #print(x, y)
+                #print(f"Adding missing pixel: {xy}")
+                added_x_pix.append(x)
+                added_y_pix.append(y)
+                #if y in limb_pixels and x > limb_pixels[y]:
+                #    added_x_pix2.append(x)
+                #    added_y_pix2.append(y)
+                    
+        print("Number of pixels added", len(added_x_pix))
+        x_pix = np.append(x_pix, added_x_pix)
+        y_pix = np.append(y_pix, added_y_pix)
+        dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y = image_params
+        added_xs_arcsec, added_ys_arcsec = pix_to_image(np.asarray(added_x_pix), np.asarray(added_y_pix), dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
+        added_xs_arcsec, added_ys_arcsec = added_xs_arcsec*u.arcsec, added_ys_arcsec*u.arcsec
+        xs_arcsec = np.append(xs_arcsec, added_xs_arcsec)
+        ys_arcsec = np.append(ys_arcsec, added_ys_arcsec)
+        
+        c1 = SkyCoord(added_xs_arcsec, added_ys_arcsec, frame=frames.Helioprojective, observer=observer)
+        c2 = c1.transform_to(frames.HeliographicCarrington)
+        added_lons = c2.lon.value - sdo_lon
+        added_lats = c2.lat.value
+        
+        lons = np.append(lons, added_lons)
+        lats = np.append(lats, added_lats)
+        
+        xs = np.append(xs, added_x_pix)
+        ys = np.append(ys, added_y_pix)
+        
+        assert(len(lons) == len(lats))
+        assert(len(lons) == len(x_pix))
+        assert(len(x_pix) == len(y_pix))
+        assert(len(x_pix) == len(xs_arcsec))
+        assert(len(xs_arcsec) == len(ys_arcsec))
+
+        xys2 = np.concatenate([xs[:,None], ys[:,None]], axis=1)
+        return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, indices_to_delete, len(added_x_pix)
+    
 
 class track:
 
@@ -553,8 +659,14 @@ class track:
         x_pix, y_pix = image_to_pix(xs_arcsec.value, ys_arcsec.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
-
+        
         print(f"time 4: {time.perf_counter()}")
+        
+        x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, indices_removed, num_added = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
+                                                                      self.state.get_xys(), self.state.get_sdo_lon(), observer_i,
+                                                                      (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
+
+        print(f"time 5: {time.perf_counter()}")
         
         #######################
         # No tracking
@@ -598,7 +710,7 @@ class track:
             test_plot.close()
         sys.stdout.flush()
         
-        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i)
+        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, indices_removed, num_added)
         
         return lons, lats, x_pix, y_pix, data
 

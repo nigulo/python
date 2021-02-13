@@ -34,7 +34,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-'''
+
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -53,31 +53,30 @@ class test_track(unittest.TestCase):
         test_plot0.colormap(data_0, show_colorbar=True)
         test_plot0.save(f"track{0}.png")
         #test_plot0.close()
-       
-        for i in range(12):
-            tr.state.next()
-            lons, lats, x_pix, y_pix, data = tr.transform()
-            #tr.state.frame_processed()
+        
+        i = 0
+        while not tr.state.is_done():
+            if tr.state.next():
+                lons, lats, x_pix, y_pix, data = tr.transform()
+
+                data_tracked = np.zeros_like(data)
+                xys = tr.state.get_xys()
+                for l in range(len(x_pix)):
+                    l1 = tr.state.get_j(l)
+                    if l1 >= 0:
+                        j = xys[l1, 1]
+                        k = xys[l1, 0]
+                        if (not np.isnan(y_pix[l])) and (not np.isnan(x_pix[l])):
+                            data_tracked[j, k] = data[int(y_pix[l]), int(x_pix[l])]
+                
+                test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+                test_plot.colormap(data_tracked, show_colorbar=True)
+                test_plot.save(f"track{i}.png")
+                test_plot.close()
+                i += 1
+
             
-            #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-            #test_plot.colormap(data, show_colorbar=True)
-            #test_plot.save(f"track{i+1}.png")
-            #test_plot.close()
-            
-            data_tracked = np.zeros_like(data)
-            
-            xys = tr.state.get_xys()
-            for l in range(len(x_pix)):
-                j = xys[l, 1]
-                k = xys[l, 0]
-                if (not np.isnan(y_pix[l])) and (not np.isnan(x_pix[l])):
-                    data_tracked[j, k] = data[int(y_pix[l]), int(x_pix[l])]
-            
-            test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
-            test_plot.colormap(data_tracked, show_colorbar=True)
-            test_plot.save(f"track{i+1}.png")
-            test_plot.close()
-'''
+
 
 class test_stats(unittest.TestCase):
 

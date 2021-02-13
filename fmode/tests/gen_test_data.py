@@ -17,6 +17,7 @@ from astropy.coordinates import SkyCoord
 import sunpy.coordinates
 from sunpy.coordinates import frames
 import track
+import misc
 
 downsample_coef = .05
 
@@ -58,8 +59,25 @@ for file_date in ["2013-02-03", "2013-02-04"]:
     
     xs1 = (np.arange(1, nx + 1)).astype(float)
     ys1 = (np.arange(1, ny + 1)).astype(float)
+    xys = np.transpose([np.tile(xs1, ny), np.repeat(ys1, nx)])
     
-    for i in np.arange(1, len(hdul)):
+    data = hdul[1].data
+    max_val = np.nanmax(data)
+    fltr = np.isnan(data)
+    data[fltr] = max_val
+
+    data = misc.sample_image(data, downsample_coef)
+    fltr = data > .9*max_val
+    data[fltr] = np.nan
+    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
+    test_plot.colormap(data, show_colorbar=True)
+    test_plot.save(f"image.png")
+    test_plot.close()
+    
+    fltr0 = fltr
+    xys = xys[np.logical_not(fltr).flatten()]
+    
+    for i in np.arange(1, len(hdul), 10):
         metadata = hdul[i].header
     
         a = metadata['CROTA2']*np.pi/180
@@ -96,6 +114,7 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             print(obs_time)
             xs_arcsec, ys_arcsec = track.pix_to_image(xs1, ys1, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
             grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
+            grid = grid[np.logical_not(fltr0).flatten()]
             
             xs = grid[:, 0]*u.arcsec
             ys = grid[:, 1]*u.arcsec
@@ -115,12 +134,15 @@ for file_date in ["2013-02-03", "2013-02-04"]:
         x_pix, y_pix = track.image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
-        
+
         observer_0 = observer_i
         #sdo_lon_0 = sdo_lon
         xs = c4.Tx
         ys = c4.Ty
         
+        x_pix, y_pix, xs, ys, lons, lats, _, _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i,
+                                                              (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
+                
         data = np.empty((ny, nx))
         data[:, :] = np.nan
         
