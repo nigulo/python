@@ -42,7 +42,39 @@ class stats_header:
                 
     def get_cards(self):
         return self.cards
+
+def collect_stats_1(data):
+    data2 = data**2
+    data3 = data2*data
+    data4 = data2**2
+    abs_data = np.abs(data)
+    abs_data3 = np.abs(data3)
+    return [np.sum(data), np.sum(data2), np.sum(data3), np.sum(data4),
+             np.sum(abs_data), np.sum(abs_data3), np.product(data.shape)]
+
+def collect_stats_2(data):
+    n = data[:, :, 6]
+    mean = data[:, :, 0]/n
+    data2_mean = data[:, :, 1]/n
+    data3_mean = data[:, :, 2]/n
+    data4_mean = data[:, :, 3]/n
+    abs_mean = data[:, :, 4]/n
+    abs_data3_mean = data[:, :, 5]/n
+    var = data2_mean - mean**2
+    abs_var = data2_mean - abs_mean**2
+    mean3 = mean**3
+    abs_mean3 = abs_mean**3
+    std = np.sqrt(var)
+    std3 = var * std
+    abs_std = np.sqrt(abs_var)
+    abs_std3 = abs_var * abs_std
+    skew = (data3_mean - 3*mean*var - mean3)/std3
+    kurt = (data4_mean - mean*(2*data3_mean - mean3))/(var**2) - 2*mean*skew - 3
+    abs_skew = (abs_data3_mean - 3*abs_mean*abs_var - abs_mean3)/abs_std3
+    abs_kurt = (data4_mean - abs_mean*(2*abs_data3_mean - abs_mean3))/(abs_var**2) - 2*abs_mean*abs_skew - 3
     
+    return [mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt]
+
 
 class stats:
 
@@ -105,14 +137,8 @@ class stats:
                 #assert(len(x_pix2) == len(y_pix2))
                 filtered_data = data[y_pix2.astype(int), x_pix2.astype(int)]
                 filtered_data = filtered_data[np.logical_not(np.isnan(filtered_data))]
-                filtered_data2 = filtered_data**2
-                filtered_data3 = filtered_data2*filtered_data
-                filtered_data4 = filtered_data2**2
-                abs_data = np.abs(filtered_data)
-                abs_data3 = np.abs(filtered_data3)
-                #abs_data = abs_data.flatten()
-                self.data[i, j] += [np.sum(filtered_data), np.sum(filtered_data2), np.sum(filtered_data3), np.sum(filtered_data4),
-                         np.sum(abs_data), np.sum(abs_data3), np.product(filtered_data.shape)]
+                
+                self.data[i, j] += collect_stats_1(filtered_data)
                 if DEBUG:
                     color = "rb"[(i % 2 + j % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
@@ -123,28 +149,7 @@ class stats:
 
     def save(self):
         assert(self.header is not None)
-        n = self.data[:, :, 6]
-        mean = self.data[:, :, 0]/n
-        abs_mean = self.data[:, :, 4]/n
-        data2_mean = self.data[:, :, 1]/n
-        data3_mean = self.data[:, :, 2]/n
-        data4_mean = self.data[:, :, 3]/n
-        abs_data3_mean = self.data[:, :, 5]/n
-        var = data2_mean - mean**2
-        abs_var = data2_mean - abs_mean**2
-        mean3 = mean**3
-        abs_mean3 = abs_mean**3
-        std = np.sqrt(var)
-        std3 = var * std
-        abs_std = np.sqrt(abs_var)
-        abs_std3 = abs_var * abs_std
-        abs_var3 = abs_var * np.sqrt(abs_var)
-        skew = (data3_mean - 3*mean*var - mean3)/std3
-        kurt = (data4_mean - mean*(2*data3_mean - mean3))/(var**2) - 2*mean*skew
-        abs_skew = (abs_data3_mean - 3*abs_mean*abs_var - abs_mean3)/abs_std3
-        abs_kurt = (data4_mean - abs_mean*(2*abs_data3_mean - abs_mean3))/(abs_var**2) - 2*abs_mean*abs_skew
-
-        hdu = fits.ImageHDU(data=np.array([mean, std, var, skew, kurt, abs_mean, abs_std, abs_var, abs_skew, abs_kurt]), header=self.header, name='Statistics')
+        hdu = fits.ImageHDU(data=np.array(collect_stats_2(self.data)), header=self.header, name='Statistics')
         if hdu.header["START_TIME"] not in self.tracked_times:
             self.tracked_times.add(hdu.header["START_TIME"])
             self.storage.append(hdu)
@@ -476,41 +481,14 @@ class state:
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, image_params):
         pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
-        #xys_dict = {(xys[i, 0], xys[i, 1]) : i for i in range(len(xys))}
-        #nan_indices_to_delete = []
         indices_to_delete = []
         related_indices = []
-        #count = 0
-        #limb_pixels = dict()
         for i in range(len(x_pix)):
-            #if (x_pix[i], y_pix[i]) not in xys_dict:
-            #    count += 1
-            #    #print("What's happening:", (x_pix[i], y_pix[i]), i)
-            #remove = False
-            ##is_nan = False
-            #if np.isnan(x_pix[i]) or np.isnan(x_pix[i]):
-            #    remove = True
-            #    #is_nan = True
-            #    #print(f"Removing nan pixel: {i}")
-            #else:
-            #    ind = pix_dict[(x_pix[i], y_pix[i])]
-            #    if ind != i:
-            #        remove = True
-            #        #print(f"Removing duplicate pixel: {i}!={ind}, {x_pix[i]}, {y_pix[i]}")
-            #if remove:
-            #    indices_to_delete.append(i)
             if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
                 ind = pix_dict[(x_pix[i], y_pix[i])]
                 if ind != i:
                     indices_to_delete.append(i)
                     related_indices.append(ind)
-                #if is_nan:
-                #    nan_indices_to_delete.append(i)
-            #if not is_nan:
-            #    if y_pix[i] not in limb_pixels:
-            #        limb_pixels[y_pix[i]] = x_pix[i]
-            #    if x_pix[i] > limb_pixels[y_pix[i]]:
-            #        limb_pixels[y_pix[i]] = x_pix[i]
         x_pix = np.delete(x_pix, indices_to_delete)
         y_pix = np.delete(y_pix, indices_to_delete)
         xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
@@ -518,29 +496,14 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         lons = np.delete(lons, indices_to_delete)
         lats = np.delete(lats, indices_to_delete)
         print("Number of pixels removed", len(indices_to_delete))
-        #print(limb_pixels)
-        #print("Strange pixels", count)
         
-        xs = xys[:, 0]
-        ys = xys[:, 1]
-        xs = np.delete(xs, indices_to_delete)
-        ys = np.delete(ys, indices_to_delete)
-               
         added_x_pix = []
         added_y_pix = []
 
-        #added_x_pix2 = []
-        #added_y_pix2 = []
-        #print(pix_dict)
         for x, y in xys:
             if (x, y) not in pix_dict:
-                #print(x, y)
-                #print(f"Adding missing pixel: {xy}")
                 added_x_pix.append(x)
                 added_y_pix.append(y)
-                #if y in limb_pixels and x > limb_pixels[y]:
-                #    added_x_pix2.append(x)
-                #    added_y_pix2.append(y)
                     
         print("Number of pixels added", len(added_x_pix))
         x_pix = np.append(x_pix, added_x_pix)
@@ -558,17 +521,13 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         
         lons = np.append(lons, added_lons)
         lats = np.append(lats, added_lats)
-        
-        xs = np.append(xs, added_x_pix)
-        ys = np.append(ys, added_y_pix)
-        
+                
         assert(len(lons) == len(lats))
         assert(len(lons) == len(x_pix))
         assert(len(x_pix) == len(y_pix))
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
 
-        xys2 = np.concatenate([xs[:,None], ys[:,None]], axis=1)
         return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, (indices_to_delete, related_indices)
     
 

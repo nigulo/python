@@ -4,6 +4,7 @@ sys.path.append('../..')
 import numpy as np
 import unittest
 import track
+import scipy.stats
 
 import plot
 import os
@@ -34,7 +35,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-
+'''
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -291,7 +292,42 @@ class test_stats(unittest.TestCase):
         
         hdul1.close()
         hdul2.close()
+'''
 
+class test_collect_stats(unittest.TestCase):
+    
+    def test(self):
+        stats = np.zeros((1, 1, 7))
+        data = np.array([])
+        
+        for i in range(20):
+            data_i = np.random.normal(size=100)
+            data = np.append(data, data_i)
+            stats[0, 0] += track.collect_stats_1(data_i)
+            
+        mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt = track.collect_stats_2(stats)
+        
+        expected_mean = np.mean(data)
+        expected_std = np.std(data)
+        expected_skew = scipy.stats.skew(data)
+        expected_kurt = scipy.stats.kurtosis(data)
+        
+        np.testing.assert_almost_equal(mean, expected_mean)
+        np.testing.assert_almost_equal(std, expected_std)
+        np.testing.assert_almost_equal(skew, expected_skew)
+        np.testing.assert_almost_equal(kurt, expected_kurt, 5)
+        
+        data = np.abs(data)
+
+        expected_mean = np.mean(data)
+        expected_std = np.std(data)
+        expected_skew = scipy.stats.skew(data)
+        expected_kurt = scipy.stats.kurtosis(data)
+
+        np.testing.assert_almost_equal(abs_mean, expected_mean)
+        np.testing.assert_almost_equal(abs_std, expected_std)
+        np.testing.assert_almost_equal(abs_skew, expected_skew)
+        np.testing.assert_almost_equal(abs_kurt, expected_kurt)
 
 if __name__ == '__main__':
     unittest.main()
