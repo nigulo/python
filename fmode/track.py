@@ -769,7 +769,8 @@ if (__name__ == '__main__'):
                     if file > last_file:
                         try:
                             hdul = fits.open(output_path + "/" + last_file)
-                            start_time = hdul[-1].header["START_TIME"]
+                            if len(hdul) > 0:
+                                start_time = hdul[-1].header["START_TIME"]
                             hdul.close()
                             last_file = file
                         except:
