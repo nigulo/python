@@ -301,7 +301,9 @@ class test_collect_stats(unittest.TestCase):
         data = np.array([])
         
         for i in range(20):
-            data_i = np.random.normal(size=100)
+            data_i = np.random.normal(loc=np.random.normal()*10, scale=np.random.random()*10+1, size=100) + \
+                np.random.normal(loc=np.random.normal()*10, scale=np.random.random()*10+1, size=100) + \
+                np.random.normal(loc=np.random.normal()*10, scale=np.random.random()*10+1, size=100)
             data = np.append(data, data_i)
             stats[0, 0] += track.collect_stats_1(data_i)
             
@@ -315,7 +317,7 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(mean, expected_mean)
         np.testing.assert_almost_equal(std, expected_std)
         np.testing.assert_almost_equal(skew, expected_skew)
-        np.testing.assert_almost_equal(kurt, expected_kurt, 5)
+        np.testing.assert_almost_equal(kurt, expected_kurt)
         
         data = np.abs(data)
 
@@ -323,11 +325,12 @@ class test_collect_stats(unittest.TestCase):
         expected_std = np.std(data)
         expected_skew = scipy.stats.skew(data)
         expected_kurt = scipy.stats.kurtosis(data)
-
+        
         np.testing.assert_almost_equal(abs_mean, expected_mean)
         np.testing.assert_almost_equal(abs_std, expected_std)
         np.testing.assert_almost_equal(abs_skew, expected_skew)
         np.testing.assert_almost_equal(abs_kurt, expected_kurt)
 
+        
 if __name__ == '__main__':
     unittest.main()

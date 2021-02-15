@@ -69,9 +69,9 @@ def collect_stats_2(data):
     abs_std = np.sqrt(abs_var)
     abs_std3 = abs_var * abs_std
     skew = (data3_mean - 3*mean*var - mean3)/std3
-    kurt = (data4_mean - mean*(2*data3_mean - mean3))/(var**2) - 2*mean*skew - 3
+    kurt = (data4_mean + mean*(6*mean*data2_mean - 4*data3_mean - 3*mean3))/(var**2) - 3
     abs_skew = (abs_data3_mean - 3*abs_mean*abs_var - abs_mean3)/abs_std3
-    abs_kurt = (data4_mean - abs_mean*(2*abs_data3_mean - abs_mean3))/(abs_var**2) - 2*abs_mean*abs_skew - 3
+    abs_kurt = (data4_mean + abs_mean*(6*abs_mean*data2_mean - 4*abs_data3_mean - 3*abs_mean3))/(abs_var**2) - 3
     
     return [mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt]
 
