@@ -744,7 +744,7 @@ if (__name__ == '__main__'):
         output_path = sys.argv[i]
     i += 1
     if len(sys.argv) > i:
-        start_date = sys.argv[i]
+        start_time = sys.argv[i]
     i += 1
     if len(sys.argv) > i:
         num_hrs = float(sys.argv[i])
@@ -761,7 +761,8 @@ if (__name__ == '__main__'):
     if len(sys.argv) > i:
         patch_size = float(sys.argv[i])
     
-    if len(start_date) < 4:
+    if len(start_time) < 4:
+        start_time = None
         last_file = ""
         for root, dirs, files in os.walk(output_path):
             for file in files:
@@ -775,12 +776,28 @@ if (__name__ == '__main__'):
                             last_file = file
                         except:
                             # Corrupted fits file
-                            pass    
+                            pass  
+    else:
+        if len(start_time) <= 16:
+            if len(start_time) <= 13:
+                if len(start_time) <= 10:
+                    if len(start_time) <= 7:
+                        if len(start_time) == 4:
+                            start_time += "-01"
+                        start_time += "-01"
+                    start_time += " 00"
+                start_time += ":00"
+            start_time += ":00"
+        start_time = start_date
 
-    
-    year, month, day, hrs, mins, secs = parse_t_rec(start_time)
-    start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-    start_time = start_time + timedelta(hours=step)
+    if start_time is not None:
+        year, month, day, hrs, mins, secs = parse_t_rec(start_time)
+        start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+        start_time = start_time + timedelta(hours=step)
+        
+        start_date = str(start_time)[:11]
+    else:
+        start_date = ""
     
     print("Start time", str(start_time))
         
