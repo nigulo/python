@@ -61,13 +61,13 @@ class test_track(unittest.TestCase):
 
                 data_tracked = np.zeros_like(data)
                 xys = tr.state.get_xys()
-                for l in range(len(x_pix)):
-                    l1 = tr.state.get_j(l)
+                for l in range(len(xys)):
+                    l1 = tr.state.transform_index(l)
                     if l1 >= 0:
-                        j = xys[l1, 1]
-                        k = xys[l1, 0]
-                        if (not np.isnan(y_pix[l])) and (not np.isnan(x_pix[l])):
-                            data_tracked[j, k] = data[int(y_pix[l]), int(x_pix[l])]
+                        j = xys[l, 1]
+                        k = xys[l, 0]
+                        if (not np.isnan(y_pix[l1])) and (not np.isnan(x_pix[l1])):
+                            data_tracked[j, k] = data[int(y_pix[l1]), int(x_pix[l1])]
                 
                 test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
                 test_plot.colormap(data_tracked, show_colorbar=True)

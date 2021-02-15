@@ -421,7 +421,7 @@ class state:
         grid = grid[fltr]
         self.xys = grid
         
-        self.tracking_stack = []
+        self.dbg_stack = []
         self.num_added = 0
         
         
@@ -431,26 +431,27 @@ class state:
     def get_xys(self):
         return self.xys
 
-    def get_j(self, i):
-        j = i
-        for indices_deleted in self.tracking_stack[::-1]:
+    def transform_index(self, i):
+        for indices_deleted, related_indices in self.dbg_stack:
+            for k in range(len(indices_deleted)):
+                if indices_deleted[k] == i:
+                    i = related_indices[k]
+                    break
+            num = 0
             for ind in indices_deleted:
-                if ind <= i:
-                    j += 1
-            i = j
-        if j >= len(self.xys) - self.num_added:
-            return -1
-        return j
+                if ind < i:
+                    num += 1
+            i -= num
+        return i
         
     def get_nx_ny(self):
         return self.nx, self.ny
 
-    def frame_processed(self, xs_arcsec, ys_arcsec, observer, indices_deleted, num_added):
+    def frame_processed(self, xs_arcsec, ys_arcsec, observer, dbg_info):
         self.xs_arcsec = xs_arcsec
         self.ys_arcsec = ys_arcsec
         self.observer = observer
-        self.tracking_stack.append(indices_deleted)
-        self.num_added += num_added
+        self.dbg_stack.append(dbg_info)
 
     def end_tracking(self):
         self.observer = None
@@ -478,25 +479,31 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         #xys_dict = {(xys[i, 0], xys[i, 1]) : i for i in range(len(xys))}
         #nan_indices_to_delete = []
         indices_to_delete = []
+        related_indices = []
         #count = 0
         #limb_pixels = dict()
         for i in range(len(x_pix)):
             #if (x_pix[i], y_pix[i]) not in xys_dict:
             #    count += 1
             #    #print("What's happening:", (x_pix[i], y_pix[i]), i)
-            remove = False
-            #is_nan = False
-            if np.isnan(x_pix[i]) or np.isnan(x_pix[i]):
-                remove = True
-                #is_nan = True
-                #print(f"Removing nan pixel: {i}")
-            else:
+            #remove = False
+            ##is_nan = False
+            #if np.isnan(x_pix[i]) or np.isnan(x_pix[i]):
+            #    remove = True
+            #    #is_nan = True
+            #    #print(f"Removing nan pixel: {i}")
+            #else:
+            #    ind = pix_dict[(x_pix[i], y_pix[i])]
+            #    if ind != i:
+            #        remove = True
+            #        #print(f"Removing duplicate pixel: {i}!={ind}, {x_pix[i]}, {y_pix[i]}")
+            #if remove:
+            #    indices_to_delete.append(i)
+            if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
                 ind = pix_dict[(x_pix[i], y_pix[i])]
                 if ind != i:
-                    remove = True
-                    #print(f"Removing duplicate pixel: {i}!={ind}, {x_pix[i]}, {y_pix[i]}")
-            if remove:
-                indices_to_delete.append(i)
+                    indices_to_delete.append(i)
+                    related_indices.append(ind)
                 #if is_nan:
                 #    nan_indices_to_delete.append(i)
             #if not is_nan:
@@ -562,7 +569,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(xs_arcsec) == len(ys_arcsec))
 
         xys2 = np.concatenate([xs[:,None], ys[:,None]], axis=1)
-        return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, indices_to_delete, len(added_x_pix)
+        return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, (indices_to_delete, related_indices)
     
 
 class track:
@@ -662,7 +669,7 @@ class track:
         
         print(f"time 4: {time.perf_counter()}")
         
-        x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, indices_removed, num_added = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
+        x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
                                                                       self.state.get_xys(), self.state.get_sdo_lon(), observer_i,
                                                                       (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
 
@@ -710,7 +717,7 @@ class track:
             test_plot.close()
         sys.stdout.flush()
         
-        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, indices_removed, num_added)
+        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, dbg_info)
         
         return lons, lats, x_pix, y_pix, data
 
