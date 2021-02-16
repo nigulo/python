@@ -480,6 +480,7 @@ class state:
         self.stats.close()
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, image_params):
+        print(f"time A: {time.perf_counter()}")
         pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
         indices_to_delete = []
         related_indices = []
@@ -489,6 +490,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                 if ind != i:
                     indices_to_delete.append(i)
                     related_indices.append(ind)
+        print(f"time B: {time.perf_counter()}")
         x_pix = np.delete(x_pix, indices_to_delete)
         y_pix = np.delete(y_pix, indices_to_delete)
         xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
@@ -499,11 +501,14 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         
         added_x_pix = []
         added_y_pix = []
+        print(f"time C: {time.perf_counter()}")
 
         for x, y in xys:
             if (x, y) not in pix_dict:
                 added_x_pix.append(x)
                 added_y_pix.append(y)
+
+        print(f"time D: {time.perf_counter()}")
                     
         print("Number of pixels added", len(added_x_pix))
         x_pix = np.append(x_pix, added_x_pix)
@@ -518,6 +523,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         c2 = c1.transform_to(frames.HeliographicCarrington)
         added_lons = c2.lon.value - sdo_lon
         added_lats = c2.lat.value
+
+        print(f"time E: {time.perf_counter()}")
         
         lons = np.append(lons, added_lons)
         lats = np.append(lats, added_lats)
@@ -528,6 +535,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
 
+        print(f"time F: {time.perf_counter()}")
         return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, (indices_to_delete, related_indices)
     
 

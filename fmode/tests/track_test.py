@@ -35,7 +35,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-'''
+
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -292,7 +292,7 @@ class test_stats(unittest.TestCase):
         
         hdul1.close()
         hdul2.close()
-'''
+
 
 class test_collect_stats(unittest.TestCase):
     
