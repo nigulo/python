@@ -140,7 +140,7 @@ for file_date in ["2013-02-03", "2013-02-04"]:
         xs = c4.Tx
         ys = c4.Ty
         
-        x_pix, y_pix, xs, ys, lons, lats, _, _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i,
+        x_pix, y_pix, xs, ys, lons, lats, _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i,
                                                               (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
                 
         data = np.empty((ny, nx))

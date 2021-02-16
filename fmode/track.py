@@ -481,12 +481,18 @@ class state:
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, image_params):
         print(f"time A: {time.perf_counter()}")
-        pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
+        #pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
+        pix_dict = dict()
+        for i in range(len(x_pix)):
+            if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
+                pix_dict[(int(x_pix[i]), int(y_pix[i]))] = i
+        
+        print(f"time A1: {time.perf_counter()}")
         indices_to_delete = []
         related_indices = []
         for i in range(len(x_pix)):
             if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
-                ind = pix_dict[(x_pix[i], y_pix[i])]
+                ind = pix_dict[(int(x_pix[i]), int(y_pix[i]))]
                 if ind != i:
                     indices_to_delete.append(i)
                     related_indices.append(ind)
@@ -504,7 +510,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         print(f"time C: {time.perf_counter()}")
 
         for x, y in xys:
-            if (x, y) not in pix_dict:
+            if (int(x), int(y)) not in pix_dict:
                 added_x_pix.append(x)
                 added_y_pix.append(y)
 
