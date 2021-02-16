@@ -26,15 +26,19 @@ stats = None
 stats2 = None
 n = 0
 for file in all_files:
-    hdul = fits.open(path + "/" + file)
-    if len(hdul) > 0:
-        if stats is None:
-            stats = np.zeros_like(hdul[0].data)
-            stats2 = np.zeros_like(hdul[0].data)
-        for i in range(len(hdul)):
-            stats += hdul[i].data
-            stats2 += hdul[i].data**2
-            n += 1
+    try:
+        hdul = fits.open(path + "/" + file)
+        if len(hdul) > 0:
+            if stats is None:
+                stats = np.zeros_like(hdul[0].data)
+                stats2 = np.zeros_like(hdul[0].data)
+            for i in range(len(hdul)):
+                stats += hdul[i].data
+                stats2 += hdul[i].data**2
+                n += 1
+        hdul.close()
+    except:
+        pass
             
 mean = stats/n
 sq_mean = stats2/n
