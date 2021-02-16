@@ -44,9 +44,10 @@ mean = stats/n
 sq_mean = stats2/n
 std = np.sqrt(sq_mean - mean**2)
 
-for i in range(stats.shape[2]):
-    test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(stats.shape[0]//8, stats.shape[1]//8))
-    test_plot.colormap(stats[:, :, i], show_colorbar=True)
+for i in range(stats.shape[0]):
+    test_plot = plot.plot(nrows=1, ncols=2, size=plot.default_size(stats.shape[1]*10, stats.shape[2]*10))
+    test_plot.colormap(mean[i, :, :], ax_index=0, show_colorbar=True)
+    test_plot.colormap(std[i, :, :], ax_index=1, show_colorbar=True)
     test_plot.save(f"stats{i}.png")
     test_plot.close()
 
