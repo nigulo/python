@@ -394,7 +394,9 @@ class state:
     def start_tracking(self):
         assert(self.observer is None)
         print("start_tracking", self.get_start_time(), self.get_obs_time(), self.get_last_obs_time())
-        assert(self.get_start_time() <= self.get_obs_time() and (self.get_last_obs_time() is None or self.get_start_time() > self.get_last_obs_time()))
+        assert(self.get_start_time() <= self.get_obs_time())
+        assert(self.get_last_obs_time() is None or self.get_start_time() > self.get_last_obs_time())
+        assert(self.get_obs_time() < self.get_end_time())
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()

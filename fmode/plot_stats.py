@@ -46,8 +46,8 @@ std = np.sqrt(sq_mean - mean**2)
 
 for i in range(stats.shape[0]):
     test_plot = plot.plot(nrows=1, ncols=2, size=plot.default_size(stats.shape[1]*10, stats.shape[2]*10))
-    test_plot.colormap(mean[i, :, :], ax_index=0, show_colorbar=True)
-    test_plot.colormap(std[i, :, :], ax_index=1, show_colorbar=True)
+    test_plot.colormap(mean[i, :, :].T, ax_index=0, show_colorbar=True)
+    test_plot.colormap(std[i, :, :].T, ax_index=1, show_colorbar=True)
     test_plot.save(f"stats{i}.png")
     test_plot.close()
 
