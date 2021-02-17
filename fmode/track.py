@@ -104,7 +104,7 @@ class stats:
         # entirely
         self.tracked_times = set()
         for entry in self.storage:
-            self.tracked_times.add(entry.header["START"])
+            self.tracked_times.add(entry.header["START_T"])
         self.data = np.zeros((self.num_patches, self.num_patches, 7))
 
     def get_date(self):
@@ -149,10 +149,10 @@ class stats:
 
     def save(self):
         assert(self.header is not None)
-        self.header.add_card(fits.Card(keyword="NFRAMES", value=self.num_frames, comment="Number of frames processed"))
+        self.header.add_card(fits.Card(keyword="N_FRAMES", value=self.num_frames, comment="Number of frames processed"))
         hdu = fits.ImageHDU(data=np.array(collect_stats_2(self.data)), header=fits.Header(self.header.get_cards()), name='Statistics')
-        if hdu.header["START"] not in self.tracked_times:
-            self.tracked_times.add(hdu.header["START"])
+        if hdu.header["START_T"] not in self.tracked_times:
+            self.tracked_times.add(hdu.header["START_T"])
             self.storage.append(hdu)
             self.storage.flush()
         self.data = np.zeros((self.num_patches, self.num_patches, 7))
@@ -400,9 +400,9 @@ class state:
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()
-        header.add_card(fits.Card(keyword="START", value=self.get_start_time_str(), comment="Tracking start time"))
-        header.add_card(fits.Card(keyword="END", value=self.get_end_time_str(), comment="Tracking end time"))
-        header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
+        header.add_card(fits.Card(keyword="START_T", value=self.get_start_time_str(), comment="Tracking start time"))
+        header.add_card(fits.Card(keyword="END_T", value=self.get_end_time_str(), comment="Tracking end time"))
+        header.add_card(fits.Card(keyword="CARR_LON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
         self.stats.set_header(header)
         
         metadata = self.get_metadata()
@@ -795,7 +795,7 @@ if (__name__ == '__main__'):
                         try:
                             hdul = fits.open(output_path + "/" + last_file)
                             if len(hdul) > 0:
-                                start_time = hdul[-1].header["START"]
+                                start_time = hdul[-1].header["START_T"]
                             hdul.close()
                             last_file = file
                         except:
