@@ -104,7 +104,7 @@ class stats:
         # entirely
         self.tracked_times = set()
         for entry in self.storage:
-            self.tracked_times.add(entry.header["START_TIME"])
+            self.tracked_times.add(entry.header["START"])
         self.data = np.zeros((self.num_patches, self.num_patches, 7))
 
     def get_date(self):
@@ -115,7 +115,7 @@ class stats:
     
     def set_header(self, header):
         assert(self.header is None)
-        self.header = fits.Header(header.get_cards())
+        self.header = header
         
     def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time, plot_file=None):
         if DEBUG:
@@ -149,9 +149,10 @@ class stats:
 
     def save(self):
         assert(self.header is not None)
-        hdu = fits.ImageHDU(data=np.array(collect_stats_2(self.data)), header=self.header, name='Statistics')
-        if hdu.header["START_TIME"] not in self.tracked_times:
-            self.tracked_times.add(hdu.header["START_TIME"])
+        self.header.add_card(fits.Card(keyword="NFRAMES", value=self.num_frames, comment="Number of frames processed"))
+        hdu = fits.ImageHDU(data=np.array(collect_stats_2(self.data)), header=fits.Header(self.header.get_cards()), name='Statistics')
+        if hdu.header["START"] not in self.tracked_times:
+            self.tracked_times.add(hdu.header["START"])
             self.storage.append(hdu)
             self.storage.flush()
         self.data = np.zeros((self.num_patches, self.num_patches, 7))
@@ -318,7 +319,15 @@ class state:
         self.sdo_lat = self.metadata['CRLT_OBS']
         self.sdo_dist = self.metadata['DSUN_OBS']
 
-        if self.is_tracking() and self.obs_time >= self.end_time:
+
+        end_track = False
+        if self.get_obs_time() >= self.get_end_time():
+            print("Potentially files missing")
+            end_track = True
+        elif self.is_tracking() and self.obs_time >= self.end_time:
+            end_track = True
+
+        if end_track:
             self.stats.save()
             self.end_tracking()
             self.num_bursts -= 1
@@ -384,13 +393,13 @@ class state:
     
     def start_tracking(self):
         assert(self.observer is None)
-        print("start_tracking", self.get_start_time(), self.get_obs_time())
+        print("start_tracking", self.get_start_time(), self.get_obs_time(), self.get_last_obs_time())
         assert(self.get_start_time() <= self.get_obs_time() and (self.get_last_obs_time() is None or self.get_start_time() > self.get_last_obs_time()))
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
         header = stats_header()
-        header.add_card(fits.Card(keyword="START_TIME", value=self.get_start_time_str(), comment="Tracking start time"))
-        header.add_card(fits.Card(keyword="END_TIME", value=self.get_end_time_str(), comment="Tracking end time"))
+        header.add_card(fits.Card(keyword="START", value=self.get_start_time_str(), comment="Tracking start time"))
+        header.add_card(fits.Card(keyword="END", value=self.get_end_time_str(), comment="Tracking end time"))
         header.add_card(fits.Card(keyword="CLON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
         self.stats.set_header(header)
         
@@ -717,7 +726,7 @@ class track:
                 create_new_stats = False
                 date = self.state.get_start_time_str()
                 stats_date = self.state.get_stats().get_date()
-                print("Change file", date, stats_date)
+                print("data, stats_date", date, stats_date)
                 if self.stats_file_mode == "burst":
                     if date > stats_date:
                         create_new_stats = True
@@ -785,7 +794,7 @@ if (__name__ == '__main__'):
                         try:
                             hdul = fits.open(output_path + "/" + last_file)
                             if len(hdul) > 0:
-                                start_time = hdul[-1].header["START_TIME"]
+                                start_time = hdul[-1].header["START"]
                             hdul.close()
                             last_file = file
                         except:
