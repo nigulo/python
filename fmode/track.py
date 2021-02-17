@@ -753,7 +753,6 @@ if (__name__ == '__main__'):
     
     input_path = '.'
     output_path = '.'
-    start_date = '2013-02-14'
     num_hrs = 8 # Duration of tracking
     step = 1 # Step in hours between tracked sequences of num_hrs length
     num_bursts = -1 # For how many days to run the script
@@ -813,7 +812,6 @@ if (__name__ == '__main__'):
                     start_time += " 00"
                 start_time += ":00"
             start_time += ":00"
-        start_time = start_date
 
     if start_time is not None:
         year, month, day, hrs, mins, secs = parse_t_rec(start_time)
