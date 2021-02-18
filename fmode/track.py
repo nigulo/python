@@ -417,7 +417,7 @@ class state:
         header.add_card(fits.Card(keyword="START_T", value=self.get_start_time_str(), comment="Tracking start time"))
         header.add_card(fits.Card(keyword="END_T", value=self.get_end_time_str(), comment="Tracking end time"))
         header.add_card(fits.Card(keyword="CARR_LON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
-        header.add_card(fits.Card(keyword="GIT_SHA", value=self.git_sha, comment="Git commit SHA"))
+        header.add_card(fits.Card(keyword="GIT_SHA", value=self.commit_sha, comment="Git commit SHA"))
         header.add_card(fits.Card(keyword="UNIT", value=metadata['BUNIT'], comment="Unit of the mean and std"))
         header.add_card(fits.Card(keyword="N_STATS", value=8, comment="Number of statistics"))
         header.add_card(fits.Card(keyword="STATS1", value="mean", comment="Mean"))
