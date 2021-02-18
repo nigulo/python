@@ -18,6 +18,7 @@ from sunpy.coordinates import frames
 from datetime import datetime, timedelta
 
 from filelock import FileLock
+import subprocess
 
 A = 14.713
 B = -2.396
@@ -83,10 +84,7 @@ class stats:
         self.num_frames = 0
         self.patch_lons = patch_lons
         self.patch_lats = patch_lats
-        self.patch_lons0 = patch_lons[0]
-        self.patch_lats0 = patch_lats[0]
         self.patch_size = patch_size
-        self.patch_step = patch_lons[1] - patch_lons[0]
         self.num_patches = len(patch_lons)
         self.output_path = output_path
         self.storage = None
@@ -106,6 +104,9 @@ class stats:
         for entry in self.storage:
             self.tracked_times.add(entry.header["START_T"])
         self.data = np.zeros((self.num_patches, self.num_patches, 7))
+
+    def get_data_for_header(self):
+        return self.patch_size, self.num_patches, self.patch_lons[0], self.patch_lons[-1], self.patch_lats[0], self.patch_lats[-1]
 
     def get_date(self):
         return self.date
@@ -148,13 +149,20 @@ class stats:
         self.num_frames += 1
 
     def save(self):
-        assert(self.header is not None)
-        self.header.add_card(fits.Card(keyword="N_FRAMES", value=self.num_frames, comment="Number of frames processed"))
-        hdu = fits.ImageHDU(data=np.array(collect_stats_2(self.data)), header=fits.Header(self.header.get_cards()), name='Statistics')
-        if hdu.header["START_T"] not in self.tracked_times:
-            self.tracked_times.add(hdu.header["START_T"])
-            self.storage.append(hdu)
-            self.storage.flush()
+        if self.header is not None:
+            self.header.add_card(fits.Card(keyword="N_FRAMES", value=self.num_frames, comment="Number of frames processed"))
+            self.header.add_card(fits.Card(keyword="PATCH_SZ", value=self.patch_size, comment="Patch size in degrees"))
+            self.header.add_card(fits.Card(keyword="N_PATCH", value=self.num_patches, comment="Number of patches"))
+            self.header.add_card(fits.Card(keyword="MIN_LON", value=self.patch_lons[0], comment="Minimum longitude"))
+            self.header.add_card(fits.Card(keyword="MAX_LON", value=self.patch_lons[-1], comment="Maximum longitude"))
+            self.header.add_card(fits.Card(keyword="MIN_LAT", value=self.patch_lats[0], comment="Minimum latitude"))
+            self.header.add_card(fits.Card(keyword="MAX_LAT", value=self.patch_lats[-1], comment="Maximum latitude"))
+            
+            hdu = fits.ImageHDU(data=np.array(collect_stats_2(self.data)), header=fits.Header(self.header.get_cards()), name='Statistics')
+            if hdu.header["START_T"] not in self.tracked_times:
+                self.tracked_times.add(hdu.header["START_T"])
+                self.storage.append(hdu)
+                self.storage.flush()
         self.data = np.zeros((self.num_patches, self.num_patches, 7))
         self.header = None
         self.num_frames = 0
@@ -206,13 +214,14 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class state:
     
-    def __init__(self, num_hrs, step, num_bursts, path, files, start_time):
+    def __init__(self, num_hrs, step, num_bursts, path, files, start_time, commit_sha):
         self.step = step
         self.num_hrs = num_hrs
         self.num_bursts = num_bursts
         
         self.path = path
         self.files = files
+        self.commit_sha = commit_sha
         
         hdul = fits.open(self.path + "/" + self.files[0])
         if start_time is None:
@@ -370,6 +379,10 @@ class state:
     def get_start_time_str(self):
         return str(self.start_time)[:19]
 
+    def get_start_time_str2(self):
+        start_time_str = self.get_start_time_str()
+        return start_time_str[:10] + "_" + start_time_str[11:]
+
     def get_end_time(self):
         return self.end_time
 
@@ -399,13 +412,26 @@ class state:
         assert(self.get_obs_time() < self.get_end_time())
         self.observer = frames.HeliographicStonyhurst(0.*u.deg, self.sdo_lat*u.deg, radius=self.sdo_dist*u.m, obstime=self.get_obs_time_str())
 
+        metadata = self.get_metadata()
+
         header = stats_header()
         header.add_card(fits.Card(keyword="START_T", value=self.get_start_time_str(), comment="Tracking start time"))
         header.add_card(fits.Card(keyword="END_T", value=self.get_end_time_str(), comment="Tracking end time"))
         header.add_card(fits.Card(keyword="CARR_LON", value=self.get_sdo_lon(), comment="Carrington longitude of start frame"))
+        header.add_card(fits.Card(keyword="GIT_SHA", value=self.git_sha, comment="Git commit SHA"))
+        header.add_card(fits.Card(keyword="UNIT", value=metadata['BUNIT'], comment="Unit of the mean and std"))
+        header.add_card(fits.Card(keyword="N_STATS", value=8, comment="Number of statistics"))
+        header.add_card(fits.Card(keyword="STATS1", value="mean", comment="Mean"))
+        header.add_card(fits.Card(keyword="STATS2", value="std", comment="Standard deviation"))
+        header.add_card(fits.Card(keyword="STATS3", value="skew", comment="Skewness"))
+        header.add_card(fits.Card(keyword="STATS4", value="kurt", comment="Kurtosis"))
+        header.add_card(fits.Card(keyword="STATS5", value="abs_mean", comment="Mean of the absolute value"))
+        header.add_card(fits.Card(keyword="STATS6", value="abs_std", comment="Standard deviation of the absolute value"))
+        header.add_card(fits.Card(keyword="STATS7", value="abs_skew", comment="Skewness of the absolute value"))
+        header.add_card(fits.Card(keyword="STATS8", value="abs_kurt", comment="Kurtosis of the absolute value"))
+
         self.stats.set_header(header)
         
-        metadata = self.get_metadata()
         a = metadata['CROTA2']*np.pi/180
         nx = metadata['NAXIS1']
         ny = metadata['NAXIS2']
@@ -559,7 +585,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
 class track:
 
     def __init__(self, input_path, output_path, files, num_hrs=8, step=1, num_bursts=-1, num_patches=100, patch_size=15, 
-                 stats_dbg = None, stats_file_mode="burst", start_time=None):
+                 stats_dbg = None, stats_file_mode="burst", start_time=None, commit_sha=""):
         assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
@@ -572,13 +598,13 @@ class track:
         print(f"Input path: {input_path}")
         print(f"Output path: {output_path}")
         
-        self.state = state(num_hrs, step, num_bursts, input_path, files, start_time)
+        self.state = state(num_hrs, step, num_bursts, input_path, files, start_time, commit_sha)
         if stats_dbg is None:
             sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
             sts = stats_dbg
         self.state.set_stats(sts)
-        sts.init(self.state.get_start_time_str())
+        sts.init(self.state.get_start_time_str2())
 
         #metadata = self.state.get_metadata()
         #self.nx = metadata['NAXIS1']
@@ -726,7 +752,7 @@ class track:
                 break
             if not self.state.is_tracking():
                 create_new_stats = False
-                date = self.state.get_start_time_str()
+                date = self.state.get_start_time_str2()
                 stats_date = self.state.get_stats().get_date()
                 print("data, stats_date", date, stats_date)
                 if self.stats_file_mode == "burst":
@@ -745,7 +771,7 @@ class track:
                     self.state.get_stats().close()
                     #sts = stats(self.patch_lons, self.patch_lats, self.patch_size)
                     #self.state.set_stats(sts)
-                    self.state.get_stats().init(self.state.get_start_time_str())
+                    self.state.get_stats().init(self.state.get_start_time_str2())
         self.state.close()
 
 
@@ -758,6 +784,8 @@ if (__name__ == '__main__'):
     num_bursts = -1 # For how many days to run the script
     num_patches = 100
     patch_size = 15
+    
+    commit_sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
     
     i = 1
     
@@ -818,7 +846,7 @@ if (__name__ == '__main__'):
         start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         start_time = start_time + timedelta(hours=step)
         
-        start_date = str(start_time)[:11]
+        start_date = str(start_time)[:10]
     else:
         start_date = ""
     
@@ -833,7 +861,7 @@ if (__name__ == '__main__'):
     all_files.sort()
     
     tr = track(input_path=input_path, output_path=output_path, files=all_files, num_bursts=num_bursts, num_hrs=num_hrs, step=step, 
-               num_patches=num_patches, patch_size=patch_size, start_time=start_time)
+               num_patches=num_patches, patch_size=patch_size, start_time=start_time, commit_sha=commit_sha)
     tr.track()
 
         
