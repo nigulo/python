@@ -14,6 +14,7 @@ import plot
 
 
 path = "output"
+path2 = "../../fits"
 all_files = list()
 
 
@@ -25,9 +26,20 @@ all_files.sort()
 stats = None
 stats2 = None
 n = 0
-for file in all_files:
+for file in all_files[::24]:
     try:
         hdul = fits.open(path + "/" + file)
+        date = file[:10]
+        hdul2 = fits.open(path2 + "/" + date + "_hmi.M_720s")
+        time = date + " " + file[11:]
+        for i in range(1, len(hdul2)):
+            if hdul2[i].header['T_REC'] == time:
+                input_data = hdul2[i].data
+                max_val = np.nanmax(input_data)
+                fltr = input_data > .9*max_val
+                input_data[fltr] = np.nan
+
+                break
         if len(hdul) > 0:
             if stats is None:
                 stats = np.zeros_like(hdul[0].data)
@@ -36,12 +48,22 @@ for file in all_files:
                 stats += hdul[i].data
                 stats2 += hdul[i].data**2
                 n += 1
-                test_plot = plot.plot(nrows=1, ncols=hdul[i].data.shape[0], size=plot.default_size(hdul[i].data.shape[1]*10, hdul[i].data.shape[2]*10))
+                n_cols = hdul[i].data.shape[0]//2
+                test_plot = plot.plot(nrows=3, ncols=n_cols, size=plot.default_size(hdul[i].data.shape[1]*10, hdul[i].data.shape[2]*10))
+                row = 0
+                col = 0
                 for j in range(hdul[i].data.shape[0]):
-                    test_plot.colormap(hdul[i].data[j, :, :].T, ax_index=j, show_colorbar=True)
-                test_plot.save(f"stats_{file}{i}.png")
+                    test_plot.colormap(hdul[i].data[j, :, :].T, ax_index=[row, col], show_colorbar=True)
+                    col += 1
+                    if col == n_cols:
+                        col = 0
+                        row += 1
+                for col in range(n_cols):
+                    test_plot.colormap(input_data, ax_index=[2, col], cmap_name="bwr", show_colorbar=True)
+                test_plot.save(f"stats_{file}.png")
                 test_plot.close()
         hdul.close()
+        hdul2.close()
     except:
         pass
             
