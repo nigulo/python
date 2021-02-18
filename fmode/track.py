@@ -18,7 +18,6 @@ from sunpy.coordinates import frames
 from datetime import datetime, timedelta
 
 from filelock import FileLock
-import subprocess
 
 A = 14.713
 B = -2.396
@@ -785,7 +784,7 @@ if (__name__ == '__main__'):
     num_patches = 100
     patch_size = 15
     
-    commit_sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
+    commit_sha = ""
     
     i = 1
     
@@ -812,6 +811,10 @@ if (__name__ == '__main__'):
     i += 1
     if len(sys.argv) > i:
         patch_size = float(sys.argv[i])
+    i += 1
+    if len(sys.argv) > i:
+        commit_sha = sys.argv[i]
+    print("Commit SHA", commit_sha)
     
     if len(start_time) < 4:
         start_time = None
