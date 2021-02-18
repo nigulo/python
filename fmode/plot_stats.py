@@ -36,6 +36,11 @@ for file in all_files:
                 stats += hdul[i].data
                 stats2 += hdul[i].data**2
                 n += 1
+                test_plot = plot.plot(nrows=1, ncols=hdul[i].data.shape[0], size=plot.default_size(hdul[i].data.shape[1]*10, hdul[i].data.shape[2]*10))
+                for j in range(hdul[i].data.shape[0]):
+                    test_plot.colormap(hdul[i].data[j, :, :].T, ax_index=j, show_colorbar=True)
+                test_plot.save(f"stats_{file}{i}.png")
+                test_plot.close()
         hdul.close()
     except:
         pass
