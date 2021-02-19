@@ -818,22 +818,35 @@ if (__name__ == '__main__'):
         commit_sha = sys.argv[i]
     print("Commit SHA", commit_sha)
     
-    if len(start_time) < 4:
+    if len(start_time) < 4:        
+        start_times = []
         start_time = None
-        last_file = ""
         for root, dirs, files in os.walk(output_path):
             for file in files:
                 if file[-5:] == ".fits":
-                    if file > last_file:
-                        try:
-                            hdul = fits.open(output_path + "/" + last_file)
-                            if len(hdul) > 0:
-                                start_time = hdul[-1].header["START_T"]
-                            hdul.close()
-                            last_file = file
-                        except:
-                            # Corrupted fits file
-                            pass  
+                    try:
+                        hdul = fits.open(output_path + "/" + last_file)
+                        if len(hdul) > 0:
+                            start_times.append(hdul[-1].header["START_T"])
+                        hdul.close()
+                    except:
+                        # Corrupted fits file
+                        pass
+        start_times.sort()
+        if len(start_times) > 0:
+            last_start_time = start_times[0]
+            year, month, day, hrs, mins, secs = parse_t_rec(last_start_time)
+            last_start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+            for time in start_times:
+                year, month, day, hrs, mins, secs = parse_t_rec(time)
+                time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+                if time > last_start_time + timedelta(hours=step):
+                    start_time = last_start_time + timedelta(hours=step)
+                    break
+                last_start_time = time
+            if start_time is None:
+                start_time = start_times[-1] + timedelta(hours=step)
+            
     else:
         if len(start_time) <= 16:
             if len(start_time) <= 13:
@@ -846,11 +859,11 @@ if (__name__ == '__main__'):
                 start_time += ":00"
             start_time += ":00"
 
-    if start_time is not None:
         year, month, day, hrs, mins, secs = parse_t_rec(start_time)
         start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         start_time = start_time + timedelta(hours=step)
-        
+
+    if start_time is not None:        
         start_date = str(start_time)[:10]
     else:
         start_date = ""
