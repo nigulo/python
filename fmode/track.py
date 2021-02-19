@@ -826,8 +826,8 @@ if (__name__ == '__main__'):
                 if file[-5:] == ".fits":
                     try:
                         hdul = fits.open(output_path + "/" + last_file)
-                        if len(hdul) > 0:
-                            start_times.append(hdul[-1].header["START_T"])
+                        for i in range(len(hdul)):
+                            start_times.append(hdul[i].header["START_T"])
                         hdul.close()
                     except:
                         # Corrupted fits file
