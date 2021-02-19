@@ -62,13 +62,13 @@ for file in all_files[::24]:
                 row = 0
                 col = 0
                 for j in range(hdul[i].data.shape[0]):
-                    test_plot.colormap(hdul[i].data[j, ::-1, ::-1], ax_index=[row, col], show_colorbar=True)
+                    test_plot.colormap(hdul[i].data[j, ::-1, ::-1].T, ax_index=[row, col], show_colorbar=True)
                     col += 1
                     if col == n_cols:
                         col = 0
                         row += 1
                 for col in range(n_cols):
-                    test_plot.colormap(input_data.T, ax_index=[2, col], cmap_name="bwr", show_colorbar=True, vmin=-500, vmax=500)
+                    test_plot.colormap(input_data, ax_index=[2, col], cmap_name="bwr", show_colorbar=True, vmin=-100, vmax=100)
                 test_plot.save(f"stats_{file}.png")
                 test_plot.close()
         hdul.close()
@@ -83,8 +83,8 @@ std = np.sqrt(sq_mean - mean**2)
 
 for i in range(stats.shape[0]):
     test_plot = plot.plot(nrows=1, ncols=2, size=plot.default_size(stats.shape[1]*10, stats.shape[2]*10))
-    test_plot.colormap(mean[i, ::-1, ::-1], ax_index=0, show_colorbar=True)
-    test_plot.colormap(std[i, ::-1, ::-1], ax_index=1, show_colorbar=True)
+    test_plot.colormap(mean[i, ::-1, ::-1].T, ax_index=0, show_colorbar=True)
+    test_plot.colormap(std[i, ::-1, ::-1].T, ax_index=1, show_colorbar=True)
     test_plot.save(f"stats{i}.png")
     test_plot.close()
 
