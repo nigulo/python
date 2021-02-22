@@ -22,6 +22,8 @@ from filelock import FileLock
 def get_last():
     time = ""
     time2 = ""
+    lon_index = None
+    lat_index = None
     if os.path.isfile("quiet.txt") and os.path.getsize("quiet.txt") > 0:
         with open("quiet.txt", "rb") as file:
             file.seek(-2, os.SEEK_END)
