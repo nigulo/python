@@ -60,17 +60,17 @@ if (__name__ == '__main__'):
                     for i in range(len(hdul)):
                         mean = hdul[i].data[4, :, :]
                         std = hdul[i].data[5, :, :]
-                        print("mean", mean)
-                        print("std", std)
+                        #print("mean", mean)
+                        #print("std", std)
                         
                         if indices is None:
                             lon_inds = np.arange(mean.shape[0])
                             lat_inds = np.arange(mean.shape[1])
                             indices = np.reshape(np.transpose([np.repeat(lon_inds, len(lat_inds)), np.tile(lat_inds, len(lon_inds))]), (len(lon_inds), len(lat_inds), 2))
                             #print("Indices", indices)
-                        print(mean + std <= quiet_level)
+                        #print(mean + std <= quiet_level)
                         quiet_indices = indices[mean + std <= quiet_level]
-                        print("Quiet indices", quiet_indices)
+                        #print("Quiet indices", quiet_indices)
                         with FileLock("quiet.txt"):
                             start_time = hdul[i].header["START_T"]
                             time, time2, last_lon_index, last_lat_index = get_last()
