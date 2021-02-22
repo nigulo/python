@@ -825,7 +825,7 @@ if (__name__ == '__main__'):
             for file in files:
                 if file[-5:] == ".fits":
                     try:
-                        hdul = fits.open(output_path + "/" + last_file)
+                        hdul = fits.open(output_path + "/" + file)
                         for i in range(len(hdul)):
                             start_times.append(hdul[i].header["START_T"])
                         hdul.close()
