@@ -29,11 +29,13 @@ if (__name__ == '__main__'):
     i = 1
     if len(sys.argv) > i:
         quiet_level = float(sys.argv[i])
-        
+    
+    print("Quiet level", quiet_level)    
     indices = None
 
     time = ""
-    if os.path.isfile("quiet.txt"):      
+    time2 = ""
+    if os.path.isfile("quiet.txt") and os.path.getsize("quiet.txt") > 0:
         with open("quiet.txt", "rb") as file:
             file.seek(-2, os.SEEK_END)
             while file.read(1) != b'\n':
@@ -41,7 +43,9 @@ if (__name__ == '__main__'):
             line = file.readline().decode()
             print("Last quiet patch", line)
     
-            time, _, _, _, _ = line.split()
+            date, time,  _, _, _, _ = line.split()
+            time = date + "_" + time
+            time2 = date + " " + time
     #year, month, day, hrs, mins, secs = track.parse_t_rec(time)
     #start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
     
@@ -51,7 +55,9 @@ if (__name__ == '__main__'):
                 try:
                     hdul = fits.open(input_path + "/" + file)
                     for i in range(len(hdul)):
-                        
+                        start_time = hdul[i].header["START_T"]
+                        if start_time <= time2:
+                            continue
                         mean = hdul[i].data[4, :, :]
                         std = hdul[i].data[5, :, :]
                         print("mean", mean)
@@ -60,17 +66,19 @@ if (__name__ == '__main__'):
                         if indices is None:
                             lon_inds = np.arange(mean.shape[0])
                             lat_inds = np.arange(mean.shape[1])
-                            indices = np.transpose([np.repeat(lon_inds, len(lat_inds)), np.tile(lat_inds, len(lon_inds))])
+                            indices = np.reshape(np.transpose([np.repeat(lon_inds, len(lat_inds)), np.tile(lat_inds, len(lon_inds))]), (len(lon_inds), len(lat_inds), 2))
                             #print("Indices", indices)
+                        print(mean + std <= quiet_level)
                         quiet_indices = indices[mean + std <= quiet_level]
                         print("Quiet indices", quiet_indices)
                         with open("quiet.txt", "a+") as f:
                             start_time = hdul[i].header["START_T"]
-                            for lon_index, lat_inde in quiet_indices:
+                            for lon_index, lat_index in quiet_indices:
                                 f.write(f"{start_time} {lon_index} {lat_index} {mean[lon_index, lat_index]} {std[lon_index, lat_index]}\n")
                         
                     hdul.close()
-                except:
+                except Exception as e:
+                    print(e)
                     # Corrupted fits file
                     pass
     
