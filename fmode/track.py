@@ -318,6 +318,7 @@ class state:
         year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
         date = year + "-" + month + "-" + day
         assert(file_date == date)
+        print("File date", file_date)
         
         self.hrs = hrs
         self.mins = mins
@@ -350,6 +351,7 @@ class state:
             self.stats.save()
             self.end_tracking()
             self.num_bursts -= 1
+            self.last_obs_time = None
             print("Return 2")
             return False
 
@@ -755,7 +757,7 @@ class track:
                 create_new_stats = False
                 date = self.state.get_start_time_str2()
                 stats_date = self.state.get_stats().get_date()
-                print("data, stats_date", date, stats_date)
+                print("date, stats_date", date, stats_date)
                 if self.stats_file_mode == "burst":
                     if date > stats_date:
                         create_new_stats = True
@@ -837,13 +839,13 @@ if (__name__ == '__main__'):
             last_start_time = start_times[0]
             year, month, day, hrs, mins, secs = parse_t_rec(last_start_time)
             last_start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-            for time in start_times:
-                year, month, day, hrs, mins, secs = parse_t_rec(time)
-                time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-                if time > last_start_time + timedelta(hours=step):
+            for t in start_times:
+                year, month, day, hrs, mins, secs = parse_t_rec(t)
+                t = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+                if t > last_start_time + timedelta(hours=step):
                     start_time = last_start_time + timedelta(hours=step)
                     break
-                last_start_time = time
+                last_start_time = t
             if start_time is None:
                 start_time = start_times[-1] + timedelta(hours=step)
             
