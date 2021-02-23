@@ -18,6 +18,20 @@ from datetime import datetime, timedelta
 
 from filelock import FileLock
 
+def get_lon_lat(lon_index, lat_index, num_lon, num_lat, header):
+    min_lon = header["MIN_LON"]
+    max_lon = header["MAX_LON"]
+    min_lat = header["MIN_LAT"]
+    max_lat = header["MAX_LAT"]
+    patch_size = header["PATCH_SZ"]
+    print(min_lon, max_lon, min_lat, max_lat)
+    lon_step = (max_lon - min_lon)/ (num_lon - 1)
+    lat_step = (max_lat - min_lat)/ (num_lat - 1)
+    
+    start_lon = min_lon + lon_step*lon_index
+    start_lat = min_lat + lat_step*lat_index
+    
+    return start_lon, start_lon + patch_size, start_lat, start_lat + patch_size
 
 def get_last():
     time = ""
@@ -32,7 +46,7 @@ def get_last():
             line = file.readline().decode()
             print("Last quiet patch", line)
     
-            date, time,  lon_index, lat_index, _, _ = line.split()
+            date, time, _, _, _, _, _, lon_index, lat_index, _, _ = line.split()
             time = date + "_" + time
             time2 = date + " " + time
     return time, time2, lon_index, lat_index
@@ -77,7 +91,9 @@ if (__name__ == '__main__'):
                             with open("quiet.txt", "a+") as f:
                                 for lon_index, lat_index in quiet_indices:
                                     if start_time > time2 or (start_time == time2 and (lon_index > last_lon_index or lon_index == last_lon_index and lat_index > last_lat_index)):
-                                        f.write(f"{start_time} {lon_index} {lat_index} {mean[lon_index, lat_index]} {std[lon_index, lat_index]}\n")
+                                        start_lon, end_lon, start_lat, end_lat = get_lon_lat(lon_index, lat_index, mean.shape[0], mean.shape[1], hdul[i].header)
+                                        carr_lon = hdul[i].header["CARR_LON"]
+                                        f.write(f"{start_time} {carr_lon} {start_lon} {end_lon} {start_lat} {end_lat} {lon_index} {lat_index} {mean[lon_index, lat_index]} {std[lon_index, lat_index]}\n")
                         
                     hdul.close()
                 except Exception as e:
