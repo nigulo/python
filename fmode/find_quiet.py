@@ -24,7 +24,7 @@ def get_lon_lat(lon_index, lat_index, num_lon, num_lat, header):
     min_lat = header["MIN_LAT"]
     max_lat = header["MAX_LAT"]
     patch_size = header["PATCH_SZ"]
-    print(min_lon, max_lon, min_lat, max_lat)
+    #print(min_lon, max_lon, min_lat, max_lat)
     lon_step = (max_lon - min_lon)/ (num_lon - 1)
     lat_step = (max_lat - min_lat)/ (num_lat - 1)
     
