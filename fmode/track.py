@@ -780,6 +780,9 @@ class track:
 
 if (__name__ == '__main__'):
     
+    id = os.getpid()
+    print = lambda str: print(f"{id}: {str}")
+    
     input_path = '.'
     output_path = '.'
     num_hrs = 8 # Duration of tracking
