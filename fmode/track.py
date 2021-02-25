@@ -327,8 +327,10 @@ class state:
         self.secs = secs
 
         # This field is only for debug purposes
-        self.last_obs_time = self.obs_time
+        last_obs_time = self.obs_time
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+        if last_obs_time < self.obs_time:
+            self.last_obs_time = last_obs_time
         
         if self.get_obs_time() < self.get_start_time():
             print("Return 1")
@@ -353,7 +355,6 @@ class state:
             self.stats.save()
             self.end_tracking()
             self.num_bursts -= 1
-            self.last_obs_time = None
             print("Return 2")
             return False
 
