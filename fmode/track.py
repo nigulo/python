@@ -224,7 +224,7 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class state:
     
-    def __init__(self, num_hrs, step, num_bursts, path, files, start_time, commit_sha):
+    def __init__(self, num_hrs, step, num_bursts, path, files, start_times, commit_sha):
         self.step = step
         self.num_hrs = num_hrs
         self.num_bursts = num_bursts
@@ -234,13 +234,15 @@ class state:
         self.commit_sha = commit_sha
         
         hdul = fits.open(self.path + "/" + self.files[0])
-        if start_time is None:
+        if len(start_times) == 0:
             t_rec = hdul[1].header['T_REC']
             year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
+            self.start_times = []
             self.start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         else:
-            self.start_time = start_time
-            year, month, day, hrs, mins, secs = parse_t_rec(str(start_time))
+            self.start_time = start_times[0]
+            self.start_times = start_times[1:]
+            year, month, day, hrs, mins, secs = parse_t_rec(str(self.start_time))
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
  
@@ -500,7 +502,11 @@ class state:
 
     def end_tracking(self):
         self.observer = None
-        self.start_time = self.start_time + timedelta(hours=self.step)
+        if len(self.start_times) > 0:
+            self.start_time = self.start_times[0]
+            self.start_times = self.start_times[1:]
+        else:
+            self.start_time = self.start_time + timedelta(hours=self.step)
         self.end_time = self.start_time + timedelta(hours=self.num_hrs)
         self.file_time = self.start_time
         print("end_tracking", self.file_time)
@@ -588,7 +594,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
 class track:
 
     def __init__(self, input_path, output_path, files, num_hrs=8, step=1, num_bursts=-1, num_patches=100, patch_size=15, 
-                 stats_dbg = None, stats_file_mode="burst", start_time=None, commit_sha=""):
+                 stats_dbg = None, stats_file_mode="burst", start_times=[], commit_sha=""):
         assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
@@ -601,7 +607,7 @@ class track:
         print(f"Input path: {input_path}")
         print(f"Output path: {output_path}")
         
-        self.state = state(num_hrs, step, num_bursts, input_path, files, start_time, commit_sha)
+        self.state = state(num_hrs, step, num_bursts, input_path, files, start_times, commit_sha)
         if stats_dbg is None:
             sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
@@ -826,8 +832,9 @@ if (__name__ == '__main__'):
         commit_sha = sys.argv[i]
     print("Commit SHA", commit_sha)
     
+    start_times = []
     if len(start_time) < 4:        
-        start_times = []
+        all_start_times = []
         start_time = None
         for root, dirs, files in os.walk(output_path):
             for file in files:
@@ -835,25 +842,25 @@ if (__name__ == '__main__'):
                     try:
                         hdul = fits.open(output_path + "/" + file)
                         for i in range(len(hdul)):
-                            start_times.append(hdul[i].header["START_T"])
+                            all_start_times.append(hdul[i].header["START_T"])
                         hdul.close()
                     except:
                         # Corrupted fits file
                         pass
-        start_times.sort()
-        if len(start_times) > 0:
-            last_start_time = start_times[0]
+        all_start_times.sort()
+        if len(all_start_times) > 0:
+            last_start_time = all_start_times[0]
             year, month, day, hrs, mins, secs = parse_t_rec(last_start_time)
             last_start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-            for t in start_times:
+            for t in all_start_times:
                 year, month, day, hrs, mins, secs = parse_t_rec(t)
                 t = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-                if t > last_start_time + timedelta(hours=step):
-                    start_time = last_start_time + timedelta(hours=step)
-                    break
+                next_time = last_start_time + timedelta(hours=step)
+                while next_time < t:
+                    start_times.append(next_time)
+                    next_time = next_time + timedelta(hours=step)
                 last_start_time = t
-            if start_time is None:
-                start_time = start_times[-1] + timedelta(hours=step)
+            start_times.append(all_start_times[-1] + timedelta(hours=step))
             
     else:
         if len(start_time) <= 16:
@@ -870,9 +877,10 @@ if (__name__ == '__main__'):
         year, month, day, hrs, mins, secs = parse_t_rec(start_time)
         start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         start_time = start_time + timedelta(hours=step)
+        start_times.append(start_time)
 
-    if start_time is not None:        
-        start_date = str(start_time)[:10]
+    if len(start_times) > 0:        
+        start_date = str(start_times[0])[:10]
     else:
         start_date = ""
     
@@ -887,7 +895,7 @@ if (__name__ == '__main__'):
     all_files.sort()
     
     tr = track(input_path=input_path, output_path=output_path, files=all_files, num_bursts=num_bursts, num_hrs=num_hrs, step=step, 
-               num_patches=num_patches, patch_size=patch_size, start_time=start_time, commit_sha=commit_sha)
+               num_patches=num_patches, patch_size=patch_size, start_times=start_times, commit_sha=commit_sha)
     tr.track()
 
         
