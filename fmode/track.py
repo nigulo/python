@@ -860,7 +860,9 @@ if (__name__ == '__main__'):
                     start_times.append(next_time)
                     next_time = next_time + timedelta(hours=step)
                 last_start_time = t
-            start_times.append(all_start_times[-1] + timedelta(hours=step))
+            year, month, day, hrs, mins, secs = parse_t_rec(all_start_times[-1])
+            last_start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
+            start_times.append(last_start_time + timedelta(hours=step))
             
     else:
         if len(start_time) <= 16:
