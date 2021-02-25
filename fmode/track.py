@@ -777,11 +777,14 @@ class track:
                     self.state.get_stats().init(self.state.get_start_time_str2())
         self.state.close()
 
+def my_print(*args):
+    std_print(f"{pid}: ", *args)
 
 if (__name__ == '__main__'):
     
-    id = os.getpid()
-    print = lambda str: print(f"{id}: {str}")
+    pid = os.getpid()
+    std_print = print
+    print = my_print
     
     input_path = '.'
     output_path = '.'
