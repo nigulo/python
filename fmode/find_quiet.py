@@ -48,7 +48,7 @@ def get_last():
     
             date, time, _, _, _, _, _, lon_index, lat_index, _, _ = line.split()
             time = date + "_" + time
-            time2 = date + " " + time
+            time2 = date + "," + time
     return time, time2, lon_index, lat_index
 
 if (__name__ == '__main__'):
@@ -87,13 +87,14 @@ if (__name__ == '__main__'):
                         #print("Quiet indices", quiet_indices)
                         with FileLock("quiet.txt"):
                             start_time = hdul[i].header["START_T"]
+                            start_time = start_time[:10] + "," + start_time[11:]
                             time, time2, last_lon_index, last_lat_index = get_last()
                             with open("quiet.txt", "a+") as f:
                                 for lon_index, lat_index in quiet_indices:
                                     if start_time > time2 or (start_time == time2 and (lon_index > last_lon_index or lon_index == last_lon_index and lat_index > last_lat_index)):
                                         start_lon, end_lon, start_lat, end_lat = get_lon_lat(lon_index, lat_index, mean.shape[0], mean.shape[1], hdul[i].header)
                                         carr_lon = hdul[i].header["CARR_LON"]
-                                        f.write(f"{start_time} {carr_lon} {start_lon} {end_lon} {start_lat} {end_lat} {lon_index} {lat_index} {mean[lon_index, lat_index]} {std[lon_index, lat_index]}\n")
+                                        f.write(f"{start_time},{carr_lon},{start_lon},{end_lon},{start_lat},{end_lat},{lon_index},{lat_index},{mean[lon_index, lat_index]},{std[lon_index, lat_index]}\n")
                         
                     hdul.close()
                 except Exception as e:
