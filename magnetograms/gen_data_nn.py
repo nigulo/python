@@ -22,7 +22,7 @@ import scipy.special as special
 import utils
 import plot
 import misc
-import pymc3 as pm
+#import pymc3 as pm
 import kiss_gp
 #import os
 #import os.path
@@ -38,7 +38,6 @@ from astropy.io import fits
 from scipy.io import readsav
 import scipy.signal as signal
 import pickle
-import pyhdust.triangle as triangle
 
 
 state_file = 'data3d.pkl'
@@ -51,6 +50,8 @@ num_test = 27*27
 
 n1 = 27
 n2 = 27
+length_scale = 0.1
+z_scale = 1
 
 if len(sys.argv) > 1:
     state_file = sys.argv[1]
@@ -58,6 +59,10 @@ if len(sys.argv) > 2:
     n1 = int(sys.argv[2])
 if len(sys.argv) > 3:
     n2 = int(sys.argv[3])
+if len(sys.argv) > 4:
+    length_scale = float(sys.argv[4])
+if len(sys.argv) > 5:
+    z_scale = float(sys.argv[5])
 
 subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
@@ -419,15 +424,21 @@ class data_generator():
     
 
 sig_var=1.
-length_scale=.3
 noise_var=0.01
 
-print("length_scale", length_scale)
+x_orig = np.array(x)
+
+x = np.array(x_orig)
+x[:, 2] *= z_scale
+
+print("length_scale, z_scale", length_scale, z_scale)
 print("x", np.min(x), np.max(x))
 
 ys = get_patches(b, phi, theta, num_train)
-#ys -= np.mean(ys, axis = 0)
-#ys /= np.std(ys, axis = 0)
+ys = np.asarray(ys)
+print("mean, std", np.mean(ys, axis=(0,1,2,3)), np.std(ys, axis=(0,1,2,3)))
+ys -= np.mean(ys, axis = 0)
+ys /= np.std(ys, axis = 0)
 
 print("Num train patches", len(ys))
 generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
@@ -435,13 +446,13 @@ dat, loglik = generator.generate(train=True)
 
 
 ys = get_patches(b, phi, theta, num_test, rnd=False)
-#ys -= np.mean(ys, axis = 0)
-#ys /= np.std(ys, axis = 0)
+ys -= np.mean(ys, axis = 0)
+ys /= np.std(ys, axis = 0)
 
 print("Num test patches", len(ys))
 generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
 dat_test, loglik_test = generator.generate()
 
-np.savez_compressed('data_nn_out', data_train=dat, loglik_train=loglik, data_test=dat_test, loglik_test=loglik_test)
+np.savez_compressed(f'data_nn_out_{length_scale}_{z_scale}', data_train=dat, loglik_train=loglik, data_test=dat_test, loglik_test=loglik_test)
 
 print("Done")
