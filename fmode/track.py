@@ -329,7 +329,7 @@ class state:
         # This field is only for debug purposes
         last_obs_time = self.obs_time
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-        if last_obs_time is not None and last_obs_time < self.obs_time:
+        if last_obs_time is None or last_obs_time < self.obs_time:
             self.last_obs_time = last_obs_time
         
         if self.get_obs_time() < self.get_start_time():
