@@ -46,7 +46,7 @@ def get_last():
             line = file.readline().decode()
             print("Last quiet patch", line)
     
-            date, time, _, _, _, _, _, lon_index, lat_index, _, _ = line.split()
+            date, time, _, _, _, _, _, lon_index, lat_index, _, _ = line.split(",")
             time = date + "_" + time
             time2 = date + "," + time
     return time, time2, lon_index, lat_index
