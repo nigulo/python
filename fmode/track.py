@@ -331,6 +331,8 @@ class state:
         self.obs_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
         if last_obs_time is None or last_obs_time < self.obs_time:
             self.last_obs_time = last_obs_time
+        else:
+            self.last_obs_time = None
         
         if self.get_obs_time() < self.get_start_time():
             print("Return 1")
