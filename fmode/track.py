@@ -19,6 +19,11 @@ from datetime import datetime, timedelta
 
 from filelock import FileLock
 
+PROFILE = True
+
+if PROFILE:
+    import tracemalloc
+
 A = 14.713
 B = -2.396
 C = -1.787
@@ -27,6 +32,15 @@ DEBUG = False
 
 radius_km = 695700
 
+def take_snapshot():
+    if PROFILE:
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+        
+        with open("memory.prof", "a") as f:
+            for stat in top_stats[:20]:
+                f.write(f"{stat}\n")
+    
 def diff_rot(lat):
     return (A + B*np.sin(lat)**2 + C*np.sin(lat)**4)*np.pi/180
 
@@ -277,7 +291,7 @@ class state:
         return self.frame_index
 
     def next_frame(self):
-        print("frame_index 1", self.frame_index)
+        print("next_frame frame_index", self.frame_index)
         self.frame_index += 1
         if self.frame_index >= self.num_frames_per_day:
             self.frame_index = -1
@@ -289,6 +303,7 @@ class state:
         return True
 
     def next(self):
+        print("next")
         files = filter_files(self.files, str(self.file_time)[:10])
         if len(files) == 0:
             self.stats.save()
@@ -309,10 +324,10 @@ class state:
         
         self.num_frames_per_day = len(self.hdul) - 1
 
-        print("frame_index 2", self.frame_index)
+        print("next frame_index", self.frame_index)
         if not self.next_frame():
             return False
-        print("frame_index 3", self.frame_index)
+        print("next frame_index", self.frame_index)
         self.metadata = self.hdul[self.frame_index + 1].header
 
         t_rec = self.metadata['T_REC']
@@ -320,7 +335,7 @@ class state:
         year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
         date = year + "-" + month + "-" + day
         assert(file_date == date)
-        print("File date", file_date)
+        print("next file_date", file_date)
         
         self.hrs = hrs
         self.mins = mins
@@ -335,7 +350,7 @@ class state:
             self.last_obs_time = None
         
         if self.get_obs_time() < self.get_start_time():
-            print("Return 1")
+            print("next False 1")
             return False
         
         self.obs_time_str = f"{date} {self.hrs}:{self.mins}:{self.secs}"
@@ -357,13 +372,13 @@ class state:
             self.stats.save()
             self.end_tracking()
             self.num_bursts -= 1
-            print("Return 2")
+            print("next False 2")
             return False
 
         if not self.is_tracking():
             self.start_tracking()
         
-        print("Return 3")
+        print("next True")
         return True
     
     def set_stats(self, stats):
@@ -529,14 +544,13 @@ class state:
         self.stats.close()
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, image_params):
-        print(f"time A: {time.perf_counter()}")
+        print("fix_sampling 1")
         #pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
         pix_dict = dict()
         for i in range(len(x_pix)):
             if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
                 pix_dict[(int(x_pix[i]), int(y_pix[i]))] = i
-        
-        print(f"time A1: {time.perf_counter()}")
+        print("fix_sampling 2")
         indices_to_delete = []
         related_indices = []
         for i in range(len(x_pix)):
@@ -545,7 +559,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                 if ind != i:
                     indices_to_delete.append(i)
                     related_indices.append(ind)
-        print(f"time B: {time.perf_counter()}")
+        print("fix_sampling 3")
         x_pix = np.delete(x_pix, indices_to_delete)
         y_pix = np.delete(y_pix, indices_to_delete)
         xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
@@ -556,14 +570,14 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         
         added_x_pix = []
         added_y_pix = []
-        print(f"time C: {time.perf_counter()}")
+        print("fix_sampling 4")
 
         for x, y in xys:
             if (int(x), int(y)) not in pix_dict:
                 added_x_pix.append(x)
                 added_y_pix.append(y)
 
-        print(f"time D: {time.perf_counter()}")
+        print("fix_sampling 5")
                     
         print("Number of pixels added", len(added_x_pix))
         x_pix = np.append(x_pix, added_x_pix)
@@ -579,7 +593,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         added_lons = c2.lon.value - sdo_lon
         added_lats = c2.lat.value
 
-        print(f"time E: {time.perf_counter()}")
+        print("fix_sampling 6")
         
         lons = np.append(lons, added_lons)
         lats = np.append(lats, added_lats)
@@ -590,7 +604,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
 
-        print(f"time F: {time.perf_counter()}")
+        print("fix_sampling 7")
         return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, (indices_to_delete, related_indices)
     
 
@@ -629,14 +643,14 @@ class track:
 
     def transform(self):
 
-        print(f"time 1: {time.perf_counter()}")
+        print("transform 1")
         metadata = self.state.get_metadata()
         
         obs_time = self.state.get_obs_time_str()
-        print(obs_time)
+        print("obs_time", obs_time)
 
         data = self.state.get_data()
-        
+        print("transform 2")
         if DEBUG:
             ctype1 = metadata['CTYPE1']
             ctype2 = metadata['CTYPE2']
@@ -647,7 +661,7 @@ class track:
             assert(cunit1 == "arcsec" and cunit2 == "arcsec")
 
         xs_arcsec, ys_arcsec = self.state.get_xs_ys_arcsec()
-
+        print("transform 3")
         a = metadata['CROTA2']*np.pi/180
         nx = metadata['NAXIS1']
         ny = metadata['NAXIS2']
@@ -667,14 +681,14 @@ class track:
         
         #xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
         #grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
-        
-        print(f"time 2: {time.perf_counter()}")        
+        print("transform 4")
 
         observer = self.state.get_observer()
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
         
         c1 = SkyCoord(xs_arcsec, ys_arcsec, frame=frames.Helioprojective, observer=observer)
         c2 = c1.transform_to(frames.HeliographicCarrington)
+        print("transform 5")
         lons = c2.lon.value - self.state.get_sdo_lon()
         lats = c2.lat.value
         c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
@@ -682,21 +696,18 @@ class track:
         
         xs_arcsec = c4.Tx
         ys_arcsec = c4.Ty
-
-        print(f"time 3: {time.perf_counter()}")
+        print("transform 6")
         
         x_pix, y_pix = image_to_pix(xs_arcsec.value, ys_arcsec.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
         x_pix = np.round(x_pix)
         y_pix = np.round(y_pix)
         
-        print(f"time 4: {time.perf_counter()}")
-        
+        print("transform 7")
         x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
                                                                       self.state.get_xys(), self.state.get_sdo_lon(), observer_i,
                                                                       (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
 
-        print(f"time 5: {time.perf_counter()}")
-        
+        print("transform 8")
         #######################
         # No tracking
         if DEBUG:
@@ -725,8 +736,7 @@ class track:
                     data_nt[j, k] = data[int(y_pix_nt[l]), int(x_pix_nt[l])]
                 l += 1
 
-        print(f"time 5: {time.perf_counter()}")
-
+        print("transform 9")
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
             test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True)
@@ -744,12 +754,12 @@ class track:
         return lons, lats, x_pix, y_pix, data
 
     def process_frame(self):
-
+        print("process_frame 1")
         lons, lats, x_pix, y_pix, data = self.transform()
 
         self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
         
-        print(f"time 6: {time.perf_counter()}")
+        print("process_frame 2")
         #self.state.frame_processed()
 
         #print(f"time 7: {time.perf_counter()}")        
@@ -758,6 +768,7 @@ class track:
         
     def track(self):
         while not self.state.is_done():
+            take_snapshot()
             if self.state.next():
                 self.process_frame()
             if self.state.is_done():
@@ -766,7 +777,7 @@ class track:
                 create_new_stats = False
                 date = self.state.get_start_time_str2()
                 stats_date = self.state.get_stats().get_date()
-                print("date, stats_date", date, stats_date)
+                print("track date, stats_date", date, stats_date)
                 if self.stats_file_mode == "burst":
                     if date > stats_date:
                         create_new_stats = True
@@ -787,9 +798,12 @@ class track:
         self.state.close()
 
 def my_print(*args):
-    std_print(f"{pid}: ", *args)
+    std_print(f"{time.perf_counter()} {pid}:", *args)
 
 if (__name__ == '__main__'):
+    
+    if PROFILE:
+        tracemalloc.start()
     
     pid = os.getpid()
     std_print = print
@@ -899,9 +913,9 @@ if (__name__ == '__main__'):
                 all_files.append(file)
     all_files.sort()
     
+    take_snapshot()
+    
     tr = track(input_path=input_path, output_path=output_path, files=all_files, num_bursts=num_bursts, num_hrs=num_hrs, step=step, 
                num_patches=num_patches, patch_size=patch_size, start_times=start_times, commit_sha=commit_sha)
     tr.track()
 
-        
-        
