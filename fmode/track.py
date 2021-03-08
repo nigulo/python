@@ -18,8 +18,10 @@ from sunpy.coordinates import frames
 from datetime import datetime, timedelta
 
 from filelock import FileLock
+from calendar import monthrange
 
 PROFILE = True
+random_start_time = True
 
 if PROFILE:
     import tracemalloc
@@ -37,9 +39,19 @@ def take_snapshot():
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')
         
-        with open("memory.prof", "a") as f:
+        with open(f"memory{pid}.prof", "a") as f:
+            f.write("=======================================\n")
             for stat in top_stats[:20]:
                 f.write(f"{stat}\n")
+
+def get_random_start_time():
+    y = np.random.randint(2010, 2022)
+    m = np.random.randint(1, 13)
+    _, num_days = monthrange(y, m)
+    d = np.random.randint(1, num_days+1)
+    h = np.random.randint(0, 24)
+    return datetime(y, m, d, h, 0, 0)
+
     
 def diff_rot(lat):
     return (A + B*np.sin(lat)**2 + C*np.sin(lat)**4)*np.pi/180
@@ -165,10 +177,10 @@ class stats:
         if self.header is not None:
             self.header.add_card(fits.Card(keyword="N_FRAMES", value=self.num_frames, comment="Number of frames processed"))
             self.header.add_card(fits.Card(keyword="PATCH_SZ", value=self.patch_size, comment="Patch size in degrees"))
-            self.header.add_card(fits.Card(keyword="DATA_DIM", value=f"8,{self.num_patches},{self.num_patches}", comment="Dimensionality of the data"))
-            self.header.add_card(fits.Card(keyword="DATA_DIM1", value=f"stats_index", comment="First dimension is index over statistics"))
-            self.header.add_card(fits.Card(keyword="DATA_DIM2", value=f"lon_index", comment="Second dimension is index over longitudes"))
-            self.header.add_card(fits.Card(keyword="DATA_DIM3", value=f"lat_index", comment="Third dimension is index over longitudes"))
+            self.header.add_card(fits.Card(keyword="DATADIM", value=f"8,{self.num_patches},{self.num_patches}", comment="Dimensionality of the data"))
+            self.header.add_card(fits.Card(keyword="DATADIM1", value=f"stats_index", comment="First dimension is index over statistics"))
+            self.header.add_card(fits.Card(keyword="DATADIM2", value=f"lon_index", comment="Second dimension is index over longitudes"))
+            self.header.add_card(fits.Card(keyword="DATADIM3", value=f"lat_index", comment="Third dimension is index over longitudes"))
             self.header.add_card(fits.Card(keyword="STATS1", value="mean", comment="Mean"))
             self.header.add_card(fits.Card(keyword="STATS2", value="std", comment="Standard deviation"))
             self.header.add_card(fits.Card(keyword="STATS3", value="skew", comment="Skewness"))
@@ -520,7 +532,9 @@ class state:
 
     def end_tracking(self):
         self.observer = None
-        if len(self.start_times) > 0:
+        if random_start_time:
+            self.start_time = get_random_start_time()
+        elif len(self.start_times) > 0:
             self.start_time = self.start_times[0]
             self.start_times = self.start_times[1:]
         else:
@@ -849,6 +863,9 @@ if (__name__ == '__main__'):
         commit_sha = sys.argv[i]
     print("Commit SHA", commit_sha)
     
+    if random_start_time:
+        start_time = str(get_random_start_time())
+        print("Overriding start_time with", start_time)
     start_times = []
     if len(start_time) < 4:        
         all_start_times = []

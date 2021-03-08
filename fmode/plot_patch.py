@@ -22,13 +22,21 @@ from track import parse_t_rec, pix_to_image, image_to_pix
 if (__name__ == '__main__'):
        
     input_file1 = sys.argv[1]
-    input_file2 = sys.argv[1]
-    lon = float(sys.argv[2])
-    lat = float(sys.argv[2])
+    input_file2 = sys.argv[2]
+    hr = sys.argv[3]
+    lon = float(sys.argv[4])
+    lat = float(sys.argv[5])
     
     hdul = fits.open(input_file1)
     data = fits.getdata(input_file1, 1)
-    metadata = hdul[1].header
+    for i in np.arange(1, len(hdul)):
+        t_rec = hdul[i].header['T_REC']
+        year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
+        if hrs == hr:
+            break
+    assert(i < len(hdul))   
+    date = year + "-" + month + "-" + day
+    metadata = hdul[i].header
 
     nx = metadata['NAXIS1']
     ny = metadata['NAXIS2']
@@ -36,9 +44,6 @@ if (__name__ == '__main__'):
     xs = np.arange(1, nx + 1)
     ys = np.arange(1, ny + 1)
 
-    t_rec = metadata['T_REC']
-    
-    year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
     date = year + "-" + month + "-" + day
     
     obs_time_str = f"{date} {hrs}:{mins}:{secs}"
@@ -96,33 +101,31 @@ if (__name__ == '__main__'):
         if lons[l] >= lon and lons[l] < lon+15 and lats[l] >= lat and lats[l] < lat+15:
             if not np.isnan(y_pix[l]) and not np.isnan(x_pix[l]):
                 data1.append([lons[l], lats[l], data[int(y_pix[l]), int(x_pix[l])]])
-    data1.sort()
-    data1 = np.asarray(data)
+    #data1.sort()
+    data1 = np.asarray(data1)
     min_lon = np.min(data1[:, 0])
     max_lon = np.max(data1[:, 0])
     min_lat = np.min(data1[:, 1])
     max_lat = np.max(data1[:, 1])
 
-    lons = np.linspace(min_lon, max_lon, 500)
-    lats = np.linspace(min_lat, max_lat, 500)
+    lons = np.linspace(min_lon, max_lon, 300)
+    lats = np.linspace(min_lat, max_lat, 300)
     
-    data_for_plot = np.empty((500, 500))
-    last_i = 0
+    data_for_plot = np.zeros((500, 500))
     for i in range(len(lons) - 1):
         fltr = (data1[:, 0] >= lons[i]) * (data1[:, 0] < lons[i+1])
         data2 = data1[fltr]
-        last_j = 0
         for j in range(len(lats) - 1):
             fltr2 = (data2[:, 1] >= lats[j]) * (data2[:, 1] < lats[j+1])
             data3 = data2[fltr2]
             if len(data3) > 0:
                 print(len(data3))
-                data_for_plot[last_i:i+1, last_j:j+1] = data3[0, 2]
-    test_plot = plot.plot(nrows=1, ncols=2, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
+                data_for_plot[i, j] = data3[0, 2]
+    test_plot = plot.plot(nrows=1, ncols=2, size=plot.default_size(data_for_plot.data.shape[1], data_for_plot.data.shape[0]))
     test_plot.colormap(data_for_plot, 0, cmap_name="bwr", show_colorbar=True)
     
     data_for_plot = fits.getdata(input_file2, 1)
-    test_plot.colormap(data_for_plot, 1, cmap_name="bwr", show_colorbar=True)
+    test_plot.colormap(data_for_plot[0], 1, cmap_name="bwr", show_colorbar=True)
 
     test_plot.save(f"patch.png")
     test_plot.close()

@@ -18,7 +18,7 @@ for file in all_files:
             hdul.close()
             os.remove(path + "/" + file)
         else:
-            hdul.close
+            hdul.close()
     except Exception as e:
         print(e)
         try:
