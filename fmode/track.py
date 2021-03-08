@@ -34,15 +34,40 @@ DEBUG = False
 
 radius_km = 695700
 
-def take_snapshot():
+def take_snapshot(title=""):
     if PROFILE:
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')
-        
+        t = time.perf_counter()
+        total = 0
         with open(f"memory{pid}.prof", "a") as f:
             f.write("=======================================\n")
-            for stat in top_stats[:20]:
-                f.write(f"{stat}\n")
+            for stat in top_stats:#[:20]:
+                stat = str(stat)
+                f.write(f"{t} {title}: {stat}\n")
+                i = stat.find("size=")
+                stat2 = stat[i+5:]
+                size, unit = stat2.split(",")[0].split(" ")
+                size = float(size)
+                unit = unit.lower()
+                if unit[0] == "g":
+                    size *= 1024*1024*1024
+                elif unit[0] == "m":
+                    size *= 1024*1024
+                elif unit[0] == "k":
+                    size *= 1024
+                total += size
+            unit = "B"
+            if total >= 1024:
+                total /= 1024
+                unit = "KiB"
+            if total >= 1024:
+                total /= 1024
+                unit = "MiB"
+            if total >= 1024:
+                total /= 1024
+                unit = "GiB"
+            f.write(f"{t} {title}: Total: {total} {unit}\n")
 
 def get_random_start_time():
     y = np.random.randint(2010, 2022)
@@ -590,7 +615,6 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
             if (int(x), int(y)) not in pix_dict:
                 added_x_pix.append(x)
                 added_y_pix.append(y)
-
         print("fix_sampling 5")
                     
         print("Number of pixels added", len(added_x_pix))
@@ -617,7 +641,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(x_pix) == len(y_pix))
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
-
+        take_snapshot("fix_sampling")
         print("fix_sampling 7")
         return x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, (indices_to_delete, related_indices)
     
@@ -764,7 +788,7 @@ class track:
         sys.stdout.flush()
         
         self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, dbg_info)
-        
+        take_snapshot("transform")
         return lons, lats, x_pix, y_pix, data
 
     def process_frame(self):
