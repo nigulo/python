@@ -259,7 +259,7 @@ class state:
         self.files = files
         self.commit_sha = commit_sha
         
-        hdul = fits.open(self.path + "/" + self.files[0])
+        hdul = fits.open(self.path + "/" + self.files[0], ignore_missing_end=True)
         if len(start_times) == 0:
             t_rec = hdul[1].header['T_REC']
             year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
@@ -332,7 +332,7 @@ class state:
             if self.hdul is not None:
                 self.hdul.close()
             self.file = file
-            self.hdul = fits.open(self.file)
+            self.hdul = fits.open(self.file, ignore_missing_end=True)
         
         self.num_frames_per_day = len(self.hdul) - 1
 
@@ -874,7 +874,7 @@ if (__name__ == '__main__'):
             for file in files:
                 if file[-5:] == ".fits":
                     try:
-                        hdul = fits.open(output_path + "/" + file)
+                        hdul = fits.open(output_path + "/" + file, ignore_missing_end=True)
                         for i in range(len(hdul)):
                             all_start_times.append(hdul[i].header["START_T"])
                         hdul.close()
