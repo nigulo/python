@@ -19,8 +19,8 @@ from sunpy.coordinates import frames
 import track
 import misc
 
-downsample_coef = .05
-
+downsample_coef = .1
+num_chunks = 10
 
 for file_date in ["2013-02-03", "2013-02-04"]:
 
@@ -116,33 +116,73 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
             grid = grid[np.logical_not(fltr0).flatten()]
             
-            xs = grid[:, 0]*u.arcsec
-            ys = grid[:, 1]*u.arcsec
+            xs_all_last = grid[:, 0]*u.arcsec
+            ys_all_last = grid[:, 1]*u.arcsec
+            
             
             
         
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
         
-        #c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
-        c1 = SkyCoord(xs, ys, frame=frames.Helioprojective, observer=observer_0)
-        c2 = c1.transform_to(frames.HeliographicCarrington)
-        lons = c2.lon.value - sdo_lon_0
-        lats = c2.lat.value
-        c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
-        c4 = c3.transform_to(frames.Helioprojective)
-    
-        x_pix, y_pix = track.image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
-        x_pix = np.round(x_pix)
-        y_pix = np.round(y_pix)
-
-        observer_0 = observer_i
-        #sdo_lon_0 = sdo_lon
-        xs = c4.Tx
-        ys = c4.Ty
+        pix_dict = dict()
+        chunk_size = int(len(xs_all_last)/num_chunks)
+        start_index = 0
         
-        x_pix, y_pix, xs, ys, lons, lats, _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i,
-                                                              (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
-                
+        x_pix_all = []
+        y_pix_all = []
+        xs_all = []
+        ys_all = []
+        lons_all = []
+        lats_all = []
+
+        for chunk_index in range(num_chunks):
+            if chunk_index < num_chunks - 1:
+                end_index = start_index + chunk_size
+            else:
+                end_index = len(xs_all_last)
+            xs, ys = xs_all_last[start_index:end_index], ys_all_last[start_index:end_index]
+            start_index += chunk_size
+        
+            #c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
+            c1 = SkyCoord(xs, ys, frame=frames.Helioprojective, observer=observer_0)
+            c2 = c1.transform_to(frames.HeliographicCarrington)
+            lons = c2.lon.value - sdo_lon_0
+            lats = c2.lat.value
+            c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
+            c4 = c3.transform_to(frames.Helioprojective)
+        
+            x_pix, y_pix = track.image_to_pix(c4.Tx.value, c4.Ty.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
+            x_pix = np.round(x_pix)
+            y_pix = np.round(y_pix)
+    
+            observer_0 = observer_i
+            #sdo_lon_0 = sdo_lon
+            xs = c4.Tx
+            ys = c4.Ty
+            
+            x_pix = x_pix.tolist()
+            y_pix = y_pix.tolist()
+            xs = xs.value.tolist()
+            ys = ys.value.tolist()
+            lons = lons.tolist()
+            lats = lats.tolist()
+
+            _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i, pix_dict,
+                                                                  (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
+
+            x_pix_all.extend(x_pix)
+            y_pix_all.extend(y_pix)
+            xs_all.extend(xs)
+            ys_all.extend(ys)
+            lons_all.extend(lons)
+            lats_all.extend(lats)
+        
+        
+        x_pix_all = np.asarray(x_pix_all)
+        y_pix_all = np.asarray(y_pix_all)
+        lons_all = np.asarray(lons_all)
+        lats_all = np.asarray(lats_all)
+        
         data = np.empty((ny, nx))
         data[:, :] = np.nan
         
@@ -153,13 +193,13 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             patch_size = 20
             for lon in np.linspace(-80, 65, num_patches):
                 k = 0
-                lon_filter = (lons >= lon) * (lons < lon + patch_size)
+                lon_filter = (lons_all >= lon) * (lons_all < lon + patch_size)
                 for lat in np.linspace(-80, 65, num_patches):
-                    lat_filter = (lats >= lat) * (lats < lat + patch_size)
+                    lat_filter = (lats_all >= lat) * (lats_all < lat + patch_size)
                     fltr = lon_filter * lat_filter
                     value = j * num_patches + k
                     #value = [1., -1.][(j % 2 + k % 2) % 2]
-                    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
+                    data[y_pix_all[fltr].astype(int), x_pix_all[fltr].astype(int)] = value
                     k += 1
                 j += 1
                 
