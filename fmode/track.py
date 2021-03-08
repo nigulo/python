@@ -22,7 +22,7 @@ from calendar import monthrange
 
 PROFILE = False
 random_start_time = False
-num_chunks = 10
+num_chunks = 1
 
 if PROFILE:
     import tracemalloc

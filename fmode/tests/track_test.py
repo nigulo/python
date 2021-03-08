@@ -41,7 +41,7 @@ class test_track(unittest.TestCase):
     def test(self):
         
         try:
-            os.remove("2013-02-03 00:00:00.fits")
+            os.remove("2013-02-03_00:00:00.fits")
         except:
             pass
         
@@ -58,6 +58,7 @@ class test_track(unittest.TestCase):
         i = 0
         while not tr.state.is_done():
             if tr.state.next():
+                print("AAAAAAAAA")
                 lons, lats, x_pix, y_pix, data = tr.transform()
 
                 data_tracked = np.zeros_like(data)
@@ -78,7 +79,7 @@ class test_track(unittest.TestCase):
 
             
 
-
+'''
 class test_stats(unittest.TestCase):
 
 
@@ -86,19 +87,19 @@ class test_stats(unittest.TestCase):
         num_patches = 5
         patch_size = 20
         try:
-            os.remove("2013-02-03 00:00:00.fits")
+            os.remove("2013-02-03_00:00:00.fits")
         except:
             pass
         try:
-            os.remove("2013-02-03 04:00:00.fits")
+            os.remove("2013-02-03_04:00:00.fits")
         except:
             pass
         try:
-            os.remove("2013-02-03 08:00:00.fits")
+            os.remove("2013-02-03_08:00:00.fits")
         except:
             pass
         try:
-            os.remove("2013-02-03 12:00:00.fits")
+            os.remove("2013-02-03_12:00:00.fits")
         except:
             pass
 
@@ -187,11 +188,11 @@ class test_stats(unittest.TestCase):
         num_patches = 5
         patch_size = 20
         try:
-            os.remove("2013-02-03 00:00:00.fits")
+            os.remove("2013-02-03_00:00:00.fits")
         except:
             pass
         try:
-            os.remove("2013-02-04 03:00:00.fits")
+            os.remove("2013-02-04_03:00:00.fits")
         except:
             pass
         
@@ -330,7 +331,7 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(abs_std, expected_std)
         np.testing.assert_almost_equal(abs_skew, expected_skew)
         np.testing.assert_almost_equal(abs_kurt, expected_kurt)
-
+'''
         
 if __name__ == '__main__':
     unittest.main()
