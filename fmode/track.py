@@ -589,8 +589,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         for i in range(len(x_pix)):
             if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
                 x, y = int(x_pix[i]), int(y_pix[i])
-                if pix_dict[x, y] < 0:
-                    pix_dict[x, y] = i + start_index
+                if pix_dict[x][y] < 0:
+                    pix_dict[x][y] = i + start_index
         print("fix_sampling 2")
         indices_to_delete = []
         related_indices = []
@@ -598,7 +598,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         for i in range(len(x_pix)-1, -1, -1):
             #print(i, len(x_pix))
             if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
-                ind = pix_dict[(int(x_pix[i]), int(y_pix[i]))]
+                ind = pix_dict[int(x_pix[i])][int(y_pix[i])]
                 if ind != i + start_index:
                     if DEBUG:
                         indices_to_delete.append(i + start_index)
@@ -626,7 +626,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         print("fix_sampling 4")
 
         for x, y in xys:
-            if pix_dict[int(x), int(y)] < 0:
+            if pix_dict[int(x)][int(y)] < 0:
                 added_x_pix.append(x)
                 added_y_pix.append(y)
         print("fix_sampling 5")
@@ -748,7 +748,7 @@ class track:
         observer = self.state.get_observer()
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
         
-        pix_dict = np.ones((nx, ny), dtype=int)*-1
+        pix_dict = (np.ones((nx, ny), dtype=int)*-1).tolist()
         chunk_size = int(len(xs_arcsec_all_last)/num_chunks)
         
         xys_all = self.state.get_xys()
@@ -765,11 +765,14 @@ class track:
         dbg_info_all = ([], [])
         
         def process_chunk(xs_arcsec, ys_arcsec, xys, start_index):
+            #c1 = [SkyCoord(xs_arcsec[i]*u.arcsec, ys_arcsec[i]*u.arcsec, frame=frames.Helioprojective, observer=observer) for i in range(len(xs_arcsec))]
             c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
             print("process_frame 5", chunk_index)
             lons = c2.lon.value - self.state.get_sdo_lon()
             lats = c2.lat.value
+            
+            #c3 = [SkyCoord(c2.lon[i], c2.lat[i], frame=frames.Helioprojective, observer=observer_i) for i in range(len(c2.lon))]
             c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
             c4 = c3.transform_to(frames.Helioprojective)
             
@@ -787,8 +790,8 @@ class track:
             xs_arcsec = xs_arcsec.value.tolist()
             ys_arcsec = ys_arcsec.value.tolist()
             lons = lons.tolist()
-            lats = lats.tolist()
-
+            lats = lats.tolist()                                                            
+                                                                        
             split_point, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
                   xys, self.state.get_sdo_lon(), observer_i, pix_dict, start_index,
                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
