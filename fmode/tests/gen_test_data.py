@@ -128,12 +128,12 @@ for file_date in ["2013-02-03", "2013-02-04"]:
         chunk_size = int(len(xs_all_last)/num_chunks)
         start_index = 0
         
-        x_pix_all = []
-        y_pix_all = []
-        xs_all = []
-        ys_all = []
-        lons_all = []
-        lats_all = []
+        x_pix_head, x_pix_tail = [], []
+        y_pix_head, y_pix_tail = [], []
+        xs_head, xs_tail = [], []
+        ys_head, ys_tail = [], []
+        lons_head, lons_tail = [], []
+        lats_head, lats_tail = [], []
 
         for chunk_index in range(num_chunks):
             if chunk_index < num_chunks - 1:
@@ -171,18 +171,41 @@ for file_date in ["2013-02-03", "2013-02-04"]:
 
             start_index += chunk_size
             
-            x_pix_all.extend(x_pix)
-            y_pix_all.extend(y_pix)
-            xs_all.extend(xs)
-            ys_all.extend(ys)
-            lons_all.extend(lons)
-            lats_all.extend(lats)
+            x_pix_head.extend(x_pix[:split_point])
+            x_pix_tail.extend(x_pix[split_point:])
+            x_pix.clear()
+            y_pix_head.extend(y_pix[:split_point])
+            y_pix_tail.extend(y_pix[split_point:])
+            y_pix.clear()
+            xs_head.extend(xs[:split_point])
+            xs_tail.extend(xs[split_point:])
+            xs.clear()
+            ys_head.extend(ys[:split_point])
+            ys_tail.extend(ys[split_point:])
+            ys.clear()
+            lons_head.extend(lons[:split_point])
+            lons_tail.extend(lons[split_point:])
+            lons.clear()
+            lats_head.extend(lats[:split_point])
+            lats_tail.extend(lats[split_point:])
+            lats.clear()
         
         
-        x_pix_all = np.asarray(x_pix_all)
-        y_pix_all = np.asarray(y_pix_all)
-        lons_all = np.asarray(lons_all)
-        lats_all = np.asarray(lats_all)
+        x_pix = x_pix_head + x_pix_tail
+        x_pix_head.clear()
+        x_pix_tail.clear()
+
+        y_pix = y_pix_head + y_pix_tail
+        y_pix_head.clear()
+        y_pix_tail.clear()
+
+        lons = lons_head + lons_tail
+        lons_head.clear()
+        lons_tail.clear()
+        
+        lats = lats_head + lats_tail
+        lats_head.clear()
+        lats_tail.clear()
         
         data = np.empty((ny, nx))
         data[:, :] = np.nan
@@ -194,13 +217,13 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             patch_size = 20
             for lon in np.linspace(-80, 65, num_patches):
                 k = 0
-                lon_filter = (lons_all >= lon) * (lons_all < lon + patch_size)
+                lon_filter = (lons >= lon) * (lons < lon + patch_size)
                 for lat in np.linspace(-80, 65, num_patches):
-                    lat_filter = (lats_all >= lat) * (lats_all < lat + patch_size)
+                    lat_filter = (lats >= lat) * (lats < lat + patch_size)
                     fltr = lon_filter * lat_filter
                     value = j * num_patches + k
                     #value = [1., -1.][(j % 2 + k % 2) % 2]
-                    data[y_pix_all[fltr].astype(int), x_pix_all[fltr].astype(int)] = value
+                    data[y_pix[fltr].astype(int), x_pix[fltr].astype(int)] = value
                     k += 1
                 j += 1
                 

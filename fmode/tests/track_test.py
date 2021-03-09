@@ -13,6 +13,21 @@ import sys
 from astropy.io import fits
 from datetime import datetime, timedelta
 
+class stats_mock(track.stats):
+    
+    def __init__(self):
+        super(stats_mock, self).__init__([], [], 0)
+        pass
+ 
+    def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time, plot_file=None):
+        pass
+
+    def save(self):
+        pass
+        
+    def set_obs_times_expected(self, obs_times_expected):
+        pass
+
 class stats(track.stats):
     def __init__(self, patch_lons, patch_lats, patch_size):
         super(stats, self).__init__(patch_lons, patch_lats, patch_size)
@@ -45,7 +60,7 @@ class test_track(unittest.TestCase):
         except:
             pass
         
-        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=24, step=1, num_bursts=1, num_patches=100, patch_size=15)
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=24, step=1, num_bursts=1, num_patches=100, patch_size=15, stats_dbg = stats_mock())
         
         hdul = fits.open("2013-02-03.fits")
         data_0 = hdul[1].data
@@ -58,7 +73,7 @@ class test_track(unittest.TestCase):
         i = 0
         while not tr.state.is_done():
             if tr.state.next():
-                lons, lats, x_pix, y_pix, data = tr.transform()
+                lons, lats, x_pix, y_pix, data = tr.process_frame()
 
                 data_tracked = np.zeros_like(data)
                 xys = tr.state.get_xys()

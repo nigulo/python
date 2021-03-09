@@ -715,16 +715,16 @@ class track:
 
         self.stats_file_mode = stats_file_mode
 
-    def transform(self):
+    def process_frame(self):
 
-        print("transform 1")
+        print("process_frame 1")
         metadata = self.state.get_metadata()
         
         obs_time = self.state.get_obs_time_str()
         print("obs_time", obs_time)
 
         data = self.state.get_data()
-        print("transform 2")
+        print("process_frame 2")
         if DEBUG:
             ctype1 = metadata['CTYPE1']
             ctype2 = metadata['CTYPE2']
@@ -735,7 +735,7 @@ class track:
             assert(cunit1 == "arcsec" and cunit2 == "arcsec")
 
         xs_arcsec_all_last, ys_arcsec_all_last = self.state.get_xs_ys_arcsec()
-        print("transform 3")
+        print("process_frame 3")
         a = metadata['CROTA2']*np.pi/180
         nx = metadata['NAXIS1']
         ny = metadata['NAXIS2']
@@ -755,7 +755,7 @@ class track:
         
         #xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
         #grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
-        print("transform 4")
+        print("process_frame 4")
 
         observer = self.state.get_observer()
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
@@ -764,12 +764,15 @@ class track:
         chunk_size = int(len(xs_arcsec_all_last)/num_chunks)
         
         xys_all = self.state.get_xys()
-        x_pix_head, x_pix_tail = [], []
-        y_pix_head, y_pix_tail = [], []
         xs_arcsec_head, xs_arcsec_tail = [], []
         ys_arcsec_head, ys_arcsec_tail = [], []
-        lons_head, lons_tail = [], []
-        lats_head, lats_tail = [], []
+       
+        
+        if DEBUG:
+            x_pix_head, x_pix_tail = [], []
+            y_pix_head, y_pix_tail = [], []
+            lons_head, lons_tail = [], []
+            lats_head, lats_tail = [], []
         
         dbg_info_all = ([], [])
 
@@ -784,7 +787,7 @@ class track:
         
             c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
-            print("transform 5", chunk_index)
+            print("process_frame 5", chunk_index)
             lons = c2.lon.value - self.state.get_sdo_lon()
             lats = c2.lat.value
             c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
@@ -792,7 +795,7 @@ class track:
             
             xs_arcsec = c4.Tx
             ys_arcsec = c4.Ty
-            print("transform 6", chunk_index)
+            print("process_frame 6", chunk_index)
             
             x_pix, y_pix = image_to_pix(xs_arcsec.value, ys_arcsec.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
             x_pix = np.round(x_pix)
@@ -812,32 +815,35 @@ class track:
             
             start_index += chunk_size
             
-            if DEBUG:
-                dbg_info_all[0].extend(dbg_info[0])
-                dbg_info_all[1].extend(dbg_info[1])
-            
-            x_pix_head.extend(x_pix[:split_point])
-            x_pix_tail.extend(x_pix[split_point:])
-            x_pix.clear()
-            y_pix_head.extend(y_pix[:split_point])
-            y_pix_tail.extend(y_pix[split_point:])
-            y_pix.clear()
+            self.state.get_stats().process_frame(np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
+
             xs_arcsec_head.extend(xs_arcsec[:split_point])
             xs_arcsec_tail.extend(xs_arcsec[split_point:])
             xs_arcsec.clear()
             ys_arcsec_head.extend(ys_arcsec[:split_point])
             ys_arcsec_tail.extend(ys_arcsec[split_point:])
             ys_arcsec.clear()
-            lons_head.extend(lons[:split_point])
-            lons_tail.extend(lons[split_point:])
-            lons.clear()
-            lats_head.extend(lats[:split_point])
-            lats_tail.extend(lats[split_point:])
-            lats.clear()
+            
+            if DEBUG:
+                dbg_info_all[0].extend(dbg_info[0])
+                dbg_info_all[1].extend(dbg_info[1])
+            
+                x_pix_head.extend(x_pix[:split_point])
+                x_pix_tail.extend(x_pix[split_point:])
+                x_pix.clear()
+                y_pix_head.extend(y_pix[:split_point])
+                y_pix_tail.extend(y_pix[split_point:])
+                y_pix.clear()
+                lons_head.extend(lons[:split_point])
+                lons_tail.extend(lons[split_point:])
+                lons.clear()
+                lats_head.extend(lats[:split_point])
+                lats_tail.extend(lats[split_point:])
+                lats.clear()
     
-            print("transform 8", chunk_index)
+            print("process_frame 8", chunk_index)
             sys.stdout.flush()
-        take_snapshot("transform 1")
+        take_snapshot("process_frame 1")
         
         self.state.frame_processed(np.asarray(xs_arcsec_head+xs_arcsec_tail), np.asarray(ys_arcsec_head+ys_arcsec_tail), observer_i, dbg_info_all)
         xs_arcsec_head.clear()
@@ -845,21 +851,11 @@ class track:
         ys_arcsec_head.clear()
         ys_arcsec_tail.clear()
 
-        x_pix = x_pix_head + x_pix_tail
-        x_pix_head.clear()
-        x_pix_tail.clear()
-
-        y_pix = y_pix_head + y_pix_tail
-        y_pix_head.clear()
-        y_pix_tail.clear()
-        
-        lons = lons_head + lons_tail
-        lons_head.clear()
-        lons_tail.clear()
-        
-        lats = lats_head + lats_tail
-        lats_head.clear()
-        lats_tail.clear()
+        if DEBUG:
+            x_pix = x_pix_head + x_pix_tail    
+            y_pix = y_pix_head + y_pix_tail            
+            lons = lons_head + lons_tail            
+            lats = lats_head + lats_tail
 
         #######################
         if DEBUG:
@@ -877,7 +873,7 @@ class track:
                     else:
                         data_for_plot[j, k] = data[int(y_pix[l1]), int(x_pix[l1])]
 
-        print("transform 9")
+        print("process_frame 9")
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
             test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True)
@@ -885,10 +881,13 @@ class track:
             test_plot.save(f"frame_{suffix}.png")
             test_plot.close()
 
-        take_snapshot("transform 2")
+        take_snapshot("process_frame 2")
         sys.stdout.flush()
-        return np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data
+        
+        if DEBUG:
+            return np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data
 
+    '''
     def process_frame(self):
         print("process_frame 1")
         lons, lats, x_pix, y_pix, data = self.transform()
@@ -900,7 +899,7 @@ class track:
 
         #print(f"time 7: {time.perf_counter()}")        
         sys.stdout.flush()
-        
+    '''    
         
     def track(self):
         while not self.state.is_done():
