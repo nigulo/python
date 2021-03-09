@@ -58,7 +58,6 @@ class test_track(unittest.TestCase):
         i = 0
         while not tr.state.is_done():
             if tr.state.next():
-                print("AAAAAAAAA")
                 lons, lats, x_pix, y_pix, data = tr.transform()
 
                 data_tracked = np.zeros_like(data)

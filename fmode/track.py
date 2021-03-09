@@ -22,7 +22,8 @@ from calendar import monthrange
 
 PROFILE = False
 random_start_time = False
-num_chunks = 1
+num_chunks = 5
+num_chunks2 = 1
 
 if PROFILE:
     import tracemalloc
@@ -31,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 
 radius_km = 695700
 
@@ -318,8 +319,8 @@ class state:
         self.nx = self.metadata['NAXIS1']
         self.ny = self.metadata['NAXIS2']
         
-        self.xs = np.arange(1, self.nx + 1)
-        self.ys = np.arange(1, self.ny + 1)
+        self.xs = np.arange(1, self.nx + 1)#.astype(np.float32)
+        self.ys = np.arange(1, self.ny + 1)#.astype(np.float32)
         
    
     def get_num_frames_per_day(self):
@@ -517,8 +518,8 @@ class state:
         fltr = np.logical_not(np.isnan(self.get_data())).flatten()
         grid = grid[fltr]
         
-        self.xs_arcsec = grid[:, 0]*u.arcsec
-        self.ys_arcsec = grid[:, 1]*u.arcsec
+        self.xs_arcsec = grid[:, 0]
+        self.ys_arcsec = grid[:, 1]
         
         grid = np.transpose([np.tile(self.xs, ny), np.repeat(self.ys, nx)])
         grid = grid[fltr]
@@ -554,7 +555,8 @@ class state:
         self.xs_arcsec = xs_arcsec
         self.ys_arcsec = ys_arcsec
         self.observer = observer
-        self.dbg_stack.append(dbg_info)
+        if DEBUG:
+            self.dbg_stack.append(dbg_info)
 
     def end_tracking(self):
         self.observer = None
@@ -583,50 +585,43 @@ class state:
             self.hdul.close()
         self.stats.close()
 
-def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, image_params):
+def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, image_params):
         print("fix_sampling 1")
         #pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
         for i in range(len(x_pix)):
             if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
                 x, y = int(x_pix[i]), int(y_pix[i])
                 if (x, y) not in pix_dict:
-                    pix_dict[(x, y)] = i
+                    pix_dict[(x, y)] = i + start_index
         print("fix_sampling 2")
         indices_to_delete = []
         related_indices = []
-        i = 0
-        for j in range(len(x_pix)):
+        num_removed = 0
+        for i in range(len(x_pix)-1, -1, -1):
+            #print(i, len(x_pix))
             if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
                 ind = pix_dict[(int(x_pix[i]), int(y_pix[i]))]
-                if ind != j:
-                    indices_to_delete.append(i)
-                    related_indices.append(ind)
+                if ind != i + start_index:
+                    if DEBUG:
+                        indices_to_delete.append(i + start_index)
+                        related_indices.append(ind)
                     del x_pix[i]
                     del y_pix[i]
                     del xs_arcsec[i]
                     del ys_arcsec[i]
                     del lons[i]
                     del lats[i]
-                else:
-                    i += 1
-            else:
-                i += 1
+                    num_removed += 1
 
         print("fix_sampling 3")
-        #for ind in indices_to_delete:
-        #    del x_pix[ind]
-        #    del y_pix[ind]
-        #    del xs_arcsec[ind]
-        #    del ys_arcsec[ind]
-        #    del lons[ind]
-        #    del lats[ind]
         #x_pix = np.delete(x_pix, indices_to_delete)
         #y_pix = np.delete(y_pix, indices_to_delete)
         #xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
         #ys_arcsec = np.delete(ys_arcsec, indices_to_delete)
         #lons = np.delete(lons, indices_to_delete)
         #lats = np.delete(lats, indices_to_delete)
-        print("Number of pixels removed", len(indices_to_delete))
+        print("Number of pixels removed", num_removed)
+        split_point = len(x_pix)
         
         added_x_pix = []
         added_y_pix = []
@@ -655,10 +650,10 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         #ys_arcsec = np.append(ys_arcsec, added_ys_arcsec)
         added_xs_arcsec, added_ys_arcsec = added_xs_arcsec*u.arcsec, added_ys_arcsec*u.arcsec
         
-        chunk_size = int(len(added_xs_arcsec)/num_chunks)
+        chunk_size = int(len(added_xs_arcsec)/num_chunks2)
         start_index = 0
-        for chunk_index in range(num_chunks):
-            if chunk_index < num_chunks - 1:
+        for chunk_index in range(num_chunks2):
+            if chunk_index < num_chunks2 - 1:
                 end_index = start_index + chunk_size
             else:
                 end_index = len(added_xs_arcsec)
@@ -684,7 +679,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(xs_arcsec) == len(ys_arcsec))
         take_snapshot("fix_sampling")
         print("fix_sampling 7")
-        return (indices_to_delete, related_indices)
+        return split_point, (indices_to_delete, related_indices)
     
 
 class track:
@@ -767,16 +762,18 @@ class track:
         
         pix_dict = dict()
         chunk_size = int(len(xs_arcsec_all_last)/num_chunks)
-        start_index = 0
         
         xys_all = self.state.get_xys()
-        x_pix_all = []
-        y_pix_all = []
-        xs_arcsec_all = []
-        ys_arcsec_all = []
-        lons_all = []
-        lats_all = []
+        x_pix_head, x_pix_tail = [], []
+        y_pix_head, y_pix_tail = [], []
+        xs_arcsec_head, xs_arcsec_tail = [], []
+        ys_arcsec_head, ys_arcsec_tail = [], []
+        lons_head, lons_tail = [], []
+        lats_head, lats_tail = [], []
+        
+        dbg_info_all = ([], [])
 
+        start_index = 0
         for chunk_index in range(num_chunks):
             if chunk_index < num_chunks - 1:
                 end_index = start_index + chunk_size
@@ -784,9 +781,8 @@ class track:
                 end_index = len(xs_arcsec_all_last)
             xs_arcsec, ys_arcsec = xs_arcsec_all_last[start_index:end_index], ys_arcsec_all_last[start_index:end_index]
             xys = xys_all[start_index:end_index]
-            start_index += chunk_size
         
-            c1 = SkyCoord(xs_arcsec, ys_arcsec, frame=frames.Helioprojective, observer=observer)
+            c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
             print("transform 5", chunk_index)
             lons = c2.lon.value - self.state.get_sdo_lon()
@@ -809,33 +805,77 @@ class track:
             ys_arcsec = ys_arcsec.value.tolist()
             lons = lons.tolist()
             lats = lats.tolist()
-            dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
-                  xys, self.state.get_sdo_lon(), observer_i, pix_dict,
+
+            split_point, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
+                  xys, self.state.get_sdo_lon(), observer_i, pix_dict, start_index,
                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
-            x_pix_all.extend(x_pix)
-            y_pix_all.extend(y_pix)
-            xs_arcsec_all.extend(xs_arcsec)
-            ys_arcsec_all.extend(ys_arcsec)
-            lons_all.extend(lons)
-            lats_all.extend(lats)
+            
+            start_index += chunk_size
+            
+            if DEBUG:
+                dbg_info_all[0].extend(dbg_info[0])
+                dbg_info_all[1].extend(dbg_info[1])
+            
+            x_pix_head.extend(x_pix[:split_point])
+            x_pix_tail.extend(x_pix[split_point:])
+            x_pix.clear()
+            y_pix_head.extend(y_pix[:split_point])
+            y_pix_tail.extend(y_pix[split_point:])
+            y_pix.clear()
+            xs_arcsec_head.extend(xs_arcsec[:split_point])
+            xs_arcsec_tail.extend(xs_arcsec[split_point:])
+            xs_arcsec.clear()
+            ys_arcsec_head.extend(ys_arcsec[:split_point])
+            ys_arcsec_tail.extend(ys_arcsec[split_point:])
+            ys_arcsec.clear()
+            lons_head.extend(lons[:split_point])
+            lons_tail.extend(lons[split_point:])
+            lons.clear()
+            lats_head.extend(lats[:split_point])
+            lats_tail.extend(lats[split_point:])
+            lats.clear()
     
             print("transform 8", chunk_index)
             sys.stdout.flush()
+        take_snapshot("transform 1")
+        
+        self.state.frame_processed(np.asarray(xs_arcsec_head+xs_arcsec_tail), np.asarray(ys_arcsec_head+ys_arcsec_tail), observer_i, dbg_info_all)
+        xs_arcsec_head.clear()
+        xs_arcsec_tail.clear()
+        ys_arcsec_head.clear()
+        ys_arcsec_tail.clear()
+
+        x_pix = x_pix_head + x_pix_tail
+        x_pix_head.clear()
+        x_pix_tail.clear()
+
+        y_pix = y_pix_head + y_pix_tail
+        y_pix_head.clear()
+        y_pix_tail.clear()
+        
+        lons = lons_head + lons_tail
+        lons_head.clear()
+        lons_tail.clear()
+        
+        lats = lats_head + lats_tail
+        lats_head.clear()
+        lats_tail.clear()
+
         #######################
-        # No tracking
         if DEBUG:
             data_for_plot = np.empty((ny, nx), dtype=np.float32)
             data_for_plot[:, :] = np.nan
         
             xys = self.state.get_xys()
-            for l in range(len(x_pix_all)):
-                j = xys[l, 1]
-                k = xys[l, 0]
-                if np.isnan(y_pix_all[l]) or np.isnan(x_pix_all[l]):
-                    data_for_plot[j, k] = np.nan
-                else:
-                    data_for_plot[j, k] = data[int(y_pix_all[l]), int(x_pix_all[l])]
-                l += 1
+            for l in range(len(xys)):
+                l1 = self.state.transform_index(l)
+                if l1 >= 0:
+                    j = xys[l, 1]
+                    k = xys[l, 0]
+                    if np.isnan(y_pix[l1]) or np.isnan(x_pix[l1]):
+                        data_for_plot[j, k] = np.nan
+                    else:
+                        data_for_plot[j, k] = data[int(y_pix[l1]), int(x_pix[l1])]
 
         print("transform 9")
         if DEBUG:
@@ -844,12 +884,10 @@ class track:
             suffix = self.state.get_obs_time_str2()
             test_plot.save(f"frame_{suffix}.png")
             test_plot.close()
-        sys.stdout.flush()
-        take_snapshot("transform 1")
-        
-        self.state.frame_processed(np.asarray(xs_arcsec_all)*u.arcsec, np.asarray(ys_arcsec_all)*u.arcsec, observer_i, dbg_info)
+
         take_snapshot("transform 2")
-        return np.asarray(lons_all), np.asarray(lats_all), np.asarray(x_pix_all), np.asarray(y_pix_all), data
+        sys.stdout.flush()
+        return np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data
 
     def process_frame(self):
         print("process_frame 1")

@@ -141,7 +141,6 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             else:
                 end_index = len(xs_all_last)
             xs, ys = xs_all_last[start_index:end_index], ys_all_last[start_index:end_index]
-            start_index += chunk_size
         
             #c1 = SkyCoord(grid[:, 0]*u.arcsec, grid[:, 1]*u.arcsec, frame=frames.Helioprojective, observer=observer_0)
             c1 = SkyCoord(xs, ys, frame=frames.Helioprojective, observer=observer_0)
@@ -167,9 +166,11 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             lons = lons.tolist()
             lats = lats.tolist()
 
-            _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i, pix_dict,
+            split_point, _ = track.fix_sampling(x_pix, y_pix, xs, ys, lons, lats, xys, sdo_lon_0, observer_i, pix_dict, start_index,
                                                                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
 
+            start_index += chunk_size
+            
             x_pix_all.extend(x_pix)
             y_pix_all.extend(y_pix)
             xs_all.extend(xs)
