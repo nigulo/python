@@ -23,7 +23,6 @@ from calendar import monthrange
 PROFILE = False
 random_start_time = False
 num_chunks = 5
-num_chunks2 = 1
 
 if PROFILE:
     import tracemalloc
@@ -32,7 +31,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
 
 radius_km = 695700
 
@@ -587,19 +586,18 @@ class state:
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, image_params):
         print("fix_sampling 1")
-        #pix_dict = {(x_pix[i], y_pix[i]) : i for i in range(len(x_pix))}
         for i in range(len(x_pix)):
-            if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
+            if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
                 x, y = int(x_pix[i]), int(y_pix[i])
-                if (x, y) not in pix_dict:
-                    pix_dict[(x, y)] = i + start_index
+                if pix_dict[x, y] < 0:
+                    pix_dict[x, y] = i + start_index
         print("fix_sampling 2")
         indices_to_delete = []
         related_indices = []
         num_removed = 0
         for i in range(len(x_pix)-1, -1, -1):
             #print(i, len(x_pix))
-            if not np.isnan(x_pix[i]) and not np.isnan(x_pix[i]):
+            if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
                 ind = pix_dict[(int(x_pix[i]), int(y_pix[i]))]
                 if ind != i + start_index:
                     if DEBUG:
@@ -628,7 +626,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         print("fix_sampling 4")
 
         for x, y in xys:
-            if (int(x), int(y)) not in pix_dict:
+            if pix_dict[int(x), int(y)] < 0:
                 added_x_pix.append(x)
                 added_y_pix.append(y)
         print("fix_sampling 5")
@@ -649,26 +647,16 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         #xs_arcsec = np.append(xs_arcsec, added_xs_arcsec)
         #ys_arcsec = np.append(ys_arcsec, added_ys_arcsec)
         added_xs_arcsec, added_ys_arcsec = added_xs_arcsec*u.arcsec, added_ys_arcsec*u.arcsec
+                
+        c1 = SkyCoord(added_xs_arcsec, added_ys_arcsec, frame=frames.Helioprojective, observer=observer)
+        c2 = c1.transform_to(frames.HeliographicCarrington)
+        added_lons = c2.lon.value - sdo_lon
+        added_lats = c2.lat.value
+    
+        print("fix_sampling 6")
         
-        chunk_size = int(len(added_xs_arcsec)/num_chunks2)
-        start_index = 0
-        for chunk_index in range(num_chunks2):
-            if chunk_index < num_chunks2 - 1:
-                end_index = start_index + chunk_size
-            else:
-                end_index = len(added_xs_arcsec)
-            added_xs_arcsec2, added_ys_arcsec2 = added_xs_arcsec[start_index:end_index], added_ys_arcsec[start_index:end_index]
-            start_index += chunk_size
-        
-            c1 = SkyCoord(added_xs_arcsec2, added_ys_arcsec2, frame=frames.Helioprojective, observer=observer)
-            c2 = c1.transform_to(frames.HeliographicCarrington)
-            added_lons = c2.lon.value - sdo_lon
-            added_lats = c2.lat.value
-        
-            print("fix_sampling 6", chunk_index)
-            
-            lons.extend(added_lons.tolist())
-            lats.extend(added_lats.tolist())
+        lons.extend(added_lons.tolist())
+        lats.extend(added_lats.tolist())
         #lons = np.append(lons, added_lons)
         #lats = np.append(lats, added_lats)
                 
@@ -760,7 +748,7 @@ class track:
         observer = self.state.get_observer()
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
         
-        pix_dict = dict()
+        pix_dict = np.ones((nx, ny), dtype=int)*-1
         chunk_size = int(len(xs_arcsec_all_last)/num_chunks)
         
         xys_all = self.state.get_xys()
@@ -775,16 +763,8 @@ class track:
             lats_head, lats_tail = [], []
         
         dbg_info_all = ([], [])
-
-        start_index = 0
-        for chunk_index in range(num_chunks):
-            if chunk_index < num_chunks - 1:
-                end_index = start_index + chunk_size
-            else:
-                end_index = len(xs_arcsec_all_last)
-            xs_arcsec, ys_arcsec = xs_arcsec_all_last[start_index:end_index], ys_arcsec_all_last[start_index:end_index]
-            xys = xys_all[start_index:end_index]
         
+        def process_chunk(xs_arcsec, ys_arcsec, xys, start_index):
             c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
             print("process_frame 5", chunk_index)
@@ -812,9 +792,7 @@ class track:
             split_point, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
                   xys, self.state.get_sdo_lon(), observer_i, pix_dict, start_index,
                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
-            
-            start_index += chunk_size
-            
+                        
             self.state.get_stats().process_frame(np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
 
             xs_arcsec_head.extend(xs_arcsec[:split_point])
@@ -842,6 +820,20 @@ class track:
                 lats.clear()
     
             print("process_frame 8", chunk_index)
+
+        start_index = 0
+        for chunk_index in range(num_chunks):
+            if chunk_index < num_chunks - 1:
+                end_index = start_index + chunk_size
+            else:
+                end_index = len(xs_arcsec_all_last)
+            xs_arcsec, ys_arcsec = xs_arcsec_all_last[start_index:end_index], ys_arcsec_all_last[start_index:end_index]
+            xys = xys_all[start_index:end_index]
+            
+            process_chunk(xs_arcsec, ys_arcsec, xys, start_index)
+
+            start_index += chunk_size
+        
             sys.stdout.flush()
         take_snapshot("process_frame 1")
         
