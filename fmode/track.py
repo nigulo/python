@@ -20,9 +20,8 @@ from datetime import datetime, timedelta
 from filelock import FileLock
 from calendar import monthrange
 
-PROFILE = False
-random_start_time = False
-num_chunks = 5
+PROFILE = True
+num_chunks = 3
 
 if PROFILE:
     import tracemalloc
@@ -32,11 +31,12 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
+FLOAT32 = True
 
 radius_km = 695700
 
-def take_snapshot(title=""):
+def take_snapshot(title="main"):
     if PROFILE:
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')
@@ -278,7 +278,7 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class state:
     
-    def __init__(self, num_hrs, step, num_bursts, path, files, start_times, commit_sha):
+    def __init__(self, num_hrs, step, num_bursts, path, files, start_times, commit_sha, random_start_time):
         self.step = step
         self.num_hrs = num_hrs
         self.num_bursts = num_bursts
@@ -286,6 +286,7 @@ class state:
         self.path = path
         self.files = files
         self.commit_sha = commit_sha
+        self.random_start_time=random_start_time
         
         hdul = fits.open(self.path + "/" + self.files[0], ignore_missing_end=True)
         if len(start_times) == 0:
@@ -320,8 +321,12 @@ class state:
         self.nx = self.metadata['NAXIS1']
         self.ny = self.metadata['NAXIS2']
         
-        self.xs = np.arange(1, self.nx + 1)#.astype(np.float32)
-        self.ys = np.arange(1, self.ny + 1)#.astype(np.float32)
+        self.xs = np.arange(1, self.nx + 1)
+        self.ys = np.arange(1, self.ny + 1).astype(np.float32)
+        
+        if FLOAT32:
+            self.xs = self.xs.astype(np.float32)
+            self.ys = self.ys.astype(np.float32)
         
    
     def get_num_frames_per_day(self):
@@ -561,7 +566,7 @@ class state:
 
     def end_tracking(self):
         self.observer = None
-        if random_start_time:
+        if self.random_start_time:
             self.start_time = get_random_start_time()
         elif len(self.start_times) > 0:
             self.start_time = self.start_times[0]
@@ -657,12 +662,20 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         ys_arcsec.extend(added_ys_arcsec.tolist())
         #xs_arcsec = np.append(xs_arcsec, added_xs_arcsec)
         #ys_arcsec = np.append(ys_arcsec, added_ys_arcsec)
+
+        if FLOAT32:
+            added_xs_arcsec = added_xs_arcsec.astype(float)
+            added_ys_arcsec = added_ys_arcsec.astype(float)
         added_xs_arcsec, added_ys_arcsec = added_xs_arcsec*u.arcsec, added_ys_arcsec*u.arcsec
                 
         c1 = SkyCoord(added_xs_arcsec, added_ys_arcsec, frame=frames.Helioprojective, observer=observer)
         c2 = c1.transform_to(frames.HeliographicCarrington)
         added_lons = c2.lon.value - sdo_lon
         added_lats = c2.lat.value
+        
+        if FLOAT32:
+            added_lons = added_lons.astype(np.float32)
+            added_lats = added_lats.astype(np.float32)
     
         print("fix_sampling 6")
         
@@ -684,7 +697,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
 class track:
 
     def __init__(self, input_path, output_path, files, num_hrs=8, step=1, num_bursts=-1, num_patches=100, patch_size=15, 
-                 stats_dbg = None, stats_file_mode="burst", start_times=[], commit_sha=""):
+                 stats_dbg = None, stats_file_mode="burst", start_times=[], commit_sha="", random_start_time=True):
         assert(stats_file_mode == "burst" or stats_file_mode == "day" or stats_file_mode == "month" or stats_file_mode == "year")
         self.num_patches = num_patches
         self.patch_size = patch_size
@@ -697,7 +710,7 @@ class track:
         print(f"Input path: {input_path}")
         print(f"Output path: {output_path}")
         
-        self.state = state(num_hrs, step, num_bursts, input_path, files, start_times, commit_sha)
+        self.state = state(num_hrs, step, num_bursts, input_path, files, start_times, commit_sha, random_start_time)
         if stats_dbg is None:
             sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
@@ -777,29 +790,41 @@ class track:
         
         def process_chunk(xs_arcsec, ys_arcsec, xys, start_index):
             #c1 = [SkyCoord(xs_arcsec[i]*u.arcsec, ys_arcsec[i]*u.arcsec, frame=frames.Helioprojective, observer=observer) for i in range(len(xs_arcsec))]
+            if FLOAT32:
+                xs_arcsec = xs_arcsec.astype(float)
+                ys_arcsec = ys_arcsec.astype(float)
             c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
             print("process_frame 5", chunk_index)
             lons = c2.lon.value - self.state.get_sdo_lon()
             lats = c2.lat.value
             
+            if FLOAT32:
+                lons = lons.astype(np.float32)
+                lats = lats.astype(np.float32)
+            
             #c3 = [SkyCoord(c2.lon[i], c2.lat[i], frame=frames.Helioprojective, observer=observer_i) for i in range(len(c2.lon))]
             c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
             c4 = c3.transform_to(frames.Helioprojective)
             
-            xs_arcsec = c4.Tx
-            ys_arcsec = c4.Ty
+            xs_arcsec = c4.Tx.value
+            ys_arcsec = c4.Ty.value
+            
+            if FLOAT32:
+                xs_arcsec = xs_arcsec.astype(np.float32)
+                ys_arcsec = ys_arcsec.astype(np.float32)
+            
             print("process_frame 6", chunk_index)
             
-            x_pix, y_pix = image_to_pix(xs_arcsec.value, ys_arcsec.value, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
+            x_pix, y_pix = image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
             x_pix = np.round(x_pix)
             y_pix = np.round(y_pix)
             
             print("transform 7", chunk_index)
             x_pix = x_pix.tolist()
             y_pix = y_pix.tolist()
-            xs_arcsec = xs_arcsec.value.tolist()
-            ys_arcsec = ys_arcsec.value.tolist()
+            xs_arcsec = xs_arcsec.tolist()
+            ys_arcsec = ys_arcsec.tolist()
             lons = lons.tolist()
             lats = lats.tolist()                                                            
                                                                         
@@ -872,8 +897,8 @@ class track:
             for l in range(len(xys)):
                 l1 = self.state.transform_index(l)
                 if l1 >= 0:
-                    j = xys[l, 1]
-                    k = xys[l, 0]
+                    j = int(xys[l, 1])
+                    k = int(xys[l, 0])
                     if np.isnan(y_pix[l1]) or np.isnan(x_pix[l1]):
                         data_for_plot[j, k] = np.nan
                     else:
@@ -959,6 +984,7 @@ if (__name__ == '__main__'):
     patch_size = 15
     
     commit_sha = ""
+    random_start_time = True
     
     i = 1
     
@@ -988,6 +1014,9 @@ if (__name__ == '__main__'):
     i += 1
     if len(sys.argv) > i:
         commit_sha = sys.argv[i]
+    i += 1
+    if len(sys.argv) > i:
+        random_start_time = bool(sys.argv[i])
     print("Commit SHA", commit_sha)
     
     if random_start_time:
@@ -1060,6 +1089,6 @@ if (__name__ == '__main__'):
     take_snapshot()
     
     tr = track(input_path=input_path, output_path=output_path, files=all_files, num_bursts=num_bursts, num_hrs=num_hrs, step=step, 
-               num_patches=num_patches, patch_size=patch_size, start_times=start_times, commit_sha=commit_sha)
+               num_patches=num_patches, patch_size=patch_size, start_times=start_times, commit_sha=commit_sha, random_start_time=random_start_time)
     tr.track()
 

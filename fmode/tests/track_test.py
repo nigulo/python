@@ -4,6 +4,7 @@ sys.path.append('../..')
 import numpy as np
 import unittest
 import track
+import track_old
 import scipy.stats
 
 import plot
@@ -50,7 +51,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-
+'''
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -60,7 +61,7 @@ class test_track(unittest.TestCase):
         except:
             pass
         
-        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=24, step=1, num_bursts=1, num_patches=100, patch_size=15, stats_dbg = stats_mock())
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=24, step=1, num_bursts=1, num_patches=100, patch_size=15, stats_dbg = stats_mock(), random_start_time=False)
         
         hdul = fits.open("2013-02-03.fits")
         data_0 = hdul[1].data
@@ -80,8 +81,8 @@ class test_track(unittest.TestCase):
                 for l in range(len(xys)):
                     l1 = tr.state.transform_index(l)
                     if l1 >= 0:
-                        j = xys[l, 1]
-                        k = xys[l, 0]
+                        j = int(xys[l, 1])
+                        k = int(xys[l, 0])
                         if (not np.isnan(y_pix[l1])) and (not np.isnan(x_pix[l1])):
                             data_tracked[j, k] = data[int(y_pix[l1]), int(x_pix[l1])]
                 
@@ -90,7 +91,7 @@ class test_track(unittest.TestCase):
                 test_plot.save(f"track{i}.png")
                 test_plot.close()
                 i += 1
-
+'''
             
 
 '''
@@ -128,7 +129,7 @@ class test_stats(unittest.TestCase):
 
         sts = stats(patch_lons, patch_lats, patch_size)
         sts.set_obs_times_expected(obs_times_expected)
-        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=12, step=4, num_bursts=4, num_patches=num_patches, patch_size=patch_size, stats_dbg = sts)
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=12, step=4, num_bursts=4, num_patches=num_patches, patch_size=patch_size, stats_dbg = sts, random_start_time=False)
 
         hdul = fits.open("2013-02-03.fits")
         print(len(hdul))
@@ -141,7 +142,7 @@ class test_stats(unittest.TestCase):
 
         i = 1
         storages = list()
-        for f in ["2013-02-03 00:00:00.fits", "2013-02-03 04:00:00.fits", "2013-02-03 08:00:00.fits", "2013-02-03 12:00:00.fits"]:
+        for f in ["2013-02-03_00:00:00.fits", "2013-02-03_04:00:00.fits", "2013-02-03_08:00:00.fits", "2013-02-03_12:00:00.fits"]:
             np.testing.assert_equal(os.path.isfile(f), True)
             storage = fits.open(f)
             storages.append(storage)
@@ -153,9 +154,9 @@ class test_stats(unittest.TestCase):
             year, month, day, hrs, mins, secs = track.parse_t_rec(t_rec)
             start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
             end_time = start_time + timedelta(hours=12)
-            np.testing.assert_equal(storage[0].header["START_TIME"], str(start_time)[:19])
-            np.testing.assert_equal(storage[0].header["END_TIME"], str(end_time)[:19])
-            np.testing.assert_equal(storage[0].header["CLON"], hdul[i].header["CRLN_OBS"])
+            np.testing.assert_equal(storage[0].header["START_T"], str(start_time)[:19])
+            np.testing.assert_equal(storage[0].header["END_T"], str(end_time)[:19])
+            np.testing.assert_equal(storage[0].header["CARR_LON"], hdul[i].header["CRLN_OBS"])
             
             np.testing.assert_equal(storage[0].data.shape, (10, num_patches, num_patches))
             for lon_i in np.arange(num_patches):
@@ -177,19 +178,19 @@ class test_stats(unittest.TestCase):
             i += 2
 
         # Tracking second time should have no effect
-        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=12, step=4, num_bursts=4, num_patches=num_patches, patch_size=patch_size)
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=12, step=4, num_bursts=4, num_patches=num_patches, patch_size=patch_size, random_start_time=False)
         tr.track()
         
         i = 0
-        for f in ["2013-02-03 00:00:00.fits", "2013-02-03 04:00:00.fits", "2013-02-03 08:00:00.fits", "2013-02-03 12:00:00.fits"]:
+        for f in ["2013-02-03_00:00:00.fits", "2013-02-03_04:00:00.fits", "2013-02-03_08:00:00.fits", "2013-02-03_12:00:00.fits"]:
             np.testing.assert_equal(os.path.isfile(f), True)
             storage2 = fits.open(f)
             storage = storages[i]
         
             np.testing.assert_equal(len(storage2), 1)
-            np.testing.assert_equal(storage2[0].header["START_TIME"], storage[0].header["START_TIME"])
-            np.testing.assert_equal(storage2[0].header["END_TIME"], storage[0].header["END_TIME"])
-            np.testing.assert_equal(storage2[0].header["CLON"], storage[0].header["CLON"])
+            np.testing.assert_equal(storage2[0].header["START_T"], storage[0].header["START_T"])
+            np.testing.assert_equal(storage2[0].header["END_T"], storage[0].header["END_T"])
+            np.testing.assert_equal(storage2[0].header["CARR_LON"], storage[0].header["CARR_LON"])
             np.testing.assert_array_equal(storage2[0].data, storage[0].data)
             i += 1
             storage.close()
@@ -235,7 +236,7 @@ class test_stats(unittest.TestCase):
         sts.set_obs_times_expected(obs_times_expected)
         
         tr = track.track(".", ".", ["2013-02-03.fits", "2013-02-04.fits"], num_hrs=8, step=9, num_bursts=6, num_patches=num_patches, 
-                         patch_size=patch_size, stats_dbg=sts, stats_file_mode="day")
+                         patch_size=patch_size, stats_dbg=sts, stats_file_mode="day", random_start_time=False)
 
         hdul1 = fits.open("2013-02-03.fits")
         hdul2 = fits.open("2013-02-04.fits")
@@ -252,11 +253,11 @@ class test_stats(unittest.TestCase):
         #tr.state.close()
         np.testing.assert_equal(len(tr.state.get_stats().obs_times_expected), 0)
 
-        np.testing.assert_equal(os.path.isfile("2013-02-03 00:00:00.fits"), True)
-        storage1 = fits.open("2013-02-03 00:00:00.fits")
+        np.testing.assert_equal(os.path.isfile("2013-02-03_00:00:00.fits"), True)
+        storage1 = fits.open("2013-02-03_00:00:00.fits")
 
-        np.testing.assert_equal(os.path.isfile("2013-02-04 03:00:00.fits"), True)
-        storage2 = fits.open("2013-02-04 03:00:00.fits")
+        np.testing.assert_equal(os.path.isfile("2013-02-04_03:00:00.fits"), True)
+        storage2 = fits.open("2013-02-04_03:00:00.fits")
 
         #storage = tr.state.get_stats().storage
         np.testing.assert_equal(len(storage1), 3)
@@ -267,40 +268,40 @@ class test_stats(unittest.TestCase):
             storage = storage1
             if j == 0:
                 i = 1
-                start_time = "2013-02-03 00:00:00"
-                end_time = "2013-02-03 08:00:00"
+                start_time = "2013-02-03_00:00:00"
+                end_time = "2013-02-03_08:00:00"
             elif j == 1:
                 i = 6
-                start_time = "2013-02-03 09:00:00"
-                end_time = "2013-02-03 17:00:00"
+                start_time = "2013-02-03_09:00:00"
+                end_time = "2013-02-03_17:00:00"
             else:
                 i = 10
-                start_time = "2013-02-03 18:00:00"
-                end_time = "2013-02-04 02:00:00"
+                start_time = "2013-02-03_18:00:00"
+                end_time = "2013-02-04_02:00:00"
 
-            np.testing.assert_equal(storage[j].header["START_TIME"], start_time)
-            np.testing.assert_equal(storage[j].header["END_TIME"], end_time)
-            np.testing.assert_equal(storage[j].header["CLON"], hdul[i].header["CRLN_OBS"])
+            np.testing.assert_equal(storage[j].header["START_T"], start_time)
+            np.testing.assert_equal(storage[j].header["END_T"], end_time)
+            np.testing.assert_equal(storage[j].header["CARR_LON"], hdul[i].header["CRLN_OBS"])
         
         for j in range(3):
             hdul = hdul2
             storage = storage2
             if j == 0:
                 i = 3
-                start_time = "2013-02-04 03:00:00"
-                end_time = "2013-02-04 11:00:00"
+                start_time = "2013-02-04_03:00:00"
+                end_time = "2013-02-04_11:00:00"
             elif j == 1:
                 i = 7
-                start_time = "2013-02-04 12:00:00"
-                end_time = "2013-02-04 20:00:00"
+                start_time = "2013-02-04_12:00:00"
+                end_time = "2013-02-04_20:00:00"
             else:
                 i = 12
-                start_time = "2013-02-04 21:00:00"
-                end_time = "2013-02-05 05:00:00"
+                start_time = "2013-02-04_21:00:00"
+                end_time = "2013-02-05_05:00:00"
 
-            np.testing.assert_equal(storage[j].header["START_TIME"], start_time)
-            np.testing.assert_equal(storage[j].header["END_TIME"], end_time)
-            np.testing.assert_equal(storage[j].header["CLON"], hdul[i].header["CRLN_OBS"])
+            np.testing.assert_equal(storage[j].header["START_T"], start_time)
+            np.testing.assert_equal(storage[j].header["END_T"], end_time)
+            np.testing.assert_equal(storage[j].header["CARR_LON"], hdul[i].header["CRLN_OBS"])
         
         storage1.close()
         storage2.close()
@@ -346,6 +347,85 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(abs_skew, expected_skew)
         np.testing.assert_almost_equal(abs_kurt, expected_kurt)
 '''
+
+class test_compare_to_old(unittest.TestCase):
+
+    def test(self):
+        num_patches = 5
+        patch_size = 20
+        try:
+            os.remove("2013-02-03_00:00:00.fits")
+        except:
+            pass
+        
+        
+        tr = track_old.track(".", ".", ["2013-02-03.fits"], num_hrs=8, step=9, num_patches=num_patches, 
+                         patch_size=patch_size, stats_file_mode="day", random_start_time=False)
+
+        tr.track()
+
+        np.testing.assert_equal(os.path.isfile("2013-02-03_00:00:00.fits"), True)
+        storage = fits.open("2013-02-03_00:00:00.fits")
+
+        np.testing.assert_equal(len(storage), 3)
+        
+        start_times1 = []
+        end_times1 = []
+        clons1 = []  
+        data1 = []
+        
+        for j in range(3):
+            start_times1.append(storage[j].header["START_T"])
+            end_times1.append(storage[j].header["END_T"])
+            clons1.append(storage[j].header["CARR_LON"])
+            data1.append(storage[j].data)
+                
+        storage.close()
+        
+        #######################################################################
+        
+        os.remove("2013-02-03_00:00:00.fits")
+        
+        
+        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=8, step=9, num_patches=num_patches, 
+                         patch_size=patch_size, stats_file_mode="day", random_start_time=False)
+
+        tr.track()
+
+        np.testing.assert_equal(os.path.isfile("2013-02-03_00:00:00.fits"), True)
+        storage = fits.open("2013-02-03_00:00:00.fits")
+
+        np.testing.assert_equal(len(storage), 3)
+        
+        start_times2 = []
+        end_times2 = []
+        clons2 = []
+        data2 = []
+        
+        for j in range(3):
+            start_times2.append(storage[j].header["START_T"])
+            end_times2.append(storage[j].header["END_T"])
+            clons2.append(storage[j].header["CARR_LON"])
+            data2.append(storage[j].data)
+        
+        storage.close()
+        
+        #######################################################################
+        
+        for i in range(len(start_times1)):
+            np.testing.assert_equal(start_times1[i], start_times2[i])
+        for i in range(len(end_times1)):
+            np.testing.assert_equal(end_times1[i], end_times2[i])
+        for i in range(len(clons1)):
+            np.testing.assert_equal(clons1[i], clons2[i])
+        for i in range(len(data1)):
+            d1 = data1[i].flatten()
+            d2 = data2[i].flatten()
+            for j in range(len(d1)):
+                print(d1[j], d2[j], d1[j]-d2[j])
+        for i in range(len(data1)):
+            np.testing.assert_array_almost_equal(data1[i], data2[i])
+        
         
 if __name__ == '__main__':
     unittest.main()

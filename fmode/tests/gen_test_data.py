@@ -20,7 +20,7 @@ import track
 import misc
 
 downsample_coef = .1
-num_chunks = 10
+num_chunks = 1
 
 for file_date in ["2013-02-03", "2013-02-04"]:
 
@@ -124,7 +124,7 @@ for file_date in ["2013-02-03", "2013-02-04"]:
         
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, sdo_lat*u.deg, radius=sdo_dist*u.m, obstime=obs_time)
         
-        pix_dict = dict()
+        pix_dict = (np.ones((nx, ny), dtype=int)*-1).tolist()
         chunk_size = int(len(xs_all_last)/num_chunks)
         start_index = 0
         
@@ -191,11 +191,11 @@ for file_date in ["2013-02-03", "2013-02-04"]:
             lats.clear()
         
         
-        x_pix = x_pix_head + x_pix_tail
+        x_pix = np.asarray(x_pix_head + x_pix_tail)
         x_pix_head.clear()
         x_pix_tail.clear()
 
-        y_pix = y_pix_head + y_pix_tail
+        y_pix =np.asarray(y_pix_head + y_pix_tail)
         y_pix_head.clear()
         y_pix_tail.clear()
 
