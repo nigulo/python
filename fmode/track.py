@@ -690,8 +690,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(x_pix) == len(y_pix))
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
-        take_snapshot("fix_sampling")
         print("fix_sampling 6")
+        take_snapshot("fix_sampling")
         return split_point, (indices_to_delete, related_indices)
     
 
