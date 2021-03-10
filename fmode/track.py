@@ -26,12 +26,13 @@ num_chunks = 5
 
 if PROFILE:
     import tracemalloc
+    import gc
 
 A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 
 radius_km = 695700
 
@@ -69,6 +70,7 @@ def take_snapshot(title=""):
                 total /= 1024
                 unit = "GiB"
             f.write(f"{t} {title}: Total: {total} {unit}\n")
+            f.write(f"{t} {title}: GC counts: {gc.get_count()}")
 
 def get_random_start_time():
     y = np.random.randint(2010, 2022)
@@ -586,11 +588,18 @@ class state:
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, image_params):
         print("fix_sampling 1")
+        min_y = int(min(y_pix))
+        max_y = int(max(y_pix))
+        xys = xys[(xys[:, 1] >= min_y) * (xys[:, 1] <= max_y)]
+        print("fix_sampling 1", min_y, max_y)
+        limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
         for i in range(len(x_pix)):
             if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
                 x, y = int(x_pix[i]), int(y_pix[i])
                 if pix_dict[x][y] < 0:
                     pix_dict[x][y] = i + start_index
+                if limb_pixs[y - min_y] < x:
+                    limb_pixs[y - min_y] = x
         print("fix_sampling 2")
         indices_to_delete = []
         related_indices = []
@@ -626,9 +635,11 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         print("fix_sampling 4")
 
         for x, y in xys:
-            if pix_dict[int(x)][int(y)] < 0:
-                added_x_pix.append(x)
-                added_y_pix.append(y)
+            x, y = int(x), int(y)
+            if x < limb_pixs[y - min_y] + 10:
+                if pix_dict[x][y] < 0:
+                    added_x_pix.append(x)
+                    added_y_pix.append(y)
         print("fix_sampling 5")
                     
         print("Number of pixels added", len(added_x_pix))
