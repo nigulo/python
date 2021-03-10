@@ -20,8 +20,8 @@ from datetime import datetime, timedelta
 from filelock import FileLock
 from calendar import monthrange
 
-PROFILE = True
-num_chunks = 3
+PROFILE = False
+num_chunks = 5
 
 if PROFILE:
     import tracemalloc
@@ -31,7 +31,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 FLOAT32 = True
 
 radius_km = 695700
@@ -597,23 +597,17 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         max_y = int(np.nanmax(y_pix))
         xys = xys[(xys[:, 1] >= min_y) * (xys[:, 1] <= max_y)]
         print("fix_sampling 1", min_y, max_y)
-        limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
-        for i in range(len(x_pix)):
-            if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
-                x, y = int(x_pix[i]), int(y_pix[i])
-                if pix_dict[x][y] < 0:
-                    pix_dict[x][y] = i + start_index
-                if limb_pixs[y - min_y] < x:
-                    limb_pixs[y - min_y] = x
-        print("fix_sampling 2")
         indices_to_delete = []
         related_indices = []
         num_removed = 0
-        for i in range(len(x_pix)-1, -1, -1):
-            #print(i, len(x_pix))
+        limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
+        for i in range(len(x_pix) -1, -1, -1):
             if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
-                ind = pix_dict[int(x_pix[i])][int(y_pix[i])]
-                if ind != i + start_index:
+                x, y = int(x_pix[i]), int(y_pix[i])
+                ind = pix_dict[x][y]
+                if ind < 0:
+                    pix_dict[x][y] = i + start_index
+                else:
                     if DEBUG:
                         indices_to_delete.append(i + start_index)
                         related_indices.append(ind)
@@ -624,8 +618,9 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     del lons[i]
                     del lats[i]
                     num_removed += 1
-
-        print("fix_sampling 3")
+                if limb_pixs[y - min_y] < x:
+                    limb_pixs[y - min_y] = x
+        print("fix_sampling 2")
         #x_pix = np.delete(x_pix, indices_to_delete)
         #y_pix = np.delete(y_pix, indices_to_delete)
         #xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
@@ -635,28 +630,34 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         print("Number of pixels removed", num_removed)
         split_point = len(x_pix)
         
-        added_x_pix = []
-        added_y_pix = []
-        print("fix_sampling 4")
+        added_x_pix = [-1.]*500000
+        added_y_pix = [-1]*500000
+        print("fix_sampling 3")
 
+        i = 0
         for x, y in xys:
             x, y = int(x), int(y)
-            if x < limb_pixs[y - min_y] + 10:
+            if x < limb_pixs[y - min_y] + 2:
                 if pix_dict[x][y] < 0:
-                    added_x_pix.append(x)
-                    added_y_pix.append(y)
-        print("fix_sampling 5")
+                    if i >= len(added_x_pix):
+                        added_x_pix.extend([-1]*500000)
+                        added_y_pix.extend([-1]*500000)
+                    added_x_pix[i] = x
+                    added_y_pix[i] = y
+                    i += 1
+        print("fix_sampling 4")
                     
         print("Number of pixels added", len(added_x_pix))
+        added_x_pix = np.asarray(added_x_pix)
+        added_y_pix = np.asarray(added_y_pix)
+        added_x_pix = added_x_pix[added_x_pix >= 0]
+        added_y_pix = added_y_pix[added_y_pix >= 0]
         x_pix.extend(added_x_pix)
         y_pix.extend(added_y_pix)
         #x_pix = np.append(x_pix, added_x_pix)
         #y_pix = np.append(y_pix, added_y_pix)
         dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y = image_params
-        added_xs_arcsec, added_ys_arcsec = pix_to_image(np.asarray(added_x_pix), np.asarray(added_y_pix), dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
-        
-        added_x_pix.clear()
-        added_y_pix.clear()
+        added_xs_arcsec, added_ys_arcsec = pix_to_image(added_x_pix, added_y_pix, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
         
         xs_arcsec.extend(added_xs_arcsec.tolist())
         ys_arcsec.extend(added_ys_arcsec.tolist())
@@ -677,7 +678,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
             added_lons = added_lons.astype(np.float32)
             added_lats = added_lats.astype(np.float32)
     
-        print("fix_sampling 6")
+        print("fix_sampling 5")
         
         lons.extend(added_lons.tolist())
         lats.extend(added_lats.tolist())
@@ -690,7 +691,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
         take_snapshot("fix_sampling")
-        print("fix_sampling 7")
+        print("fix_sampling 6")
         return split_point, (indices_to_delete, related_indices)
     
 

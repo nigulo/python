@@ -51,7 +51,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-'''
+
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -91,7 +91,7 @@ class test_track(unittest.TestCase):
                 test_plot.save(f"track{i}.png")
                 test_plot.close()
                 i += 1
-'''
+
             
 
 '''
@@ -346,7 +346,6 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(abs_std, expected_std)
         np.testing.assert_almost_equal(abs_skew, expected_skew)
         np.testing.assert_almost_equal(abs_kurt, expected_kurt)
-'''
 
 class test_compare_to_old(unittest.TestCase):
 
@@ -425,6 +424,7 @@ class test_compare_to_old(unittest.TestCase):
                 print(d1[j], d2[j], d1[j]-d2[j])
         for i in range(len(data1)):
             np.testing.assert_array_almost_equal(data1[i], data2[i])
+'''
         
         
 if __name__ == '__main__':
