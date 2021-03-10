@@ -588,8 +588,8 @@ class state:
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, image_params):
         print("fix_sampling 1")
-        min_y = int(min(y_pix))
-        max_y = int(max(y_pix))
+        min_y = int(np.nanmin(y_pix))
+        max_y = int(np.nanmax(y_pix))
         xys = xys[(xys[:, 1] >= min_y) * (xys[:, 1] <= max_y)]
         print("fix_sampling 1", min_y, max_y)
         limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
