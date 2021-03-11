@@ -44,9 +44,12 @@ def take_snapshot(title="main"):
         total = 0
         with open(f"memory{pid}.prof", "a") as f:
             f.write("=======================================\n")
-            for stat in top_stats:#[:20]:
+            i = 0
+            for stat in top_stats:
                 stat = str(stat)
-                f.write(f"{t} {title}: {stat}\n")
+                if i < 20
+                    f.write(f"{t} {title}: {stat}\n")
+                    i += 1
                 i = stat.find("size=")
                 stat2 = stat[i+5:]
                 size, unit = stat2.split(",")[0].split(" ")
@@ -70,7 +73,7 @@ def take_snapshot(title="main"):
                 total /= 1024
                 unit = "GiB"
             f.write(f"{t} {title}: Total: {total} {unit}\n")
-            f.write(f"{t} {title}: GC counts: {gc.get_count()}")
+            f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
 def get_random_start_time():
     y = np.random.randint(2010, 2022)
@@ -647,11 +650,11 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     i += 1
         print("fix_sampling 4")
                     
-        print("Number of pixels added", len(added_x_pix))
         added_x_pix = np.asarray(added_x_pix)
         added_y_pix = np.asarray(added_y_pix)
         added_x_pix = added_x_pix[added_x_pix >= 0]
         added_y_pix = added_y_pix[added_y_pix >= 0]
+        print("Number of pixels added", len(added_x_pix))
         x_pix.extend(added_x_pix)
         y_pix.extend(added_y_pix)
         #x_pix = np.append(x_pix, added_x_pix)
@@ -821,7 +824,7 @@ class track:
             x_pix = np.round(x_pix)
             y_pix = np.round(y_pix)
             
-            print("transform 7", chunk_index)
+            print("process_frame 7", chunk_index)
             x_pix = x_pix.tolist()
             y_pix = y_pix.tolist()
             xs_arcsec = xs_arcsec.tolist()
