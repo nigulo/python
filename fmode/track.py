@@ -47,7 +47,7 @@ def take_snapshot(title="main"):
             i = 0
             for stat in top_stats:
                 stat = str(stat)
-                if i < 20
+                if i < 20:
                     f.write(f"{t} {title}: {stat}\n")
                     i += 1
                 i = stat.find("size=")
@@ -76,7 +76,7 @@ def take_snapshot(title="main"):
             f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
 def get_random_start_time():
-    y = np.random.randint(2010, 2022)
+    y = np.random.randint(2010, 2021)
     m = np.random.randint(1, 13)
     _, num_days = monthrange(y, m)
     d = np.random.randint(1, num_days+1)
