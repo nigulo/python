@@ -640,7 +640,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         i = 0
         for x, y in xys:
             x, y = int(x), int(y)
-            if x < limb_pixs[y - min_y] + 2:
+            if x < limb_pixs[y - min_y]:
                 if pix_dict[x][y] < 0:
                     if i >= len(added_x_pix):
                         added_x_pix.extend([-1]*500000)
