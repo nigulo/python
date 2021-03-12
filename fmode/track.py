@@ -896,10 +896,18 @@ class track:
         self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, dbg_info_all)
 
         if DEBUG:
-            x_pix = x_pix_head + x_pix_tail    
-            y_pix = y_pix_head + y_pix_tail            
-            lons = lons_head + lons_tail            
-            lats = lats_head + lats_tail
+            x_pix = np.concatenate([x_pix_head, x_pix_tail])
+            del x_pix_head
+            del x_pix_tail
+            y_pix = np.concatenate([y_pix_head, y_pix_tail])
+            del y_pix_head
+            del y_pix_tail
+            lons = np.concatenate([lons_head, lons_tail])
+            del lons_head
+            del lons_tail
+            lats = np.concatenate([lats_head, lats_tail])
+            del lats_head
+            del lats_tail
 
         #######################
         if DEBUG:
@@ -929,7 +937,7 @@ class track:
         sys.stdout.flush()
         
         if DEBUG:
-            return np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data
+            return lons, lats, x_pix, y_pix, data
 
     '''
     def process_frame(self):
