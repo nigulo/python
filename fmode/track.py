@@ -887,11 +887,13 @@ class track:
             sys.stdout.flush()
         take_snapshot("process_frame 1")
         
-        self.state.frame_processed(np.concatenate([xs_arcsec_head, xs_arcsec_tail]), np.concatenate(ys_arcsec_head, ys_arcsec_tail), observer_i, dbg_info_all)
-        xs_arcsec_head.clear()
-        xs_arcsec_tail.clear()
-        ys_arcsec_head.clear()
-        ys_arcsec_tail.clear()
+        xs_arcsec = np.concatenate([xs_arcsec_head, xs_arcsec_tail])
+        del xs_arcsec_head
+        del xs_arcsec_tail
+        ys_arcsec = np.concatenate([ys_arcsec_head, ys_arcsec_tail])
+        del ys_arcsec_head
+        del ys_arcsec_tail
+        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, dbg_info_all)
 
         if DEBUG:
             x_pix = x_pix_head + x_pix_tail    
