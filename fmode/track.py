@@ -21,7 +21,8 @@ from filelock import FileLock
 from calendar import monthrange
 
 PROFILE = False
-num_chunks = 5
+num_chunks = 1
+added_pix_list_size = 10000*num_chunks//20
 
 if PROFILE:
     import tracemalloc
@@ -31,8 +32,8 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
-FLOAT32 = True
+DEBUG = False
+FLOAT32 = False
 
 radius_km = 695700
 
@@ -603,10 +604,16 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         indices_to_delete = []
         related_indices = []
         num_removed = 0
-        limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
+        east_limb_pixs = np.ones(max_y - min_y + 1, dtype=int)*int(np.nanmax(x_pix))
+        west_limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
         for i in range(len(x_pix) -1, -1, -1):
             if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
                 x, y = int(x_pix[i]), int(y_pix[i])
+                if east_limb_pixs[y - min_y] > x:
+                    east_limb_pixs[y - min_y] = x
+                if west_limb_pixs[y - min_y] < x:
+                    west_limb_pixs[y - min_y] = x
+
                 ind = pix_dict[x][y]
                 if ind < 0:
                     pix_dict[x][y] = i + start_index
@@ -621,8 +628,6 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     del lons[i]
                     del lats[i]
                     num_removed += 1
-                if limb_pixs[y - min_y] < x:
-                    limb_pixs[y - min_y] = x
         print("fix_sampling 2")
         #x_pix = np.delete(x_pix, indices_to_delete)
         #y_pix = np.delete(y_pix, indices_to_delete)
@@ -633,18 +638,18 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         print("Number of pixels removed", num_removed)
         split_point = len(x_pix)
         
-        added_x_pix = [-1.]*500000
-        added_y_pix = [-1]*500000
+        added_x_pix = [-1.]*added_pix_list_size
+        added_y_pix = [-1]*added_pix_list_size
         print("fix_sampling 3")
 
         i = 0
         for x, y in xys:
             x, y = int(x), int(y)
-            if x < limb_pixs[y - min_y]:
+            if x >= east_limb_pixs[y - min_y] and x <= west_limb_pixs[y - min_y]:
                 if pix_dict[x][y] < 0:
                     if i >= len(added_x_pix):
-                        added_x_pix.extend([-1]*500000)
-                        added_y_pix.extend([-1]*500000)
+                        added_x_pix.extend([-1]*added_pix_list_size)
+                        added_y_pix.extend([-1]*added_pix_list_size)
                     added_x_pix[i] = x
                     added_y_pix[i] = y
                     i += 1
@@ -1020,7 +1025,7 @@ if (__name__ == '__main__'):
         commit_sha = sys.argv[i]
     i += 1
     if len(sys.argv) > i:
-        random_start_time = bool(sys.argv[i])
+        random_start_time = bool(int(sys.argv[i]))
     print("Commit SHA", commit_sha)
     
     if random_start_time:

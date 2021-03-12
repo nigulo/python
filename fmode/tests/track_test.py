@@ -51,7 +51,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-
+'''
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -91,7 +91,7 @@ class test_track(unittest.TestCase):
                 test_plot.save(f"track{i}.png")
                 test_plot.close()
                 i += 1
-
+'''
             
 
 '''
@@ -346,12 +346,13 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(abs_std, expected_std)
         np.testing.assert_almost_equal(abs_skew, expected_skew)
         np.testing.assert_almost_equal(abs_kurt, expected_kurt)
+'''
 
 class test_compare_to_old(unittest.TestCase):
 
     def test(self):
-        num_patches = 5
-        patch_size = 20
+        num_patches = 64
+        patch_size = 15
         try:
             os.remove("2013-02-03_00:00:00.fits")
         except:
@@ -418,13 +419,24 @@ class test_compare_to_old(unittest.TestCase):
         for i in range(len(clons1)):
             np.testing.assert_equal(clons1[i], clons2[i])
         for i in range(len(data1)):
-            d1 = data1[i].flatten()
-            d2 = data2[i].flatten()
-            for j in range(len(d1)):
-                print(d1[j], d2[j], d1[j]-d2[j])
+            d1 = data1[i]
+            d2 = data2[i]
+            n_cols = d1.shape[0]//2
+            test_plot = plot.plot(nrows=2, ncols=n_cols, size=plot.default_size(d1.shape[1]*100, d1.shape[2]*100))
+            row = 0
+            col = 0
+            for j in range(d1.shape[0]):
+                test_plot.colormap((d1[j, ::-1, ::-1]-d2[j, ::-1, ::-1]).T, ax_index=[row, col], show_colorbar=True)
+                col += 1
+                if col == n_cols:
+                    col = 0
+                    row += 1
+            test_plot.save(f"stats_comp{i}.png")
+            test_plot.close()
+            
         for i in range(len(data1)):
             np.testing.assert_array_almost_equal(data1[i], data2[i])
-'''
+
         
         
 if __name__ == '__main__':
