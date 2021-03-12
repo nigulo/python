@@ -872,10 +872,12 @@ class track:
         start_index = 0
         for chunk_index in range(num_chunks):
             if chunk_index < num_chunks - 1:
-                end_index = start_index + chunk_size
+                end_index = chunk_size
             else:
                 end_index = len(xs_arcsec_all_last)
-            xs_arcsec, ys_arcsec = xs_arcsec_all_last[start_index:end_index], ys_arcsec_all_last[start_index:end_index]
+            xs_arcsec, ys_arcsec = xs_arcsec_all_last[:end_index], ys_arcsec_all_last[:end_index]
+            xs_arcsec_all_last = xs_arcsec_all_last[end_index:]
+            ys_arcsec_all_last = ys_arcsec_all_last[end_index:]
             xys = xys_all[start_index:end_index]
             
             process_chunk(xs_arcsec, ys_arcsec, xys, start_index)
