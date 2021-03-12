@@ -800,8 +800,17 @@ class track:
         
         dbg_info_all = ([], [])
         
-        def process_chunk(xs_arcsec, ys_arcsec, xys, start_index):
-            #c1 = [SkyCoord(xs_arcsec[i]*u.arcsec, ys_arcsec[i]*u.arcsec, frame=frames.Helioprojective, observer=observer) for i in range(len(xs_arcsec))]
+        start_index = 0
+        for chunk_index in range(num_chunks):
+            if chunk_index < num_chunks - 1:
+                end_index = chunk_size
+            else:
+                end_index = len(xs_arcsec_all_last)
+            xs_arcsec, ys_arcsec = xs_arcsec_all_last[:end_index], ys_arcsec_all_last[:end_index]
+            xs_arcsec_all_last = xs_arcsec_all_last[end_index:]
+            ys_arcsec_all_last = ys_arcsec_all_last[end_index:]
+            xys = xys_all[start_index:end_index]
+            
             if FLOAT32:
                 xs_arcsec = xs_arcsec.astype(float)
                 ys_arcsec = ys_arcsec.astype(float)
@@ -872,19 +881,6 @@ class track:
                 lats_tail = np.append(lats_tail, lats[split_point:])
     
             print("process_frame 8", chunk_index)
-
-        start_index = 0
-        for chunk_index in range(num_chunks):
-            if chunk_index < num_chunks - 1:
-                end_index = chunk_size
-            else:
-                end_index = len(xs_arcsec_all_last)
-            xs_arcsec, ys_arcsec = xs_arcsec_all_last[:end_index], ys_arcsec_all_last[:end_index]
-            xs_arcsec_all_last = xs_arcsec_all_last[end_index:]
-            ys_arcsec_all_last = ys_arcsec_all_last[end_index:]
-            xys = xys_all[start_index:end_index]
-            
-            process_chunk(xs_arcsec, ys_arcsec, xys, start_index)
 
             start_index += chunk_size
         
