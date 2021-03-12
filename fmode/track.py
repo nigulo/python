@@ -21,7 +21,7 @@ from filelock import FileLock
 from calendar import monthrange
 
 PROFILE = False
-num_chunks = 1
+num_chunks = 20
 added_pix_list_size = 10000*num_chunks//20
 
 if PROFILE:
@@ -995,37 +995,44 @@ if (__name__ == '__main__'):
     commit_sha = ""
     random_start_time = True
     
-    i = 1
-    
-    if len(sys.argv) > i:
-        input_path = sys.argv[i]
+    if os.path.isfile("params.txt"):
+        with open("params.txt", "r") as file:
+            line = file.readlines()[-1]
+            argv = line.split(" ")
+            i = 0
+    else:
+        argv = sys.argv
+        i = 1
+
+    if len(argv) > i:
+        input_path = argv[i]
     i += 1
-    if len(sys.argv) > i:
-        output_path = sys.argv[i]
+    if len(argv) > i:
+        output_path = argv[i]
     i += 1
-    if len(sys.argv) > i:
-        start_time = sys.argv[i]
+    if len(argv) > i:
+        start_time = argv[i]
     i += 1
-    if len(sys.argv) > i:
-        num_hrs = float(sys.argv[i])
+    if len(argv) > i:
+        num_hrs = float(argv[i])
     i += 1
-    if len(sys.argv) > i:
-        step = float(sys.argv[i])
+    if len(argv) > i:
+        step = float(argv[i])
     i += 1
-    if len(sys.argv) > i:
-        num_bursts = int(sys.argv[i])
+    if len(argv) > i:
+        num_bursts = int(argv[i])
     i += 1
-    if len(sys.argv) > i:
-        num_patches = int(sys.argv[i])
+    if len(argv) > i:
+        num_patches = int(argv[i])
     i += 1
-    if len(sys.argv) > i:
-        patch_size = float(sys.argv[i])
+    if len(argv) > i:
+        patch_size = float(argv[i])
     i += 1
-    if len(sys.argv) > i:
-        commit_sha = sys.argv[i]
+    if len(argv) > i:
+        commit_sha = argv[i]
     i += 1
-    if len(sys.argv) > i:
-        random_start_time = bool(int(sys.argv[i]))
+    if len(argv) > i:
+        random_start_time = bool(int(argv[i]))
     print("Commit SHA", commit_sha)
     
     if random_start_time:
