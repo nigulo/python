@@ -887,7 +887,7 @@ class track:
             sys.stdout.flush()
         take_snapshot("process_frame 1")
         
-        self.state.frame_processed(np.asarray(xs_arcsec_head+xs_arcsec_tail), np.asarray(ys_arcsec_head+ys_arcsec_tail), observer_i, dbg_info_all)
+        self.state.frame_processed(np.concatenate([xs_arcsec_head, xs_arcsec_tail]), np.concatenate(ys_arcsec_head, ys_arcsec_tail), observer_i, dbg_info_all)
         xs_arcsec_head.clear()
         xs_arcsec_tail.clear()
         ys_arcsec_head.clear()
