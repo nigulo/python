@@ -998,7 +998,7 @@ if (__name__ == '__main__'):
     if os.path.isfile("params.txt"):
         with open("params.txt", "r") as file:
             line = file.readlines()[-1]
-            argv = line.split(" ")
+            argv = line.strip().split(" ")
             i = 0
     else:
         argv = sys.argv
