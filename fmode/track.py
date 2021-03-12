@@ -540,7 +540,7 @@ class state:
         
         
     def get_xs_ys_arcsec(self):
-        xs_arc_sec, ys_arcsec = np.array(self.xs_arcsec), np.array(self.ys_arcsec)
+        xs_arcsec, ys_arcsec = np.array(self.xs_arcsec), np.array(self.ys_arcsec)
         del self.xs_arcsec
         del self.ys_arcsec
         return xs_arcsec, ys_arcsec
