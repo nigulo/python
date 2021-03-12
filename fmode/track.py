@@ -788,15 +788,15 @@ class track:
         chunk_size = int(len(xs_arcsec_all_last)/num_chunks)
         
         xys_all = self.state.get_xys()
-        xs_arcsec_head, xs_arcsec_tail = [], []
-        ys_arcsec_head, ys_arcsec_tail = [], []
+        xs_arcsec_head, xs_arcsec_tail = np.array([]), np.array([])
+        ys_arcsec_head, ys_arcsec_tail = np.array([]), np.array([])
        
         
         if DEBUG:
-            x_pix_head, x_pix_tail = [], []
-            y_pix_head, y_pix_tail = [], []
-            lons_head, lons_tail = [], []
-            lats_head, lats_tail = [], []
+            x_pix_head, x_pix_tail = np.array([]), np.array([])
+            y_pix_head, y_pix_tail = np.array([]), np.array([])
+            lons_head, lons_tail = np.array([]), np.array([])
+            lats_head, lats_tail = np.array([]), np.array([])
         
         dbg_info_all = ([], [])
         
@@ -843,32 +843,33 @@ class track:
             split_point, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
                   xys, self.state.get_sdo_lon(), observer_i, pix_dict, start_index,
                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
+            
+            lons = np.asarray(lons)
+            lats = np.asarray(lats)
+            x_pix = np.asarray(x_pix)
+            y_pix = np.asarray(y_pix)
                         
-            self.state.get_stats().process_frame(np.asarray(lons), np.asarray(lats), np.asarray(x_pix), np.asarray(y_pix), data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
+            self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
 
-            xs_arcsec_head.extend(xs_arcsec[:split_point])
-            xs_arcsec_tail.extend(xs_arcsec[split_point:])
+            xs_arcsec_head = np.append(xs_arcsec_head, xs_arcsec[:split_point])
+            xs_arcsec_tail = np.append(xs_arcsec_tail, xs_arcsec[split_point:])
             xs_arcsec.clear()
-            ys_arcsec_head.extend(ys_arcsec[:split_point])
-            ys_arcsec_tail.extend(ys_arcsec[split_point:])
+            ys_arcsec_head = np.append(ys_arcsec_head, ys_arcsec[:split_point])
+            ys_arcsec_tail = np.append(ys_arcsec_tail, ys_arcsec[split_point:])
             ys_arcsec.clear()
             
             if DEBUG:
                 dbg_info_all[0].extend(dbg_info[0])
                 dbg_info_all[1].extend(dbg_info[1])
             
-                x_pix_head.extend(x_pix[:split_point])
-                x_pix_tail.extend(x_pix[split_point:])
-                x_pix.clear()
-                y_pix_head.extend(y_pix[:split_point])
-                y_pix_tail.extend(y_pix[split_point:])
-                y_pix.clear()
-                lons_head.extend(lons[:split_point])
-                lons_tail.extend(lons[split_point:])
-                lons.clear()
-                lats_head.extend(lats[:split_point])
-                lats_tail.extend(lats[split_point:])
-                lats.clear()
+                x_pix_head = np.append(x_pix_head, x_pix[:split_point])
+                x_pix_tail = np.append(x_pix_tail, x_pix[split_point:])
+                y_pix_head = np.append(y_pix_head, y_pix[:split_point])
+                y_pix_tail = np.append(y_pix_tail, y_pix[split_point:])
+                lons_head = np.append(lons_head, lons[:split_point])
+                lons_tail = np.append(lons_tail, lons[split_point:])
+                lats_head = np.append(lats_head, lats[:split_point])
+                lats_tail = np.append(lats_tail, lats[split_point:])
     
             print("process_frame 8", chunk_index)
 
