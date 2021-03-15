@@ -935,7 +935,6 @@ class track:
 
         take_snapshot("process_frame 2")
         sys.stdout.flush()
-        
         if DEBUG:
             return lons, lats, x_pix, y_pix, data
 

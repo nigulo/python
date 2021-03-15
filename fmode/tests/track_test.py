@@ -358,7 +358,7 @@ class test_compare_to_old(unittest.TestCase):
         except:
             pass
         
-        
+        import track_old
         tr = track_old.track(".", ".", ["2013-02-03.fits"], num_hrs=8, step=9, num_patches=num_patches, 
                          patch_size=patch_size, stats_file_mode="day", random_start_time=False)
 
@@ -386,12 +386,11 @@ class test_compare_to_old(unittest.TestCase):
         
         os.remove("2013-02-03_00:00:00.fits")
         
-        
+        import track
         tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=8, step=9, num_patches=num_patches, 
                          patch_size=patch_size, stats_file_mode="day", random_start_time=False)
 
         tr.track()
-
         np.testing.assert_equal(os.path.isfile("2013-02-03_00:00:00.fits"), True)
         storage = fits.open("2013-02-03_00:00:00.fits")
 
@@ -422,11 +421,11 @@ class test_compare_to_old(unittest.TestCase):
             d1 = data1[i]
             d2 = data2[i]
             n_cols = d1.shape[0]//2
-            test_plot = plot.plot(nrows=2, ncols=n_cols, size=plot.default_size(d1.shape[1]*100, d1.shape[2]*100))
+            test_plot = plot.plot(nrows=2, ncols=n_cols, size=plot.default_size(d1.shape[1]*10, d1.shape[2]*10))
             row = 0
             col = 0
             for j in range(d1.shape[0]):
-                test_plot.colormap((d1[j, ::-1, ::-1]-d2[j, ::-1, ::-1]).T, ax_index=[row, col], show_colorbar=True)
+                test_plot.colormap(np.abs(d1[j, ::-1, ::-1]-d2[j, ::-1, ::-1]).T, ax_index=[row, col], show_colorbar=True, colorbar_prec="1.2")
                 col += 1
                 if col == n_cols:
                     col = 0
