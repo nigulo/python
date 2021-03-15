@@ -308,12 +308,12 @@ class test_stats(unittest.TestCase):
         
         hdul1.close()
         hdul2.close()
-
+'''
 
 class test_collect_stats(unittest.TestCase):
     
     def test(self):
-        stats = np.zeros((1, 1, 7))
+        stats = np.zeros((1, 1, 9))
         data = np.array([])
         
         for i in range(20):
@@ -323,7 +323,9 @@ class test_collect_stats(unittest.TestCase):
             data = np.append(data, data_i)
             stats[0, 0] += track.collect_stats_1(data_i)
             
-        mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt = track.collect_stats_2(stats)
+        mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt, rms, rms_std, rms_skew, rms_kurt = track.collect_stats_2(stats)
+        
+        data2 = data**2
         
         expected_mean = np.mean(data)
         expected_std = np.std(data)
@@ -346,8 +348,18 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(abs_std, expected_std)
         np.testing.assert_almost_equal(abs_skew, expected_skew)
         np.testing.assert_almost_equal(abs_kurt, expected_kurt)
-'''
 
+        expected_rms = np.sqrt(np.mean(data2))
+        expected_rms_std = np.sqrt(np.std(data2))
+        expected_rms_skew = np.sqrt(scipy.stats.skew(data2))
+        expected_rms_kurt = np.sqrt(scipy.stats.kurtosis(data2))
+
+        np.testing.assert_almost_equal(rms, expected_rms)
+        np.testing.assert_almost_equal(rms_std, expected_rms_std)
+        np.testing.assert_almost_equal(rms_skew, expected_rms_skew)
+        np.testing.assert_almost_equal(rms_kurt, expected_rms_kurt)
+
+'''
 class test_compare_to_old(unittest.TestCase):
 
     def test(self):
@@ -435,7 +447,7 @@ class test_compare_to_old(unittest.TestCase):
             
         for i in range(len(data1)):
             np.testing.assert_array_almost_equal(data1[i], data2[i])
-
+'''
         
         
 if __name__ == '__main__':

@@ -107,20 +107,25 @@ def collect_stats_1(data):
     data4 = data2**2
     abs_data = np.abs(data)
     abs_data3 = np.abs(data3)
+    data6 = data3**2
+    data8 = data4**2
     return [np.sum(data), np.sum(data2), np.sum(data3), np.sum(data4),
-             np.sum(abs_data), np.sum(abs_data3), np.product(data.shape)]
+             np.sum(abs_data), np.sum(abs_data3), np.sum(data6), np.sum(data8), np.product(data.shape)]
 
 def collect_stats_2(data):
-    n = data[:, :, 6]
+    n = data[:, :, 8]
     mean = data[:, :, 0]/n
     data2_mean = data[:, :, 1]/n
     data3_mean = data[:, :, 2]/n
     data4_mean = data[:, :, 3]/n
     abs_mean = data[:, :, 4]/n
     abs_data3_mean = data[:, :, 5]/n
-    var = data2_mean - mean**2
+    data6_mean = data[:, :, 6]/n
+    data8_mean = data[:, :, 7]/n
+    mean2 = mean**2
+    var = data2_mean - mean2
     abs_var = data2_mean - abs_mean**2
-    mean3 = mean**3
+    mean3 = mean2*mean
     abs_mean3 = abs_mean**3
     std = np.sqrt(var)
     std3 = var * std
@@ -131,7 +136,17 @@ def collect_stats_2(data):
     abs_skew = (abs_data3_mean - 3*abs_mean*abs_var - abs_mean3)/abs_std3
     abs_kurt = (data4_mean + abs_mean*(6*abs_mean*data2_mean - 4*abs_data3_mean - 3*abs_mean3))/(abs_var**2) - 3
     
-    return [mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt]
+    rms = np.sqrt(data2_mean)
+    mean4 = data2_mean**2
+    var2 = data4_mean - mean4
+    std2 = np.sqrt(var2)
+    rms_std = np.sqrt(std2)
+    mean6 = mean4*data2_mean
+    std6 = var2*std2
+    rms_skew = np.sqrt((data6_mean - 3*data2_mean*var2 - mean6)/std6)
+    rms_kurt = np.sqrt((data8_mean + data2_mean*(6*data2_mean*data4_mean - 4*data6_mean - 3*mean6))/(var2**2) - 3)
+    
+    return [mean, std, skew, kurt, abs_mean, abs_std, abs_skew, abs_kurt, rms, rms_std, rms_skew, rms_kurt]
 
 
 class stats:
