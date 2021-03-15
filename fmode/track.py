@@ -32,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 FLOAT32 = False
 
 radius_km = 695700
@@ -213,14 +213,18 @@ class stats:
             self.header.add_card(fits.Card(keyword="DATADIM1", value=f"stats_index", comment="First dimension is index over statistics"))
             self.header.add_card(fits.Card(keyword="DATADIM2", value=f"lon_index", comment="Second dimension is index over longitudes"))
             self.header.add_card(fits.Card(keyword="DATADIM3", value=f"lat_index", comment="Third dimension is index over longitudes"))
-            self.header.add_card(fits.Card(keyword="STATS1", value="mean", comment="Mean"))
-            self.header.add_card(fits.Card(keyword="STATS2", value="std", comment="Standard deviation"))
-            self.header.add_card(fits.Card(keyword="STATS3", value="skew", comment="Skewness"))
-            self.header.add_card(fits.Card(keyword="STATS4", value="kurt", comment="Kurtosis"))
-            self.header.add_card(fits.Card(keyword="STATS5", value="abs_mean", comment="Mean of the absolute value"))
-            self.header.add_card(fits.Card(keyword="STATS6", value="abs_std", comment="Standard deviation of the absolute value"))
-            self.header.add_card(fits.Card(keyword="STATS7", value="abs_skew", comment="Skewness of the absolute value"))
-            self.header.add_card(fits.Card(keyword="STATS8", value="abs_kurt", comment="Kurtosis of the absolute value"))
+            self.header.add_card(fits.Card(keyword="STATS1", value="<B>", comment="Mean"))
+            self.header.add_card(fits.Card(keyword="STATS2", value="std(B)", comment="Standard deviation"))
+            self.header.add_card(fits.Card(keyword="STATS3", value="skew(B)", comment="Skewness"))
+            self.header.add_card(fits.Card(keyword="STATS4", value="kurt(B)", comment="Kurtosis"))
+            self.header.add_card(fits.Card(keyword="STATS5", value="<|B|>", comment="Mean of the absolute value"))
+            self.header.add_card(fits.Card(keyword="STATS6", value="std(|B|)", comment="Standard deviation of the absolute value"))
+            self.header.add_card(fits.Card(keyword="STATS7", value="skew(|B|)", comment="Skewness of the absolute value"))
+            self.header.add_card(fits.Card(keyword="STATS8", value="kurt(|B|)", comment="Kurtosis of the absolute value"))
+            self.header.add_card(fits.Card(keyword="STATS9", value="sqrt(<B**2>)", comment="Root mean square"))
+            self.header.add_card(fits.Card(keyword="STATS10", value="sqrt(std(B**2))", comment="Root mean square of standard deviation"))
+            self.header.add_card(fits.Card(keyword="STATS11", value="sqrt(skew(B**2))", comment="Root mean square of skewness"))
+            self.header.add_card(fits.Card(keyword="STATS12", value="sqrt(kurt(B**2))", comment="Root mean square of kurtosis"))
             self.header.add_card(fits.Card(keyword="MIN_LON", value=self.patch_lons[0], comment="Longitude of the first data entry"))
             self.header.add_card(fits.Card(keyword="MAX_LON", value=self.patch_lons[-1], comment="Longitude of the last data entry"))
             self.header.add_card(fits.Card(keyword="MIN_LAT", value=self.patch_lats[0], comment="Latitude of the first data entry"))
@@ -554,13 +558,13 @@ class state:
                 if indices_deleted[k] == i:
                     i = related_indices[k]
                     break
-            num = 0
-            for ind in indices_deleted:
-                if ind < i:
-                    num += 1
-            i -= num
+            #num = 0
+            #for ind in indices_deleted:
+            #    if ind < i:
+            #        num += 1
+            #i -= num
         return i
-        
+
     def get_nx_ny(self):
         return self.nx, self.ny
 
@@ -598,7 +602,7 @@ class state:
             self.hdul.close()
         self.stats.close()
 
-def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, image_params):
+def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, length, image_params):
         print("fix_sampling 1")
         min_y = int(np.nanmin(y_pix))
         max_y = int(np.nanmax(y_pix))
@@ -609,6 +613,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         num_removed = 0
         east_limb_pixs = np.ones(max_y - min_y + 1, dtype=int)*int(np.nanmax(x_pix))
         west_limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
+        new_entries = []
+        removed_entries = []
         for i in range(len(x_pix) -1, -1, -1):
             if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
                 x, y = int(x_pix[i]), int(y_pix[i])
@@ -619,7 +625,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
 
                 ind = pix_dict[x][y]
                 if ind < 0:
-                    pix_dict[x][y] = i + start_index
+                    pix_dict[x][y] = i + length
+                    new_entries.append((x, y))
                 else:
                     if DEBUG:
                         indices_to_delete.append(i + start_index)
@@ -630,7 +637,14 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     del ys_arcsec[i]
                     del lons[i]
                     del lats[i]
+                    for (x, y) in new_entries:
+                        pix_dict[x][y] -= 1
+                    if DEBUG:
+                        for i in range(len(related_indices)):
+                            related_indices[i] -= 1
                     num_removed += 1
+        
+        new_entries.clear()
         print("fix_sampling 2")
         #x_pix = np.delete(x_pix, indices_to_delete)
         #y_pix = np.delete(y_pix, indices_to_delete)
@@ -639,7 +653,6 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         #lons = np.delete(lons, indices_to_delete)
         #lats = np.delete(lats, indices_to_delete)
         print("Number of pixels removed", num_removed)
-        split_point = len(x_pix)
         
         added_x_pix = [-1.]*added_pix_list_size
         added_y_pix = [-1]*added_pix_list_size
@@ -655,7 +668,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                         added_y_pix.extend([-1]*added_pix_list_size)
                     added_x_pix[i] = x
                     added_y_pix[i] = y
-                    pix_dict[x][y] = 0
+                    pix_dict[x][y] = length + len(x_pix) + i
                     i += 1
         print("fix_sampling 4")
                     
@@ -704,8 +717,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(xs_arcsec) == len(ys_arcsec))
         print("fix_sampling 6")
         take_snapshot("fix_sampling")
-        return split_point, (indices_to_delete, related_indices)
-    
+        return (indices_to_delete, related_indices)
+
 
 class track:
 
@@ -788,16 +801,24 @@ class track:
         pix_dict = (np.ones((nx, ny), dtype=int)*-1).tolist()
         chunk_size = int(len(xs_arcsec_all_last)/num_chunks)
         
-        xys_all = self.state.get_xys()
-        xs_arcsec_head, xs_arcsec_tail = np.array([]), np.array([])
-        ys_arcsec_head, ys_arcsec_tail = np.array([]), np.array([])
+        xys = self.state.get_xys()
+        #xs_arcsec_head, xs_arcsec_tail = np.array([]), np.array([])
+        #ys_arcsec_head, ys_arcsec_tail = np.array([]), np.array([])
+        
+        xs_arcsec_all = np.array([])
+        ys_arcsec_all = np.array([])
        
         
         if DEBUG:
-            x_pix_head, x_pix_tail = np.array([]), np.array([])
-            y_pix_head, y_pix_tail = np.array([]), np.array([])
-            lons_head, lons_tail = np.array([]), np.array([])
-            lats_head, lats_tail = np.array([]), np.array([])
+            #x_pix_head, x_pix_tail = np.array([]), np.array([])
+            #y_pix_head, y_pix_tail = np.array([]), np.array([])
+            #lons_head, lons_tail = np.array([]), np.array([])
+            #lats_head, lats_tail = np.array([]), np.array([])
+            
+            x_pix_all = np.array([])
+            y_pix_all = np.array([])
+            lons_all = np.array([])
+            lats_all = np.array([])
         
         dbg_info_all = ([], [])
         
@@ -810,7 +831,6 @@ class track:
             xs_arcsec, ys_arcsec = xs_arcsec_all_last[:end_index], ys_arcsec_all_last[:end_index]
             xs_arcsec_all_last = xs_arcsec_all_last[end_index:]
             ys_arcsec_all_last = ys_arcsec_all_last[end_index:]
-            xys = xys_all#[start_index:end_index]
             
             if FLOAT32:
                 xs_arcsec = xs_arcsec.astype(float)
@@ -850,8 +870,8 @@ class track:
             lons = lons.tolist()
             lats = lats.tolist()                                                            
                                                                         
-            split_point, dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
-                  xys, self.state.get_sdo_lon(), observer_i, pix_dict, start_index,
+            dbg_info = fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, 
+                  xys, self.state.get_sdo_lon(), observer_i, pix_dict, start_index, len(xs_arcsec_all),
                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
             
             lons = np.asarray(lons)
@@ -859,27 +879,36 @@ class track:
             x_pix = np.asarray(x_pix)
             y_pix = np.asarray(y_pix)
                         
-            self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2())
+            self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2() + "_" + str(chunk_index))
 
-            xs_arcsec_head = np.append(xs_arcsec_head, xs_arcsec[:split_point])
-            xs_arcsec_tail = np.append(xs_arcsec_tail, xs_arcsec[split_point:])
+            xs_arcsec_all = np.append(xs_arcsec_all, xs_arcsec)
+            ys_arcsec_all = np.append(ys_arcsec_all, ys_arcsec)
+
+            #xs_arcsec_head = np.append(xs_arcsec_head, xs_arcsec[:split_point])
+            #xs_arcsec_tail = np.append(xs_arcsec_tail, xs_arcsec[split_point:])
             xs_arcsec.clear()
-            ys_arcsec_head = np.append(ys_arcsec_head, ys_arcsec[:split_point])
-            ys_arcsec_tail = np.append(ys_arcsec_tail, ys_arcsec[split_point:])
+            #ys_arcsec_head = np.append(ys_arcsec_head, ys_arcsec[:split_point])
+            #ys_arcsec_tail = np.append(ys_arcsec_tail, ys_arcsec[split_point:])
             ys_arcsec.clear()
             
             if DEBUG:
                 dbg_info_all[0].extend(dbg_info[0])
                 dbg_info_all[1].extend(dbg_info[1])
+                
+                x_pix_all = np.append(x_pix_all, x_pix)
+                y_pix_all = np.append(y_pix_all, y_pix)
+                
+                lons_all = np.append(lons_all, lons)
+                lats_all = np.append(lats_all, lats)
             
-                x_pix_head = np.append(x_pix_head, x_pix[:split_point])
-                x_pix_tail = np.append(x_pix_tail, x_pix[split_point:])
-                y_pix_head = np.append(y_pix_head, y_pix[:split_point])
-                y_pix_tail = np.append(y_pix_tail, y_pix[split_point:])
-                lons_head = np.append(lons_head, lons[:split_point])
-                lons_tail = np.append(lons_tail, lons[split_point:])
-                lats_head = np.append(lats_head, lats[:split_point])
-                lats_tail = np.append(lats_tail, lats[split_point:])
+                #x_pix_head = np.append(x_pix_head, x_pix[:split_point])
+                #x_pix_tail = np.append(x_pix_tail, x_pix[split_point:])
+                #y_pix_head = np.append(y_pix_head, y_pix[:split_point])
+                #y_pix_tail = np.append(y_pix_tail, y_pix[split_point:])
+                #lons_head = np.append(lons_head, lons[:split_point])
+                #lons_tail = np.append(lons_tail, lons[split_point:])
+                #lats_head = np.append(lats_head, lats[:split_point])
+                #lats_tail = np.append(lats_tail, lats[split_point:])
     
             print("process_frame 8", chunk_index)
 
@@ -888,27 +917,27 @@ class track:
             sys.stdout.flush()
         take_snapshot("process_frame 1")
         
-        xs_arcsec = np.concatenate([xs_arcsec_head, xs_arcsec_tail])
-        del xs_arcsec_head
-        del xs_arcsec_tail
-        ys_arcsec = np.concatenate([ys_arcsec_head, ys_arcsec_tail])
-        del ys_arcsec_head
-        del ys_arcsec_tail
-        self.state.frame_processed(xs_arcsec, ys_arcsec, observer_i, dbg_info_all)
+        #xs_arcsec = np.concatenate([xs_arcsec_head, xs_arcsec_tail])
+        #del xs_arcsec_head
+        #del xs_arcsec_tail
+        #ys_arcsec = np.concatenate([ys_arcsec_head, ys_arcsec_tail])
+        #del ys_arcsec_head
+        #del ys_arcsec_tail
+        self.state.frame_processed(xs_arcsec_all, ys_arcsec_all, observer_i, dbg_info_all)
 
-        if DEBUG:
-            x_pix = np.concatenate([x_pix_head, x_pix_tail])
-            del x_pix_head
-            del x_pix_tail
-            y_pix = np.concatenate([y_pix_head, y_pix_tail])
-            del y_pix_head
-            del y_pix_tail
-            lons = np.concatenate([lons_head, lons_tail])
-            del lons_head
-            del lons_tail
-            lats = np.concatenate([lats_head, lats_tail])
-            del lats_head
-            del lats_tail
+        #if DEBUG:
+        #    x_pix = np.concatenate([x_pix_head, x_pix_tail])
+        #    del x_pix_head
+        #    del x_pix_tail
+        #    y_pix = np.concatenate([y_pix_head, y_pix_tail])
+        #    del y_pix_head
+        #    del y_pix_tail
+        #    lons = np.concatenate([lons_head, lons_tail])
+        #    del lons_head
+        #    del lons_tail
+        #    lats = np.concatenate([lats_head, lats_tail])
+        #    del lats_head
+        #    del lats_tail
 
         #######################
         if DEBUG:
@@ -921,10 +950,10 @@ class track:
                 if l1 >= 0:
                     j = int(xys[l, 1])
                     k = int(xys[l, 0])
-                    if np.isnan(y_pix[l1]) or np.isnan(x_pix[l1]):
+                    if np.isnan(y_pix_all[l1]) or np.isnan(x_pix_all[l1]):
                         data_for_plot[j, k] = np.nan
                     else:
-                        data_for_plot[j, k] = data[int(y_pix[l1]), int(x_pix[l1])]
+                        data_for_plot[j, k] = data[int(y_pix_all[l1]), int(x_pix_all[l1])]
 
         print("process_frame 9")
         if DEBUG:
@@ -937,7 +966,7 @@ class track:
         take_snapshot("process_frame 2")
         sys.stdout.flush()
         if DEBUG:
-            return lons, lats, x_pix, y_pix, data
+            return lons_all, lats_all, x_pix_all, y_pix_all, data
 
     '''
     def process_frame(self):

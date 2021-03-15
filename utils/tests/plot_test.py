@@ -3,6 +3,7 @@ sys.path.append('..')
 import plot
 import matplotlib.pyplot as plt
 import unittest
+import numpy as np
 
 
 class test_plot(unittest.TestCase):
@@ -21,6 +22,18 @@ class test_plot(unittest.TestCase):
         #    image = image[:, :, 0]
         myplot.colormap(image)#, vmin=min_val, vmax=max_val)
         myplot.save("colormap.png")
+        myplot.close()
+
+        data = np.empty((100, 100))
+        val = 0
+        for y in range(100):
+            for x in range(100):
+                data[y, x] = val
+            val += 1
+
+        myplot = plot.plot()
+        myplot.colormap(data)#, vmin=min_val, vmax=max_val)
+        myplot.save("colormap2.png")
         myplot.close()
         
 if __name__ == '__main__':
