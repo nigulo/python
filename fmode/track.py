@@ -33,6 +33,7 @@ B = -2.396
 C = -1.787
 
 DEBUG = True
+DEBUG2 = False
 FLOAT32 = False
 
 radius_km = 695700
@@ -212,10 +213,10 @@ class stats:
                 filtered_data = filtered_data[np.logical_not(np.isnan(filtered_data))]
                 
                 self.data[i, j] += collect_stats_1(filtered_data)
-                if DEBUG:
+                if DEBUG2:
                     color = "rb"[(i % 2 + j % 2) % 2]
                     test_plot.plot(x_pix2, -y_pix2 + int(np.sqrt(len(lons))), params=f"{color}.")
-        if DEBUG:
+        if DEBUG2:
             test_plot.save(f"patches_{plot_file}.png")
             test_plot.close()
         self.num_frames += 1
@@ -568,10 +569,10 @@ class state:
         return self.xys
 
     def transform_index(self, i):
-        for indices_deleted, related_indices in self.dbg_stack:
-            for k in range(len(indices_deleted)):
-                if indices_deleted[k] == i:
-                    i = related_indices[k]
+        for old_indices, new_indices in self.dbg_stack:
+            for k in range(len(old_indices)):
+                if old_indices[k] == i:
+                    i = new_indices[k]
                     break
             #num = 0
             #for ind in indices_deleted:
@@ -623,8 +624,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         max_y = int(np.nanmax(y_pix))
         xys = xys[(xys[:, 1] >= min_y) * (xys[:, 1] <= max_y)]
         print("fix_sampling 1", min_y, max_y)
-        indices_to_delete = []
-        related_indices = []
+        old_indices = []
+        new_indices = []
         num_removed = 0
         east_limb_pixs = np.ones(max_y - min_y + 1, dtype=int)*int(np.nanmax(x_pix))
         west_limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
@@ -639,13 +640,14 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     west_limb_pixs[y - min_y] = x
 
                 ind = pix_dict[x][y]
+                if DEBUG:
+                    old_indices.append(i + start_index)
                 if ind < 0:
                     pix_dict[x][y] = i + length
                     new_entries.append((x, y))
-                else:
                     if DEBUG:
-                        indices_to_delete.append(i + start_index)
-                        related_indices.append(ind)
+                        new_indices.append(i + length)                        
+                else:
                     del x_pix[i]
                     del y_pix[i]
                     del xs_arcsec[i]
@@ -655,8 +657,10 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     for (x, y) in new_entries:
                         pix_dict[x][y] -= 1
                     if DEBUG:
-                        for i in range(len(related_indices)):
-                            related_indices[i] -= 1
+                        new_indices.append(ind)
+                        for i in range(len(new_indices)):
+                            if new_indices[i] > i:
+                                new_indices[i] -= 1
                     num_removed += 1
         
         new_entries.clear()
@@ -732,7 +736,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(xs_arcsec) == len(ys_arcsec))
         print("fix_sampling 6")
         take_snapshot("fix_sampling")
-        return (indices_to_delete, related_indices)
+        return (old_indices, new_indices)
 
 
 class track:

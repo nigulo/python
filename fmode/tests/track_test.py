@@ -51,7 +51,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-'''
+
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -91,7 +91,7 @@ class test_track(unittest.TestCase):
                 test_plot.save(f"track{i}.png")
                 test_plot.close()
                 i += 1
-'''
+
             
 
 '''
@@ -310,6 +310,7 @@ class test_stats(unittest.TestCase):
         hdul2.close()
 '''
 
+'''
 class test_collect_stats(unittest.TestCase):
     
     def test(self):
@@ -358,6 +359,7 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(rms_std, expected_rms_std)
         np.testing.assert_almost_equal(rms_skew, expected_rms_skew)
         np.testing.assert_almost_equal(rms_kurt, expected_rms_kurt)
+'''
 
 '''
 class test_compare_to_old(unittest.TestCase):
