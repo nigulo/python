@@ -655,6 +655,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                         added_y_pix.extend([-1]*added_pix_list_size)
                     added_x_pix[i] = x
                     added_y_pix[i] = y
+                    pix_dict[x][y] = 0
                     i += 1
         print("fix_sampling 4")
                     
@@ -809,7 +810,7 @@ class track:
             xs_arcsec, ys_arcsec = xs_arcsec_all_last[:end_index], ys_arcsec_all_last[:end_index]
             xs_arcsec_all_last = xs_arcsec_all_last[end_index:]
             ys_arcsec_all_last = ys_arcsec_all_last[end_index:]
-            xys = xys_all[start_index:end_index]
+            xys = xys_all#[start_index:end_index]
             
             if FLOAT32:
                 xs_arcsec = xs_arcsec.astype(float)
