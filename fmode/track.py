@@ -659,7 +659,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     if DEBUG:
                         new_indices.append(ind)
                         for j in range(len(new_indices)):
-                            if new_indices[j] > i:
+                            if new_indices[j] > i + length:
                                 new_indices[j] -= 1
                     num_removed += 1
         
