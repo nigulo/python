@@ -176,7 +176,7 @@ class stats:
         self.tracked_times = set()
         for entry in self.storage:
             self.tracked_times.add(entry.header["START_T"])
-        self.data = np.zeros((self.num_patches, self.num_patches, 7))
+        self.data = np.zeros((self.num_patches, self.num_patches, 9))
 
     def get_data_for_header(self):
         return self.patch_size, self.num_patches, self.patch_lons[0], self.patch_lons[-1], self.patch_lats[0], self.patch_lats[-1]
@@ -251,7 +251,7 @@ class stats:
                 self.tracked_times.add(hdu.header["START_T"])
                 self.storage.append(hdu)
                 self.storage.flush()
-        self.data = np.zeros((self.num_patches, self.num_patches, 7))
+        self.data = np.zeros((self.num_patches, self.num_patches, 9))
         self.header = None
         self.num_frames = 0
         
