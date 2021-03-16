@@ -1144,7 +1144,7 @@ if (__name__ == '__main__'):
 
         year, month, day, hrs, mins, secs = parse_t_rec(start_time)
         start_time = datetime(int(year), int(month), int(day), int(hrs), int(mins), int(secs))
-        start_time = start_time + timedelta(hours=step)
+        #start_time = start_time + timedelta(hours=step)
         start_times.append(start_time)
 
     if len(start_times) > 0:        
