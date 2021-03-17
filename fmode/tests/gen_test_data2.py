@@ -27,11 +27,11 @@ for file_date in ["2013-02-03", "2013-02-04"]:
     hdul = fits.open(f"{file_date}_hmi.M_720s.fits")
     
     try:
-        os.remove(f"{file_date}.fits")
+        os.remove(f"{file_date}_2.fits")
     except:
         pass
     
-    output = fits.open(f"{file_date}.fits", mode="append")
+    output = fits.open(f"{file_date}_2.fits", mode="append")
     hdu = fits.ImageHDU(data=None, header=None)
     output.append(hdu)
     

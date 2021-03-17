@@ -51,7 +51,7 @@ class stats(track.stats):
     def set_obs_times_expected(self, obs_times_expected):
         self.obs_times_expected = obs_times_expected
         
-
+'''
 class test_track(unittest.TestCase):
     
     def test(self):
@@ -91,7 +91,7 @@ class test_track(unittest.TestCase):
                 test_plot.save(f"track{i}.png")
                 test_plot.close()
                 i += 1
-
+'''
             
 
 '''
@@ -361,7 +361,7 @@ class test_collect_stats(unittest.TestCase):
         np.testing.assert_almost_equal(rms_kurt, expected_rms_kurt)
 '''
 
-'''
+
 class test_compare_to_old(unittest.TestCase):
 
     def test(self):
@@ -373,7 +373,7 @@ class test_compare_to_old(unittest.TestCase):
             pass
         
         import track_old
-        tr = track_old.track(".", ".", ["2013-02-03.fits"], num_hrs=8, step=9, num_patches=num_patches, 
+        tr = track_old.track(".", ".", ["2013-02-03_2.fits"], num_hrs=8, step=9, num_patches=num_patches, 
                          patch_size=patch_size, stats_file_mode="day", random_start_time=False)
 
         tr.track()
@@ -401,7 +401,7 @@ class test_compare_to_old(unittest.TestCase):
         os.remove("2013-02-03_00:00:00.fits")
         
         import track
-        tr = track.track(".", ".", ["2013-02-03.fits"], num_hrs=8, step=9, num_patches=num_patches, 
+        tr = track.track(".", ".", ["2013-02-03_2.fits"], num_hrs=8, step=9, num_patches=num_patches, 
                          patch_size=patch_size, stats_file_mode="day", random_start_time=False)
 
         tr.track()
@@ -448,8 +448,15 @@ class test_compare_to_old(unittest.TestCase):
             test_plot.close()
             
         for i in range(len(data1)):
-            np.testing.assert_array_almost_equal(data1[i], data2[i])
-'''
+            d1 = data1[i][20:-20, 20:-20, :8]
+            d2 = data2[i][20:-20, 20:-20, :8]
+            np.testing.assert_array_almost_equal(d1, d2)
+            #for j in range(d1.shape[0]):
+            #    for k in range(d1.shape[1]):
+            #        if j > 5 or k > 20:
+            #            print(j, k)
+            #            np.testing.assert_array_almost_equal(d1[j, k, :8], d2[j, k, :8])
+
         
         
 if __name__ == '__main__':

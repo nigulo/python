@@ -32,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
 DEBUG2 = False
 FLOAT32 = False
 
@@ -1013,7 +1013,7 @@ class track:
                 create_new_stats = False
                 date = self.state.get_start_time_str2()
                 stats_date = self.state.get_stats().get_date()
-                print("track date, stats_date", date, stats_date)
+                print("track: date, stats_date", date, stats_date)
                 if self.stats_file_mode == "burst":
                     if date > stats_date:
                         create_new_stats = True
