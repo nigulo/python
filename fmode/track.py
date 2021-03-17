@@ -82,7 +82,7 @@ def get_random_start_time(step):
     m = np.random.randint(1, 13)
     _, num_days = monthrange(y, m)
     d = np.random.randint(1, num_days+1)
-    h = np.random.randint(0, 24//step)
+    h = np.random.randint(0, 24//int(step))
     h *= step
     return datetime(y, m, d, h, 0, 0)
 
