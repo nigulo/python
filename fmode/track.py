@@ -77,12 +77,13 @@ def take_snapshot(title="main"):
             f.write(f"{t} {title}: Total: {total} {unit}\n")
             f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
-def get_random_start_time():
+def get_random_start_time(step):
     y = np.random.randint(2010, 2021)
     m = np.random.randint(1, 13)
     _, num_days = monthrange(y, m)
     d = np.random.randint(1, num_days+1)
-    h = np.random.randint(0, 24)
+    h = np.random.randint(0, 24//step)
+    h *= step
     return datetime(y, m, d, h, 0, 0)
 
     
@@ -594,7 +595,7 @@ class state:
     def end_tracking(self):
         self.observer = None
         if self.random_start_time:
-            self.start_time = get_random_start_time()
+            self.start_time = get_random_start_time(self.step)
         elif len(self.start_times) > 0:
             self.start_time = self.start_times[0]
             self.start_times = self.start_times[1:]
@@ -1094,9 +1095,10 @@ if (__name__ == '__main__'):
     if len(argv) > i:
         random_start_time = bool(int(argv[i]))
     print("Commit SHA", commit_sha)
+    assert(step <= 24)
     
     if random_start_time:
-        start_time = str(get_random_start_time())
+        start_time = str(get_random_start_time(step))
         print("Overriding start_time with", start_time)
     start_times = []
     if len(start_time) < 4:        
