@@ -32,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 DEBUG2 = False
 FLOAT32 = False
 
@@ -630,11 +630,12 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         num_removed = 0
         east_limb_pixs = np.ones(max_y - min_y + 1, dtype=int)*int(np.nanmax(x_pix))
         west_limb_pixs = np.zeros(max_y - min_y + 1, dtype=int)
-        new_entries = []
+        #new_entries = []
         removed_entries = []
-        for i in range(len(x_pix) -1, -1, -1):
-            if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
-                x, y = int(x_pix[i]), int(y_pix[i])
+        j = 0
+        for i in range(len(x_pix)):#range(len(x_pix) -1, -1, -1):
+            if not np.isnan(x_pix[j]) and not np.isnan(y_pix[j]):
+                x, y = int(x_pix[j]), int(y_pix[j])
                 if east_limb_pixs[y - min_y] > x:
                     east_limb_pixs[y - min_y] = x
                 if west_limb_pixs[y - min_y] < x:
@@ -644,27 +645,29 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                 if DEBUG:
                     old_indices.append(i + start_index)
                 if ind < 0:
-                    pix_dict[x][y] = i + length
-                    new_entries.append((x, y))
+                    pix_dict[x][y] = j + length
+                    #new_entries.append((x, y))
                     if DEBUG:
-                        new_indices.append(i + length)                        
+                        new_indices.append(j + length)
+                    j += 1                        
                 else:
-                    del x_pix[i]
-                    del y_pix[i]
-                    del xs_arcsec[i]
-                    del ys_arcsec[i]
-                    del lons[i]
-                    del lats[i]
-                    for (x, y) in new_entries:
-                        pix_dict[x][y] -= 1
+                    del x_pix[j]
+                    del y_pix[j]
+                    del xs_arcsec[j]
+                    del ys_arcsec[j]
+                    del lons[j]
+                    del lats[j]
+                    #for (x, y) in new_entries:
+                    #    pix_dict[x][y] -= 1
                     if DEBUG:
                         new_indices.append(ind)
-                        for j in range(len(new_indices)):
-                            if new_indices[j] > i + length:
-                                new_indices[j] -= 1
+                        #for j in range(len(new_indices)):
+                        #    if new_indices[j] > i + length:
+                        #        new_indices[j] -= 1
                     num_removed += 1
-        
-        new_entries.clear()
+            else:
+                j += 1
+        #new_entries.clear()
         print("fix_sampling 2")
         #x_pix = np.delete(x_pix, indices_to_delete)
         #y_pix = np.delete(y_pix, indices_to_delete)
