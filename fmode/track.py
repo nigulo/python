@@ -32,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = False
+DEBUG = True
 DEBUG2 = False
 
 radius_km = 695700
