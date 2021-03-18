@@ -32,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
 DEBUG2 = False
 
 radius_km = 695700
@@ -191,7 +191,7 @@ class stats:
         assert(self.header is None)
         self.header = header
         
-    def process_frame(self, lons, lats, x_pix, y_pix, data, obs_time, plot_file=None):
+    def process_chunk(self, lons, lats, x_pix, y_pix, data, obs_time, plot_file=None):
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(1000, 1000))
         for i in range(len(self.patch_lons)):
@@ -219,6 +219,8 @@ class stats:
         if DEBUG2:
             test_plot.save(f"patches_{plot_file}.png")
             test_plot.close()
+
+    def frame_processed(self):
         self.num_frames += 1
 
     def save(self):
@@ -892,7 +894,7 @@ class track:
             xs_arcsec = xs_arcsec[fltr]
             ys_arcsec = ys_arcsec[fltr]            
                         
-            self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2() + "_" + str(chunk_index))
+            self.state.get_stats().process_chunk(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2() + "_" + str(chunk_index))
 
             xs_arcsec_all = np.append(xs_arcsec_all, xs_arcsec)
             ys_arcsec_all = np.append(ys_arcsec_all, ys_arcsec)
@@ -928,6 +930,8 @@ class track:
             start_index += chunk_size
         
             sys.stdout.flush()
+        
+        self.state.get_stats().frame_processed()
         take_snapshot("process_frame 1")
         
         #xs_arcsec = np.concatenate([xs_arcsec_head, xs_arcsec_tail])
