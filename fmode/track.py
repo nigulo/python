@@ -227,7 +227,7 @@ class stats:
         if self.header is not None:
             self.header.add_card(fits.Card(keyword="N_FRAMES", value=self.num_frames, comment="Number of frames processed"))
             self.header.add_card(fits.Card(keyword="PATCH_SZ", value=self.patch_size, comment="Patch size in degrees"))
-            self.header.add_card(fits.Card(keyword="DATADIM", value=f"8,{self.num_patches},{self.num_patches}", comment="Dimensionality of the data"))
+            self.header.add_card(fits.Card(keyword="DATADIM", value=f"12,{self.num_patches},{self.num_patches}", comment="Dimensionality of the data"))
             self.header.add_card(fits.Card(keyword="DATADIM1", value=f"stats_index", comment="First dimension is index over statistics"))
             self.header.add_card(fits.Card(keyword="DATADIM2", value=f"lon_index", comment="Second dimension is index over longitudes"))
             self.header.add_card(fits.Card(keyword="DATADIM3", value=f"lat_index", comment="Third dimension is index over longitudes"))
