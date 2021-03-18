@@ -170,6 +170,21 @@ for file_date in ["2013-02-03", "2013-02-04"]:
                                                                   (dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y))
 
             start_index += chunk_size
+
+            lons = np.asarray(lons)
+            lats = np.asarray(lats)
+            x_pix = np.asarray(x_pix)
+            y_pix = np.asarray(y_pix)
+            xs = np.asarray(xs)
+            ys = np.asarray(ys)
+            
+            fltr = np.logical_not(np.isnan(x_pix)) * (x_pix >= 0)
+            x_pix = x_pix[fltr]
+            y_pix = y_pix[fltr]
+            lons = lons[fltr]
+            lats = lats[fltr]
+            xs = xs[fltr]
+            ys = ys[fltr]            
             
             xs_all = np.append(xs_all, xs)
             ys_all = np.append(ys_all, ys)
