@@ -24,6 +24,8 @@ PROFILE = False
 num_chunks = 20
 added_pix_list_size = 10000*num_chunks//20
 
+inf = float("inf")
+
 if PROFILE:
     import tracemalloc
     import gc
@@ -34,7 +36,6 @@ C = -1.787
 
 DEBUG = True
 DEBUG2 = False
-FLOAT32 = False
 
 radius_km = 695700
 
@@ -347,12 +348,8 @@ class state:
         self.ny = self.metadata['NAXIS2']
         
         self.xs = np.arange(1, self.nx + 1)
-        self.ys = np.arange(1, self.ny + 1).astype(np.float32)
-        
-        if FLOAT32:
-            self.xs = self.xs.astype(np.float32)
-            self.ys = self.ys.astype(np.float32)
-        
+        self.ys = np.arange(1, self.ny + 1)
+                
    
     def get_num_frames_per_day(self):
         return self.num_frames_per_day
@@ -634,8 +631,9 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         removed_entries = []
         j = 0
         for i in range(len(x_pix)):#range(len(x_pix) -1, -1, -1):
-            if not np.isnan(x_pix[j]) and not np.isnan(y_pix[j]):
-                x, y = int(x_pix[j]), int(y_pix[j])
+            assert(i == j + num_removed)
+            if not np.isnan(x_pix[i]) and not np.isnan(y_pix[i]):
+                x, y = int(x_pix[i]), int(y_pix[i])
                 if east_limb_pixs[y - min_y] > x:
                     east_limb_pixs[y - min_y] = x
                 if west_limb_pixs[y - min_y] < x:
@@ -651,12 +649,13 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                         new_indices.append(j + length)
                     j += 1                        
                 else:
-                    del x_pix[j]
-                    del y_pix[j]
-                    del xs_arcsec[j]
-                    del ys_arcsec[j]
-                    del lons[j]
-                    del lats[j]
+                    x_pix[i] = -1
+                    #del x_pix[j]
+                    #del y_pix[j]
+                    #del xs_arcsec[j]
+                    #del ys_arcsec[j]
+                    #del lons[j]
+                    #del lats[j]
                     #for (x, y) in new_entries:
                     #    pix_dict[x][y] -= 1
                     if DEBUG:
@@ -667,6 +666,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     num_removed += 1
             else:
                 j += 1
+        l = len(x_pix) - num_removed
         #new_entries.clear()
         print("fix_sampling 2")
         #x_pix = np.delete(x_pix, indices_to_delete)
@@ -691,7 +691,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                         added_y_pix.extend([-1]*added_pix_list_size)
                     added_x_pix[i] = x
                     added_y_pix[i] = y
-                    pix_dict[x][y] = length + len(x_pix) + i
+                    pix_dict[x][y] = length + l + i
                     i += 1
         print("fix_sampling 4")
                     
@@ -712,20 +712,13 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         #xs_arcsec = np.append(xs_arcsec, added_xs_arcsec)
         #ys_arcsec = np.append(ys_arcsec, added_ys_arcsec)
 
-        if FLOAT32:
-            added_xs_arcsec = added_xs_arcsec.astype(float)
-            added_ys_arcsec = added_ys_arcsec.astype(float)
         added_xs_arcsec, added_ys_arcsec = added_xs_arcsec*u.arcsec, added_ys_arcsec*u.arcsec
                 
         c1 = SkyCoord(added_xs_arcsec, added_ys_arcsec, frame=frames.Helioprojective, observer=observer)
         c2 = c1.transform_to(frames.HeliographicCarrington)
         added_lons = c2.lon.value - sdo_lon
         added_lats = c2.lat.value
-        
-        if FLOAT32:
-            added_lons = added_lons.astype(np.float32)
-            added_lats = added_lats.astype(np.float32)
-    
+            
         print("fix_sampling 5")
         
         lons.extend(added_lons.tolist())
@@ -855,30 +848,19 @@ class track:
             xs_arcsec_all_last = xs_arcsec_all_last[end_index:]
             ys_arcsec_all_last = ys_arcsec_all_last[end_index:]
             
-            if FLOAT32:
-                xs_arcsec = xs_arcsec.astype(float)
-                ys_arcsec = ys_arcsec.astype(float)
             c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
             print("process_frame 5", chunk_index)
             lons = c2.lon.value - self.state.get_sdo_lon()
             lats = c2.lat.value
-            
-            if FLOAT32:
-                lons = lons.astype(np.float32)
-                lats = lats.astype(np.float32)
-            
+                        
             #c3 = [SkyCoord(c2.lon[i], c2.lat[i], frame=frames.Helioprojective, observer=observer_i) for i in range(len(c2.lon))]
             c3 = SkyCoord(c2.lon, c2.lat, frame=frames.HeliographicCarrington, observer=observer_i, obstime=obs_time)
             c4 = c3.transform_to(frames.Helioprojective)
             
             xs_arcsec = c4.Tx.value
             ys_arcsec = c4.Ty.value
-            
-            if FLOAT32:
-                xs_arcsec = xs_arcsec.astype(np.float32)
-                ys_arcsec = ys_arcsec.astype(np.float32)
-            
+                        
             print("process_frame 6", chunk_index)
             
             x_pix, y_pix = image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
@@ -901,6 +883,16 @@ class track:
             lats = np.asarray(lats)
             x_pix = np.asarray(x_pix)
             y_pix = np.asarray(y_pix)
+            xs_arcsec = np.asarray(xs_arcsec)
+            ys_arcsec = np.asarray(ys_arcsec)
+            
+            fltr = (x_pix >= 0)
+            x_pix = x_pix[fltr]
+            y_pix = y_pix[fltr]
+            lons = lons[fltr]
+            lats = lats[fltr]
+            xs_arcsec = xs_arcsec[fltr]
+            ys_arcsec = ys_arcsec[fltr]            
                         
             self.state.get_stats().process_frame(lons, lats, x_pix, y_pix, data, obs_time=self.state.get_obs_time(), plot_file=self.state.get_obs_time_str2() + "_" + str(chunk_index))
 
@@ -909,10 +901,10 @@ class track:
 
             #xs_arcsec_head = np.append(xs_arcsec_head, xs_arcsec[:split_point])
             #xs_arcsec_tail = np.append(xs_arcsec_tail, xs_arcsec[split_point:])
-            xs_arcsec.clear()
+            #xs_arcsec.clear()
             #ys_arcsec_head = np.append(ys_arcsec_head, ys_arcsec[:split_point])
             #ys_arcsec_tail = np.append(ys_arcsec_tail, ys_arcsec[split_point:])
-            ys_arcsec.clear()
+            #ys_arcsec.clear()
             
             if DEBUG:
                 dbg_info_all[0].extend(dbg_info[0])
