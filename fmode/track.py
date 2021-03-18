@@ -24,8 +24,6 @@ PROFILE = False
 num_chunks = 20
 added_pix_list_size = 10000*num_chunks//20
 
-inf = float("inf")
-
 if PROFILE:
     import tracemalloc
     import gc
@@ -34,7 +32,7 @@ A = 14.713
 B = -2.396
 C = -1.787
 
-DEBUG = True
+DEBUG = False
 DEBUG2 = False
 
 radius_km = 695700
@@ -665,7 +663,7 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                         #        new_indices[j] -= 1
                     num_removed += 1
             else:
-                j += 1
+                num_removed += 1
         l = len(x_pix) - num_removed
         #new_entries.clear()
         print("fix_sampling 2")
@@ -886,7 +884,7 @@ class track:
             xs_arcsec = np.asarray(xs_arcsec)
             ys_arcsec = np.asarray(ys_arcsec)
             
-            fltr = (x_pix >= 0)
+            fltr = np.logical_not(np.isnan(x_pix)) * (x_pix >= 0)
             x_pix = x_pix[fltr]
             y_pix = y_pix[fltr]
             lons = lons[fltr]
