@@ -19,7 +19,7 @@ from sunpy.coordinates import frames
 import track
 import misc
 
-downsample_coef = .1
+downsample_coef = .5
 num_chunks = 1
 
 for file_date in ["2013-02-03", "2013-02-04"]:
@@ -66,7 +66,8 @@ for file_date in ["2013-02-03", "2013-02-04"]:
     fltr = np.isnan(data)
     data[fltr] = max_val
 
-    data = misc.sample_image(data, downsample_coef)
+    if downsample_coef < 1:
+        data = misc.sample_image(data, downsample_coef)
     fltr = data > .9*max_val
     data[fltr] = np.nan
     
