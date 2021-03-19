@@ -76,13 +76,14 @@ def take_snapshot(title="main"):
             f.write(f"{t} {title}: Total: {total} {unit}\n")
             f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
-def get_random_start_time():
+def get_random_start_time(step):
     while True:
         y = np.random.randint(2010, datetime.now().year+1)
         m = np.random.randint(1, 13)
         _, num_days = monthrange(y, m)
         d = np.random.randint(1, num_days+1)
-        h = np.random.randint(0, 24)
+        h = np.random.randint(0, 24//int(step))
+        h *= int(step)
         if (datetime(y, m, d, h, 0, 0)<datetime.now() and datetime(y, m, d, h, 0, 0)>datetime(2010,5,1,0,0,0)):
             break
     return datetime(y, m, d, h, 0, 0)
