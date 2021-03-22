@@ -108,10 +108,11 @@ if (__name__ == '__main__'):
     min_lat = np.min(data1[:, 1])
     max_lat = np.max(data1[:, 1])
 
-    lons = np.linspace(min_lon, max_lon, 300)
-    lats = np.linspace(min_lat, max_lat, 300)
+    resolution = 300
+    lons = np.linspace(min_lon, max_lon, resolution)
+    lats = np.linspace(min_lat, max_lat, resolution)
     
-    data_for_plot = np.zeros((500, 500))
+    data_for_plot = np.zeros((resolution, resolution))
     for i in range(len(lons) - 1):
         fltr = (data1[:, 0] >= lons[i]) * (data1[:, 0] < lons[i+1])
         data2 = data1[fltr]
@@ -122,10 +123,13 @@ if (__name__ == '__main__'):
                 print(len(data3))
                 data_for_plot[i, j] = data3[0, 2]
     test_plot = plot.plot(nrows=1, ncols=2, size=plot.default_size(data_for_plot.data.shape[1], data_for_plot.data.shape[0]))
-    test_plot.colormap(data_for_plot, 0, cmap_name="bwr", show_colorbar=True)
+    vmax = max(abs(np.min(data_for_plot)), abs(np.max(data_for_plot)))
+    test_plot.colormap(data_for_plot, 0, cmap_name="bwr", show_colorbar=True, vmin=-vmax, vmax=vmax)
     
-    data_for_plot = fits.getdata(input_file2, 1)
-    test_plot.colormap(data_for_plot[0], 1, cmap_name="bwr", show_colorbar=True)
+    data_for_plot = fits.getdata(input_file2, 1)[0]
+    vmax = max(abs(np.min(data_for_plot)), abs(np.max(data_for_plot)))
+    #test_plot.colormap(data_for_plot.T, 1, cmap_name="bwr", show_colorbar=True, vmin=-vmax, vmax=vmax)
+    test_plot.colormap(data_for_plot.T, 1, cmap_name="gnuplot", show_colorbar=True)
 
     test_plot.save(f"patch.png")
     test_plot.close()

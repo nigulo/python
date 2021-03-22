@@ -76,7 +76,9 @@ def take_snapshot(title="main"):
             f.write(f"{t} {title}: Total: {total} {unit}\n")
             f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
-def get_random_start_time(step):
+def get_random_start_time(step,output_path):
+    cnt=0
+    maxattempts=1000000
     while True:
         y = np.random.randint(2010, datetime.now().year+1)
         m = np.random.randint(1, 13)
@@ -84,9 +86,19 @@ def get_random_start_time(step):
         d = np.random.randint(1, num_days+1)
         h = np.random.randint(0, 24//int(step))
         h *= int(step)
-        if (datetime(y, m, d, h, 0, 0)<datetime.now() and datetime(y, m, d, h, 0, 0)>datetime(2010,5,1,0,0,0)):
-            break
-    return datetime(y, m, d, h, 0, 0)
+        date=datetime(y, m, d, h, 0, 0)
+        if (date<datetime.now() and date>datetime(2010,5,1,0,0,0)):
+            cnt+=1
+            #check if file already exists:
+            outfile=stats.get_output_filename(date.strftime('%Y-%m-%d'),output_path)
+            exists=os.path.exists(outfile)
+            if exists==False:
+                break       
+            if cnt>=maxattempts:
+                print(f"Random start time: No new date found after {maxattempts} attempts.")
+                break
+    print(f"Random start time: {date.strftime('%Y-%m-%d_%H:%M:%S')} found after {cnt} attempts.")
+    return date
 
     
 def diff_rot(lat):
@@ -168,7 +180,7 @@ class stats:
     def init(self, date):
         self.date = date
         with FileLock("track.lock"):
-            f = f"{self.output_path}/{date}.fits"
+            f = stats.get_output_filename(self,date)
             if os.path.isfile(f):      
                 print("File exists", f)
                 return
@@ -180,6 +192,11 @@ class stats:
         for entry in self.storage:
             self.tracked_times.add(entry.header["START_T"])
         self.data = np.zeros((self.num_patches, self.num_patches, 9))
+
+    def get_output_filename(output,date):
+        filename=f"{output_path}/{date}.fits"
+        return(filename)
+
 
     def get_data_for_header(self):
         return self.patch_size, self.num_patches, self.patch_lons[0], self.patch_lons[-1], self.patch_lats[0], self.patch_lats[-1]
@@ -595,7 +612,7 @@ class state:
     def end_tracking(self):
         self.observer = None
         if self.random_start_time:
-            self.start_time = get_random_start_time(self.step)
+            self.start_time = get_random_start_time(self.step,self.output_path)
         elif len(self.start_times) > 0:
             self.start_time = self.start_times[0]
             self.start_times = self.start_times[1:]
@@ -1098,7 +1115,7 @@ if (__name__ == '__main__'):
     assert(step <= 24)
     
     if random_start_time:
-        start_time = str(get_random_start_time(step))
+        start_time = str(get_random_start_time(step,output_path))
         print("Overriding start_time with", start_time)
     start_times = []
     if len(start_time) < 4:        
