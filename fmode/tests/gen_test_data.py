@@ -82,8 +82,8 @@ for file_date in ["2013-02-03", "2013-02-04"]:
     
         a = metadata['CROTA2']*np.pi/180
             
-        dx = metadata['CRVAL1']
-        dy = metadata['CRVAL2']
+        dx = metadata['CRVAL1']/downsample_coef
+        dy = metadata['CRVAL2']/downsample_coef
         arcsecs_per_pix_x = metadata['CDELT1']/downsample_coef
         arcsecs_per_pix_y = metadata['CDELT2']/downsample_coef
         coef_x = 1./arcsecs_per_pix_x
