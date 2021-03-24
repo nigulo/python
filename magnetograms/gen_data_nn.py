@@ -38,7 +38,7 @@ from astropy.io import fits
 from scipy.io import readsav
 import scipy.signal as signal
 import pickle
-
+import tables
 
 state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
@@ -331,7 +331,7 @@ u_mesh = np.meshgrid(u1, u2, u3, indexing='ij')
 
 class data_generator():
     
-    def __init__(self, x, ys, sig_var=None, length_scale=None, noise_var=None, approx_type='kiss-gp', u_mesh=None):
+    def __init__(self, x, ys, sig_var=None, length_scale=None, noise_var=None, approx_type='kiss-gp', u_mesh=None, data_array, loglik_array):
         self.x = x
         self.ys = ys
         self.n = len(x)
@@ -356,6 +356,9 @@ class data_generator():
             self.length_scale = length_scale
             self.noise_var = noise_var
             self.init()
+            
+        self.data_array = data_array
+        self.loglik_array = loglik_array
         
     def init(self):    
         gp = cov_div_free.cov_div_free(self.sig_var, self.length_scale, self.noise_var)
@@ -384,8 +387,8 @@ class data_generator():
     def generate(self, train=False):#, best_loglik = sys.float_info.min):
 
         num_data = len(self.ys)
-        ret_data = np.empty((num_data, np.shape(self.ys[0])[0], np.shape(self.ys[0])[1], np.shape(self.ys[0])[2], np.shape(self.ys[0])[3]))
-        ret_loglik = np.empty(num_data)
+        #ret_data = np.empty((num_data, np.shape(self.ys[0])[0], np.shape(self.ys[0])[1], np.shape(self.ys[0])[2], np.shape(self.ys[0])[3]))
+        #ret_loglik = np.empty(num_data)
         
         for i in tqdm(np.arange(num_data)):
             if train:
@@ -418,9 +421,9 @@ class data_generator():
             
             loglik = self.loglik(y)
         
-            ret_data[i] = np.array(y)
-            ret_loglik[i] = loglik
-        return ret_data, ret_loglik
+            self.data_array.append(np.array(y))
+            self.loglik_array.append(loglik)
+        #return ret_data, ret_loglik
     
 
 sig_var=1.
@@ -440,9 +443,16 @@ print("mean, std", np.mean(ys, axis=(0,1,2,3)), np.std(ys, axis=(0,1,2,3)))
 ys -= np.mean(ys, axis = 0)
 ys /= np.std(ys, axis = 0)
 
+output_file = tables.open_file(f"data_nn_out_{length_scale}_{z_scale}.h5", mode='a')
+atom = tables.Float64Atom()
+data_train = output_file.create_earray(output_file.root, 'data_train', atom, (0,) + ys.shape)
+loglik_train = output_file.create_earray(output_file.root, 'loglik_train', atom, (0, 1))
+data_test = output_file.create_earray(output_file.root, 'data_test', atom, (0,) + ys.shape)
+loglik_test = output_file.create_earray(output_file.root, 'loglik_train', atom, (0, 1))
+
 print("Num train patches", len(ys))
-generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
-dat, loglik = generator.generate(train=True)
+generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh, data_train, loglik_train)
+generator.generate(train=True)
 
 
 ys = get_patches(b, phi, theta, num_test, rnd=False)
@@ -450,9 +460,11 @@ ys -= np.mean(ys, axis = 0)
 ys /= np.std(ys, axis = 0)
 
 print("Num test patches", len(ys))
-generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
-dat_test, loglik_test = generator.generate()
+generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh, data_test, loglik_test)
+generator.generate()
 
-np.savez_compressed(f'data_nn_out_{length_scale}_{z_scale}', data_train=dat, loglik_train=loglik, data_test=dat_test, loglik_test=loglik_test)
+output_file.close()
+
+#np.savez_compressed(f'data_nn_out_{length_scale}_{z_scale}', data_train=dat, loglik_train=loglik, data_test=dat_test, loglik_test=loglik_test)
 
 print("Done")
