@@ -448,13 +448,11 @@ atom = tables.Float64Atom()
 suffix = 0
 for node in output_file.walk_nodes(output_file.root):
     node = node._v_name
-    print("node:", node)
     if node[:10] == "data_train":
         suf = int(node[10:])
         print(suf)
         suffix = max(suf, suffix)
 suffix += 1
-print(suffix)
 
 data_train = output_file.create_earray(output_file.root, f'data_train{suffix}', atom, (0,) + ys.shape[1:])
 loglik_train = output_file.create_earray(output_file.root, f'loglik_train{suffix}', atom, (0, 1))

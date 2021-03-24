@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 import time
 import nn_model
 #import scipy.signal as signal
+import tables
 
    
 i = 1
@@ -125,20 +126,28 @@ if n_gpus >= 1:
     from numba import cuda
 
 def load_data(data_file):
-    f = dir_name + '/' + data_file + ".zarr"
-    if os.path.exists(f):
-        loaded = zarr.open(f, 'r')
-    else:
-        f = dir_name + '/' + data_file + ".npz"
-        if os.path.exists(f):
-            loaded = np.load(f)
-        else:
-            raise Exception("No data found")
-    data_train = loaded['data_train']
-    loglik_train = loaded['loglik_train']
-    data_test = loaded['data_test']
-    loglik_test = loaded['loglik_test']
-    return data_train, loglik_train, data_test, loglik_test
+    f = tables.open_file(dir_name + "/" + data_file + ".f5", mode='r')
+    data_train = []
+    loglik_train = []
+    data_test = []
+    loglik_test = []
+    suffix = 1
+    while True:
+        try:
+            n = f.get_node(f.root, f"data_train{suffix}")
+            data_train.extend(n[:])
+            n = f.get_node(f.root, f"data_test{suffix}")
+            data_test.extend(n[:])
+            n = f.get_node(f.root, f"loglik_train{suffix}")
+            loglik_train.extend(n[:, 0])
+            n = f.get_node(f.root, f"loglik_test{suffix}")
+            loglik_test.extend(n[:, 0])
+            suffix += 1
+        except:
+            pass
+    print("Num nodes loaded", suffix - 1)
+
+    return np.asarray(data_train), np.asarray(loglik_train), np.asarray(data_test), np.asarray(loglik_test)
 
 
 
