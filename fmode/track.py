@@ -76,7 +76,7 @@ def take_snapshot(title="main"):
             f.write(f"{t} {title}: Total: {total} {unit}\n")
             f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
-def get_random_start_time(step,output_path):
+def get_random_start_time(step, output_path):
     cnt=0
     maxattempts=1000000
     while True:
@@ -324,7 +324,7 @@ def image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coe
 
 class state:
     
-    def __init__(self, num_hrs, step, num_bursts, path, files, start_times, commit_sha, random_start_time):
+    def __init__(self, num_hrs, step, num_bursts, path, files, start_times, commit_sha, random_start_time, output_path):
         self.step = step
         self.num_hrs = num_hrs
         self.num_bursts = num_bursts
@@ -333,6 +333,7 @@ class state:
         self.files = files
         self.commit_sha = commit_sha
         self.random_start_time=random_start_time
+        self.output_path = output_path
         
         hdul = fits.open(self.path + "/" + self.files[0], ignore_missing_end=True)
         if len(start_times) == 0:
@@ -612,7 +613,7 @@ class state:
     def end_tracking(self):
         self.observer = None
         if self.random_start_time:
-            self.start_time = get_random_start_time(self.step,self.output_path)
+            self.start_time = get_random_start_time(self.step, self.output_path)
         elif len(self.start_times) > 0:
             self.start_time = self.start_times[0]
             self.start_times = self.start_times[1:]
@@ -772,7 +773,7 @@ class track:
         print(f"Input path: {input_path}")
         print(f"Output path: {output_path}")
         
-        self.state = state(num_hrs, step, num_bursts, input_path, files, start_times, commit_sha, random_start_time)
+        self.state = state(num_hrs, step, num_bursts, input_path, files, start_times, commit_sha, random_start_time, output_path)
         if stats_dbg is None:
             sts = stats(self.patch_lons, self.patch_lats, self.patch_size, output_path)
         else:
@@ -1115,7 +1116,7 @@ if (__name__ == '__main__'):
     assert(step <= 24)
     
     if random_start_time:
-        start_time = str(get_random_start_time(step,output_path))
+        start_time = str(get_random_start_time(step, output_path))
         print("Overriding start_time with", start_time)
     start_times = []
     if len(start_time) < 4:        
