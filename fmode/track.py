@@ -408,7 +408,11 @@ class state:
             if self.hdul is not None:
                 self.hdul.close()
             self.file = file
-            self.hdul = fits.open(self.file, ignore_missing_end=True)
+            try:
+                self.hdul = fits.open(self.file, ignore_missing_end=True)
+            except:
+                self.file = None
+                return False
         
         self.num_frames_per_day = len(self.hdul) - 1
 
