@@ -44,7 +44,7 @@ state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
 #state_file = 'pi-ambiguity-test/amb_turb.fits'
 
-num_train = 10000
+num_train = 2000
 num_test = 27*27
 
 
