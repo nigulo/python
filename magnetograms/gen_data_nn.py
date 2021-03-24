@@ -44,8 +44,8 @@ state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
 #state_file = 'pi-ambiguity-test/amb_turb.fits'
 
-num_train = 2000
-num_test = 27*27
+num_train = 2
+num_test = 1#27*27
 
 
 n1 = 27
@@ -331,7 +331,7 @@ u_mesh = np.meshgrid(u1, u2, u3, indexing='ij')
 
 class data_generator():
     
-    def __init__(self, x, ys, sig_var=None, length_scale=None, noise_var=None, approx_type='kiss-gp', u_mesh=None, data_array, loglik_array):
+    def __init__(self, data_array, loglik_array, x, ys, sig_var=None, length_scale=None, noise_var=None, approx_type='kiss-gp', u_mesh=None):
         self.x = x
         self.ys = ys
         self.n = len(x)
@@ -420,9 +420,8 @@ class data_generator():
                     
             
             loglik = self.loglik(y)
-        
-            self.data_array.append(np.array(y))
-            self.loglik_array.append(loglik)
+            self.data_array.append(np.array(y)[None,])
+            self.loglik_array.append(np.array([[loglik]]))
         #return ret_data, ret_loglik
     
 
@@ -445,13 +444,25 @@ ys /= np.std(ys, axis = 0)
 
 output_file = tables.open_file(f"data_nn_out_{length_scale}_{z_scale}.h5", mode='a')
 atom = tables.Float64Atom()
-data_train = output_file.create_earray(output_file.root, 'data_train', atom, (0,) + ys.shape)
-loglik_train = output_file.create_earray(output_file.root, 'loglik_train', atom, (0, 1))
-data_test = output_file.create_earray(output_file.root, 'data_test', atom, (0,) + ys.shape)
-loglik_test = output_file.create_earray(output_file.root, 'loglik_train', atom, (0, 1))
+
+suffix = 0
+for node in output_file.walk_nodes(output_file.root):
+    node = node._v_name
+    print("node:", node)
+    if node[:10] == "data_train":
+        suf = int(node[10:])
+        print(suf)
+        suffix = max(suf, suffix)
+suffix += 1
+print(suffix)
+
+data_train = output_file.create_earray(output_file.root, f'data_train{suffix}', atom, (0,) + ys.shape[1:])
+loglik_train = output_file.create_earray(output_file.root, f'loglik_train{suffix}', atom, (0, 1))
+data_test = output_file.create_earray(output_file.root, f'data_test{suffix}', atom, (0,) + ys.shape[1:])
+loglik_test = output_file.create_earray(output_file.root, f'loglik_test{suffix}', atom, (0, 1))
 
 print("Num train patches", len(ys))
-generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh, data_train, loglik_train)
+generator = data_generator(data_train, loglik_train, x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
 generator.generate(train=True)
 
 
@@ -460,7 +471,7 @@ ys -= np.mean(ys, axis = 0)
 ys /= np.std(ys, axis = 0)
 
 print("Num test patches", len(ys))
-generator = data_generator(x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh, data_test, loglik_test)
+generator = data_generator(data_test, loglik_test, x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
 generator.generate()
 
 output_file.close()
