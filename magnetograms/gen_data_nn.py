@@ -1,16 +1,14 @@
 import sys
 sys.path.append('../utils')
 sys.path.append('..')
+import os
 import config
 import matplotlib as mpl
 from tqdm import tqdm
 
 mpl.use('Agg')
 mpl.rcParams['figure.figsize'] = (20, 30)
-#import pickle
 import numpy as np
-#import pylab as plt
-#import pandas as pd
 import cov_div_free as cov_div_free
 import cov_sq_exp as cov_sq_exp
 
@@ -22,12 +20,8 @@ import scipy.special as special
 import utils
 import plot
 import misc
-#import pymc3 as pm
 import kiss_gp
-#import os
-#import os.path
-#from scipy.stats import gaussian_kde
-#from sklearn.cluster import KMeans
+
 import numpy.linalg as la
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
@@ -39,6 +33,8 @@ from scipy.io import readsav
 import scipy.signal as signal
 import pickle
 import tables
+
+sys.stdout = open(f'log{os.getpid()}', 'w')
 
 state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
