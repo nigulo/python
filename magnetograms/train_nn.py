@@ -126,7 +126,7 @@ if n_gpus >= 1:
     from numba import cuda
 
 def load_data(data_file):
-    f = tables.open_file(dir_name + "/" + data_file + ".f5", mode='r')
+    f = tables.open_file(dir_name + "/" + data_file + ".h5", mode='r')
     data_train = []
     loglik_train = []
     data_test = []
