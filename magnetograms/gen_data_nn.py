@@ -12,6 +12,7 @@ import numpy as np
 import cov_div_free as cov_div_free
 import cov_sq_exp as cov_sq_exp
 
+from importlib import reload
 import scipy.misc
 import numpy.random as random
 import scipy.sparse.linalg as sparse
@@ -34,14 +35,15 @@ import scipy.signal as signal
 import pickle
 import tables
 
-sys.stdout = open(f'log{os.getpid()}', 'w')
+logfile = open(f'log{os.getpid()}', 'w')
+sys.stdout = logfile
 
 state_file = 'data3d.pkl'
 #state_file = 'data/IVM_AR9026.sav'
 #state_file = 'pi-ambiguity-test/amb_turb.fits'
 
-num_train = 2
-num_test = 1#27*27
+num_train = 2000
+num_test = 27*27//5
 
 
 n1 = 27
@@ -49,16 +51,30 @@ n2 = 27
 length_scale = 0.1
 z_scale = 1
 
-if len(sys.argv) > 1:
-    state_file = sys.argv[1]
-if len(sys.argv) > 2:
-    n1 = int(sys.argv[2])
-if len(sys.argv) > 3:
-    n2 = int(sys.argv[3])
-if len(sys.argv) > 4:
-    length_scale = float(sys.argv[4])
-if len(sys.argv) > 5:
-    z_scale = float(sys.argv[5])
+if os.path.isfile("params.txt"):
+    with open("params.txt", "r") as file:
+        line = file.readlines()[-1]
+        argv = line.strip().split(" ")
+        i = 0
+else:
+    argv = sys.argv
+    i = 1
+
+
+if len(argv) > i:
+    state_file = argv[i]
+i += 1
+if len(argv) > i:
+    n1 = int(argv[i])
+i += 1
+if len(sys.argv) > i:
+    n2 = int(argv[i])
+i += 1
+if len(argv) > i:
+    length_scale = float(argv[i])
+i += 1
+if len(argv) > i:
+    z_scale = float(argv[i])
 
 subsample = 1000000 # For D2 approximation
 num_subsample_reps = 1
@@ -234,11 +250,15 @@ def load(file_name):
         sys.exit(1)
     return b, phi, theta
 
-def get_patches(b, phi, theta, num_patches, rnd=True):
+def get_patches(b, phi, theta, num_patches, rnd=True, start_index=0):
     ys = []
     
     x_start = 0
     y_start = 0
+    if start_index > 0:
+        y_start = start_index//n1
+        x_start = start_index % n1
+    print("x_start, y_start, start_index", x_start, y_start, start_index)
     for i in np.arange(num_patches):
         
         if rnd:
@@ -333,13 +353,6 @@ class data_generator():
         self.n = len(x)
         assert(self.n == n1*n2*n3)
         
-        self.y_sign = np.ones(n)
-        thetas = np.ones(self.n)/2.
-        self.thetas = np.log(thetas)
-
-        self.num_positive = np.zeros(self.n)
-        self.num_negative = np.zeros(self.n)
-        
         self.approx_type = approx_type
         
         if approx_type == 'kiss-gp':
@@ -369,12 +382,22 @@ class data_generator():
                 #    best_loglik = loglik
             return loglik/num_subsample_reps
         elif self.approx_type == 'kiss-gp':
+            # There is a memory leak in sparse.lsqr
+            modules_to_delete = []
+            for module in sys.modules:
+                if module[:19] == "scipy.sparse.linalg":
+                    sys.modules[module].__dict__.clear()
+                    modules_to_delete.append(module)
+            for module in modules_to_delete:
+                del sys.modules[module]
+            import scipy.sparse.linalg as sparse
+            #reload(sparse)
             U = gp.calc_cov(self.u, self.u, data_or_test=True)
             W = utils.calc_W(self.u_mesh, self.x, us=self.u, indexing_type=False)#np.zeros((len(x1)*len(x2)*2, len(u1)*len(u2)*2))
             (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(y, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
             L = la.cholesky(U)
             v = la.solve(L, x)
-            return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+            return 0#-0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         else:
             return gp.calc_loglik(self.x, np.reshape(y, (3*self.n, -1)))
     
@@ -386,7 +409,7 @@ class data_generator():
         #ret_data = np.empty((num_data, np.shape(self.ys[0])[0], np.shape(self.ys[0])[1], np.shape(self.ys[0])[2], np.shape(self.ys[0])[3]))
         #ret_loglik = np.empty(num_data)
         
-        for i in tqdm(np.arange(num_data)):
+        for i in tqdm(np.arange(num_data), file=logfile):
             if train:
                 index = np.random.randint(num_data)
             else:
@@ -397,7 +420,7 @@ class data_generator():
                 r1 = np.random.uniform()
                 y[:2, r < r1] *= -1
                 
-                if i < 10:
+                if False:
                     test_plot = plot.plot(nrows=3, ncols=3)
                     
                     test_plot.colormap(y[0, :, :, 0], [0, 0])
@@ -416,8 +439,9 @@ class data_generator():
                     
             
             loglik = self.loglik(y)
-            self.data_array.append(np.array(y)[None,])
-            self.loglik_array.append(np.array([[loglik]]))
+            #self.data_array.append(np.array(y)[None,])
+            #self.loglik_array.append(np.array([[loglik]]))
+            output_file.flush()
         #return ret_data, ret_loglik
     
 
@@ -446,21 +470,20 @@ for node in output_file.walk_nodes(output_file.root):
     node = node._v_name
     if node[:10] == "data_train":
         suf = int(node[10:])
-        print(suf)
         suffix = max(suf, suffix)
 suffix += 1
 
-data_train = output_file.create_earray(output_file.root, f'data_train{suffix}', atom, (0,) + ys.shape[1:])
-loglik_train = output_file.create_earray(output_file.root, f'loglik_train{suffix}', atom, (0, 1))
-data_test = output_file.create_earray(output_file.root, f'data_test{suffix}', atom, (0,) + ys.shape[1:])
-loglik_test = output_file.create_earray(output_file.root, f'loglik_test{suffix}', atom, (0, 1))
+data_train = output_file.create_earray(output_file.root, f'data_train{suffix}', atom, (0,) + ys.shape[1:])#, chunkshape=(1,) + ys.shape[1:])
+loglik_train = output_file.create_earray(output_file.root, f'loglik_train{suffix}', atom, (0, 1))#, chunkshape=(1, 1))
+data_test = output_file.create_earray(output_file.root, f'data_test{suffix}', atom, (0,) + ys.shape[1:])#, chunkshape=(1,) + ys.shape[1:])
+loglik_test = output_file.create_earray(output_file.root, f'loglik_test{suffix}', atom, (0, 1))#, chunkshape=(1,1))
 
 print("Num train patches", len(ys))
 generator = data_generator(data_train, loglik_train, x, ys, sig_var, length_scale, noise_var, approx_type='kiss-gp', u_mesh=u_mesh)
 generator.generate(train=True)
+del generator
 
-
-ys = get_patches(b, phi, theta, num_test, rnd=False)
+ys = get_patches(b, phi, theta, num_test, rnd=False, start_index=(suffix - 1)*num_test)
 ys -= np.mean(ys, axis = 0)
 ys /= np.std(ys, axis = 0)
 
