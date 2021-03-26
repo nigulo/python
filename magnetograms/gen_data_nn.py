@@ -439,8 +439,8 @@ class data_generator():
                     
             
             loglik = self.loglik(y)
-            #self.data_array.append(np.array(y)[None,])
-            #self.loglik_array.append(np.array([[loglik]]))
+            self.data_array.append(np.array(y)[None,])
+            self.loglik_array.append(np.array([[loglik]]))
             output_file.flush()
         #return ret_data, ret_loglik
     
