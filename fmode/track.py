@@ -391,7 +391,7 @@ class state:
         return True
 
     def next(self):
-        print("next")
+        #print("next")
         files = filter_files(self.files, str(self.file_time)[:10])
         if len(files) == 0:
             self.stats.save()
@@ -1040,7 +1040,7 @@ class track:
                 create_new_stats = False
                 date = self.state.get_start_time_str2()
                 stats_date = self.state.get_stats().get_date()
-                print("track: date, stats_date", date, stats_date)
+                #print("track: date, stats_date", date, stats_date)
                 if self.stats_file_mode == "burst":
                     if date > stats_date:
                         create_new_stats = True
