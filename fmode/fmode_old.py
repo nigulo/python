@@ -4,49 +4,22 @@ from pymc3 import *
 from sklearn.cluster import KMeans
 import sys
 import os
-from astropy.io import fits
+from scipy.io import readsav
 import numpy as np
 import matplotlib.pyplot as plt
-import numpy.fft as fft
 
 from scipy.stats import gaussian_kde
 from scipy.signal import argrelextrema
 
 import scipy.optimize
 
-argv = sys.argv
-i = 1
-
-if len(argv) <= 1:
-    print("Usage: python fmode input_path [year] [input_file]")
-    sys.exit(1)
-    
-year = ""
-input_file = None
-
-if len(argv) > i:
-    input_path = argv[i]
-i += 1
-if len(argv) > i:
-    year = argv[i]
-i += 1
-if len(argv) > i:
-    input_file = argv[i]
-    
-if len(year) > 0:
-    input_path = os.path.join(input_path, year)
-    
-
-k = np.linspace(0, 4500, 150)#193)
-nu = np.linspace(0, 11.076389, 320)
-
 k_min = 700
 k_max = sys.maxsize
-#if len(sys.argv) > 1:
-#    k_min = float(sys.argv[1])
+if len(sys.argv) > 1:
+    k_min = float(sys.argv[1])
 
-#if len(sys.argv) > 2:
-#    k_max = float(sys.argv[2])
+if len(sys.argv) > 2:
+    k_max = float(sys.argv[2])
 
 num_samples = 1000
 num_cores = 6
@@ -213,48 +186,38 @@ def get_noise_var(dat):
 
     _, y = smooth(None, y)
     return np.var(y)
-
-if not os.path.exists("results"):
-    os.mkdir("results")
     
-for root, dirs, files in os.walk(input_path):
+for root, dirs, files in os.walk("data"):
     for file in files:
-        if file[-5:] != ".fits":
+        if file[-4:] != ".pow":
             continue
-        if input_file is not None and len(input_file) > 0 and file != input_file:
-            continue
-        file_prefix = file[:-5]
+        file_prefix = file[:-4]
         
-        output_dir = os.path.join("results", file_prefix)
+        output_dir = "results/" + file_prefix
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
             
         print("==================================================================")
         print(file_prefix)
         print("==================================================================")
-    
-        hdul = fits.open(os.path.join(root, file))
         
-        data = hdul[1].data
-        data = fft.fftn(data)
-        data = data[:data.shape[0]//2, 0, :data.shape[2]//2]
-        print(data.shape)
     
-        levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 42)
+        dat = readsav("data/" + file, idict=None, python_dict=False, uncompressed_file_name=None, verbose=False)
+        levels = np.linspace(np.min(np.log(dat.p_kyom_kx0))+2, np.max(np.log(dat.p_kyom_kx0))-2, 42)
         
         fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.contour(k, nu, np.log(data), levels=levels)
-        fig.savefig(os.path.join(output_dir, "spectrum.png"))
+        ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
+        fig.savefig(output_dir + "/spectrum.png")
         plt.close(fig)
         
-        f1 = open(os.path.join(output_dir, 'areas.txt', 'w'))
+        f1 = open(output_dir + '/areas.txt', 'w')
         f1.write('k num_components f_mode_area\n')
         
         results = []
         k_index = np.min(np.where(dat.k_y >= k_min)[0])
         k_max_ = dat.k_y[dat.k_y < k_max][-1]
-        while k_index < data.shape[1]:
-            y = data[:, k_index]
+        while k_index < dat.p_kyom_kx0.shape[1]:
+            y = dat.p_kyom_kx0[:, k_index]
             
             if np.min(dat.k_y[k_index:]) > k_max_:
                 break
@@ -479,7 +442,7 @@ for root, dirs, files in os.walk(input_path):
             ax.legend(loc=0)
             ax.set_xlabel(r'$\nu$')
             ax.set_ylabel('Amplitude')
-            fig.savefig(os.path.join(output_dir, f"areas{k_index}.png"))
+            fig.savefig(output_dir + "/areas" + str(k_index) + ".png")
 
             plt.close(fig)
             
@@ -500,6 +463,6 @@ for root, dirs, files in os.walk(input_path):
         ax.plot(results[:, 0], results[:, 2], 'k-')
         ax.set_xlabel(r'$k$')
         ax.set_ylabel('F-mode area')
-        fig.savefig(os.path.join(output_dir, "areas.png"))
+        fig.savefig(output_dir + "/areas.png")
 
         plt.close(fig)
