@@ -3,6 +3,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
 sys.path.append('..')
 import matplotlib as mpl
+import glob
+import subprocess
 
 import numpy as np
 import numpy.random as random
@@ -20,6 +22,8 @@ from datetime import datetime, timedelta
 from filelock import FileLock
 from calendar import monthrange
 
+import ipdb
+
 PROFILE = False
 num_chunks = 20
 added_pix_list_size = 10000*num_chunks//20
@@ -34,6 +38,9 @@ C = -1.787
 
 DEBUG = False
 DEBUG2 = False
+VERBOSE=0 #0,1,2
+LOCKFILE1="track.lock"
+LOCKFILE2="random.lock"
 
 radius_km = 695700
 
@@ -76,29 +83,30 @@ def take_snapshot(title="main"):
             f.write(f"{t} {title}: Total: {total} {unit}\n")
             f.write(f"{t} {title}: GC counts: {gc.get_count()}\n")
 
-def get_random_start_time(step, output_path):
-    cnt=0
-    maxattempts=1000000
-    while True:
-        y = np.random.randint(2010, datetime.now().year+1)
-        m = np.random.randint(1, 13)
-        _, num_days = monthrange(y, m)
-        d = np.random.randint(1, num_days+1)
-        h = np.random.randint(0, 24//int(step))
-        h *= int(step)
-        date=datetime(y, m, d, h, 0, 0)
-        if (date<datetime.now() and date>datetime(2010,5,1,0,0,0)):
-            cnt+=1
-            #check if file already exists:
-            outfile=stats.get_output_filename(date.strftime('%Y-%m-%d'),output_path)
-            exists=os.path.exists(outfile)
-            if exists==False:
-                break       
-            if cnt>=maxattempts:
-                print(f"Random start time: No new date found after {maxattempts} attempts.")
-                break
-    print(f"Random start time: {date.strftime('%Y-%m-%d_%H:%M:%S')} found after {cnt} attempts.")
-    return date
+def get_random_start_time(step,output_path,all_files):
+    #create list of all times to be processed
+    print(f"Start search for missing files: {datetime.now()}")
+    with FileLock(LOCKFILE2):
+        time.sleep(0.25) #give file lock some time
+        tobedone =[]
+        starttime=datetime(2010,5,1,0,0)
+        endtime=datetime.now()
+        shour=np.int(starttime.timestamp()/3600)
+        ehour=np.int(endtime.timestamp()/3600)
+        af_date=[str[0:10] for str in all_files]
+        for hr in range(shour,ehour):
+            tdat=datetime.fromtimestamp(hr*3600.)
+            if tdat.strftime("%Y-%m-%d") in af_date:
+                if np.mod(tdat.hour,step)==0:
+                    fname=stats.get_output_filename(output_path,tdat)
+                    #add this date to list if file does not exist
+                    if os.path.exists(fname)==False:
+                        tobedone.append(tdat)
+
+        n=np.random.randint(len(tobedone))
+        date=tobedone[n]
+        print(f"Random select: {stats.get_output_filename(output_path,date)} (missing: N={len(tobedone)}) ")
+        return date
 
     
 def diff_rot(lat):
@@ -179,11 +187,14 @@ class stats:
 
     def init(self, date):
         self.date = date
-        with FileLock("track.lock"):
+        with FileLock(LOCKFILE1):
             f = stats.get_output_filename(self,date)
             if os.path.isfile(f):      
-                print("File exists", f)
+                if VERBOSE>=1:
+                    print("File exists", f)
                 return
+            os.system(f"touch {f}")
+            print(f"Creating missing FITS file: {f}")
             self.storage = fits.open(f, mode="append")
         # Just to ensure that the tracking is done only once.
         # This is not needed anymore, as we use file lock and pass tracking
@@ -194,7 +205,11 @@ class stats:
         self.data = np.zeros((self.num_patches, self.num_patches, 9))
 
     def get_output_filename(output,date):
-        filename=f"{output_path}/{date}.fits"
+        if type(date)==str:
+            strdate=date
+        else:
+            strdate=date.strftime('%Y-%m-%d_%H:%M:%S')
+        filename=f"{output_path}/{strdate}.fits"
         return(filename)
 
 
@@ -335,7 +350,7 @@ class state:
         self.random_start_time=random_start_time
         self.output_path = output_path
         
-        hdul = fits.open(self.path + "/" + self.files[0], ignore_missing_end=True)
+        hdul = fits.open(os.path.join(self.path,self.files[0]), ignore_missing_end=True)
         if len(start_times) == 0:
             t_rec = hdul[1].header['T_REC']
             year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
@@ -379,15 +394,18 @@ class state:
         return self.frame_index
 
     def next_frame(self):
-        print("next_frame frame_index", self.frame_index)
+        if VERBOSE>=1:
+            print("next_frame frame_index", self.frame_index)
         self.frame_index += 1
         if self.frame_index >= self.num_frames_per_day:
             self.frame_index = -1
             self.file_time = self.file_time + timedelta(days=1)
-            #print("next-file")
-            print("next_frame False")
+            if VERBOSE>=2:
+                #print("next-file")
+                print("next_frame False")
             return False
-        print("next_frame True")
+        if VERBOSE>=2:
+            print("next_frame True")
         return True
 
     def next(self):
@@ -404,6 +422,7 @@ class state:
         file_date = files[0][:10]
         file = self.path + "/" + files[0]
         
+
         if self.file is None or file != self.file:
             if self.hdul is not None:
                 self.hdul.close()
@@ -416,10 +435,12 @@ class state:
         
         self.num_frames_per_day = len(self.hdul) - 1
 
-        print("next frame_index", self.frame_index)
+        if VERBOSE>=2:
+            print("next frame_index", self.frame_index)
         if not self.next_frame():
             return False
-        print("next frame_index", self.frame_index)
+        if VERBOSE>=2:
+            print("next frame_index", self.frame_index)
         self.metadata = self.hdul[self.frame_index + 1].header
 
         t_rec = self.metadata['T_REC']
@@ -427,7 +448,8 @@ class state:
         year, month, day, hrs, mins, secs = parse_t_rec(t_rec)
         date = year + "-" + month + "-" + day
         assert(file_date == date)
-        print("next file_date", file_date)
+        if VERBOSE>=1:
+            print("next file_date", file_date)
         
         self.hrs = hrs
         self.mins = mins
@@ -442,7 +464,8 @@ class state:
             self.last_obs_time = None
         
         if self.get_obs_time() < self.get_start_time():
-            print("next False 1")
+            if VERBOSE>=2:
+                print("next False 1")
             return False
         
         self.obs_time_str = f"{date} {self.hrs}:{self.mins}:{self.secs}"
@@ -455,7 +478,8 @@ class state:
 
         end_track = False
         if self.get_obs_time() >= self.get_end_time():
-            print("Potentially files missing")
+            if VERBOSE>=2:
+                print("Potentially files missing")
             end_track = True
         elif self.is_tracking() and self.obs_time >= self.end_time:
             end_track = True
@@ -464,13 +488,15 @@ class state:
             self.stats.save()
             self.end_tracking()
             self.num_bursts -= 1
-            print("next False 2")
+            if VERBOSE>=2:
+                print("next False 2")
             return False
 
         if not self.is_tracking():
             self.start_tracking()
         
-        print("next True")
+        if VERBOSE>=2:
+            print("next True")
         return True
     
     def set_stats(self, stats):
@@ -580,7 +606,7 @@ class state:
         
         self.dbg_stack = []
         self.num_added = 0
-        
+
         
     def get_xs_ys_arcsec(self):
         xs_arcsec, ys_arcsec = np.array(self.xs_arcsec), np.array(self.ys_arcsec)
@@ -617,7 +643,7 @@ class state:
     def end_tracking(self):
         self.observer = None
         if self.random_start_time:
-            self.start_time = get_random_start_time(self.step, self.output_path)
+            self.start_time = get_random_start_time(self.step, self.output_path, self.files)
         elif len(self.start_times) > 0:
             self.start_time = self.start_times[0]
             self.start_times = self.start_times[1:]
@@ -633,7 +659,8 @@ class state:
         return len(self.files) == 0 or self.num_bursts == 0
     
     def close(self):
-        print("Close")
+        if VERBOSE>=2:
+            print("Close")
         if self.is_tracking():
             self.stats.save()
             self.end_tracking()
@@ -642,16 +669,19 @@ class state:
         self.stats.close()
 
 def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, observer, pix_dict, start_index, length, image_params):
-        print("fix_sampling 1")
+        if VERBOSE>=2:
+            print("fix_sampling 1")
         min_y = np.nanmin(y_pix)
         max_y = np.nanmax(y_pix)
         if np.isnan(min_y) or np.isnan(max_y):
-            print("fix_sampling: all nans")
+            if VERBOSE>=2:
+                print("fix_sampling: all nans")
             return ([], [])
         min_y = int(min_y)
         max_y = int(max_y)
         xys = xys[(xys[:, 1] >= min_y) * (xys[:, 1] <= max_y)]
-        print("fix_sampling 1", min_y, max_y)
+        if VERBOSE>=2:
+            print("fix_sampling 1", min_y, max_y)
         old_indices = []
         new_indices = []
         num_removed = 0
@@ -698,18 +728,21 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                 num_removed += 1
         l = len(x_pix) - num_removed
         #new_entries.clear()
-        print("fix_sampling 2")
+        if VERBOSE>=2:
+            print("fix_sampling 2")
         #x_pix = np.delete(x_pix, indices_to_delete)
         #y_pix = np.delete(y_pix, indices_to_delete)
         #xs_arcsec = np.delete(xs_arcsec, indices_to_delete)
         #ys_arcsec = np.delete(ys_arcsec, indices_to_delete)
         #lons = np.delete(lons, indices_to_delete)
         #lats = np.delete(lats, indices_to_delete)
-        print("Number of pixels removed", num_removed)
+        if VERBOSE>=1:
+            print("Number of pixels removed", num_removed)
         
         added_x_pix = [-1.]*added_pix_list_size
         added_y_pix = [-1]*added_pix_list_size
-        print("fix_sampling 3")
+        if VERBOSE>=2:
+            print("fix_sampling 3")
 
         i = 0
         for x, y in xys:
@@ -723,13 +756,15 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
                     added_y_pix[i] = y
                     pix_dict[x][y] = length + l + i
                     i += 1
-        print("fix_sampling 4")
+        if VERBOSE>=2:
+            print("fix_sampling 4")
                     
         added_x_pix = np.asarray(added_x_pix)
         added_y_pix = np.asarray(added_y_pix)
         added_x_pix = added_x_pix[added_x_pix >= 0]
         added_y_pix = added_y_pix[added_y_pix >= 0]
-        print("Number of pixels added", len(added_x_pix))
+        if VERBOSE>=1:
+            print("Number of pixels added", len(added_x_pix))
         x_pix.extend(added_x_pix)
         y_pix.extend(added_y_pix)
         #x_pix = np.append(x_pix, added_x_pix)
@@ -749,7 +784,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         added_lons = c2.lon.value - sdo_lon
         added_lats = c2.lat.value
             
-        print("fix_sampling 5")
+        if VERBOSE>=2:
+            print("fix_sampling 5")
         
         lons.extend(added_lons.tolist())
         lats.extend(added_lats.tolist())
@@ -761,7 +797,8 @@ def fix_sampling(x_pix, y_pix, xs_arcsec, ys_arcsec, lons, lats, xys, sdo_lon, o
         assert(len(x_pix) == len(y_pix))
         assert(len(x_pix) == len(xs_arcsec))
         assert(len(xs_arcsec) == len(ys_arcsec))
-        print("fix_sampling 6")
+        if VERBOSE>=2:
+            print("fix_sampling 6")
         take_snapshot("fix_sampling")
         return (old_indices, new_indices)
 
@@ -801,14 +838,16 @@ class track:
 
     def process_frame(self):
 
-        print("process_frame 1")
+        if VERBOSE>=2:
+            print("process_frame 1")
         metadata = self.state.get_metadata()
         
         obs_time = self.state.get_obs_time_str()
         print("obs_time", obs_time)
 
         data = self.state.get_data()
-        print("process_frame 2")
+        if VERBOSE>=2:
+            print("process_frame 2")
         if DEBUG:
             ctype1 = metadata['CTYPE1']
             ctype2 = metadata['CTYPE2']
@@ -819,7 +858,8 @@ class track:
             assert(cunit1 == "arcsec" and cunit2 == "arcsec")
 
         xs_arcsec_all_last, ys_arcsec_all_last = self.state.get_xs_ys_arcsec()
-        print("process_frame 3")
+        if VERBOSE>=2:
+            print("process_frame 3")
         a = metadata['CROTA2']*np.pi/180
         nx = metadata['NAXIS1']
         ny = metadata['NAXIS2']
@@ -839,7 +879,8 @@ class track:
         
         #xs_arcsec, ys_arcsec = pix_to_image(self.xs, self.ys, dx, dy, xc, yc, cos_a, sin_a, arcsecs_per_pix_x, arcsecs_per_pix_y)
         #grid = np.transpose([np.tile(xs_arcsec, ny), np.repeat(ys_arcsec, nx)])
-        print("process_frame 4")
+        if VERBOSE>=2:
+            print("process_frame 4")
 
         observer = self.state.get_observer()
         observer_i = frames.HeliographicStonyhurst(0.*u.deg, self.state.get_sdo_lat()*u.deg, radius=self.state.get_sdo_dist()*u.m, obstime=obs_time)
@@ -880,7 +921,8 @@ class track:
             
             c1 = SkyCoord(xs_arcsec*u.arcsec, ys_arcsec*u.arcsec, frame=frames.Helioprojective, observer=observer)
             c2 = c1.transform_to(frames.HeliographicCarrington)
-            print("process_frame 5", chunk_index)
+            if VERBOSE>=2:
+                print("process_frame 5", chunk_index)
             lons = c2.lon.value - self.state.get_sdo_lon()
             lats = c2.lat.value
                         
@@ -891,13 +933,15 @@ class track:
             xs_arcsec = c4.Tx.value
             ys_arcsec = c4.Ty.value
                         
-            print("process_frame 6", chunk_index)
+            if VERBOSE>=2:
+                print("process_frame 6", chunk_index)
             
             x_pix, y_pix = image_to_pix(xs_arcsec, ys_arcsec, dx, dy, xc, yc, cos_a, sin_a, coef_x, coef_y)
             x_pix = np.round(x_pix)
             y_pix = np.round(y_pix)
             
-            print("process_frame 7", chunk_index)
+            if VERBOSE>=2:
+                print("process_frame 7", chunk_index)
             x_pix = x_pix.tolist()
             y_pix = y_pix.tolist()
             xs_arcsec = xs_arcsec.tolist()
@@ -955,7 +999,8 @@ class track:
                 #lats_head = np.append(lats_head, lats[:split_point])
                 #lats_tail = np.append(lats_tail, lats[split_point:])
     
-            print("process_frame 8", chunk_index)
+            if VERBOSE>=2:
+                print("process_frame 8", chunk_index)
 
             start_index += chunk_size
         
@@ -1002,7 +1047,8 @@ class track:
                     else:
                         data_for_plot[j, k] = data[int(y_pix_all[l1]), int(x_pix_all[l1])]
 
-        print("process_frame 9")
+        if VERBOSE>=2:
+            print("process_frame 9")
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
             test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True)
@@ -1073,9 +1119,9 @@ if (__name__ == '__main__'):
     print = my_print
     
     input_path = '.'
-    output_path = '.'
+    output_path = './output'
     num_hrs = 8 # Duration of tracking
-    step = 1 # Step in hours between tracked sequences of num_hrs length
+    step = 4 # Step in hours between tracked sequences of num_hrs length
     num_bursts = -1 # For how many days to run the script
     num_patches = 100
     patch_size = 15
@@ -1121,12 +1167,20 @@ if (__name__ == '__main__'):
     i += 1
     if len(argv) > i:
         random_start_time = bool(int(argv[i]))
+
     print("Commit SHA", commit_sha)
     assert(step <= 24)
     
+    all_files=list()
+    #make sure that only the magnetogram files are listed:
+    for file in glob.glob(os.path.join(input_path,"20??-??-??_hmi.M_720s.fits")):
+        all_files.append(os.path.basename(file))
+    all_files.sort()
+
     if random_start_time:
-        start_time = str(get_random_start_time(step, output_path))
+        start_time = str(get_random_start_time(step, output_path, all_files))
         print("Overriding start_time with", start_time)
+    
     start_times = []
     if len(start_time) < 4:        
         all_start_times = []
@@ -1182,17 +1236,20 @@ if (__name__ == '__main__'):
         start_date = ""
     
     print("Start time", str(start_time))
-        
-    all_files = list()
     
+
+
+    all_files = list()
     for root, dirs, files in os.walk(input_path):
         for file in files:
             if file >= start_date:
                 all_files.append(file)
     all_files.sort()
-    
+#    if len(all_files)==0:
+#        print(f"No fits files found in input directory: {input_path}")
+#        sys.exit()
+
     take_snapshot()
-    
     tr = track(input_path=input_path, output_path=output_path, files=all_files, num_bursts=num_bursts, num_hrs=num_hrs, step=step, 
                num_patches=num_patches, patch_size=patch_size, start_times=start_times, commit_sha=commit_sha, random_start_time=random_start_time)
     tr.track()
