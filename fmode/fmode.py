@@ -37,6 +37,7 @@ if len(year) > 0:
     input_path = os.path.join(input_path, year)
     
 
+#k = np.linspace(0, 4500, 193)
 k = np.linspace(0, 4500, 150)#193)
 nu = np.linspace(0, 11.076389, 320)
 
@@ -64,9 +65,9 @@ def get_alpha_prior(i, k_y):
     R_sun=696. # Mm
     A=g_sun/R_sun
     if i == 0:
-        return (1000./(2*np.pi))*np.sqrt(A*k_y) #units=mHz
+        return (1000./(2*np.pi))*np.sqrt(A*k_y) -.3#units=mHz
     else:
-        return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y)
+        return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y) -.3
 
 def calc_y(x, alphas, betas, ws, scale):
     y = 0.
@@ -205,10 +206,10 @@ def smooth(x=None, y=None):
     return x, y
 
     
-def get_noise_var(dat):
-    k_indices = np.where(np.logical_and(dat.k_y >= 3500, dat.k_y <= 4500))[0]
-    nu_indices = np.where(np.logical_and(dat.nu >= 2, dat.nu <= 4))[0]
-    y = dat.p_kyom_kx0[nu_indices]
+def get_noise_var(data, k, nu):
+    k_indices = np.where(np.logical_and(k >= 3500, k <= 4500))[0]
+    nu_indices = np.where(np.logical_and(nu >= 2, nu <= 4))[0]
+    y = data[nu_indices]
     y = y[:, k_indices]
 
     _, y = smooth(None, y)
@@ -236,9 +237,33 @@ for root, dirs, files in os.walk(input_path):
         hdul = fits.open(os.path.join(root, file))
         
         data = hdul[1].data
-        data = fft.fftn(data)
-        data = data[:data.shape[0]//2, 0, :data.shape[2]//2]
-        print(data.shape)
+        print(np.max(data))
+        data = fft.fftn(data)/np.product(data.shape)
+        data = data[:data.shape[0]//2, :, :]
+        data = np.real(data*np.conj(data))
+        data1 = data[:, 0, :data.shape[2]//2]
+        data2 = data[:, :data.shape[1]//2, 0]
+        data3 = np.empty((data1.shape[0], data1.shape[1]))
+        data4 = np.empty((data1.shape[0], data1.shape[1]))
+        last_j = 0
+        for i in range(int(round(data1.shape[1]/np.sqrt(2)))):
+            j = int(round(i * np.sqrt(2)))
+            data3[:, j] = data[:, i, i]
+            data4[:, j] = data[:, i, -i]
+            for j1 in range(last_j+1, j):
+                #print(last_j, j, j1)
+                data3[:, j1] = (data3[:, last_j] + data3[:, j])/2
+                data4[:, j1] = (data4[:, last_j] + data4[:, j])/2
+            last_j = j
+        if j == data1.shape[1] - 2:
+            j += 1
+            data3[:, j] = (data3[:, j - 1] + data[:, i+1, i+1])/2
+            data4[:, j] = (data4[:, j - 1] + data[:, i+1, -(i+1)])/2
+            
+        assert(j == data1.shape[1] - 1)
+        data = (data1 + data2 + data3 + data4)/4
+        
+        hdul.close()
     
         levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 42)
         
@@ -247,27 +272,27 @@ for root, dirs, files in os.walk(input_path):
         fig.savefig(os.path.join(output_dir, "spectrum.png"))
         plt.close(fig)
         
-        f1 = open(os.path.join(output_dir, 'areas.txt', 'w'))
+        f1 = open(os.path.join(output_dir, 'areas.txt'), 'w')
         f1.write('k num_components f_mode_area\n')
         
         results = []
-        k_index = np.min(np.where(dat.k_y >= k_min)[0])
-        k_max_ = dat.k_y[dat.k_y < k_max][-1]
+        k_index = np.min(np.where(k >= k_min)[0])
+        k_max_ = k[k < k_max][-1]
         while k_index < data.shape[1]:
             y = data[:, k_index]
             
-            if np.min(dat.k_y[k_index:]) > k_max_:
+            if np.min(k[k_index:]) > k_max_:
                 break
             
             print("------------------------------------------------------------------")
-            print("Fitting for k = " + str(dat.k_y[k_index]))
+            print("Fitting for k = " + str(k[k_index]))
             print("------------------------------------------------------------------")
             #y = dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]
             # Average over 3 neigbouring slices to reduce noise
             #y = np.log(dat.p_kyom_kx0[:, k_index-1] + dat.p_kyom_kx0[:, k_index] + dat.p_kyom_kx0[:, k_index+1]) - np.log(3)
             #y = y - np.mean(y)
             
-            x = np.asarray(dat.nu, dtype='float')
+            x = np.asarray(nu, dtype='float')
             inds = np.where(x > 2.)[0]
             x = x[inds]
             y = y[inds]
@@ -286,7 +311,7 @@ for root, dirs, files in os.walk(input_path):
             #noise_var /= num_segments
             #noise_var /= 2
             
-            noise_var = get_noise_var(dat)
+            noise_var = get_noise_var(data, k, nu)
             
             sig_var = np.var(y) - noise_var
             true_sigma = np.sqrt(noise_var)
@@ -317,7 +342,7 @@ for root, dirs, files in os.walk(input_path):
                         # Define priors
                         for i in np.arange(num_components):
                             sigma = x_range/3/num_components
-                            alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+                            alpha_prior = get_alpha_prior(i, k[k_index])
                             print("alpha_prior", alpha_prior, i)
                             #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
                             alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
@@ -399,7 +424,7 @@ for root, dirs, files in os.walk(input_path):
                         params = []
                         bounds = []
                         for i in np.arange(num_components):
-                            alpha_prior = get_alpha_prior(i, dat.k_y[k_index])
+                            alpha_prior = get_alpha_prior(i, k[k_index])
                             params.append(alpha_prior)
                             print("alpha_prior", alpha_prior, i)
                             bounds.append((alpha_prior-.5 , alpha_prior+.5))
@@ -474,7 +499,7 @@ for root, dirs, files in os.walk(input_path):
             for i in np.arange(len(areas)):
                 ax.axvspan(ranges[i, 0], ranges[i, 1], alpha=0.5, color=colors[i])
             
-            k_value = dat.k_y[k_index]
+            k_value = k[k_index]
             ax.set_title("Spectrum at k=" + str(k_value) + ", num. components=" + str(opt_num_components))
             ax.legend(loc=0)
             ax.set_xlabel(r'$\nu$')
