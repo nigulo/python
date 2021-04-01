@@ -35,14 +35,25 @@ if len(argv) > i:
     
 if len(year) > 0:
     input_path = os.path.join(input_path, year)
-    
 
+ny = 300
+map_scale = 0.05
+k = np.arange(ny)
+k = (k-((ny-1)/2))*(2.*180./(ny*map_scale))
+k0 = np.where(k == np.min(np.abs(k)))[0][0]
+k1 = np.where(k == np.max(np.abs(k)))[0][0]
+k = k[k0:k1+1]
+
+cadence = 45.0
+nf = 641
 #k = np.linspace(0, 4500, 193)
-k = np.linspace(0, 4500, 150)#193)
-nu = np.linspace(0, 11.076389, 320)
+omega = np.arange((nf-1)/2+1)
+omega = omega*2.*np.pi/(nf*cadence/1000.)
+nu = omega/(2.*np.pi)
+#nu = np.linspace(0, 11.076389, 320)
 
 k_min = 700
-k_max = sys.maxsize
+k_max = 1500#sys.maxsize
 #if len(sys.argv) > 1:
 #    k_min = float(sys.argv[1])
 
@@ -65,9 +76,9 @@ def get_alpha_prior(i, k_y):
     R_sun=696. # Mm
     A=g_sun/R_sun
     if i == 0:
-        return (1000./(2*np.pi))*np.sqrt(A*k_y) -.3#units=mHz
+        return (1000./(2*np.pi))*np.sqrt(A*k_y) #units=mHz
     else:
-        return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y) -.3
+        return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y)
 
 def calc_y(x, alphas, betas, ws, scale):
     y = 0.
@@ -202,7 +213,7 @@ def smooth(x=None, y=None):
     if y is not None:
         y = y[:-2]+y[1:-1]+y[2:]
         y /= 3
-    
+
     return x, y
 
     
@@ -237,9 +248,12 @@ for root, dirs, files in os.walk(input_path):
         hdul = fits.open(os.path.join(root, file))
         
         data = hdul[1].data
-        print(np.max(data))
+        print(data.shape, nf, ny)
+        assert(data.shape[0] == nf)
+        assert(data.shape[1] == ny)
+        assert(data.shape[2] == ny)
         data = fft.fftn(data)/np.product(data.shape)
-        data = data[:data.shape[0]//2, :, :]
+        data = data[:data.shape[0]//2 + 1, :, :]
         data = np.real(data*np.conj(data))
         data1 = data[:, 0, :data.shape[2]//2]
         data2 = data[:, :data.shape[1]//2, 0]
@@ -315,7 +329,6 @@ for root, dirs, files in os.walk(input_path):
             
             sig_var = np.var(y) - noise_var
             true_sigma = np.sqrt(noise_var)
-            print("noise_std", true_sigma)
             num_w = 1
             
             x_range = max(x) - min(x)
@@ -343,7 +356,7 @@ for root, dirs, files in os.walk(input_path):
                         for i in np.arange(num_components):
                             sigma = x_range/3/num_components
                             alpha_prior = get_alpha_prior(i, k[k_index])
-                            print("alpha_prior", alpha_prior, i)
+                            print("alpha_prior", alpha_prior, i, k[k_index])
                             #alphas.append(Normal('alpha' + str(i), x_left+x_range*(i+1)/(num_components+1), sigma=sigma))
                             alphas.append(Normal('alpha' + str(i), alpha_prior, sigma=sigma))
                             betas.append(HalfNormal('beta' + str(i), sigma=1./num_components))
@@ -426,7 +439,7 @@ for root, dirs, files in os.walk(input_path):
                         for i in np.arange(num_components):
                             alpha_prior = get_alpha_prior(i, k[k_index])
                             params.append(alpha_prior)
-                            print("alpha_prior", alpha_prior, i)
+                            print("alpha_prior", alpha_prior, i, k[k_index])
                             bounds.append((alpha_prior-.5 , alpha_prior+.5))
                         for i in np.arange(num_components):
                             beta_prior = .2/num_components
@@ -460,15 +473,15 @@ for root, dirs, files in os.walk(input_path):
                 b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), 2*num_components + num_w)
                 print("BIC", b)
                 
-                #fig, ax = plt.subplots(nrows=1, ncols=1)
-                #ax.plot(x, y, 'x', label='data')
-                #ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
-                #ax.set_title('Num. clusters ' + str(num_components))
-                #ax.legend(loc=0)
-                #ax.set_xlabel('x')
-                #ax.set_ylabel('y')
-                #fig.savefig(output_dir + "/fit" + str(k_index) + "_" + str(num_components) + ".png")
-                #plt.close(fig)
+                fig, ax = plt.subplots(nrows=1, ncols=1)
+                ax.plot(x, y, 'x', label='data')
+                ax.plot(x, y_mean_est, label='estimated regression line', lw=3., c='r')
+                ax.set_title('Num. clusters ' + str(num_components))
+                ax.legend(loc=0)
+                ax.set_xlabel('x')
+                ax.set_ylabel('y')
+                fig.savefig(output_dir + "/fit" + str(k_index) + "_" + str(num_components) + ".png")
+                plt.close(fig)
                 
                 if b < min_bic:
                     min_bic = b
