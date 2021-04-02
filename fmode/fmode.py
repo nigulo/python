@@ -262,6 +262,19 @@ for root, dirs, files in os.walk(input_path):
         data = fft.fftn(data)/np.product(data.shape)
         data = data[:data.shape[0]//2, :, :]
         data = np.real(data*np.conj(data))
+        
+        #######################################################################
+        #d1 = fft.fftshift(data[100])
+        #levels = np.linspace(np.min(np.log(d1))+2, np.max(np.log(d1))-2, 200)
+        
+        #fig, ax = plt.subplots(nrows=1, ncols=1)
+        #kxy = np.concatenate([-k[:-1], k[:-1]])
+        #ax.contour(kxy, kxy, np.log(d1), levels=levels)
+        #fig.savefig(os.path.join(output_dir, "spectrum1.png"))
+        #plt.close(fig)
+        #######################################################################
+        
+        
         data1 = data[:, 0, :data.shape[2]//2 + 1]
         data2 = data[:, :data.shape[1]//2 + 1, 0]
         data3 = np.empty((data1.shape[0], data1.shape[1]))
@@ -286,11 +299,11 @@ for root, dirs, files in os.walk(input_path):
         
         hdul.close()
     
-        levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 42)
+        levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)
         
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.contour(k, nu, np.log(data), levels=levels)
-        fig.savefig(os.path.join(output_dir, "spectrum.png"))
+        fig.savefig(os.path.join(output_dir, "spectrum2.png"))
         plt.close(fig)
         
         f1 = open(os.path.join(output_dir, 'areas.txt'), 'w')
