@@ -38,11 +38,15 @@ if len(year) > 0:
 
 ny = 300
 map_scale = 0.05
-k = np.arange(ny)
-k = (k-((ny-1)/2))*(2.*180./(ny*map_scale))
-k0 = np.where(k == np.min(np.abs(k)))[0][0]
-k1 = np.where(k == np.max(np.abs(k)))[0][0]
-k = k[k0:k1+1]
+#k = np.arange(ny)
+#k = (k-((ny-1)/2))*(2.*180./(ny*map_scale))
+#k0 = np.where(k == np.min(np.abs(k)))[0][0]
+#k1 = np.where(k == np.max(np.abs(k)))[0][0]
+#k = k[k0:k1+1]
+
+k = np.linspace(0, 3600, 151)
+
+print(k)
 
 cadence = 45.0
 nf = 641
@@ -51,6 +55,9 @@ omega = np.arange((nf-1)/2+1)
 omega = omega*2.*np.pi/(nf*cadence/1000.)
 nu = omega/(2.*np.pi)
 #nu = np.linspace(0, 11.076389, 320)
+
+nu = np.linspace(0, 11.076389, 320)
+print(nu)
 
 k_min = 700
 k_max = 1500#sys.maxsize
@@ -253,10 +260,10 @@ for root, dirs, files in os.walk(input_path):
         assert(data.shape[1] == ny)
         assert(data.shape[2] == ny)
         data = fft.fftn(data)/np.product(data.shape)
-        data = data[:data.shape[0]//2 + 1, :, :]
+        data = data[:data.shape[0]//2, :, :]
         data = np.real(data*np.conj(data))
-        data1 = data[:, 0, :data.shape[2]//2]
-        data2 = data[:, :data.shape[1]//2, 0]
+        data1 = data[:, 0, :data.shape[2]//2 + 1]
+        data2 = data[:, :data.shape[1]//2 + 1, 0]
         data3 = np.empty((data1.shape[0], data1.shape[1]))
         data4 = np.empty((data1.shape[0], data1.shape[1]))
         last_j = 0
