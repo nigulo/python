@@ -228,7 +228,7 @@ class nn_model:
                         epochs=self.n_epochs_1,
                         batch_size=self.batch_size,
                         shuffle=shuffle_epoch,
-                        validation_data=[[data_test], loglik_test],
+                        validation_data=([data_test], loglik_test),
                         #callbacks=[keras.callbacks.TensorBoard(log_dir='model_log')],
                         verbose=1,
                         steps_per_epoch=None,
