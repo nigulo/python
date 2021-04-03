@@ -75,8 +75,27 @@ sample_or_optimize = False
 
 num_optimizations = 1
 
+mode_priors = np.genfromtxt("GVconst.txt")
+
 # F-mode = 0
 # P modes = 1 ... 
+def get_alpha_prior(i, k):
+    for row in mode_priors:
+        k_start = row[0]
+        k_end = row[1]
+        if k >= k_start and k < k_end:
+            if i >= row[2]:
+                raise "No mode prior found"
+            return row[5 + i * 3]
+
+def get_num_components(k):
+    for row in mode_priors:
+        k_start = row[0]
+        k_end = row[1]
+        if k >= k_start and k < k_end:
+            return int(row[2])
+
+'''
 def get_alpha_prior(i, k_y):
     assert(i >= 0 and i <= 3)
     g_sun=274.*1e-6 # Mm s^(-2)
@@ -86,6 +105,7 @@ def get_alpha_prior(i, k_y):
         return (1000./(2*np.pi))*np.sqrt(A*k_y) #units=mHz
     else:
         return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y)
+'''
 
 def calc_y(x, alphas, betas, ws, scale):
     y = 0.
@@ -264,14 +284,21 @@ for root, dirs, files in os.walk(input_path):
         data = np.real(data*np.conj(data))
         
         #######################################################################
-        #d1 = fft.fftshift(data[100])
-        #levels = np.linspace(np.min(np.log(d1))+2, np.max(np.log(d1))-2, 200)
+        d1 = fft.fftshift(data[100])
+        #sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+        #import plot
+        #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(d1.shape[1], d1.shape[0]))
+        #test_plot.colormap(np.log(d1), cmap_name="gnuplot", show_colorbar=True)
+        #test_plot.save("spectrum1a.png")
+        #test_plot.close()
         
-        #fig, ax = plt.subplots(nrows=1, ncols=1)
-        #kxy = np.concatenate([-k[:-1], k[:-1]])
-        #ax.contour(kxy, kxy, np.log(d1), levels=levels)
-        #fig.savefig(os.path.join(output_dir, "spectrum1.png"))
-        #plt.close(fig)
+        levels = np.linspace(np.min(np.log(d1))+2, np.max(np.log(d1))-2, 200)
+        
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        kxy = np.concatenate([-k[1:][::-1], k[:-1]])
+        ax.contour(kxy, kxy, np.log(d1), levels=levels)
+        fig.savefig(os.path.join(output_dir, "spectrum1.png"))
+        plt.close(fig)
         #######################################################################
         
         
@@ -356,7 +383,7 @@ for root, dirs, files in os.walk(input_path):
             #waics = []
             min_bic = sys.float_info.max
 
-            for num_components in np.arange(1, 5):
+            for num_components in np.arange(1, get_num_components(k[k_index])):
                 scale =  np.sum(y)*x_range/len(y)/num_components
                 print("scale", scale)
                 
