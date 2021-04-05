@@ -143,8 +143,9 @@ def load_data(data_file):
             loglik_test.extend(n[:, 0])
             suffix += 1
         except:
-            pass
+            break
     print("Num nodes loaded", suffix - 1)
+    print("shape", np.asarray(loglik_train).shape, np.asarray(data_train).shape, np.asarray(loglik_test).shape, np.asarray(data_test).shape)
 
     return np.asarray(data_train), np.asarray(loglik_train), np.asarray(data_test), np.asarray(loglik_test)
 
