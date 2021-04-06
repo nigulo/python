@@ -61,7 +61,7 @@ k_max = 1500#sys.maxsize
 #if len(sys.argv) > 2:
 #    k_max = float(sys.argv[2])
 
-num_w = 1
+num_w = 2
 alpha_pol_degree = 2
 beta_pol_degree = 1
 w_pol_degree = 1
@@ -112,28 +112,27 @@ def fit(x, coefs):
         y += coef*(x**power)
         power += 1
     return y
-        
+
+def get_mode_params(mode_index, alphas, betas, k):
+    alphas_mode = []
+    betas_mode = []
+    indices_to_delete = []
+    for j in range(len(alphas)):
+        if len(alphas[j]) > mode_index:
+            alphas_mode.append(alphas[j][mode_index])
+            betas_mode.append(betas[j][mode_index])
+        else:
+            indices_to_delete.append(j)
+    return np.asarray(alphas_mode), np.asarray(betas_mode), np.delete(k, indices_to_delete)
+
+
 def calc_y(x, alphas, betas, ws, scales, k):
     alphas_fitted = []
     betas_fitted = []
     ws_fitted = []
     if len(alphas) > 1:
         for i in range(5):
-            k1 = np.array(k)
-            alphas_to_fit = []
-            betas_to_fit = []
-            ws_to_fit = []
-            indices_to_delete = []
-            for j in range(len(alphas)):
-                if len(alphas[j]) > i:
-                    alphas_to_fit.append(alphas[j][i])
-                    betas_to_fit.append(betas[j][i])
-                    ws_to_fit.append(ws[j])
-                else:
-                    indices_to_delete.append(j)
-            k1 = np.delete(k1, indices_to_delete)
-            alphas_to_fit = np.asarray(alphas_to_fit)
-            betas_to_fit = np.asarray(betas_to_fit)
+            alphas_to_fit, betas_to_fit, k1 = get_mode_params(i, alphas, betas, k)
             #print("alphas, betas", alphas_to_fit.shape, betas_to_fit.shape, k.shape)
             alpha_coefs = np.polyfit(k1, alphas_to_fit, alpha_pol_degree)
             beta_coefs = np.polyfit(k1, betas_to_fit, beta_pol_degree)
@@ -142,17 +141,16 @@ def calc_y(x, alphas, betas, ws, scales, k):
             alphas_fitted.append(fit(k, alpha_coefs))
             betas_fitted.append(fit(k, beta_coefs))
     
-            ws_to_fit = np.asarray(ws_to_fit)
-            for j in range(len(ws_to_fit[0])):
-                w_coefs = np.polyfit(k1, ws_to_fit[:, j], w_pol_degree)
-                ws_fitted.append(fit(k, w_coefs))    
+        for j in range(len(ws[0])):
+            w_coefs = np.polyfit(k, np.asarray(ws)[:, j], w_pol_degree)
+            ws_fitted.append(fit(k, w_coefs))    
     else:
-        for i in range(len(alphas)):
-            alphas_fitted.append([alphas[i]])
-        for i in range(len(alphas)):
-            betas_fitted.append([betas[i]])
-        for i in range(len(alphas)):
-            ws_fitted.append([ws[i]])
+        for i in range(len(alphas[0])):
+            alphas_fitted.append([alphas[0][i]])
+        for i in range(len(betas[0])):
+            betas_fitted.append([betas[0][i]])
+        for i in range(len(ws[0])):
+            ws_fitted.append([ws[0][i]])
     
     ys = np.empty((len(x), len(alphas)))
     for j in range(len(alphas)):
@@ -286,7 +284,7 @@ for root, dirs, files in os.walk(input_path):
         fig, ax = plt.subplots(nrows=1, ncols=1)
         kxy = np.concatenate([-k[1:][::-1], k[:-1]])
         ax.contour(kxy, kxy, np.log(d1), levels=levels)
-        fig.savefig(os.path.join(output_dir, "spectrum1.png"))
+        fig.savefig(os.path.join(output_dir, "ring_diagram.png"))
         plt.close(fig)
         #######################################################################
         
@@ -315,11 +313,10 @@ for root, dirs, files in os.walk(input_path):
         
         hdul.close()
     
-        levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)
-        
+        levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)        
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.contour(k, nu, np.log(data), levels=levels)
-        fig.savefig(os.path.join(output_dir, "spectrum2.png"))
+        fig.savefig(os.path.join(output_dir, "spectrum1.png"))
         plt.close(fig)
         
         f1 = open(os.path.join(output_dir, 'areas.txt'), 'w')
@@ -377,14 +374,7 @@ for root, dirs, files in os.walk(input_path):
 
         y = y[:, k_indices]
         k = k[k_indices]
-        
-        levels = np.linspace(np.min(np.log(y))+2, np.max(np.log(y))-2, 200)
-        
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.contour(k, x, np.log(y), levels=levels)
-        fig.savefig(os.path.join(output_dir, "spectrum3.png"))
-        plt.close(fig)
-        
+                
         print("scales", scales)
         
         alphas_est = []
@@ -463,6 +453,40 @@ for root, dirs, files in os.walk(input_path):
         print("betas", opt_betas)
         print("ws", opt_ws)
 
+        #######################################################################
+        # Plot results
+        levels = np.linspace(np.min(np.log(y))+2, np.max(np.log(y))-2, 200)
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        ax.contour(k, x, np.log(y), levels=levels)
+        for i in range(5):
+            alphas_to_fit, betas_to_fit, k1 = get_mode_params(i, opt_alphas, opt_betas, k)
+            alpha_coefs = np.polyfit(k1, alphas_to_fit, alpha_pol_degree)
+            beta_coefs = np.polyfit(k1, betas_to_fit, beta_pol_degree)
+            #print("coefs", alpha_coefs, beta_coefs)
+            
+            alphas_fitted = fit(k, alpha_coefs)
+            betas_fitted = fit(k, beta_coefs)
+            ax.plot(k, alphas_fitted, "k-")
+            ax.plot(k, alphas_fitted - betas_fitted, "k:")
+            ax.plot(k, alphas_fitted + betas_fitted, "k:")
+
+        fig.savefig(os.path.join(output_dir, "spectrum2.png"))
+        plt.close(fig)
+        
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        styles = ["k-", "b-", "g-", "r-"]
+        for j in range(len(opt_ws[0])):
+            w_coefs = np.polyfit(k, np.asarray(opt_ws)[:, j], w_pol_degree)
+            ws_fitted = fit(k, w_coefs)
+            ax.plot(k, ws_fitted, styles[j], label=f"Coef. {j+1}")
+            ax.set_xlabel(r'$k$')
+            ax.legend(loc=0)
+
+        fig.savefig(os.path.join(output_dir, "baseline_weights.png"))
+        plt.close(fig)
+        
+        #######################################################################
+
         y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, scales, k)
         
         for k_i in np.arange(len(k_indices)):
@@ -505,3 +529,5 @@ for root, dirs, files in os.walk(input_path):
         fig.savefig(os.path.join(output_dir, "areas.png"))
 
         plt.close(fig)
+        
+        
