@@ -397,7 +397,7 @@ class data_generator():
             (x, istop, itn, normr) = sparse.lsqr(W, np.reshape(y, (3*self.n, -1)))[:4]#, x0=None, tol=1e-05, maxiter=None, M=None, callback=None)
             L = la.cholesky(U)
             v = la.solve(L, x)
-            return 0#-0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
+            return -0.5 * np.dot(v.T, v) - sum(np.log(np.diag(L))) - 0.5 * self.n * np.log(2.0 * np.pi)
         else:
             return gp.calc_loglik(self.x, np.reshape(y, (3*self.n, -1)))
     
