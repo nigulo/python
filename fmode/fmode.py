@@ -30,6 +30,10 @@ if len(argv) > i:
 if len(year) > 0:
     input_path = os.path.join(input_path, year)
 
+MODE_VERTICAL = 0
+MODE_PERP_TO_RIDGE = 1
+mode = MODE_PERP_TO_RIDGE
+
 ny = 300
 map_scale = 0.05
 #k = np.arange(ny)
@@ -61,14 +65,11 @@ k_max = 1500#sys.maxsize
 #if len(sys.argv) > 2:
 #    k_max = float(sys.argv[2])
 
-num_w = 2
+num_w = 1
 alpha_pol_degree = 2
-beta_pol_degree = 1
+beta_pol_degree = 2
 w_pol_degree = 1
-
-num_samples = 1000
-num_cores = 6
-colors = ['blue', 'red', 'green', 'peru', 'purple']
+scale_smooth_win = 5
 
 num_optimizations = 1
 
@@ -76,14 +77,14 @@ mode_priors = np.genfromtxt("GVconst.txt")
 
 # F-mode = 0
 # P modes = 1 ... 
-def get_alpha_prior(i, k):
+def get_alpha_prior(mode_index, k):
     for row in mode_priors:
         k_start = row[0]
         k_end = row[1]
         if k >= k_start and k < k_end:
-            if i >= row[2]:
-                raise "No mode prior found"
-            return row[5 + i * 3]
+            if mode_index >= row[2]:
+                raise Exception("No mode prior found")
+            return row[5 + mode_index * 3]
 
 def get_num_components(k):
     for row in mode_priors:
@@ -91,7 +92,21 @@ def get_num_components(k):
         k_end = row[1]
         if k >= k_start and k < k_end:
             return int(row[2])
-    raise "No numbwr of components found for k=" + str(k)
+    return 0
+    
+def get_normals(k_nu, k_scale, nu_scale):
+    k_nu = np.array(k_nu)
+    k_nu[:, 0] /= k_scale
+    k_nu[:, 1] /= nu_scale
+    normals = k_nu[1:, :] - k_nu[:-1, :]
+    normals /= np.sqrt(np.sum(normals**2, axis=1, keepdims=True))
+    normals = normals[:, 1]*1.j + normals[:, 0]
+    normals *= 1.j
+    normals = np.concatenate((np.real(normals)[:, None], np.imag(normals)[:, None]), axis=1)
+    assert(np.all(normals == np.real(normals)))
+    normals[:, 0] *= k_scale/100
+    normals[:, 1] *= nu_scale/100
+    return normals
 
 '''
 def get_alpha_prior(i, k_y):
@@ -105,6 +120,63 @@ def get_alpha_prior(i, k_y):
         return (1000./(2*np.pi))*np.sqrt((float(i) +.5)*A*k_y)
 '''
 
+def smooth(x, window_len=11, window='hanning'):
+    """smooth the data using a window with requested size.
+    
+    This method is based on the convolution of a scaled window with the signal.
+    The signal is prepared by introducing reflected copies of the signal 
+    (with the window size) in both ends so that transient parts are minimized
+    in the begining and end part of the output signal.
+    
+    input:
+        x: the input signal 
+        window_len: the dimension of the smoothing window; should be an odd integer
+        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            flat window will produce a moving average smoothing.
+
+    output:
+        the smoothed signal
+        
+    example:
+
+    t=linspace(-2,2,0.1)
+    x=sin(t)+randn(len(t))*0.1
+    y=smooth(x)
+    
+    see also: 
+    
+    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+    scipy.signal.lfilter
+ 
+    TODO: the window parameter could be the window itself if an array instead of a string
+    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    """
+
+    if x.ndim != 1:
+        raise ValueError("smooth only accepts 1 dimension arrays.")
+
+    if x.size < window_len:
+        raise ValueError("Input vector needs to be bigger than window size.")
+
+
+    if window_len < 3:
+        return x
+
+
+    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+
+
+    s = np.r_[x[window_len-1:0:-1], x, x[-2:-window_len-1:-1]]
+    #print(len(s))
+    if window == 'flat': #moving average
+        w = np.ones(window_len, 'd')
+    else:
+        w = eval('np.' + window + '(window_len)')
+
+    y = np.convolve(w/w.sum(), s, mode='valid')
+    return y
+
 def fit(x, coefs):
     y = np.zeros_like(x)
     power = 0
@@ -113,33 +185,41 @@ def fit(x, coefs):
         power += 1
     return y
 
-def get_mode_params(mode_index, alphas, betas, k):
+def get_mode_params(mode_index, alphas, betas, scales, k):
     alphas_mode = []
     betas_mode = []
+    scales_mode = []
     indices_to_delete = []
     for j in range(len(alphas)):
         if len(alphas[j]) > mode_index:
             alphas_mode.append(alphas[j][mode_index])
             betas_mode.append(betas[j][mode_index])
+            assert(scales[j][mode_index] > 0)
+            scales_mode.append(scales[j][mode_index])
         else:
             indices_to_delete.append(j)
-    return np.asarray(alphas_mode), np.asarray(betas_mode), np.delete(k, indices_to_delete)
+    return np.asarray(alphas_mode), np.asarray(betas_mode), np.asarray(scales_mode), np.delete(k, indices_to_delete)
 
 
 def calc_y(x, alphas, betas, ws, scales, k):
     alphas_fitted = []
     betas_fitted = []
     ws_fitted = []
+    scales_fitted = []
     if len(alphas) > 1:
         for i in range(5):
-            alphas_to_fit, betas_to_fit, k1 = get_mode_params(i, alphas, betas, k)
+            alphas_to_fit, betas_to_fit, scales_to_fit, k1 = get_mode_params(i, alphas, betas, scales, k)
             #print("alphas, betas", alphas_to_fit.shape, betas_to_fit.shape, k.shape)
             alpha_coefs = np.polyfit(k1, alphas_to_fit, alpha_pol_degree)
             beta_coefs = np.polyfit(k1, betas_to_fit, beta_pol_degree)
+            #scale_coefs = np.polyfit(k1, scales_to_fit, scale_pol_degree)
             #print("coefs", alpha_coefs, beta_coefs)
     
-            alphas_fitted.append(fit(k, alpha_coefs))
-            betas_fitted.append(fit(k, beta_coefs))
+            alphas_fitted.append(fit(k1, alpha_coefs))
+            betas_fitted.append(fit(k1, beta_coefs))
+            scales_fitted.append(smooth(x=scales_to_fit, window_len=scale_smooth_win)[scale_smooth_win//2:-(scale_smooth_win//2)])
+            assert(len(scales_fitted[-1]) == len(scales_to_fit))
+            assert(np.all(scales_fitted[-1] > 0))
     
         for j in range(len(ws[0])):
             w_coefs = np.polyfit(k, np.asarray(ws)[:, j], w_pol_degree)
@@ -149,19 +229,23 @@ def calc_y(x, alphas, betas, ws, scales, k):
             alphas_fitted.append([alphas[0][i]])
         for i in range(len(betas[0])):
             betas_fitted.append([betas[0][i]])
+        for i in range(len(scales[0])):
+            scales_fitted.append([scales[0][i]])
         for i in range(len(ws[0])):
             ws_fitted.append([ws[0][i]])
     
     ys = np.empty((len(x), len(alphas)))
     for j in range(len(alphas)):
         y = np.zeros_like(x)
+        for i in np.arange(len(alphas[j])):
+            if len(alphas_fitted[i]) > j:
+                alpha = alphas_fitted[i][j]
+                beta = betas_fitted[i][j]
+                scale = scales_fitted[i][j]
+                y += scale/(np.pi*beta*(1+((x-alpha)/beta)**2))
         for i in np.arange(len(ws[j])):
             y += ws_fitted[i][j]*x**i
-        for i in np.arange(len(alphas[j])):
-            alpha = alphas_fitted[i][j]
-            beta = betas_fitted[i][j]
-            y += 1./(np.pi*beta*(1+((x-alpha)/beta)**2))
-        ys[:, j] = y*scales[j]
+        ys[:, j] = y
     return ys
 
 def calc_loglik(y, y_true, sigma):
@@ -171,7 +255,7 @@ def calc_loglik(y, y_true, sigma):
 def bic(loglik, n, k):
     return np.log(n)*k - 2.*loglik
 
-def find_areas(x, y, alphas, betas, ws, scale, noise_std, k):
+def find_areas(x, y, alphas, betas, ws, scales, noise_std, k):
     ###########################################################################
     # Remove noise 
     #y_base = calc_y(x, [], [], ws, scale)
@@ -180,11 +264,11 @@ def find_areas(x, y, alphas, betas, ws, scale, noise_std, k):
     #y = y[inds]
     #x = x[inds]
     ###########################################################################
-    y_base = calc_y(x, [[]], [[]], [ws], [scale], [k])
+    y_base = calc_y(x, [[]], [[]], [ws], [scales], [k])
     ys_fit = []
     num_components = len(alphas)
     for i in np.arange(num_components):
-        y_fit = calc_y(x, [alphas[i:i+1]], [betas[i:i+1]], [ws], [scale], [k])
+        y_fit = calc_y(x, [alphas[i:i+1]], [betas[i:i+1]], [ws], [scales], [k])
         y_fit -= y_base
         ys_fit.append(y_fit)
     ys_fit = np.asarray(ys_fit)
@@ -218,18 +302,6 @@ def find_areas(x, y, alphas, betas, ws, scale, noise_std, k):
         areas[i] *= (ranges[i, 1]-ranges[i, 0])/counts[i]
     
     return areas, ranges
-
-def smooth(x=None, y=None):
-    if x is not None:
-        x = x[:-2]+x[1:-1]+x[2:]
-        x /= 3
-    
-    if y is not None:
-        y = y[:-2]+y[1:-1]+y[2:]
-        y /= 3
-
-    return x, y
-
     
 def get_noise_var(data, k, nu):
     k_indices = np.where(np.logical_and(k >= 3500, k <= 4500))[0]
@@ -237,7 +309,6 @@ def get_noise_var(data, k, nu):
     y = data[nu_indices]
     y = y[:, k_indices]
 
-    _, y = smooth(None, y)
     return np.var(y)
 
 if not os.path.exists("results"):
@@ -316,8 +387,26 @@ for root, dirs, files in os.walk(input_path):
         levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)        
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.contour(k, nu, np.log(data), levels=levels)
+        alphas = dict()
+        for j in range(len(k)):
+            num_components = get_num_components(k[j])
+            for i in range(num_components):
+                if i not in alphas:
+                    alphas[i] = []
+                alphas[i].append(np.array([k[j], get_alpha_prior(i, k[j])]))
+        for i in alphas:
+            k_nu = np.asarray(alphas[i])
+            alpha_coefs = np.polyfit(k_nu[:, 0], k_nu[:, 1], alpha_pol_degree)
+            alphas_fitted = fit(k_nu[:, 0], alpha_coefs)
+            k_nu = np.concatenate((k_nu[:, 0][:,None], alphas_fitted[:, None]), axis=1)
+            normals = get_normals(k_nu, k[-1]-k[0], nu[-1]-nu[0])
+            #print(normals)
+            for j in range(0, len(normals), 10):
+                k_nu_ = np.linspace(k_nu[j, :]-normals[j], k_nu[j, :]+normals[j])
+                ax.plot(k_nu_[:, 0], k_nu_[:, 1], "k-")
         fig.savefig(os.path.join(output_dir, "spectrum1.png"))
         plt.close(fig)
+        sys.exit()
         
         f1 = open(os.path.join(output_dir, 'areas.txt'), 'w')
         f1.write('k num_components f_mode_area\n')
@@ -336,7 +425,6 @@ for root, dirs, files in os.walk(input_path):
         x_range = max(x) - min(x)
         
         all_num_components = []
-        scales = []
         k_indices = []
         
         while k_index < y.shape[1]:
@@ -347,7 +435,6 @@ for root, dirs, files in os.walk(input_path):
 
             num_components = get_num_components(k[k_index])            
             all_num_components.append(num_components)
-            scales.append(np.sum(y1)*x_range/len(y1)/num_components)
             k_indices.append(k_index)
                             
             for i in np.arange(num_components):
@@ -359,10 +446,14 @@ for root, dirs, files in os.walk(input_path):
                 beta_prior = .2/num_components
                 params.append(beta_prior)
                 #params.append(1./100)
-                bounds.append((.0001 , 2*beta_prior))
+                bounds.append((1e-10 , 2*beta_prior))
             for i in np.arange(num_w):
                 params.append(0.)
                 bounds.append((-100 , 100))
+            scale_prior = np.sum(y1)*x_range/len(y1)/num_components
+            for i in np.arange(num_components):
+                params.append(scale_prior)
+                bounds.append((.1*scale_prior, 10*scale_prior))
 
             k_index += 1
         #######################################################################    
@@ -375,17 +466,17 @@ for root, dirs, files in os.walk(input_path):
         y = y[:, k_indices]
         k = k[k_indices]
                 
-        print("scales", scales)
-        
         alphas_est = []
         betas_est = []
         ws_est = []
+        scales_est = []
             
         min_loglik = None
         def lik_fn(params):
             alphas = []
             betas = []
             ws = []
+            scales = []
             i = 0
             for k_i in np.arange(len(k_indices)):
                 num_components = all_num_components[k_i]
@@ -395,6 +486,8 @@ for root, dirs, files in os.walk(input_path):
                 i += num_components
                 ws.append(params[i:i+num_w])
                 i += num_w
+                scales.append(params[i:i+num_components])
+                i += num_components
             assert(len(scales) == len(alphas))
             
             y_mean_est = calc_y(x, alphas, betas, ws, scales, k)
@@ -419,9 +512,11 @@ for root, dirs, files in os.walk(input_path):
             i += num_components
             ws_est.append(min_res[i:i+num_w])
             i += num_w
+            scales_est.append(min_res[i:i+num_components])
+            i += num_components
 
         #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
-        y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scales, k)
+        y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scales_est, k)
         b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), len(k_indices)*(2*num_components + num_w))
         print("BIC", b)
         
@@ -445,33 +540,48 @@ for root, dirs, files in os.walk(input_path):
         opt_alphas = alphas_est
         opt_betas = betas_est
         opt_ws = ws_est
+        opt_scales = scales_est
         opt_num_components = num_components
         
-        scale =  np.sum(y)*x_range/len(y)/opt_num_components
+        #scale =  np.sum(y)*x_range/len(y)/opt_num_components
         
         print("alphas", opt_alphas)
         print("betas", opt_betas)
         print("ws", opt_ws)
+        print("scales", opt_scales)
 
         #######################################################################
         # Plot results
         levels = np.linspace(np.min(np.log(y))+2, np.max(np.log(y))-2, 200)
         fig, ax = plt.subplots(nrows=1, ncols=1)
+        fig2, ax2 = plt.subplots(nrows=1, ncols=1)
         ax.contour(k, x, np.log(y), levels=levels)
+        styles = ["k-", "b-", "g-", "r-", "m-"]
         for i in range(5):
-            alphas_to_fit, betas_to_fit, k1 = get_mode_params(i, opt_alphas, opt_betas, k)
+            alphas_to_fit, betas_to_fit, scales_to_fit, k1 = get_mode_params(i, opt_alphas, opt_betas, opt_scales, k)
             alpha_coefs = np.polyfit(k1, alphas_to_fit, alpha_pol_degree)
             beta_coefs = np.polyfit(k1, betas_to_fit, beta_pol_degree)
+            scales_fitted = smooth(x=scales_to_fit, window_len=scale_smooth_win)[scale_smooth_win//2:-(scale_smooth_win//2)]
+
+            #scale_coefs = np.polyfit(k1, scales_to_fit, scale_pol_degree)
             #print("coefs", alpha_coefs, beta_coefs)
             
             alphas_fitted = fit(k, alpha_coefs)
             betas_fitted = fit(k, beta_coefs)
+            #scales_fitted = fit(k, scale_coefs)
             ax.plot(k, alphas_fitted, "k-")
             ax.plot(k, alphas_fitted - betas_fitted, "k:")
             ax.plot(k, alphas_fitted + betas_fitted, "k:")
 
+            ax2.plot(k1, scales_fitted, styles[i], label=f"Mode {i+1}")
+            ax2.legend(loc=0)
+            ax2.set_xlabel(r'$k$')
+
         fig.savefig(os.path.join(output_dir, "spectrum2.png"))
         plt.close(fig)
+
+        fig2.savefig(os.path.join(output_dir, "scales.png"))
+        plt.close(fig2)
         
         fig, ax = plt.subplots(nrows=1, ncols=1)
         styles = ["k-", "b-", "g-", "r-"]
@@ -487,8 +597,10 @@ for root, dirs, files in os.walk(input_path):
         
         #######################################################################
 
-        y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, scales, k)
+        y_mean_est = calc_y(x, opt_alphas, opt_betas, opt_ws, opt_scales, k)
         
+        colors = ['blue', 'red', 'green', 'peru', 'purple']
+
         for k_i in np.arange(len(k_indices)):
             k_index = k_indices[k_i]
             fig, ax = plt.subplots(nrows=1, ncols=1)
@@ -497,7 +609,7 @@ for root, dirs, files in os.walk(input_path):
             #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
             ax.plot(x, y_mean_est[:, k_i], label='estimated regression line', lw=3., c='r')
                 
-            areas, ranges = find_areas(x, y[:, k_i], opt_alphas[k_i], opt_betas[k_i], opt_ws[k_i], scales[k_i], true_sigma, k[k_i])
+            areas, ranges = find_areas(x, y[:, k_i], opt_alphas[k_i], opt_betas[k_i], opt_ws[k_i], opt_scales[k_i], true_sigma, k[k_i])
             for i in np.arange(len(areas)):
                 ax.axvspan(ranges[i, 0], ranges[i, 1], alpha=0.5, color=colors[i])
             
