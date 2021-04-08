@@ -100,13 +100,26 @@ def get_normals(k_nu, k_scale, nu_scale):
     k_nu[:, 1] /= nu_scale
     normals = k_nu[1:, :] - k_nu[:-1, :]
     normals /= np.sqrt(np.sum(normals**2, axis=1, keepdims=True))
+    tangentials = np.array(normals)
+    tangentials[:, 0] *= k_scale/100
+    tangentials[:, 1] *= nu_scale/100
     normals = normals[:, 1]*1.j + normals[:, 0]
     normals *= 1.j
     normals = np.concatenate((np.real(normals)[:, None], np.imag(normals)[:, None]), axis=1)
     assert(np.all(normals == np.real(normals)))
     normals[:, 0] *= k_scale/100
     normals[:, 1] *= nu_scale/100
-    return normals
+    return normals, tangentials
+
+def get_slice(k, nu, ks, nus, tangential, eps=1e-2):
+    k_nu = np.array([k, nu])
+    indices = []
+    for i in range(len(ks)):
+        for j in range(len(nus)):
+            delta = np.array([ks[i], nus[j]]) - k_nu
+            if abs(np.sum(delta*tangential)) <= eps:
+                indices.append([i, j])
+    return np.sort(np.asarray(indices))
 
 '''
 def get_alpha_prior(i, k_y):
@@ -399,11 +412,17 @@ for root, dirs, files in os.walk(input_path):
             alpha_coefs = np.polyfit(k_nu[:, 0], k_nu[:, 1], alpha_pol_degree)
             alphas_fitted = fit(k_nu[:, 0], alpha_coefs)
             k_nu = np.concatenate((k_nu[:, 0][:,None], alphas_fitted[:, None]), axis=1)
-            normals = get_normals(k_nu, k[-1]-k[0], nu[-1]-nu[0])
+            normals, tangentials = get_normals(k_nu, k[-1]-k[0], nu[-1]-nu[0])
             #print(normals)
             for j in range(0, len(normals), 10):
                 k_nu_ = np.linspace(k_nu[j, :]-normals[j], k_nu[j, :]+normals[j])
                 ax.plot(k_nu_[:, 0], k_nu_[:, 1], "k-")
+                k_nu_ = np.linspace(k_nu[j, :]-tangentials[j], k_nu[j, :]+tangentials[j])
+                ax.plot(k_nu_[:, 0], k_nu_[:, 1], "k-")
+                if i == 0:
+                    indices = get_slice(k_nu[j, 0], k_nu[j, 1], k, nu, tangentials[j])
+                    print(indices)
+                    ax.plot(k[indices[::10, 0]], nu[indices[::10, 1]], "k+")
         fig.savefig(os.path.join(output_dir, "spectrum1.png"))
         plt.close(fig)
         sys.exit()
