@@ -220,6 +220,7 @@ else:
     #data_test -= mean#np.mean(data_test, axis = 0)
     #data_test /= std#np.std(data_test, axis = 0)
     loglik_test /= 1e7
+    print("Zero loglik?", np.all(loglik_test==0))
 
     data_test = np.transpose(data_test, (0, 2, 3, 4, 1))
     
