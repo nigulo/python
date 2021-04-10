@@ -76,7 +76,7 @@ def calc_cov_p(t, f, sig_var):
 
 class kalman_utils():
     
-    def __init__(self, t, y, num_iterations = 3, condition_fn = None, initial_indices = None):
+    def __init__(self, t, y, num_iterations = 100, condition_fn = None, initial_indices = None, max_iters_wo_progress = 10):
         self.t = t
         self.y = y
         self.cov_types = []
@@ -86,6 +86,7 @@ class kalman_utils():
         self.num_iterations = num_iterations
         self.has_A = False
         self.delta_t = t[1:] - t[:-1]
+        self.max_iters_wo_progress = max_iters_wo_progress
 
     def loglik_fn(self, param_values):
         A_shape = np.array([0, 0])
@@ -196,7 +197,8 @@ class kalman_utils():
         else:
             kf = kalman.kalman(t=self.t, y=self.y, F=Fs, L=Ls, H=Hs, R=R, m_0=m_0s, P_0=P_0s, Q_c=None, noise_int_prec=100, F_is_A=self.has_A, Q=Qs)
         y_means, loglik = kf.filter()
-        return y_means, loglik
+        y_means_smooth = kf.smooth()
+        return y_means_smooth, loglik
 
     def add_component(self, cov_type, param_values, settings = dict(), param_funcs = None):
         if cov_type == "linear_trend":
@@ -226,13 +228,20 @@ class kalman_utils():
         self.sampler.init()
         self.results = []
         last_iteration = -1
-        while self.sampler.get_iteration() < self.num_iterations:
+        last_loglik = -float("inf")
+        num_iters_wo_progress = 0
+        while self.sampler.get_iteration() < self.num_iterations and num_iters_wo_progress < self.max_iters_wo_progress:
             if self.sampler.get_iteration() != last_iteration:
                 print("Iteration", self.sampler.get_iteration())
                 last_iteration = self.sampler.get_iteration()
                 if last_iteration > 0:
-                    param_modes, param_means, param_sigmas, y_means, logliks = self.sampler.get_results()
+                    param_modes, param_means, param_sigmas, y_means, loglik = self.sampler.get_results()
                     print(param_modes)
+                    if loglik == last_loglik:
+                        num_iters_wo_progress += 1
+                    else:
+                        last_loglik = loglik
+                        num_iters_wo_progress = 0
             params_sample, loglik = self.sampler.sample()
             if loglik is not None:
                 self.results.append([params_sample, loglik])
