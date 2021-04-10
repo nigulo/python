@@ -17,7 +17,7 @@ import numpy.linalg as la
 
 import kalman_utils as ku
 
-cov_types = ["periodic"]
+cov_types = ["quasiperiodic"]
 var = 1.0
 sig_vars = [np.random.uniform(var*0.999, var*0.999)]#, np.random.uniform(var*0.9, var*0.9)]
 noise_var = var - sum(sig_vars)
@@ -77,18 +77,18 @@ fig.savefig('test.png')
 slope_hat, intercept_hat, r_value, p_value, std_err = stats.linregress(t, y)
 print("slope_hat, intercept_hat", slope_hat, intercept_hat)
 
-kalman_utils = ku.kalman_utils(t, y)
+kalman_utils = ku.kalman_utils(t, y, num_iterations=10)
 for i in np.arange(0, len(cov_types)):
     cov_type = cov_types[i]
     #sig_var = np.array([sig_vars[i], 1.0])
-    sig_var = np.linspace(sig_vars[i]/10, sig_vars[i]*5, 10)
+    sig_var = np.linspace(sig_vars[i]*.99, sig_vars[i]*1.01, 10)
     if cov_type == "linear_trend":
         slopes = np.linspace(slope_hat/2, slope_hat*2, 10)
         intercepts = np.linspace(mean/2, mean*2, 10)
         kalman_utils.add_component(cov_type, [slopes, intercepts])
     elif cov_type == "periodic":
         ells = np.array([10])
-        omegas = np.linspace(2.0*np.pi*freq/3, 2.0*np.pi*freq*2, 10)
+        omegas = np.linspace(2.0*np.pi*freq*.5, 2.0*np.pi*freq*2, 10)
         kalman_utils.add_component(cov_type, [sig_var, omegas, ells], {"j_max":2})
     elif cov_type == "quasiperiodic":
         omegas = np.linspace(2.0*np.pi*freq/1.9, 2.0*np.pi*freq*2, 10) 
@@ -106,9 +106,9 @@ for i in np.arange(0, len(cov_types)):
 
 kalman_utils.add_component("white_noise", [np.array([noise_var])])
 
-param_modes, param_means, param_sigmas, y_means, logliks = kalman_utils.do_inference()
+param_modes, param_means, param_sigmas, y_means, loglik = kalman_utils.do_inference()
 
-
+print("Loglik:", loglik)
 print("Estimated mode:", param_modes)
 print("Estimated mean:", param_means)
 print("Estimated sigma:", param_sigmas)
