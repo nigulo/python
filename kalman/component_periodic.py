@@ -4,7 +4,7 @@ import scipy.special as special
 class component_periodic():
     
     def __init__(self, j_max, sig_var, omega_0, ell):
-        self.j_max = j_max
+        self.num_j = j_max+1
         self.sig_var = sig_var
         self.omega_0 = omega_0
         self.ell = ell
@@ -31,15 +31,15 @@ class component_periodic():
     
     def get_params(self):
         
-        F = np.zeros((2*self.j_max, 2*self.j_max))
-        L = np.zeros((2*self.j_max, 2*self.j_max))
-        Q_c = np.zeros((2*self.j_max, 2*self.j_max)) # process noise
-        H = np.zeros(2*self.j_max) # observatioanl matrix
+        F = np.zeros((2*self.num_j, 2*self.num_j))
+        L = np.zeros((2*self.num_j, 2*self.num_j))
+        Q_c = np.zeros((2*self.num_j, 2*self.num_j)) # process noise
+        H = np.zeros(2*self.num_j) # observatioanl matrix
         
-        m_0 = np.zeros(2*self.j_max) # zeroth state mean
-        P_0 = np.zeros((2*self.j_max, 2*self.j_max)) # zeroth state covariance
+        m_0 = np.zeros(2*self.num_j) # zeroth state mean
+        P_0 = np.zeros((2*self.num_j, 2*self.num_j)) # zeroth state covariance
         
-        for j in np.arange(0, self.j_max+1):
+        for j in np.arange(0, self.num_j):
             Fpj, Lpj, P0pj, Hpj, _ = self.get_params_j(j)
             F[2*j:2*j+2, 2*j:2*j+2] = Fpj
             L[2*j:2*j+2, 2*j:2*j+2] = Lpj

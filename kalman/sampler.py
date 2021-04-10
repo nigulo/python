@@ -15,6 +15,7 @@ class sampler():
         self.condition_fn = condition_fn
         self.initial_indices = initial_indices
         self.param_funcs = []
+        self.best_indices = None
 
     def add_parameter_values(self, param_values, param_funcs = None):
         self.params_values += param_values
@@ -57,10 +58,11 @@ class sampler():
             y_means, loglik = self.loglik_fn(params_sample)
             self.logliks[self.params_order[self.current_param]][self.indices[self.params_order[self.current_param]]] = loglik
             if (self.max_loglik is None or loglik > self.max_loglik):
-                self.max_loglik = loglik
-                self.best_indices = np.array(self.indices)
-                self.best_y_mean = y_means
-                print("New best likelihood", self.max_loglik)
+                if not np.isnan(loglik):
+                    self.max_loglik = loglik
+                    self.best_indices = np.array(self.indices)
+                    self.best_y_mean = y_means
+                    print("New best likelihood", self.max_loglik)
         #else:
         #    print "Skipping ", params_sample
 
@@ -74,7 +76,7 @@ class sampler():
             index = self.indices[self.params_order[i]]
             index += 1
             if index >= len(self.params_values[self.params_order[i]]):
-                if self.greedy:
+                if self.greedy and self.best_indices is not None:
                     self.indices = np.array(self.best_indices)
                 else:
                     self.indices[self.params_order[i]] = 0

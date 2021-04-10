@@ -76,13 +76,13 @@ def calc_cov_p(t, f, sig_var):
 
 class kalman_utils():
     
-    def __init__(self, t, y, num_iterations = 3, condition_fn = None, initial_indices = None, param_fn = None):
+    def __init__(self, t, y, num_iterations = 3, condition_fn = None, initial_indices = None):
         self.t = t
         self.y = y
         self.cov_types = []
         self.cov_settings = dict()
         self.param_counts = dict()
-        self.sampler = sampler(self.loglik_fn, condition_fn = condition_fn, initial_indices = initial_indices, param_fn = param_fn)
+        self.sampler = sampler(self.loglik_fn, condition_fn = condition_fn, initial_indices = initial_indices)
         self.num_iterations = num_iterations
         self.has_A = False
         self.delta_t = t[1:] - t[:-1]
@@ -108,7 +108,7 @@ class kalman_utils():
                     component = component_linear_trend(slope=param_values[index], intercept=param_values[index+1], t=self.t)
                     F_is_A = True
                 elif cov_type == "periodic":
-                    component = component_periodic(self.cov_settings[cov_type]["j_max"], sig_var=param_values[index], omega_0=param_values[index+1], ell=param_values[index+1])
+                    component = component_periodic(self.cov_settings[cov_type]["j_max"], sig_var=param_values[index], omega_0=param_values[index+1], ell=param_values[index+2])
                 elif cov_type == "quasiperiodic":
                     component = component_quasiperiodic(self.cov_settings[cov_type]["j_max"], sig_var=param_values[index], omega_0=param_values[index+1], ellp=param_values[index+2], ellq=param_values[index+3])
                 elif cov_type == "exp_quad":
@@ -198,7 +198,7 @@ class kalman_utils():
         y_means, loglik = kf.filter()
         return y_means, loglik
 
-    def add_component(self, cov_type, param_values, settings = dict()):
+    def add_component(self, cov_type, param_values, settings = dict(), param_funcs = None):
         if cov_type == "linear_trend":
             assert(len(param_values) == 2)
             self.has_A = True
@@ -213,10 +213,10 @@ class kalman_utils():
         elif cov_type == "white_noise":
             assert(len(param_values) == 1)
         else:           
-            assert(True==False)
+            raise Exception("Invalid parameter values")
         self.cov_types.append(cov_type)
         self.param_counts[cov_type] = len(param_values)
-        self.sampler.add_parameter_values(param_values)
+        self.sampler.add_parameter_values(param_values, param_funcs)
         self.cov_settings[cov_type] = settings
 
     '''

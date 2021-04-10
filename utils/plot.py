@@ -136,7 +136,7 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, ax_index=None, params="k-", label=None):
+    def plot(self, x, y, params="k-", ax_index=None, label=None):
         ax = self.get_ax(ax_index)
         ax.plot(x, y, params, label=label)
         self.post_processing(ax)
@@ -543,6 +543,7 @@ class plot:
                             self.set_axis_tick_labels(ax_index=ax_index, axis="y", labels=None)
             
         self.fig.savefig(file_name)
+        self.close()
         
 
 

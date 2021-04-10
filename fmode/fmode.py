@@ -69,7 +69,7 @@ num_w = 1
 alpha_pol_degree = 2
 beta_pol_degree = 2
 w_pol_degree = 1
-scale_smooth_win = 5
+scale_smooth_win = 11
 
 num_optimizations = 1
 
@@ -355,21 +355,24 @@ for root, dirs, files in os.walk(input_path):
         data = np.real(data*np.conj(data))
         
         #######################################################################
-        d1 = fft.fftshift(data[100])
-        #sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
-        #import plot
-        #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(d1.shape[1], d1.shape[0]))
-        #test_plot.colormap(np.log(d1), cmap_name="gnuplot", show_colorbar=True)
-        #test_plot.save("spectrum1a.png")
-        #test_plot.close()
-        
-        levels = np.linspace(np.min(np.log(d1))+2, np.max(np.log(d1))-2, 200)
-        
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        kxy = np.concatenate([-k[1:][::-1], k[:-1]])
-        ax.contour(kxy, kxy, np.log(d1), levels=levels)
-        fig.savefig(os.path.join(output_dir, "ring_diagram.png"))
-        plt.close(fig)
+        '''
+        for i in range(0, 320, 10):
+            d1 = fft.fftshift(data[i])
+            #sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+            #import plot
+            #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(d1.shape[1], d1.shape[0]))
+            #test_plot.colormap(np.log(d1), cmap_name="gnuplot", show_colorbar=True)
+            #test_plot.save("spectrum1a.png")
+            #test_plot.close()
+            
+            levels = np.linspace(np.min(np.log(d1))+2, np.max(np.log(d1))-2, 200)
+            
+            fig, ax = plt.subplots(nrows=1, ncols=1)
+            kxy = np.concatenate([-k[1:][::-1], k[:-1]])
+            ax.contour(kxy, kxy, np.log(d1), levels=levels)
+            fig.savefig(os.path.join(output_dir, f"ring_diagram{i}.png"))
+            plt.close(fig)
+        '''
         #######################################################################
         
         
@@ -419,13 +422,13 @@ for root, dirs, files in os.walk(input_path):
                 ax.plot(k_nu_[:, 0], k_nu_[:, 1], "k-")
                 k_nu_ = np.linspace(k_nu[j, :]-tangentials[j], k_nu[j, :]+tangentials[j])
                 ax.plot(k_nu_[:, 0], k_nu_[:, 1], "k-")
-                if i == 0:
-                    indices = get_slice(k_nu[j, 0], k_nu[j, 1], k, nu, tangentials[j])
-                    print(indices)
-                    ax.plot(k[indices[::10, 0]], nu[indices[::10, 1]], "k+")
+                #if i == 0:
+                #    indices = get_slice(k_nu[j, 0], k_nu[j, 1], k, nu, tangentials[j])
+                #    print(indices)
+                #    ax.plot(k[indices[::10, 0]], nu[indices[::10, 1]], "k+")
         fig.savefig(os.path.join(output_dir, "spectrum1.png"))
         plt.close(fig)
-        sys.exit()
+        #sys.exit()
         
         f1 = open(os.path.join(output_dir, 'areas.txt'), 'w')
         f1.write('k num_components f_mode_area\n')
@@ -468,11 +471,11 @@ for root, dirs, files in os.walk(input_path):
                 bounds.append((1e-10 , 2*beta_prior))
             for i in np.arange(num_w):
                 params.append(0.)
-                bounds.append((-100 , 100))
+                bounds.append((-1e-10, 1e-10))#(-100 , 100))
             scale_prior = np.sum(y1)*x_range/len(y1)/num_components
             for i in np.arange(num_components):
                 params.append(scale_prior)
-                bounds.append((.1*scale_prior, 10*scale_prior))
+                bounds.append((.0001*scale_prior, 10*scale_prior))
 
             k_index += 1
         #######################################################################    
