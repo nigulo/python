@@ -24,8 +24,6 @@ import plot
 
 def find_cycle(star, dat, params_py):
     
-    matern_p = 1
-
     offset = 1979.3452
 
     t = dat[:,0]

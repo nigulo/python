@@ -515,5 +515,5 @@ ax1.plot(t[1:], y_means_max, 'r--')
 #ax1.plot(t[1:-1], y_means, 'g--')
 
 fig.savefig('test.png')
-plt.close(fig)
+plt.close()
 

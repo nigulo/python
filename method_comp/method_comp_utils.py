@@ -74,7 +74,7 @@ def calc_kalman(kalman_utils, t, y, sig_var, noise_var, t_coh, f, plot, coh_ind,
         fig, (ax1) = plt.subplots(nrows=1, ncols=1)
         fig.set_size_inches(6, 3)
         ax1.plot(t, y, 'b+')
-        ax1.plot(t[1:], y_means, 'r--')
+        ax1.plot(t[1:-1], y_means, 'r--')
         fig.savefig('kalman_' + str(coh_ind) + '_' + str(f_ind) + '.png')
         plt.close(fig)
     return loglik
