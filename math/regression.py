@@ -50,7 +50,6 @@ def fit_periodic_polynom(xs, ys, period, degree = 2, ws = 1., smoothness_level =
             else:
                 w = ws
             state = lsq.add_measurement(vals, y, w, state)
-        #xs += period
     state = lsq.invert(state)
 
     vals = np.zeros(2*degree)

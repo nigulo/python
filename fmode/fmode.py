@@ -2,6 +2,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import sys
 import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
+import plot
 from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
@@ -42,20 +44,19 @@ map_scale = 0.05
 #k1 = np.where(k == np.max(np.abs(k)))[0][0]
 #k = k[k0:k1+1]
 
-k = np.linspace(0, 3600, 151)
+#k = np.linspace(0, 3600, 151)
+ks = np.linspace(-3600, 3600, 300)
+print(ks)
 
-print(k)
+#cadence = 45.0
+#nf = 641
+#omega = np.arange((nf-1)/2+1)
+#omega = omega*2.*np.pi/(nf*cadence/1000.)
+#nu = omega/(2.*np.pi)
 
-cadence = 45.0
-nf = 641
-#k = np.linspace(0, 4500, 193)
-omega = np.arange((nf-1)/2+1)
-omega = omega*2.*np.pi/(nf*cadence/1000.)
-nu = omega/(2.*np.pi)
 #nu = np.linspace(0, 11.076389, 320)
-
-nu = np.linspace(0, 11.076389, 320)
-print(nu)
+nus = np.linspace(-11.076389, 11.076389, 641)
+print(nus)
 
 k_min = 700
 k_max = 1500#sys.maxsize
@@ -65,7 +66,7 @@ k_max = 1500#sys.maxsize
 #if len(sys.argv) > 2:
 #    k_max = float(sys.argv[2])
 
-num_w = 1
+num_w = 0
 alpha_pol_degree = 2
 beta_pol_degree = 2
 w_pol_degree = 1
@@ -75,6 +76,39 @@ num_optimizations = 1
 
 mode_priors = np.genfromtxt("GVconst.txt")
 
+def basis_func(coords, params, func_type="lorenzian"):
+    if func_type == "lorenzian":
+        x = coords[:, :, :, :3]
+        alphas = np.array([params[0], params[1], params[2]])
+        beta = params[3]
+        scale = params[4]
+        ys = scale/(np.pi*beta*(1+(np.sqrt(np.sum((x-alphas)**2))/beta)**2))
+    else:
+        raise ValueError(f"func_type {func_type} not supported")
+    return ys
+
+def plot_mode(params, nu_k_scale, fig, style, func_type="lorenzian"):
+    if func_type == "lorenzian":
+        #alphas = []
+        #betas = []
+        for alpha0, alpha1, alpha2, beta, scale in params:
+            fig.plot(alpha1/nu_k_scale, alpha2/nu_k_scale, style)
+            #alphas.append(alpha)
+            #betas.append(beta)
+        #alphas = np.asarray(alphas)
+        #betas = np.asarray(betas)
+        #indices = np.argsort
+    else:
+        raise ValueError(f"func_type {func_type} not supported")
+    
+
+def get_num_params(func_type="lorenzian"):
+    if func_type == "lorenzian":
+        return 5
+    else:
+        raise ValueError(f"func_type {func_type} not supported")
+    
+    
 # F-mode = 0
 # P modes = 1 ... 
 def get_alpha_prior(mode_index, k):
@@ -94,6 +128,7 @@ def get_num_components(k):
             return int(row[2])
     return 0
     
+'''
 def get_normals(k_nu, k_scale, nu_scale):
     k_nu = np.array(k_nu)
     k_nu[:, 0] /= k_scale
@@ -120,6 +155,7 @@ def get_slice(k, nu, ks, nus, tangential, eps=1e-2):
             if abs(np.sum(delta*tangential)) <= eps:
                 indices.append([i, j])
     return np.sort(np.asarray(indices))
+'''
 
 '''
 def get_alpha_prior(i, k_y):
@@ -190,6 +226,7 @@ def smooth(x, window_len=11, window='hanning'):
     y = np.convolve(w/w.sum(), s, mode='valid')
     return y
 
+'''
 def fit(x, coefs):
     y = np.zeros_like(x)
     power = 0
@@ -212,8 +249,17 @@ def get_mode_params(mode_index, alphas, betas, scales, k):
         else:
             indices_to_delete.append(j)
     return np.asarray(alphas_mode), np.asarray(betas_mode), np.asarray(scales_mode), np.delete(k, indices_to_delete)
+'''
 
+def fit(coords, params):
+    num_params = get_num_params()
+    assert((len(params) % num_params) == 0)
+    fitted_data = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2]))
+    for i in range(len(params) // num_params):
+        fitted_data += basis_func(coords, params[i*num_params:i*num_params + num_params])
+    return fitted_data
 
+'''
 def calc_y(x, alphas, betas, ws, scales, k):
     alphas_fitted = []
     betas_fitted = []
@@ -260,9 +306,10 @@ def calc_y(x, alphas, betas, ws, scales, k):
             y += ws_fitted[i][j]*x**i
         ys[:, j] = y
     return ys
+'''
 
-def calc_loglik(y, y_true, sigma):
-    loglik = -0.5 * np.sum((y - y_true)**2/sigma) - 0.5*np.log(sigma) - 0.5*np.log(2.0*np.pi)
+def calc_loglik(data_fitted, data, data_mask, sigma):
+    loglik = -0.5 * np.sum(((data_fitted - data)*data_mask)**2/sigma) - 0.5*np.log(sigma) - 0.5*np.log(2.0*np.pi)
     return loglik        
     
 def bic(loglik, n, k):
@@ -316,13 +363,13 @@ def find_areas(x, y, alphas, betas, ws, scales, noise_std, k):
     
     return areas, ranges
     
-def get_noise_var(data, k, nu):
-    k_indices = np.where(np.logical_and(k >= 3500, k <= 4500))[0]
-    nu_indices = np.where(np.logical_and(nu >= 2, nu <= 4))[0]
-    y = data[nu_indices]
-    y = y[:, k_indices]
-
-    return np.var(y)
+def get_noise_var(data, ks, nus):
+    k_indices = np.where(np.logical_and(ks >= 3500, ks <= 4500))[0]
+    nu_indices = np.where(np.logical_and(nus >= 2, nus <= 4))[0]
+    d = data[nu_indices]
+    d = d[:, k_indices, :]
+    d = d[:, :, k_indices]
+    return np.var(d)
 
 if not os.path.exists("results"):
     os.mkdir("results")
@@ -346,13 +393,18 @@ for root, dirs, files in os.walk(input_path):
         hdul = fits.open(os.path.join(root, file))
         
         data = hdul[1].data
-        print(data.shape, nf, ny)
-        assert(data.shape[0] == nf)
-        assert(data.shape[1] == ny)
-        assert(data.shape[2] == ny)
+        #print(data.shape, nf, ny)
+        #assert(data.shape[0] == nf)
+        #assert(data.shape[1] == ny)
+        #assert(data.shape[2] == ny)
         data = fft.fftn(data)/np.product(data.shape)
-        data = data[:data.shape[0]//2, :, :]
+        #data = data[:data.shape[0]//2, :, :]
         data = np.real(data*np.conj(data))
+        data = fft.fftshift(data)
+        
+        noise_var = get_noise_var(data, ks, nus)        
+        sig_var = np.var(data) - noise_var
+        true_sigma = np.sqrt(noise_var)
         
         #######################################################################
         '''
@@ -375,7 +427,7 @@ for root, dirs, files in os.walk(input_path):
         '''
         #######################################################################
         
-        
+        '''
         data1 = data[:, 0, :data.shape[2]//2 + 1]
         data2 = data[:, :data.shape[1]//2 + 1, 0]
         data3 = np.empty((data1.shape[0], data1.shape[1]))
@@ -397,12 +449,14 @@ for root, dirs, files in os.walk(input_path):
             
         assert(j == data1.shape[1] - 1)
         data = data1#(data1 + data2 + data3 + data4)/4
+        '''
         
         hdul.close()
-    
+            
         levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)        
         fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.contour(k, nu, np.log(data), levels=levels)
+        ax.contour(ks[len(ks)//2-1:], nus[len(nus)//2+1:], np.log(data[:data.shape[0]//2, 0, :data.shape[2]//2 + 1]), levels=levels)
+        '''
         alphas = dict()
         for j in range(len(k)):
             num_components = get_num_components(k[j])
@@ -426,6 +480,7 @@ for root, dirs, files in os.walk(input_path):
                 #    indices = get_slice(k_nu[j, 0], k_nu[j, 1], k, nu, tangentials[j])
                 #    print(indices)
                 #    ax.plot(k[indices[::10, 0]], nu[indices[::10, 1]], "k+")
+        '''
         fig.savefig(os.path.join(output_dir, "spectrum1.png"))
         plt.close(fig)
         #sys.exit()
@@ -434,59 +489,102 @@ for root, dirs, files in os.walk(input_path):
         f1.write('k num_components f_mode_area\n')
         
         results = []
-        k_index = np.min(np.where(k >= k_min)[0])
-        k_max_ = k[k < k_max][-1]
+        k_max_ = ks[ks < k_max][-1]
         
         params = []
         bounds = []
         
-        x = np.asarray(nu, dtype='float')
-        fltr = (x > 2.) * (x <10.)
-        x = x[fltr]
-        y = data[fltr, :]
-        x_range = max(x) - min(x)
+        print(data.shape, nus.shape)
+        nus_filtered = np.asarray(nus)
+        fltr = (nus_filtered > 2.) * (nus_filtered <10.)
+        nus_filtered = nus_filtered[fltr]
+        data = data[fltr, :, :]
         
-        all_num_components = []
-        k_indices = []
+        data_mask = np.zeros_like(data, dtype=int)
         
-        while k_index < y.shape[1]:
-            y1 = data[:, k_index]
+        coords = np.empty((len(nus_filtered), len(ks), len(ks), 4))
+        nu_k_scale = (nus[-1]-nus[0])/(ks[-1]-ks[0])
+        k_grid = np.transpose([np.tile(ks, len(ks)), np.repeat(ks, len(ks))])
+        k_grid = np.reshape(k_grid, (data.shape[1], data.shape[2], 2))
+        k_grid_scaled = k_grid*nu_k_scale
+        k_grid2 = k_grid**2
+        k_modulus = np.sqrt(np.sum(k_grid2, axis=2, keepdims=True))
+        print(k_grid[:5, :5], k_grid[-5:, -5:])
+        for i in range(len(nus_filtered)):
+            nu = nus_filtered[i]
+            nus_ = np.reshape(np.repeat([nu], k_grid.shape[0]*k_grid.shape[1]), (k_grid.shape[0], k_grid.shape[1], 1))
+            #nu2 = nu**2
+            #print(nus_.shape, k_grid_scaled.shape, k_modulus.shape)
+            coords[i] = np.concatenate([nus_, k_grid_scaled, k_modulus], axis=2)
+            '''
+            for j1 in range(len(ks)):
+                k1 = ks[j1]
+                k12 = k1**2
+                for j2 in range(len(ks)):
+                    k2 = ks[j2]
+                    k22 = k2**2
+                    #phi = np.arctan2(k2, k1)
+                    k122 = k12 + k22
+                    k = np.sqrt(k122)
+                    #theta = np.arctan2(nu, k)
+                    coords[i, j1, j2] = [nu, k1*nu_k_scale, k2*nu_k_scale, k]#np.sqrt(nu2 + k122), phi theta]
+            '''
+        print("Coordinate grid created")
+        mode_info = []
+        
+        '''
+        phi_ks = np.linspace(0, 2*np.p-, 100, endpoint=False)
+        for phi_k_i in range(len(phi_ks)):
+            phi_k = phi_ks[phi_k_i]
+            if phi_k_i == 0:
+                phi_k1 = 2*np.pi-phi_ks[-1]
+            else:
+                phi_k1 = phi_ks[phi_k_i-1]
+            phi_k2 = phi_ks[phi_k_i]
+            dist = np.minimum(np.abs(coords[:, :, :, 5] - phi_k), np.abs(coords[:, :, :, 5] - np.pi - phi_k)
+            dist1 = np.minimum(np.abs(coords[:, :, :, 5] - phi_k1), np.abs(coords[:, :, :, 5] - np.pi - phi_k1))
+            dist2 = np.minimum(np.abs(coords[:, :, :, 5] - phi_k2), np.abs(coords[:, :, :, 5] - np.pi - phi_k2))
+            fltr = (dist < dist1) * (dist < dist2))
             
-            if np.min(k[k_index:]) > k_max_:
-                break
+            coords_slice = coords[fltr]
+            data_slice = data[fltr]
+        '''
+        
+        for k_ind1 in range(coords.shape[2]):
+            for k_ind2 in range(coords.shape[3]):
+                _, k1, k2, k = coords[0, k_ind1, k_ind2]
+                if k >= k_min and k <= k_max_:
+                    data_mask[:, k_ind1, k_ind2] = 1
+                    num_components = get_num_components(k)
+                    
+                    nus_ = coords[:, k_ind1, k_ind2, 0]
+                    for i in np.arange(num_components):
+                        alpha_prior0 = get_alpha_prior(i, k)
+                        params.append(alpha_prior0)
+                        print("alpha_prior", alpha_prior, i, k)
+                        bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
 
-            num_components = get_num_components(k[k_index])            
-            all_num_components.append(num_components)
-            k_indices.append(k_index)
-                            
-            for i in np.arange(num_components):
-                alpha_prior = get_alpha_prior(i, k[k_index])
-                params.append(alpha_prior)
-                print("alpha_prior", alpha_prior, i, k[k_index])
-                bounds.append((alpha_prior-.5 , alpha_prior+.5))
-            for i in np.arange(num_components):
-                beta_prior = .2/num_components
-                params.append(beta_prior)
-                #params.append(1./100)
-                bounds.append((1e-10 , 2*beta_prior))
-            for i in np.arange(num_w):
-                params.append(0.)
-                bounds.append((-1e-10, 1e-10))#(-100 , 100))
-            scale_prior = np.sum(y1)*x_range/len(y1)/num_components
-            for i in np.arange(num_components):
-                params.append(scale_prior)
-                bounds.append((.0001*scale_prior, 10*scale_prior))
+                        params.append(k1)
+                        bounds.append((k1-.5 , k1+.5))
 
-            k_index += 1
+                        params.append(k2)
+                        bounds.append((k2-.5 , k2+.5))
+
+                        beta_prior = 0.04#.2/num_components
+                        params.append(beta_prior)
+                        #params.append(1./100)
+                        bounds.append((1e-10 , 2*beta_prior))
+
+                        params.append(scale_prior)
+                        bounds.append((1e-10, 10.))
+
+                        mode_info.append((i == 0, np.argmin(np.abs(nus_ - alpha_prior)), k_ind1, k_ind2))
+                                                    
+    
         #######################################################################    
         
-        noise_var = get_noise_var(data, k, nu)
-        
-        sig_var = np.var(y) - noise_var
-        true_sigma = np.sqrt(noise_var)
-
-        y = y[:, k_indices]
-        k = k[k_indices]
+        #y = y[:, k_indices]
+        #k = k[k_indices]
                 
         alphas_est = []
         betas_est = []
@@ -495,12 +593,13 @@ for root, dirs, files in os.walk(input_path):
             
         min_loglik = None
         def lik_fn(params):
+            '''
             alphas = []
             betas = []
             ws = []
             scales = []
             i = 0
-            for k_i in np.arange(len(k_indices)):
+            for k_i in np.arange(len(k_inds)):
                 num_components = all_num_components[k_i]
                 alphas.append(params[i:i+num_components])
                 i += num_components
@@ -511,9 +610,11 @@ for root, dirs, files in os.walk(input_path):
                 scales.append(params[i:i+num_components])
                 i += num_components
             assert(len(scales) == len(alphas))
-            
-            y_mean_est = calc_y(x, alphas, betas, ws, scales, k)
-            return -calc_loglik(y_mean_est, y, true_sigma)
+            '''
+            data_fitted = fit(coords, params)
+            return -calc_loglik(data_fitted, data, data_mask, true_sigma)
+        
+        '''
         min_res = None
         for trial_no in np.arange(0, num_optimizations):                    
             print("params", params)
@@ -525,8 +626,12 @@ for root, dirs, files in os.walk(input_path):
             if min_loglik is None or loglik < min_loglik:
                 min_loglik = loglik
                 min_res = res['x']
+        params_est = min_res
+        '''
+        params_est = params
+        '''
         i = 0
-        for k_i in np.arange(len(k_indices)):
+        for k_i in np.arange(len(k_inds)):
             num_components = all_num_components[k_i]
             alphas_est.append(min_res[i:i+num_components])
             i += num_components
@@ -536,12 +641,35 @@ for root, dirs, files in os.walk(input_path):
             i += num_w
             scales_est.append(min_res[i:i+num_components])
             i += num_components
-
+        '''
         #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
-        y_mean_est = calc_y(x, alphas_est, betas_est, ws_est, scales_est, k)
-        b = bic(calc_loglik(y_mean_est, y, true_sigma), len(y), len(k_indices)*(2*num_components + num_w))
+        data_fitted = fit(coords, params_est)
+        b = bic(calc_loglik(data_fitted, data, data_mask, true_sigma), np.sum(data_mask), len(params))
         print("BIC", b)
         
+        num_params = get_num_params()
+        params_ = []
+        for i in range(data.shape[0]):
+            mode_params = []
+            for _ in range(5):
+                mode_params.append([])
+            params_.append(mode_params)
+        for mode_index in range(5):
+            for i in range(len(mode_info)):
+                mode_i, nu_ind, _, _ = mode_info[i]
+                if mode_i == mode_index:
+                    params_[nu_ind][mode_index].append(params_est[i*num_params])
+
+        styles = ["k-", "b-", "g-", "r-", "m-"]
+        for i in range(len(params_)):
+            fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[0]))
+            fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
+            for mode_index in range(5):
+                plot_mode(params_[i][mode_index], nu_k_scale, fig, styles[mode_index])
+            fig.save(f"ring_diagram{i}.png")
+                    
+            
+            
         '''
         for k_i in np.arange(len(k_indices)):
             k_index = k_indices[k_i]
@@ -556,7 +684,8 @@ for root, dirs, files in os.walk(input_path):
             fig.savefig(f"{output_dir}/fit{k_index}_{num_components}.png")
             plt.close(fig)
         '''
-        
+
+        '''        
         #if b < min_bic:
         min_bic = b
         opt_alphas = alphas_est
@@ -663,5 +792,5 @@ for root, dirs, files in os.walk(input_path):
         fig.savefig(os.path.join(output_dir, "areas.png"))
 
         plt.close(fig)
-        
+        '''
         

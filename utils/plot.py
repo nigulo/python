@@ -12,13 +12,13 @@ import matplotlib.patches as patches
 #import pyhdust.triangle as triangle
 import numpy as np
 
-def reverse_colourmap(cmap, name = 'my_cmap_r'):
-     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
+#def reverse_colourmap(cmap, name = 'my_cmap_r'):
+#     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
 
 
 def create_cmap(cmap_name, reverse=True):
     if reverse:
-        return reverse_colourmap(plt.get_cmap(cmap_name))
+        return plt.get_cmap(cmap_name).reversed()#reverse_colourmap(plt.get_cmap(cmap_name))
     else:
         return plt.get_cmap(cmap_name)
 
