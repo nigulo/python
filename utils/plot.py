@@ -156,6 +156,19 @@ class plot:
         ax.add_patch(rect)
         self.post_processing(ax)
         
+    def contour(self, x, y, data, levels=200, log=True, ax_index=None):
+        ax = self.get_ax(ax_index)
+        if log:
+            data = np.log(data)
+        levels = np.linspace(np.min(data)+2, np.max(data)-2, levels)        
+        ax.contour(x, y, data, levels=levels)
+        self.post_processing(ax)
+        
+    def scatter(self, x, y, s=None, c=None, marker=None, cmap=None, norm=None, vmin=None, vmax=None, alpha=None, linewidths=None, edgecolors=None, ax_index=None):
+        ax = self.get_ax(ax_index)
+        ax.scatter(x, y, s, c, marker, cmap, norm, vmin, vmax, alpha, linewidths, edgecolors)
+        self.post_processing(ax)
+        
     def set_log(self, ax_index=None, params="y"):
         ax = self.get_ax(ax_index)
         if "x" in params:
@@ -283,11 +296,6 @@ class plot:
         self.ims[ax] = im
 
         self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
-        self.post_processing(ax)
-
-    def contour(self, x, y, z, ax_index = [], levels=None):
-        ax = self.get_ax(ax_index)
-        ax.contour(x, y, z, levels=levels)
         self.post_processing(ax)
         
     def post_processing(self, ax):

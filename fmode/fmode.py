@@ -87,12 +87,14 @@ def basis_func(coords, params, func_type="lorenzian"):
         raise ValueError(f"func_type {func_type} not supported")
     return ys
 
-def plot_mode(params, nu_k_scale, fig, style, func_type="lorenzian"):
+def plot_mode(params, nu_k_scale, fig, color, func_type="lorenzian"):
     if func_type == "lorenzian":
         #alphas = []
         #betas = []
+        print(len(params))
         for alpha0, alpha1, alpha2, beta, scale in params:
-            fig.plot(alpha1/nu_k_scale, alpha2/nu_k_scale, style)
+            #print(alpha1/nu_k_scale, alpha2/nu_k_scale)
+            fig.scatter(alpha1/nu_k_scale, alpha2/nu_k_scale, s=2, c=color)
             #alphas.append(alpha)
             #betas.append(beta)
         #alphas = np.asarray(alphas)
@@ -408,22 +410,17 @@ for root, dirs, files in os.walk(input_path):
         
         #######################################################################
         '''
-        for i in range(0, 320, 10):
-            d1 = fft.fftshift(data[i])
-            #sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
-            #import plot
-            #test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(d1.shape[1], d1.shape[0]))
-            #test_plot.colormap(np.log(d1), cmap_name="gnuplot", show_colorbar=True)
-            #test_plot.save("spectrum1a.png")
-            #test_plot.close()
+        for i in range(0, 320, 10):            
+            levels = np.linspace(np.min(np.log(data[i]))+2, np.max(np.log(data[i]))-2, 200)
             
-            levels = np.linspace(np.min(np.log(d1))+2, np.max(np.log(d1))-2, 200)
-            
-            fig, ax = plt.subplots(nrows=1, ncols=1)
-            kxy = np.concatenate([-k[1:][::-1], k[:-1]])
-            ax.contour(kxy, kxy, np.log(d1), levels=levels)
-            fig.savefig(os.path.join(output_dir, f"ring_diagram{i}.png"))
-            plt.close(fig)
+            fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
+            fig.contour(ks, ks, data[i, :, :])
+            fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
+
+            #fig, ax = plt.subplots(nrows=1, ncols=1)
+            #ax.contour(ks, ks, np.log(data[i]), levels=levels)
+            #fig.savefig(os.path.join(output_dir, f"ring_diagram{i}.png"))
+            #plt.close(fig)
         '''
         #######################################################################
         
@@ -453,9 +450,9 @@ for root, dirs, files in os.walk(input_path):
         
         hdul.close()
             
-        levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)        
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.contour(ks[len(ks)//2-1:], nus[len(nus)//2+1:], np.log(data[:data.shape[0]//2, 0, :data.shape[2]//2 + 1]), levels=levels)
+        #levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)        
+        #fig, ax = plt.subplots(nrows=1, ncols=1)
+        #ax.contour(ks[len(ks)//2-1:], nus[len(nus)//2+1:], np.log(data[:data.shape[0]//2, 0, :data.shape[2]//2 + 1]), levels=levels)
         '''
         alphas = dict()
         for j in range(len(k)):
@@ -481,8 +478,8 @@ for root, dirs, files in os.walk(input_path):
                 #    print(indices)
                 #    ax.plot(k[indices[::10, 0]], nu[indices[::10, 1]], "k+")
         '''
-        fig.savefig(os.path.join(output_dir, "spectrum1.png"))
-        plt.close(fig)
+        #fig.savefig(os.path.join(output_dir, "spectrum1.png"))
+        #plt.close(fig)
         #sys.exit()
         
         f1 = open(os.path.join(output_dir, 'areas.txt'), 'w')
@@ -550,8 +547,8 @@ for root, dirs, files in os.walk(input_path):
             data_slice = data[fltr]
         '''
         
-        for k_ind1 in range(coords.shape[2]):
-            for k_ind2 in range(coords.shape[3]):
+        for k_ind1 in range(coords.shape[1]):
+            for k_ind2 in range(coords.shape[2]):
                 _, k1, k2, k = coords[0, k_ind1, k_ind2]
                 if k >= k_min and k <= k_max_:
                     data_mask[:, k_ind1, k_ind2] = 1
@@ -561,7 +558,6 @@ for root, dirs, files in os.walk(input_path):
                     for i in np.arange(num_components):
                         alpha_prior0 = get_alpha_prior(i, k)
                         params.append(alpha_prior0)
-                        print("alpha_prior", alpha_prior, i, k)
                         bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
 
                         params.append(k1)
@@ -575,12 +571,13 @@ for root, dirs, files in os.walk(input_path):
                         #params.append(1./100)
                         bounds.append((1e-10 , 2*beta_prior))
 
+                        scale_prior = 1.
                         params.append(scale_prior)
                         bounds.append((1e-10, 10.))
 
-                        mode_info.append((i == 0, np.argmin(np.abs(nus_ - alpha_prior)), k_ind1, k_ind2))
+                        mode_info.append((i, np.argmin(np.abs(nus_ - alpha_prior0)), k_ind1, k_ind2))
                                                     
-    
+        print("Priors set")
         #######################################################################    
         
         #y = y[:, k_indices]
@@ -643,9 +640,9 @@ for root, dirs, files in os.walk(input_path):
             i += num_components
         '''
         #plt.plot(x, true_regression_line, label='true regression line', lw=3., c='y')
-        data_fitted = fit(coords, params_est)
-        b = bic(calc_loglik(data_fitted, data, data_mask, true_sigma), np.sum(data_mask), len(params))
-        print("BIC", b)
+        #data_fitted = fit(coords, params_est)
+        #b = bic(calc_loglik(data_fitted, data, data_mask, true_sigma), np.sum(data_mask), len(params))
+        #print("BIC", b)
         
         num_params = get_num_params()
         params_ = []
@@ -658,15 +655,24 @@ for root, dirs, files in os.walk(input_path):
             for i in range(len(mode_info)):
                 mode_i, nu_ind, _, _ = mode_info[i]
                 if mode_i == mode_index:
-                    params_[nu_ind][mode_index].append(params_est[i*num_params])
+                    print(nu_ind, mode_index, len(params_est[i*num_params:i*num_params+num_params]))
+                    params_[nu_ind][mode_index].append(params_est[i*num_params:i*num_params+num_params])
 
-        styles = ["k-", "b-", "g-", "r-", "m-"]
-        for i in range(len(params_)):
-            fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[0]))
-            fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
+        colors = ["k", "b", "g", "r", "m"]
+        for i in range(0, len(params_)):
+            contains_data = False
             for mode_index in range(5):
-                plot_mode(params_[i][mode_index], nu_k_scale, fig, styles[mode_index])
-            fig.save(f"ring_diagram{i}.png")
+                if len(params_[i][mode_index]) > 0:
+                    contains_data = True
+            if not contains_data:
+                continue
+            fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[0]))
+            fig.contour(ks, ks, data[i, :, :])
+            #fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
+            for mode_index in range(5):
+                #print(i, mode_index)
+                plot_mode(params_[i][mode_index], nu_k_scale, fig, colors[mode_index])
+            fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
                     
             
             
