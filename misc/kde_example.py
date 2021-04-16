@@ -54,4 +54,4 @@ ax.bar(bin_edges[:-1], hist)
 d *= max(hist)/max(d)
 ax.plot(x_grid, d, "r-")
 
-plt.show(fig)
+plt.show()

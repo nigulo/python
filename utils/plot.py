@@ -164,9 +164,9 @@ class plot:
         ax.contour(x, y, data, levels=levels)
         self.post_processing(ax)
         
-    def scatter(self, x, y, s=None, c=None, marker=None, cmap=None, norm=None, vmin=None, vmax=None, alpha=None, linewidths=None, edgecolors=None, ax_index=None):
+    def scatter(self, x, y, s=None, c=None, marker="o", alpha=None, linewidths=None, edgecolors=None, ax_index=None):
         ax = self.get_ax(ax_index)
-        ax.scatter(x, y, s, c, marker, cmap, norm, vmin, vmax, alpha, linewidths, edgecolors)
+        ax.scatter(x=x, y=y, s=s, c=c, marker=marker, alpha=alpha)#, linewidths=linewidths, edgecolors=edgecolors)
         self.post_processing(ax)
         
     def set_log(self, ax_index=None, params="y"):
