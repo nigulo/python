@@ -73,19 +73,58 @@ w_pol_degree = 1
 scale_smooth_win = 11
 
 num_optimizations = 1
+approx_width = 100
 
 mode_priors = np.genfromtxt("GVconst.txt")
 
-def basis_func(coords, params, func_type="lorenzian"):
+def basis_func(coords, ys, params, func_type="lorenzian"):
     if func_type == "lorenzian":
-        x = coords[:, :, :, :3]
         alphas = np.array([params[0], params[1], params[2]])
         beta = params[3]
         scale = params[4]
-        ys = scale/(np.pi*beta*(1+(np.sqrt(np.sum((x-alphas)**2))/beta)**2))
+        x = coords[:, :, :, :3]
+        #ys = np.zeros_like(x[:, :, :, 0])
+        r2_max = (approx_width*scale/beta-1)*beta
+        r2 = np.sum((x-alphas)**2, axis=3)
+        fltr = r2 <= r2_max
+        ys[fltr] = scale/(np.pi*beta*(1+(np.sqrt(r2[fltr])/beta)**2))
     else:
         raise ValueError(f"func_type {func_type} not supported")
     return ys
+
+def grad(data_fitted, data, data_mask, sigma, params, func_type="lorenzian"):
+    if func_type == "lorenzian":
+        x = coords[:, :, :, :3]
+        all_grads = np.array([])
+        for i in range(len(params) // 5):
+            alphas = params[i*5:i*5+3]
+            beta = params[i*5+3]
+            scale = params[i*5+4]
+        
+            #ys = np.zeros_like(x[:, :, :, 0])
+            #r2_max = (approx_width*scale/beta-1)*beta
+            r2 = np.sum((x-alphas)**2, axis=3)
+            #fltr = r2 <= r2_max
+            
+            coef2 = scale/np.pi
+            coef3 = np.sqrt(r2)
+            coef4 = 1+(coef3/beta)**3
+            alpha_grad = np.tile((-2*coef2/(beta*coef4*coef3/beta))[:, :, :, None], 3)*(x-alphas)
+            beta_grad = coef2*(-1/(1+(coef3/beta)**2)*beta**2+2*coef3/(beta**3*coef4))
+            scale_grad = 1./(np.pi*beta*(1+coef3/beta)**2)
+            grads = np.concatenate([alpha_grad, beta_grad[:, :, :, None], scale_grad[:, :, :, None]], axis=3)
+            print(grads.shape)
+            print(data_fitted.shape)
+            print(((data_fitted-data)*data_mask)[:, :, :, None].shape)
+            print(np.tile(((data_fitted-data)*data_mask)[:, :, :, None], 5).shape)
+            grads = -np.sum(np.tile(((data_fitted-data)*data_mask)[:, :, :, None], 5)*grads, axis=(0, 1, 2))/sigma
+            print(grads.shape)
+            all_grads = np.concatenate([all_grads, grads])
+    
+        return all_grads
+        
+    else:
+        raise ValueError(f"func_type {func_type} not supported")
 
 def plot_mode(params, nu_k_scale, fig, color, func_type="lorenzian"):
     if func_type == "lorenzian":
@@ -187,19 +226,36 @@ def smooth(x, window_len=11, window='hanning'):
     y = np.convolve(w/w.sum(), s, mode='valid')
     return y
 
+def f(i):
+    num_params = get_num_params()
+    ys = basis_func(coords, params[i*num_params:i*num_params + num_params])
+    print(ys.shape)
+    return ys
 
 def fit(coords, params):
+    #import functools
+    #from multiprocessing import Pool
+    print("fit start")
     num_params = get_num_params()
     assert((len(params) % num_params) == 0)
-    fitted_data = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2]), dtype=np.float32)
+    fitted_data = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2]))
+    #with Pool(5) as p:
+    #    fitted_data = functools.reduce(lambda x, y: x+y, \
+    #        p.map(lambda i: basis_func(coords, params[i*num_params:i*num_params + num_params]), np.arange(len(params) // num_params)), \
+    #        np.zeros((coords.shape[0], coords.shape[1], coords.shape[2])))
+    #with Pool(4) as p:
+    #    a = p.map(f, np.arange(len(params) // num_params))
     for i in range(len(params) // num_params):
-        fitted_data += basis_func(coords, params[i*num_params:i*num_params + num_params])
+        #print("fit", i, len(params) // num_params)
+        fitted_data = basis_func(coords, fitted_data, params[i*num_params:i*num_params + num_params])
+    print("fit end")
     return fitted_data
 
 
 def calc_loglik(data_fitted, data, data_mask, sigma):
     loglik = -0.5 * np.sum(((data_fitted - data)*data_mask)**2/sigma) - 0.5*np.log(sigma) - 0.5*np.log(2.0*np.pi)
     return loglik        
+    
     
 def bic(loglik, n, k):
     return np.log(n)*k - 2.*loglik
@@ -341,12 +397,11 @@ for root, dirs, files in os.walk(input_path):
         ks_filtered = ks[fltr]
         data = data[:, fltr, :]
         data = data[:, :, fltr]
-        data = data.astype(np.float32)
         
         
         data_mask = np.zeros_like(data, dtype=int)
         
-        coords = np.empty((len(nus_filtered), len(ks_filtered), len(ks_filtered), 4), dtype=np.float32)
+        coords = np.empty((len(nus_filtered), len(ks_filtered), len(ks_filtered), 4))
         nu_k_scale = (nus[-1]-nus[0])/(ks[-1]-ks[0])
         k_grid = np.transpose([np.tile(ks_filtered, len(ks_filtered)), np.repeat(ks_filtered, len(ks_filtered))])
         k_grid = np.reshape(k_grid, (data.shape[1], data.shape[2], 2))
@@ -382,8 +437,8 @@ for root, dirs, files in os.walk(input_path):
             data_slice = data[fltr]
         '''
         
-        for k_ind1 in range(0, coords.shape[1], 3):
-            for k_ind2 in range(0, coords.shape[2], 3):
+        for k_ind1 in range(0, coords.shape[1], 30):
+            for k_ind2 in range(0, coords.shape[2], 30):
                 _, k1, k2, k = coords[0, k_ind1, k_ind2]
                 if k >= k_min and k <= k_max_:
                     data_mask[:, k_ind1, k_ind2] = 1
@@ -428,6 +483,11 @@ for root, dirs, files in os.walk(input_path):
             data_fitted = fit(coords, params)
             return -calc_loglik(data_fitted, data, data_mask, true_sigma)
         
+        def jac(params):
+            data_fitted = fit(coords, params)
+            return grad(data_fitted, data, data_mask, true_sigma, params)
+            
+        
         
         min_res = None
         for trial_no in np.arange(0, num_optimizations):                    
@@ -435,7 +495,7 @@ for root, dirs, files in os.walk(input_path):
                 
             #initial_lik = lik_fn(params)
             #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':1e-7})#, 'eps':.1})
-            res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=None, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+            res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=jac, bounds=bounds, options={'disp': True, 'gtol':1e-7})
             loglik = res['fun']
             if min_loglik is None or loglik < min_loglik:
                 min_loglik = loglik
@@ -473,8 +533,6 @@ for root, dirs, files in os.walk(input_path):
                     print(i, mode_index)
                     plot_mode(params_[i][mode_index], nu_k_scale, fig, colors[mode_index])
             fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
-                    
-            
         
             #f1.write('%s %s %s' % (str(k_value), opt_num_components, areas[0]) + "\n")
             #print("Lowest BIC", min_bic)
