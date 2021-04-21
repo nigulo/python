@@ -10,9 +10,12 @@ import matplotlib.pyplot as plt
 import numpy.fft as fft
 import scipy.optimize
 
+chunk_size = 1 # For memory purposes
+
+
 def basis_func(coords, params, func_type="lorenzian"):
+    chunk_size_ = chunk_size
     if func_type == "lorenzian":
-        chunk_size = 8 # For memory purposes
         ai1 = np.arange(0, len(params), 5)
         ai2 = np.arange(1, len(params), 5)
         ai3 = np.arange(2, len(params), 5)
@@ -28,14 +31,14 @@ def basis_func(coords, params, func_type="lorenzian"):
         ys = np.zeros_like(x[:, :, :, 0])
         chunk_start = 0
         while len(alphas) > 0:
-            chunk_size = min(chunk_size, len(alphas))
-            alphas1 = np.tile(alphas[chunk_start:chunk_start+chunk_size, None, None, None, :], (1, coords.shape[0], coords.shape[1], coords.shape[2], 1))
-            betas1 = betas[chunk_start:chunk_start+chunk_size]
-            scales1 = scales[chunk_start:chunk_start+chunk_size]
+            chunk_size_ = min(chunk_size_, len(alphas))
+            alphas1 = np.tile(alphas[chunk_start:chunk_start+chunk_size_, None, None, None, :], (1, coords.shape[0], coords.shape[1], coords.shape[2], 1))
+            betas1 = betas[chunk_start:chunk_start+chunk_size_]
+            scales1 = scales[chunk_start:chunk_start+chunk_size_]
             r2 = np.transpose(np.sum((x-alphas1)**2, axis=4), (1, 2, 3, 0))
             #fltr = r2 <= r2_max
             ys += np.sum(scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2)), axis=3)
-            chunk_start += chunk_size
+            chunk_start += chunk_size_
             alphas = alphas[chunk_start:]
             betas = betas[chunk_start:]
             scales = scales[chunk_start:]
@@ -183,16 +186,17 @@ def smooth(x, window_len=11, window='hanning'):
     y = np.convolve(w/w.sum(), s, mode='valid')
     return y
 
+'''
 def f(i):
     num_params = get_num_params()
     ys = basis_func(coords, params[i*num_params:i*num_params + num_params])
     print(ys.shape)
     return ys
+'''
 
 def fit(coords, params):
     #import functools
     #from multiprocessing import Pool
-    print("fit start")
     num_params = get_num_params()
     assert((len(params) % num_params) == 0)
     #fitted_data = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2]))
@@ -205,7 +209,6 @@ def fit(coords, params):
     #for i in range(len(params) // num_params):
         #print("fit", i, len(params) // num_params)
     fitted_data = basis_func(coords, params)
-    print("fit end")
     return fitted_data
 
 
@@ -214,8 +217,18 @@ def calc_loglik(data_fitted, data, data_mask, sigma):
     return loglik        
         
 def calc_loglik_grad(coords, data_fitted, data, data_mask, sigma, params, func_type="lorenzian"):
-    grads = basis_func_grad(coords, params)
-    return -np.sum(np.tile(((data_fitted-data)*data_mask**2)[:, :, :, None], len(params))*grads, axis=(0, 1, 2))/sigma
+    all_grads = np.empty_like(params)
+    chunk_start = 0
+    delta2 = ((data_fitted-data)*data_mask**2)[:, :, :, None]
+    chunk_size_ = chunk_size*get_num_params(func_type)
+    while len(params) > 0:
+        chunk_size_ = min(chunk_size_, len(params))
+        params1 = params[chunk_start:chunk_start+chunk_size_]
+        grads = basis_func_grad(coords, params1)
+        all_grads[chunk_start:chunk_start+chunk_size_] = np.sum(np.tile(delta2, len(params1))*grads, axis=(0, 1, 2))
+        chunk_start += chunk_size_
+        params = params[chunk_start:]
+    return -all_grads/sigma
 
 def bic(loglik, n, k):
     return np.log(n)*k - 2.*loglik
