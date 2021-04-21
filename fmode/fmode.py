@@ -50,6 +50,38 @@ def basis_func(coords, params, func_type="lorenzian"):
         raise ValueError(f"func_type {func_type} not supported")
     return ys
 
+def basis_func_grad(coords, params, func_type="lorenzian"):
+    if func_type == "lorenzian":
+        x = coords[:, :, :, :3]
+        all_grads = np.empty((coords.shape[0], coords.shape[1], coords.shape[2], 0))
+        for i in range(len(params) // 5):
+            alphas = params[i*5:i*5+3]
+            beta = params[i*5+3]
+            scale = params[i*5+4]
+        
+            #ys = np.zeros_like(x[:, :, :, 0])
+            #r2_max = (approx_width*scale/beta-1)*beta
+            r2 = np.sum((x-alphas)**2, axis=3)
+            #fltr = r2 <= r2_max
+            
+            # scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2))
+            coef1 = scale/np.pi
+            coef1a = coef1/beta
+            coef1b = 1./(1+r2/beta**2)**2
+            coef1c = 1./beta**2
+            coef2a = 1./(1+r2/beta**2)
+            
+            alpha_grad = np.tile((coef1a*coef1b*coef1c)[:, :, :, None], 3)*2.*(x-alphas)
+            beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
+            scale_grad = 1./(np.pi*beta)*coef2a
+            grads = np.concatenate([alpha_grad, beta_grad[:, :, :, None], scale_grad[:, :, :, None]], axis=3)
+            all_grads = np.concatenate([all_grads, grads], axis=3)
+    
+        return all_grads
+        
+    else:
+        raise ValueError(f"func_type {func_type} not supported")
+
 
 def plot_mode(params, nu_k_scale, fig, color, func_type="lorenzian"):
     if func_type == "lorenzian":
@@ -180,41 +212,10 @@ def fit(coords, params):
 def calc_loglik(data_fitted, data, data_mask, sigma):
     loglik = -0.5 * np.sum(((data_fitted - data)*data_mask)**2/sigma) - 0.5*np.log(sigma) - 0.5*np.log(2.0*np.pi)
     return loglik        
-    
-
+        
 def calc_loglik_grad(coords, data_fitted, data, data_mask, sigma, params, func_type="lorenzian"):
-    if func_type == "lorenzian":
-        x = coords[:, :, :, :3]
-        all_grads = np.array([])
-        for i in range(len(params) // 5):
-            alphas = params[i*5:i*5+3]
-            beta = params[i*5+3]
-            scale = params[i*5+4]
-        
-            #ys = np.zeros_like(x[:, :, :, 0])
-            #r2_max = (approx_width*scale/beta-1)*beta
-            r2 = np.sum((x-alphas)**2, axis=3)
-            #fltr = r2 <= r2_max
-            
-            coef2 = scale/np.pi
-            coef3 = np.sqrt(r2)
-            coef4 = 1+(coef3/beta)**3
-            alpha_grad = np.tile((-2*coef2/(beta*coef4*coef3/beta))[:, :, :, None], 3)*(x-alphas)
-            beta_grad = coef2*(-1/(1+(coef3/beta)**2)*beta**2+2*coef3/(beta**3*coef4))
-            scale_grad = 1./(np.pi*beta*(1+coef3/beta)**2)
-            grads = np.concatenate([alpha_grad, beta_grad[:, :, :, None], scale_grad[:, :, :, None]], axis=3)
-            print(grads.shape)
-            print(data_fitted.shape)
-            print(((data_fitted-data)*data_mask)[:, :, :, None].shape)
-            print(np.tile(((data_fitted-data)*data_mask)[:, :, :, None], 5).shape)
-            grads = -np.sum(np.tile(((data_fitted-data)*data_mask)[:, :, :, None], 5)*grads, axis=(0, 1, 2))/sigma
-            print(grads.shape)
-            all_grads = np.concatenate([all_grads, grads])
-    
-        return all_grads
-        
-    else:
-        raise ValueError(f"func_type {func_type} not supported")
+    grads = basis_func_grad(coords, params)
+    return -np.sum(np.tile(((data_fitted-data)*data_mask**2)[:, :, :, None], len(params))*grads, axis=(0, 1, 2))/sigma
 
 def bic(loglik, n, k):
     return np.log(n)*k - 2.*loglik
