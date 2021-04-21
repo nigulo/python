@@ -514,7 +514,7 @@ if (__name__ == '__main__'):
             
             def jac(params):
                 data_fitted = fit(coords, params)
-                return grad(data_fitted, data, data_mask, true_sigma, params)
+                return calc_loglik_grad(coords, data_fitted, data, data_mask, true_sigma, params)
                 
             
             
@@ -524,7 +524,7 @@ if (__name__ == '__main__'):
                     
                 #initial_lik = lik_fn(params)
                 #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':1e-7})#, 'eps':.1})
-                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=None, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=jac, bounds=bounds, options={'disp': True, 'gtol':1e-7})
                 loglik = res['fun']
                 if min_loglik is None or loglik < min_loglik:
                     min_loglik = loglik
