@@ -1,5 +1,6 @@
 import matplotlib as mpl
-mpl.use('Agg')
+mpl.use('nbAgg')
+print(mpl.get_backend())
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
@@ -9,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import numpy.fft as fft
 import scipy.optimize
+from geomdl import fitting
 
 chunk_size = 1 # For memory purposes
 
@@ -200,25 +202,38 @@ def interpolate_params(coords, params, mode_info, func_type="lorenzian"):
         for mode_index in mode_info.keys():
             mode_params = []
             for index in mode_info[mode_index]:
-                mode_params.extend(params[index:index+5])
+                mode_params.append(params[index:index+3])
+            mode_params = np.asarray(mode_params)
+            size = int(np.sqrt(len(mode_params)))
+            print(mode_params.shape)
+            surf = fitting.interpolate_surface(mode_params[:, :3], size_u=size, size_v=size, degree_u=2, degree_v=2)
+            surf.delta = 0.05
+            from geomdl.visualization import VisMPL as vis
+            surf.vis = vis.VisSurface(config=vis.VisConfig(ctrlpts=False, trims=False))
+            print(mpl.get_backend())
+            surf.render(fig_save_as=f"surface{mode_index}.png", display_plot=False)
+            print(f"rendered {mode_index}")
+            sys.exit()
+            
+            
+            surf.evaluate(start=[0.0, 0.0], stop=[1.0, 1.0])
+            print(surf.evalpts)
             
             rings = dict()
             for i in range(0, len(mode_params), 5):
                 nu = params[i]
-                
                 nu_index = np.argmin(np.abs(nus_filtered - nu))
                 if nu_index not in rings:
-                    rings.nu_index = []
+                    rings[nu_index] = []
                 rings[nu_index] = params[i:i+5]
-                
-            
-                r2 = np.sum((x-alphas)**2, axis=3)
+
     
         
     else:
         raise ValueError(f"func_type {func_type} not supported")
 
 def fit(coords, params):
+    interpolate_params(coords, params, mode_info)
     #import functools
     #from multiprocessing import Pool
     num_params = get_num_params()
@@ -470,7 +485,7 @@ if (__name__ == '__main__'):
             
             coords = np.empty((len(nus_filtered), len(ks_filtered), len(ks_filtered), 4))
             nu_k_scale = (nus[-1]-nus[0])/(ks[-1]-ks[0])
-            k_grid = np.transpose([np.tile(ks_filtered, len(ks_filtered)), np.repeat(ks_filtered, len(ks_filtered))])
+            k_grid = np.transpose([np.repeat(ks_filtered, len(ks_filtered)), np.tile(ks_filtered, len(ks_filtered))])
             k_grid = np.reshape(k_grid, (data.shape[1], data.shape[2], 2))
             k_grid_scaled = k_grid*nu_k_scale
             k_grid2 = k_grid**2
@@ -485,6 +500,7 @@ if (__name__ == '__main__'):
     
             print("Coordinate grid created")
             mode_info = dict()
+            mode_params = dict()
             
             '''
             phi_ks = np.linspace(0, 2*np.p-, 100, endpoint=False)
@@ -504,39 +520,55 @@ if (__name__ == '__main__'):
                 data_slice = data[fltr]
             '''
             
-            for k_ind1 in range(0, coords.shape[1], 3):
-                for k_ind2 in range(0, coords.shape[2], 3):
-                    _, k1, k2, k = coords[0, k_ind1, k_ind2]
-                    if k >= k_min and k <= k_max_:
-                        data_mask[:, k_ind1, k_ind2] = 1
-                        num_components = get_num_components(k)
-                        
-                        nus_ = coords[:, k_ind1, k_ind2, 0]
-                        for i in range(num_components):
-                            if i not in mode_info:
-                                mode_info[i] = []
-                            mode_info.append(len(params))
+            #sampling_step = [coords[3, 0, 0, 0] - coords[0, 0, 0, 0], coords[0, 3, 0, 1] - coords[0, 0, 0, 1], coords[0, 0, 3, 2] - coords[0, 0, 0, 2]]
+            #print(coords[0, 3, 0, 1], coords[0, 0, 0, 1])
+            sampling_step = (coords[10, 0, 0, 0] - coords[0, 0, 0, 0])**2
+            print("sampling_step", sampling_step)
+            
+            nus_ = coords[:, 0, 0, 0]
+            for nu_ind in range(0, coords.shape[0]):
+                for k_ind1 in range(0, coords.shape[1]):
+                    for k_ind2 in range(0, coords.shape[2]):
+                        _, k1, k2, k = coords[nu_ind, k_ind1, k_ind2]
+                        if k >= k_min and k <= k_max_:
+                            data_mask[:, k_ind1, k_ind2] = 1
+                            num_components = get_num_components(k)
                             
-                            alpha_prior0 = get_alpha_prior(i, k)
-                            params.append(alpha_prior0)
-                            bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
-    
-                            params.append(k1)
-                            bounds.append((k1-.5 , k1+.5))
-    
-                            params.append(k2)
-                            bounds.append((k2-.5 , k2+.5))
-    
-                            beta_prior = 0.04#.2/num_components
-                            params.append(beta_prior)
-                            #params.append(1./100)
-                            bounds.append((1e-10 , 2*beta_prior))
-    
-                            scale_prior = 1.
-                            params.append(scale_prior)
-                            bounds.append((1e-10, 10.))
-    
-                            #nu_index = np.argmin(np.abs(nus_ - alpha_prior0))
+                            for i in range(num_components):
+                                alpha_prior0 = get_alpha_prior(i, k)
+                                nu_index = np.argmin(np.abs(nus_ - alpha_prior0))
+                                if nu_index == nu_ind:
+                                    if i not in mode_info:
+                                        mode_info[i] = []
+                                        mode_params[i] = []
+                                    mp = np.asarray(mode_params[i])
+                                    if len(mp) > 0:
+                                        dists = np.sum((mp - [alpha_prior0, k1, k2])**2, axis = 1)
+                                        min_dist = np.sum((mp[np.argmin(dists)] - [alpha_prior0, k1, k2])**2)
+                                    else:
+                                        min_dist = sampling_step
+                                    if min_dist >= sampling_step:
+                                        mode_info[i].append(len(params))
+                                        mode_params[i].append([alpha_prior0, k1, k2])
+                                    
+                                        params.append(alpha_prior0)
+                                        bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
+                
+                                        params.append(k1)
+                                        bounds.append((k1-.5 , k1+.5))
+                
+                                        params.append(k2)
+                                        bounds.append((k2-.5 , k2+.5))
+                
+                                        beta_prior = 0.04#.2/num_components
+                                        params.append(beta_prior)
+                                        #params.append(1./100)
+                                        bounds.append((1e-10 , 2*beta_prior))
+                
+                                        scale_prior = 1.
+                                        params.append(scale_prior)
+                                        bounds.append((1e-10, 10.))
+        
             for i in mode_info.keys():
                 mode_info[i] = np.asarray(mode_info[i])
             print("Priors set")

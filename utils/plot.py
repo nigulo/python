@@ -1,5 +1,5 @@
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.colorbar as cb
