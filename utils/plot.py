@@ -461,7 +461,7 @@ class plot:
                     else:
                         raise "Identical text for both axis? Really?"
 
-    def set_axis_title(self, ax_index = None, title = None):
+    def set_axis_title(self, title = None, ax_index = None):
         if ax_index is None:
             ax = None
         else:
