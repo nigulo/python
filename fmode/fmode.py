@@ -11,10 +11,19 @@ import matplotlib.pyplot as plt
 import numpy.fft as fft
 import scipy.optimize
 from geomdl import fitting
+import pickle
 
 chunk_size = 1 # For memory purposes
 
+def load(f):
+    if not os.path.exists(f):
+        return None
+    return pickle.load(open(f, 'rb'))
 
+def save(obj, f):
+    with open(f, 'wb') as f:
+        pickle.dump(obj, f, protocol=4)
+        
 def basis_func(coords, params, func_type="lorenzian"):
     chunk_size_ = chunk_size
     if func_type == "lorenzian":
@@ -451,7 +460,6 @@ if (__name__ == '__main__'):
             '''
             #######################################################################
             
-            
             hdul.close()
                 
             #levels = np.linspace(np.min(np.log(data))+2, np.max(np.log(data))-2, 200)        
@@ -466,10 +474,7 @@ if (__name__ == '__main__'):
             
             results = []
             k_max_ = ks[ks < k_max][-1]
-            
-            params = []
-            bounds = []
-            
+                        
             print(data.shape, nus.shape)
             nus_filtered = np.asarray(nus)
             fltr = (nus_filtered > 2.) * (nus_filtered < 10.)
@@ -483,24 +488,26 @@ if (__name__ == '__main__'):
             
             data_mask = np.zeros_like(data, dtype=int)
             
-            coords = np.empty((len(nus_filtered), len(ks_filtered), len(ks_filtered), 4))
+            
             nu_k_scale = (nus[-1]-nus[0])/(ks[-1]-ks[0])
-            k_grid = np.transpose([np.repeat(ks_filtered, len(ks_filtered)), np.tile(ks_filtered, len(ks_filtered))])
-            k_grid = np.reshape(k_grid, (data.shape[1], data.shape[2], 2))
-            k_grid_scaled = k_grid*nu_k_scale
-            k_grid2 = k_grid**2
-            k_modulus = np.sqrt(np.sum(k_grid2, axis=2, keepdims=True))
-            print(k_grid[:5, :5], k_grid[-5:, -5:])
-            for i in range(len(nus_filtered)):
-                nu = nus_filtered[i]
-                nus_ = np.reshape(np.repeat([nu], k_grid.shape[0]*k_grid.shape[1]), (k_grid.shape[0], k_grid.shape[1], 1))
-                #nu2 = nu**2
-                #print(nus_.shape, k_grid_scaled.shape, k_modulus.shape)
-                coords[i] = np.concatenate([nus_, k_grid_scaled, k_modulus], axis=2)
+            coords = load("coords.dat")
+            if coords is None:
+                coords = np.empty((len(nus_filtered), len(ks_filtered), len(ks_filtered), 4))
+                k_grid = np.transpose([np.repeat(ks_filtered, len(ks_filtered)), np.tile(ks_filtered, len(ks_filtered))])
+                k_grid = np.reshape(k_grid, (data.shape[1], data.shape[2], 2))
+                k_grid_scaled = k_grid*nu_k_scale
+                k_grid2 = k_grid**2
+                k_modulus = np.sqrt(np.sum(k_grid2, axis=2, keepdims=True))
+                print(k_grid[:5, :5], k_grid[-5:, -5:])
+                for i in range(len(nus_filtered)):
+                    nu = nus_filtered[i]
+                    nus_ = np.reshape(np.repeat([nu], k_grid.shape[0]*k_grid.shape[1]), (k_grid.shape[0], k_grid.shape[1], 1))
+                    #nu2 = nu**2
+                    #print(nus_.shape, k_grid_scaled.shape, k_modulus.shape)
+                    coords[i] = np.concatenate([nus_, k_grid_scaled, k_modulus], axis=2)
+                save(coords, "coords.dat")
     
             print("Coordinate grid created")
-            mode_info = dict()
-            mode_params = dict()
             
             '''
             phi_ks = np.linspace(0, 2*np.p-, 100, endpoint=False)
@@ -520,57 +527,66 @@ if (__name__ == '__main__'):
                 data_slice = data[fltr]
             '''
             
-            #sampling_step = [coords[3, 0, 0, 0] - coords[0, 0, 0, 0], coords[0, 3, 0, 1] - coords[0, 0, 0, 1], coords[0, 0, 3, 2] - coords[0, 0, 0, 2]]
-            #print(coords[0, 3, 0, 1], coords[0, 0, 0, 1])
-            sampling_step = (coords[10, 0, 0, 0] - coords[0, 0, 0, 0])**2
-            print("sampling_step", sampling_step)
+            priors = load("priors.dat")
+            if priors is not None:
+                params, bounds, mode_info, mode_params = priors
+            else:
+                params = []
+                bounds = []
+                mode_info = dict()
+                mode_params = dict()
+                #sampling_step = [coords[3, 0, 0, 0] - coords[0, 0, 0, 0], coords[0, 3, 0, 1] - coords[0, 0, 0, 1], coords[0, 0, 3, 2] - coords[0, 0, 0, 2]]
+                #print(coords[0, 3, 0, 1], coords[0, 0, 0, 1])
+                sampling_step = (coords[10, 0, 0, 0] - coords[0, 0, 0, 0])**2
+                print("sampling_step", sampling_step)
+                
+                nus_ = coords[:, 0, 0, 0]
+                for nu_ind in range(0, coords.shape[0]):
+                    for k_ind1 in range(0, coords.shape[1]):
+                        for k_ind2 in range(0, coords.shape[2]):
+                            _, k1, k2, k = coords[nu_ind, k_ind1, k_ind2]
+                            if k >= k_min and k <= k_max_:
+                                data_mask[:, k_ind1, k_ind2] = 1
+                                num_components = get_num_components(k)
+                                
+                                for i in range(num_components):
+                                    alpha_prior0 = get_alpha_prior(i, k)
+                                    nu_index = np.argmin(np.abs(nus_ - alpha_prior0))
+                                    if nu_index == nu_ind:
+                                        if i not in mode_info:
+                                            mode_info[i] = []
+                                            mode_params[i] = []
+                                        mp = np.asarray(mode_params[i])
+                                        if len(mp) > 0:
+                                            dists = np.sum((mp - [alpha_prior0, k1, k2])**2, axis = 1)
+                                            min_dist = np.sum((mp[np.argmin(dists)] - [alpha_prior0, k1, k2])**2)
+                                        else:
+                                            min_dist = sampling_step
+                                        if min_dist >= sampling_step:
+                                            mode_info[i].append(len(params))
+                                            mode_params[i].append([alpha_prior0, k1, k2])
+                                        
+                                            params.append(alpha_prior0)
+                                            bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
+                    
+                                            params.append(k1)
+                                            bounds.append((k1-.5 , k1+.5))
+                    
+                                            params.append(k2)
+                                            bounds.append((k2-.5 , k2+.5))
+                    
+                                            beta_prior = 0.04#.2/num_components
+                                            params.append(beta_prior)
+                                            #params.append(1./100)
+                                            bounds.append((1e-10 , 2*beta_prior))
+                    
+                                            scale_prior = 1.
+                                            params.append(scale_prior)
+                                            bounds.append((1e-10, 10.))
             
-            nus_ = coords[:, 0, 0, 0]
-            for nu_ind in range(0, coords.shape[0]):
-                for k_ind1 in range(0, coords.shape[1]):
-                    for k_ind2 in range(0, coords.shape[2]):
-                        _, k1, k2, k = coords[nu_ind, k_ind1, k_ind2]
-                        if k >= k_min and k <= k_max_:
-                            data_mask[:, k_ind1, k_ind2] = 1
-                            num_components = get_num_components(k)
-                            
-                            for i in range(num_components):
-                                alpha_prior0 = get_alpha_prior(i, k)
-                                nu_index = np.argmin(np.abs(nus_ - alpha_prior0))
-                                if nu_index == nu_ind:
-                                    if i not in mode_info:
-                                        mode_info[i] = []
-                                        mode_params[i] = []
-                                    mp = np.asarray(mode_params[i])
-                                    if len(mp) > 0:
-                                        dists = np.sum((mp - [alpha_prior0, k1, k2])**2, axis = 1)
-                                        min_dist = np.sum((mp[np.argmin(dists)] - [alpha_prior0, k1, k2])**2)
-                                    else:
-                                        min_dist = sampling_step
-                                    if min_dist >= sampling_step:
-                                        mode_info[i].append(len(params))
-                                        mode_params[i].append([alpha_prior0, k1, k2])
-                                    
-                                        params.append(alpha_prior0)
-                                        bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
-                
-                                        params.append(k1)
-                                        bounds.append((k1-.5 , k1+.5))
-                
-                                        params.append(k2)
-                                        bounds.append((k2-.5 , k2+.5))
-                
-                                        beta_prior = 0.04#.2/num_components
-                                        params.append(beta_prior)
-                                        #params.append(1./100)
-                                        bounds.append((1e-10 , 2*beta_prior))
-                
-                                        scale_prior = 1.
-                                        params.append(scale_prior)
-                                        bounds.append((1e-10, 10.))
-        
-            for i in mode_info.keys():
-                mode_info[i] = np.asarray(mode_info[i])
+                for i in mode_info.keys():
+                    mode_info[i] = np.asarray(mode_info[i])
+                save((params, bounds, mode_info, mode_params), "priors.dat")
             print("Priors set")
             #######################################################################    
             print("params", len(params))
