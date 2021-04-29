@@ -95,18 +95,25 @@ def basis_func_grad(coords, params, func_type="lorenzian"):
         raise ValueError(f"func_type {func_type} not supported")
 
 
-def plot_mode(params, nu_k_scale, fig, color, func_type="lorenzian"):
+def plot_mode(mode_index, params, nu_k_scale, fig, color, func_type="lorenzian"):
     if func_type == "lorenzian":
         #alphas = []
         #betas = []
+        r_mean = 0
+        alpha0_mean = 0
         for alpha0, alpha1, alpha2, beta, scale in params:
-            print(alpha1/nu_k_scale, alpha2/nu_k_scale)
             fig.plot(alpha1/nu_k_scale, alpha2/nu_k_scale, f"{color}.")
+            alpha0_mean += alpha0
+            r_mean += (alpha1**2 + alpha2**2)/nu_k_scale**2
             #alphas.append(alpha)
             #betas.append(beta)
+        alpha0_mean /= len(params)
+        r_mean = np.sqrt(r_mean/len(params))
+        print(f"Mode {mode_index}: ", alpha0_mean, r_mean)
         #alphas = np.asarray(alphas)
         #betas = np.asarray(betas)
         #indices = np.argsort
+        return alpha0_mean, r_mean
     else:
         raise ValueError(f"func_type {func_type} not supported")
     
@@ -610,6 +617,7 @@ if (__name__ == '__main__'):
             
 
             min_res = None
+            '''
             for trial_no in np.arange(0, num_optimizations):                    
                 #print("params", params)
                     
@@ -620,23 +628,25 @@ if (__name__ == '__main__'):
                 if min_loglik is None or loglik < min_loglik:
                     min_loglik = loglik
                     min_res = res['x']
-
-            params_est = min_res
-          
+            '''
+            params_est = params#min_res
+            ds_factor = 5
             num_params = get_num_params()
             params_ = []
-            for i in range(data.shape[0]):
-                mode_params = []
+            for i in range(data.shape[0]//ds_factor):
+                mode_params_ = []
                 for _ in range(5):
-                    mode_params.append([])
-                params_.append(mode_params)
-            for mode_index in range(5):
-                for i in range(len(mode_info)):
-                    mode_i, nu_ind, _, _ = mode_info[i]
-                    if mode_i == mode_index:
-                        #print(nu_ind, mode_index, len(params_est[i*num_params:i*num_params+num_params]))
-                        params_[nu_ind][mode_index].append(params_est[i*num_params:i*num_params+num_params])
+                    mode_params_.append([])
+                params_.append(mode_params_)
+            for mode_index in mode_params.keys():
+                for i in range(len(mode_params[mode_index])):
+                    alpha_prior0, k1, k2 = mode_params[mode_index][i]
+                    start_index = mode_info[mode_index][i]
+                    nu_ind = np.argmin(np.abs(nus_filtered-alpha_prior0))
+                    #print(nu_ind, mode_index, len(params_est[i*num_params:i*num_params+num_params]))
+                    params_[nu_ind//ds_factor][mode_index].append(params_est[start_index:start_index+num_params])
     
+            mode_stats = dict()
             colors = ["k", "b", "g", "r", "m"]
             for i in range(0, len(params_)):
                 contains_data = False
@@ -646,14 +656,49 @@ if (__name__ == '__main__'):
                 if not contains_data:
                     continue
                 fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
+                fig.contour(ks_filtered, ks_filtered, data[i*ds_factor, :, :])
+                fig.set_axis_title(r"$\nu=" + str(coords[i*ds_factor, 0, 0, 0]) + "$")
+                fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
+                for mode_index in range(5):
+                    if mode_index not in mode_stats:
+                        mode_stats[mode_index] = []
+                    if len(params_[i][mode_index]) > 0:
+                        nu_mean, r_mean = plot_mode(mode_index, params_[i][mode_index], nu_k_scale, fig, colors[mode_index])
+                        mode_stats[mode_index].append([nu_mean, r_mean])
+                fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
+                
+            fitted = dict()
+            for mode_index in mode_stats.keys():
+                deg = 1
+                #if mode_index < 4: 
+                #    deg = 2
+                #else: 
+                #    deg = 1
+                ms = np.asarray(mode_stats[mode_index])
+                coefs = np.polyfit(ms[:, 0], ms[:, 1], deg=deg)
+                print(ms[:, 0], ms[:, 1], coefs)
+                
+                powers = np.arange(deg+1)[::-1]
+                powers = np.reshape(np.repeat(powers, len(nus_filtered)), (len(powers), len(nus_filtered)))
+                ws = np.reshape(np.repeat(coefs, len(nus_filtered)), (len(powers), len(nus_filtered)))
+                rs = np.sum(ws*nus_filtered**powers, axis=0)
+                fitted[mode_index] = rs
+            
+            for i in range(len(nus_filtered)):
+                fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
                 fig.contour(ks_filtered, ks_filtered, data[i, :, :])
                 fig.set_axis_title(r"$\nu=" + str(coords[i, 0, 0, 0]) + "$")
-                #fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
-                for mode_index in range(5):
-                    if len(params_[i][mode_index]) > 0:
-                        print(i, mode_index)
-                        plot_mode(params_[i][mode_index], nu_k_scale, fig, colors[mode_index])
-                fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
+                for mode_index in fitted.keys():
+                    r = fitted[mode_index][i]
+                    if r > 0:
+                        print(i, mode_index, r)
+                        phi = np.linspace(0, np.pi/2, 100)
+                        x = np.cos(phi)*r
+                        y = np.sin(phi)*r
+                        fig.plot(x, y, f"{colors[mode_index]}.", linewidth=1.0, markerwidth=1.0)
+                fig.save(os.path.join(output_dir, f"fitted_rings{i}.png"))
+                    
+                
             
                 #f1.write('%s %s %s' % (str(k_value), opt_num_components, areas[0]) + "\n")
                 #print("Lowest BIC", min_bic)
