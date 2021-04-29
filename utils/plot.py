@@ -136,9 +136,9 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, params="k-", ax_index=None, label=None):
+    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1):
         ax = self.get_ax(ax_index)
-        ax.plot(x, y, params, label=label)
+        ax.plot(x, y, params, label=label, lw=lw, ms=ms)
         self.post_processing(ax)
         
     def line(self, x1, y1, x2, y2, ax_index=None, color='red', linestyle='dashed',linewidth=1.0):

@@ -103,17 +103,11 @@ def plot_mode(mode_index, params, nu_k_scale, fig, color, func_type="lorenzian")
         alpha0_mean = 0
         for alpha0, alpha1, alpha2, beta, scale in params:
             fig.plot(alpha1/nu_k_scale, alpha2/nu_k_scale, f"{color}.")
-            alpha0_mean += alpha0
-            r_mean += (alpha1**2 + alpha2**2)/nu_k_scale**2
             #alphas.append(alpha)
             #betas.append(beta)
-        alpha0_mean /= len(params)
-        r_mean = np.sqrt(r_mean/len(params))
-        print(f"Mode {mode_index}: ", alpha0_mean, r_mean)
         #alphas = np.asarray(alphas)
         #betas = np.asarray(betas)
         #indices = np.argsort
-        return alpha0_mean, r_mean
     else:
         raise ValueError(f"func_type {func_type} not supported")
     
@@ -398,7 +392,7 @@ if (__name__ == '__main__'):
     print(nus)
     
     k_min = 700
-    k_max = 1500#sys.maxsize
+    k_max = 3000#sys.maxsize
     #if len(sys.argv) > 1:
     #    k_min = float(sys.argv[1])
     
@@ -534,10 +528,19 @@ if (__name__ == '__main__'):
                 data_slice = data[fltr]
             '''
             
+            for k_ind1 in range(0, coords.shape[1]):
+                for k_ind2 in range(0, coords.shape[2]):
+                    _, _, _, k = coords[0, k_ind1, k_ind2]
+                    if k >= k_min and k <= k_max_:
+                        data_mask[:, k_ind1, k_ind2] = 1
+
+            nu_sampling = 10
             priors = load("priors.dat")
             if priors is not None:
                 params, bounds, mode_info, mode_params = priors
             else:
+                ring_radii = load("ring_radii.dat")
+                assert(ring_radii is not None)
                 params = []
                 bounds = []
                 mode_info = dict()
@@ -546,50 +549,44 @@ if (__name__ == '__main__'):
                 #print(coords[0, 3, 0, 1], coords[0, 0, 0, 1])
                 sampling_step = (coords[10, 0, 0, 0] - coords[0, 0, 0, 0])**2
                 print("sampling_step", sampling_step)
+
+                for mode_index in range(5):
+                    if mode_index not in mode_info:
+                        mode_info[mode_index] = []
+                        mode_params[mode_index] = []
+                    mode_radii = ring_radii[mode_index]
+                    for nu_ind in range(0, len(mode_radii), nu_sampling):
+                        r = mode_radii[nu_ind]
+                        num_points_per_arc = int(round(3*r/k_min))
+                        if r >= k_min and r <= k_max_:
+                            nu = nus_filtered[nu_ind]
+                            for phi in np.linspace(0, 0.5*np.pi, num_points_per_arc):
+                                kx = r*np.cos(phi)
+                                ky = r*np.sin(phi)
+                                k1 = nu_k_scale*ks_filtered[np.argmin(np.abs(ks_filtered-kx))]
+                                k2 = nu_k_scale*ks_filtered[np.argmin(np.abs(ks_filtered-ky))]
+    
+                                mode_info[mode_index].append(len(params))
+                                mode_params[mode_index].append([nu, k1, k2])
+                            
+                                params.append(nu)
+                                bounds.append((nu-.5 , nu+.5))
+        
+                                params.append(k1)
+                                bounds.append((k1-.5 , k1+.5))
+        
+                                params.append(k2)
+                                bounds.append((k2-.5 , k2+.5))
+        
+                                beta_prior = 0.04#.2/num_components
+                                params.append(beta_prior)
+                                #params.append(1./100)
+                                bounds.append((1e-10 , 2*beta_prior))
+        
+                                scale_prior = 1.
+                                params.append(scale_prior)
+                                bounds.append((1e-10, 10.))                
                 
-                nus_ = coords[:, 0, 0, 0]
-                for nu_ind in range(0, coords.shape[0]):
-                    for k_ind1 in range(0, coords.shape[1]):
-                        for k_ind2 in range(0, coords.shape[2]):
-                            _, k1, k2, k = coords[nu_ind, k_ind1, k_ind2]
-                            if k >= k_min and k <= k_max_:
-                                data_mask[:, k_ind1, k_ind2] = 1
-                                num_components = get_num_components(k)
-                                
-                                for i in range(num_components):
-                                    alpha_prior0 = get_alpha_prior(i, k)
-                                    nu_index = np.argmin(np.abs(nus_ - alpha_prior0))
-                                    if nu_index == nu_ind:
-                                        if i not in mode_info:
-                                            mode_info[i] = []
-                                            mode_params[i] = []
-                                        mp = np.asarray(mode_params[i])
-                                        if len(mp) > 0:
-                                            dists = np.sum((mp - [alpha_prior0, k1, k2])**2, axis = 1)
-                                            min_dist = np.sum((mp[np.argmin(dists)] - [alpha_prior0, k1, k2])**2)
-                                        else:
-                                            min_dist = sampling_step
-                                        if min_dist >= sampling_step:
-                                            mode_info[i].append(len(params))
-                                            mode_params[i].append([alpha_prior0, k1, k2])
-                                        
-                                            params.append(alpha_prior0)
-                                            bounds.append((alpha_prior0-.5 , alpha_prior0+.5))
-                    
-                                            params.append(k1)
-                                            bounds.append((k1-.5 , k1+.5))
-                    
-                                            params.append(k2)
-                                            bounds.append((k2-.5 , k2+.5))
-                    
-                                            beta_prior = 0.04#.2/num_components
-                                            params.append(beta_prior)
-                                            #params.append(1./100)
-                                            bounds.append((1e-10 , 2*beta_prior))
-                    
-                                            scale_prior = 1.
-                                            params.append(scale_prior)
-                                            bounds.append((1e-10, 10.))
             
                 for i in mode_info.keys():
                     mode_info[i] = np.asarray(mode_info[i])
@@ -630,10 +627,9 @@ if (__name__ == '__main__'):
                     min_res = res['x']
             '''
             params_est = params#min_res
-            ds_factor = 5
             num_params = get_num_params()
             params_ = []
-            for i in range(data.shape[0]//ds_factor):
+            for _ in range(len(nus_filtered)//nu_sampling+1):
                 mode_params_ = []
                 for _ in range(5):
                     mode_params_.append([])
@@ -644,9 +640,8 @@ if (__name__ == '__main__'):
                     start_index = mode_info[mode_index][i]
                     nu_ind = np.argmin(np.abs(nus_filtered-alpha_prior0))
                     #print(nu_ind, mode_index, len(params_est[i*num_params:i*num_params+num_params]))
-                    params_[nu_ind//ds_factor][mode_index].append(params_est[start_index:start_index+num_params])
+                    params_[nu_ind//nu_sampling][mode_index].append(params_est[start_index:start_index+num_params])
     
-            mode_stats = dict()
             colors = ["k", "b", "g", "r", "m"]
             for i in range(0, len(params_)):
                 contains_data = False
@@ -656,50 +651,15 @@ if (__name__ == '__main__'):
                 if not contains_data:
                     continue
                 fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
-                fig.contour(ks_filtered, ks_filtered, data[i*ds_factor, :, :])
-                fig.set_axis_title(r"$\nu=" + str(coords[i*ds_factor, 0, 0, 0]) + "$")
+                fig.contour(ks_filtered, ks_filtered, data[i*nu_sampling, :, :])
+                fig.set_axis_title(r"$\nu=" + str(coords[i*nu_sampling, 0, 0, 0]) + "$")
                 fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
                 for mode_index in range(5):
-                    if mode_index not in mode_stats:
-                        mode_stats[mode_index] = []
                     if len(params_[i][mode_index]) > 0:
-                        nu_mean, r_mean = plot_mode(mode_index, params_[i][mode_index], nu_k_scale, fig, colors[mode_index])
-                        mode_stats[mode_index].append([nu_mean, r_mean])
+                        plot_mode(mode_index, params_[i][mode_index], nu_k_scale, fig, colors[mode_index])
                 fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
                 
-            fitted = dict()
-            for mode_index in mode_stats.keys():
-                deg = 1
-                #if mode_index < 4: 
-                #    deg = 2
-                #else: 
-                #    deg = 1
-                ms = np.asarray(mode_stats[mode_index])
-                coefs = np.polyfit(ms[:, 0], ms[:, 1], deg=deg)
-                print(ms[:, 0], ms[:, 1], coefs)
                 
-                powers = np.arange(deg+1)[::-1]
-                powers = np.reshape(np.repeat(powers, len(nus_filtered)), (len(powers), len(nus_filtered)))
-                ws = np.reshape(np.repeat(coefs, len(nus_filtered)), (len(powers), len(nus_filtered)))
-                rs = np.sum(ws*nus_filtered**powers, axis=0)
-                fitted[mode_index] = rs
-            
-            for i in range(len(nus_filtered)):
-                fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
-                fig.contour(ks_filtered, ks_filtered, data[i, :, :])
-                fig.set_axis_title(r"$\nu=" + str(coords[i, 0, 0, 0]) + "$")
-                for mode_index in fitted.keys():
-                    r = fitted[mode_index][i]
-                    if r > 0:
-                        print(i, mode_index, r)
-                        phi = np.linspace(0, np.pi/2, 100)
-                        x = np.cos(phi)*r
-                        y = np.sin(phi)*r
-                        fig.plot(x, y, f"{colors[mode_index]}.", linewidth=1.0, markerwidth=1.0)
-                fig.save(os.path.join(output_dir, f"fitted_rings{i}.png"))
-                    
-                
-            
                 #f1.write('%s %s %s' % (str(k_value), opt_num_components, areas[0]) + "\n")
                 #print("Lowest BIC", min_bic)
                 #print("Num components", opt_num_components)
