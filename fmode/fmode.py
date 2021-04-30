@@ -15,8 +15,8 @@ import pickle
 
 chunk_size = 1 # For memory purposes
 nu_sampling = 10
-num_interp = 10
-nu_interp = 3
+num_phi_interp = 8
+num_nu_interp = 5
 
 def load(f):
     if not os.path.exists(f):
@@ -39,6 +39,7 @@ def basis_func(coords, params, func_type="lorenzian"):
         si = np.arange(4, len(params), 5)
         a = np.zeros((21, 231, 150, 150, 3))
         '''
+        print("params", len(params))
         alphas = params[:, :3]
         betas = params[:, 3]
         scales = params[:, 4]
@@ -46,6 +47,7 @@ def basis_func(coords, params, func_type="lorenzian"):
         x = coords[:, :, :, :3]
         ys = np.zeros_like(x[:, :, :, 0])
         while len(alphas) > 0:
+            print(len(alphas))
             chunk_size_ = min(chunk_size_, len(alphas))
             alphas1 = np.tile(alphas[:chunk_size_, None, None, None, :], (1, coords.shape[0], coords.shape[1], coords.shape[2], 1))
             betas1 = betas[:chunk_size_]
@@ -216,6 +218,7 @@ def f(i):
 '''
 
 def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
+    print("params", len(params))
     nus = coords[:, 0, 0, 0]
     if func_type == "lorenzian":
         all_params = []
@@ -238,7 +241,7 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
                 deg = 2
                 coefs = np.polyfit(phis, ks, deg=2)
                 powers = np.arange(deg+1)[::-1]
-                phis_test = np.linspace(0, np.pi/2, int(num_interp*np.mean(ks)/nu_k_scale/k_min))
+                phis_test = np.linspace(0, np.pi/2, int(num_phi_interp*np.mean(ks)/nu_k_scale/k_min))
                 powers = np.reshape(np.repeat(powers, len(phis_test)), (len(powers), len(phis_test)))
                 ws = np.reshape(np.repeat(coefs, len(phis_test)), (len(powers), len(phis_test)))
                 ks_test = np.sum(ws*phis_test**powers, axis=0)
@@ -282,7 +285,7 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
             max_nu = np.max(used_nus)
             start_index = np.argmin(np.abs(nus-min_nu))
             end_index = np.argmin(np.abs(nus-max_nu)) + 1
-            for i in range(start_index, end_index, nu_interp):
+            for i in range(start_index, end_index, num_nu_interp):
                 nu = nus[i]
                 fltr1 = used_nus >= nu
                 nus_fltr1 = used_nus[fltr1]
