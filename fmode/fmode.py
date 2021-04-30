@@ -14,6 +14,9 @@ from geomdl import fitting
 import pickle
 
 chunk_size = 1 # For memory purposes
+nu_sampling = 10
+num_interp = 10
+nu_interp = 3
 
 def load(f):
     if not os.path.exists(f):
@@ -27,6 +30,7 @@ def save(obj, f):
 def basis_func(coords, params, func_type="lorenzian"):
     chunk_size_ = chunk_size
     if func_type == "lorenzian":
+        '''
         ai1 = np.arange(0, len(params), 5)
         ai2 = np.arange(1, len(params), 5)
         ai3 = np.arange(2, len(params), 5)
@@ -34,9 +38,10 @@ def basis_func(coords, params, func_type="lorenzian"):
         bi = np.arange(3, len(params), 5)
         si = np.arange(4, len(params), 5)
         a = np.zeros((21, 231, 150, 150, 3))
-        alphas = params[ai]
-        betas = params[bi]
-        scales = params[si]
+        '''
+        alphas = params[:, :3]
+        betas = params[:, 3]
+        scales = params[:, 4]
 
         x = coords[:, :, :, :3]
         ys = np.zeros_like(x[:, :, :, 0])
@@ -66,10 +71,15 @@ def basis_func_grad(coords, params, func_type="lorenzian"):
     if func_type == "lorenzian":
         x = coords[:, :, :, :3]
         all_grads = np.empty((coords.shape[0], coords.shape[1], coords.shape[2], 0))
-        for i in range(len(params) // 5):
+        for i in range(len(params)):
+            alphas = params[i, :3]
+            beta = params[i, 3]
+            scale = params[i, 4]
+            '''
             alphas = params[i*5:i*5+3]
             beta = params[i*5+3]
             scale = params[i*5+4]
+            '''
         
             #ys = np.zeros_like(x[:, :, :, 0])
             #r2_max = (approx_width*scale/beta-1)*beta
@@ -114,11 +124,12 @@ def plot_mode(mode_index, params, nu_k_scale, fig, color, func_type="lorenzian")
 
 def get_num_params(func_type="lorenzian"):
     if func_type == "lorenzian":
-        return 5
+        return 3
     else:
         raise ValueError(f"func_type {func_type} not supported")
     
-    
+
+'''
 # F-mode = 0
 # P modes = 1 ... 
 def get_alpha_prior(mode_index, k):
@@ -137,7 +148,7 @@ def get_num_components(k):
         if k >= k_start and k < k_end:
             return int(row[2])
     return 0
-    
+'''
 
 def smooth(x, window_len=11, window='hanning'):
     """smooth the data using a window with requested size.
@@ -204,50 +215,137 @@ def f(i):
     return ys
 '''
 
-def interpolate_params(coords, params, mode_info, func_type="lorenzian"):
-    coords = coords[::3, ::3, ::3, :]
-    coords = np.reshape(coords, (coords.shape[0]*coords.shape[1]*coords.shape[2], coords.shape[3]))
+def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
+    nus = coords[:, 0, 0, 0]
     if func_type == "lorenzian":
-        x = coords[:, :3]
-        for mode_index in mode_info.keys():
-            mode_params = []
-            for index in mode_info[mode_index]:
-                mode_params.append(params[index:index+3])
-            mode_params = np.asarray(mode_params)
-            size = int(np.sqrt(len(mode_params)))
-            print(mode_params.shape)
-            surf = fitting.interpolate_surface(mode_params[:, :3], size_u=size, size_v=size, degree_u=2, degree_v=2)
-            surf.delta = 0.05
-            from geomdl.visualization import VisMPL as vis
-            surf.vis = vis.VisSurface(config=vis.VisConfig(ctrlpts=False, trims=False))
-            print(mpl.get_backend())
-            surf.render(fig_save_as=f"surface{mode_index}.png", display_plot=False)
-            print(f"rendered {mode_index}")
-            sys.exit()
+        all_params = []
+        for mode_index in mode_params.keys():
+            all_nus = []
+            all_ks = []
+            all_phis = []
+            all_betas = []
+            all_scales = []
+            len_phis = []
+            used_nus = []
+            for nu_ind in mode_params[mode_index].keys():
+                mode_per_nu = np.asarray(mode_params[mode_index][nu_ind])
+                #print(mode_per_nu)
+                param_indices = mode_per_nu[:, 0].astype(int)
+                phis = mode_per_nu[:, 4]
+                ks = params[param_indices]
+                betas = params[param_indices+1]
+                scales = params[param_indices+2]
+                deg = 2
+                coefs = np.polyfit(phis, ks, deg=2)
+                powers = np.arange(deg+1)[::-1]
+                phis_test = np.linspace(0, np.pi/2, int(num_interp*np.mean(ks)/nu_k_scale/k_min))
+                powers = np.reshape(np.repeat(powers, len(phis_test)), (len(powers), len(phis_test)))
+                ws = np.reshape(np.repeat(coefs, len(phis_test)), (len(powers), len(phis_test)))
+                ks_test = np.sum(ws*phis_test**powers, axis=0)
+                betas_test = np.zeros_like(phis_test)
+                scales_test = np.zeros_like(phis_test)
+                norm = 0
+                for i in range(len(phis)):
+                    delta = np.abs(phis_test - phis[i])
+                    betas_test += delta*betas[i]
+                    scales_test += delta*scales[i]
+                    norm += delta
+                betas_test /= norm
+                scales_test /= norm
+                all_nus.extend(np.repeat(nus[nu_ind], len(ks_test)))
+                all_ks.extend(ks_test)
+                all_phis.extend(phis_test)
+                all_betas.extend(betas_test)
+                all_scales.extend(scales_test)
+                len_phis.append(len(phis_test))
+                used_nus.append(nus[nu_ind])
+            all_nus = np.asarray(all_nus)
+            all_ks = np.asarray(all_ks)
+            all_phis = np.asarray(all_phis)
+            all_betas = np.asarray(all_betas)
+            all_scales = np.asarray(all_scales)
+            assert(all_nus.shape == all_ks.shape)
+            assert(all_nus.shape == all_phis.shape)
+            assert(all_nus.shape == all_betas.shape)
+            assert(all_nus.shape == all_scales.shape)
             
-            
-            surf.evaluate(start=[0.0, 0.0], stop=[1.0, 1.0])
-            print(surf.evalpts)
-            
-            rings = dict()
-            for i in range(0, len(mode_params), 5):
-                nu = params[i]
-                nu_index = np.argmin(np.abs(nus_filtered - nu))
-                if nu_index not in rings:
-                    rings[nu_index] = []
-                rings[nu_index] = params[i:i+5]
+            len_phis = np.asarray(len_phis)
+            used_nus = np.asarray(used_nus)
 
-    
+            all_nus2 = []
+            all_ks2 = []
+            all_phis2 = []
+            all_betas2 = []
+            all_scales2 = []
+
+            min_nu = np.min(used_nus)
+            max_nu = np.max(used_nus)
+            start_index = np.argmin(np.abs(nus-min_nu))
+            end_index = np.argmin(np.abs(nus-max_nu)) + 1
+            for i in range(start_index, end_index, nu_interp):
+                nu = nus[i]
+                fltr1 = used_nus >= nu
+                nus_fltr1 = used_nus[fltr1]
+                upper = np.argmin(np.abs(nus_fltr1 - nu))
+                upper_nu = nus_fltr1[upper]
+                fltr2 = used_nus <= nu
+                nus_fltr2 = used_nus[fltr2]
+                lower = np.argmin(np.abs(nus_fltr2 - nu))
+                lower_nu = nus_fltr2[lower]
+                delta1 = np.abs(nu - upper_nu)
+                delta2 = np.abs(nu - lower_nu)
+                norm = delta1 + delta2
+                print(delta1, delta2, len_phis[fltr1][upper], len_phis[fltr2][lower])
+                if norm == 0:
+                    delta1 = 1.
+                    norm = 1.
+                len_phis_test = int(np.round((len_phis[fltr1][upper]*delta2 + len_phis[fltr2][lower]*delta1)/norm))
+                phis_test = np.linspace(0, np.pi/2, len_phis_test)
+                upper = all_nus == upper_nu
+                lower = all_nus == lower_nu
+                upper_phis = all_phis[upper]
+                lower_phis = all_phis[lower]
+                upper_ks = all_ks[upper]
+                lower_ks = all_ks[lower]
+                upper_betas = all_betas[upper]
+                lower_betas = all_betas[lower]
+                upper_scales = all_scales[upper]
+                lower_scales = all_scales[lower]
+                for phi in phis_test:
+                    upper = np.argmin(np.abs(upper_phis-phi))
+                    lower = np.argmin(np.abs(lower_phis-phi))
+                    k = (upper_ks[upper]*delta2 + lower_ks[lower]*delta1)/norm
+                    beta = (upper_betas[upper]*delta2 + lower_betas[lower]*delta1)/norm
+                    scale = (upper_scales[upper]*delta2 + lower_scales[lower]*delta1)/norm
+                    all_ks2.append(k)
+                    all_betas2.append(beta)
+                    all_scales2.append(scale)
+                all_phis2.extend(phis_test)
+                all_nus2.extend(np.repeat(nu, len(phis_test)))
+            
+            all_nus = np.append(all_nus, all_nus2)
+            all_ks = np.append(all_ks, all_ks2)
+            all_phis = np.append(all_phis, all_phis2)
+            all_betas = np.append(all_betas, all_betas2)
+            all_scales = np.append(all_scales, all_scales2)
+            all_k1 = all_ks*np.cos(all_phis)
+            all_k2 = all_ks*np.sin(all_phis)
+            assert(all_nus.shape == all_ks.shape)
+            assert(all_nus.shape == all_phis.shape)
+            assert(all_nus.shape == all_betas.shape)
+            assert(all_nus.shape == all_scales.shape)
+            all_params.extend(np.concatenate([all_nus[:, None], all_k1[:, None], all_k2[:, None], all_betas[:, None], all_scales[:, None]], axis=1))
+        all_params = np.asarray(all_params)
+        return all_params
         
     else:
         raise ValueError(f"func_type {func_type} not supported")
 
 def fit(coords, params):
-    interpolate_params(coords, params, mode_info)
     #import functools
     #from multiprocessing import Pool
-    num_params = get_num_params()
-    assert((len(params) % num_params) == 0)
+    #num_params = get_num_params()
+    #assert((len(params) % num_params) == 0)
     #fitted_data = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2]))
     #with Pool(5) as p:
     #    fitted_data = functools.reduce(lambda x, y: x+y, \
@@ -489,7 +587,6 @@ if (__name__ == '__main__'):
             
             data_mask = np.zeros_like(data, dtype=int)
             
-            
             nu_k_scale = (nus[-1]-nus[0])/(ks[-1]-ks[0])
             coords = load("coords.dat")
             if coords is None:
@@ -534,16 +631,15 @@ if (__name__ == '__main__'):
                     if k >= k_min and k <= k_max_:
                         data_mask[:, k_ind1, k_ind2] = 1
 
-            nu_sampling = 10
             priors = load("priors.dat")
             if priors is not None:
-                params, bounds, mode_info, mode_params = priors
+                params, bounds, mode_params = priors
             else:
                 ring_radii = load("ring_radii.dat")
                 assert(ring_radii is not None)
                 params = []
                 bounds = []
-                mode_info = dict()
+                #mode_info = dict()
                 mode_params = dict()
                 #sampling_step = [coords[3, 0, 0, 0] - coords[0, 0, 0, 0], coords[0, 3, 0, 1] - coords[0, 0, 0, 1], coords[0, 0, 3, 2] - coords[0, 0, 0, 2]]
                 #print(coords[0, 3, 0, 1], coords[0, 0, 0, 1])
@@ -551,32 +647,41 @@ if (__name__ == '__main__'):
                 print("sampling_step", sampling_step)
 
                 for mode_index in range(5):
-                    if mode_index not in mode_info:
-                        mode_info[mode_index] = []
-                        mode_params[mode_index] = []
+                    if mode_index not in mode_params:
+                        #mode_info[mode_index] = dict()
+                        mode_params[mode_index] = dict()
                     mode_radii = ring_radii[mode_index]
                     for nu_ind in range(0, len(mode_radii), nu_sampling):
                         r = mode_radii[nu_ind]
                         num_points_per_arc = int(round(3*r/k_min))
                         if r >= k_min and r <= k_max_:
+                            if nu_ind not in mode_params[mode_index]:
+                                mode_params[mode_index][nu_ind] = []
                             nu = nus_filtered[nu_ind]
+                            print(nu)
                             for phi in np.linspace(0, 0.5*np.pi, num_points_per_arc):
                                 kx = r*np.cos(phi)
                                 ky = r*np.sin(phi)
                                 k1 = nu_k_scale*ks_filtered[np.argmin(np.abs(ks_filtered-kx))]
                                 k2 = nu_k_scale*ks_filtered[np.argmin(np.abs(ks_filtered-ky))]
     
-                                mode_info[mode_index].append(len(params))
-                                mode_params[mode_index].append([nu, k1, k2])
-                            
-                                params.append(nu)
-                                bounds.append((nu-.5 , nu+.5))
+                                #mode_info[mode_index][nu_ind].append(len(params))
+                                print(len(mode_params[mode_index][nu_ind]))
+                                print(len(params), nu, k1, k2)
+                                mode_params[mode_index][nu_ind].append([len(params), nu, k1, k2, np.arctan2(k2, k1)])
+                                
+                                k = np.sqrt(k1**2 + k2**2)
+                                params.append(k)
+                                bounds.append((k-.5, k+.5))
+                                
+                                #params.append(nu)
+                                #bounds.append((nu-.5 , nu+.5))
         
-                                params.append(k1)
-                                bounds.append((k1-.5 , k1+.5))
+                                #params.append(k1)
+                                #bounds.append((k1-.5 , k1+.5))
         
-                                params.append(k2)
-                                bounds.append((k2-.5 , k2+.5))
+                                #params.append(k2)
+                                #bounds.append((k2-.5 , k2+.5))
         
                                 beta_prior = 0.04#.2/num_components
                                 params.append(beta_prior)
@@ -588,9 +693,9 @@ if (__name__ == '__main__'):
                                 bounds.append((1e-10, 10.))                
                 
             
-                for i in mode_info.keys():
-                    mode_info[i] = np.asarray(mode_info[i])
-                save((params, bounds, mode_info, mode_params), "priors.dat")
+                #for i in mode_info.keys():
+                #    mode_info[i] = np.asarray(mode_info[i])
+                save((params, bounds, mode_params), "priors.dat")
             print("Priors set")
             #######################################################################    
             print("params", len(params))
@@ -604,7 +709,8 @@ if (__name__ == '__main__'):
                 
             min_loglik = None
             def lik_fn(params):
-                data_fitted = fit(coords, params)
+                interpolated_params = interpolate_params(coords, params, mode_params)
+                data_fitted = fit(coords, interpolated_params)
                 return -calc_loglik(data_fitted, data, data_mask, true_sigma)
             
             def jac(params):
@@ -614,19 +720,19 @@ if (__name__ == '__main__'):
             
 
             min_res = None
-            '''
+            
             for trial_no in np.arange(0, num_optimizations):                    
                 #print("params", params)
                     
                 #initial_lik = lik_fn(params)
                 #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':1e-7})#, 'eps':.1})
-                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=jac, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=None, bounds=bounds, options={'disp': True, 'gtol':1e-7})
                 loglik = res['fun']
                 if min_loglik is None or loglik < min_loglik:
                     min_loglik = loglik
                     min_res = res['x']
-            '''
-            params_est = params#min_res
+            
+            params_est = min_res
             num_params = get_num_params()
             params_ = []
             for _ in range(len(nus_filtered)//nu_sampling+1):
