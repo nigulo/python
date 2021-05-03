@@ -1,6 +1,5 @@
 import matplotlib as mpl
 mpl.use('nbAgg')
-print(mpl.get_backend())
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
@@ -10,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import numpy.fft as fft
 import scipy.optimize
-from geomdl import fitting
 import pickle
 
 chunk_size = 1 # For memory purposes
@@ -46,6 +44,15 @@ def basis_func(coords, params, func_type="lorenzian"):
 
         x = coords[:, :, :, :3]
         ys = np.zeros_like(x[:, :, :, 0])
+        for i in range(len(alphas)):
+            print(i)
+            alphas1 = alphas[i]
+            betas1 = betas[i]
+            scales1 = scales[i]
+            r2 = np.sum((x-alphas1)**2, axis=3)
+            #fltr = r2 <= r2_max
+            ys += scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2))
+        '''
         while len(alphas) > 0:
             print(len(alphas))
             chunk_size_ = min(chunk_size_, len(alphas))
@@ -58,6 +65,7 @@ def basis_func(coords, params, func_type="lorenzian"):
             alphas = alphas[chunk_size_:]
             betas = betas[chunk_size_:]
             scales = scales[chunk_size_:]
+        '''
         #alphas = np.array([params[0], params[1], params[2]])
         #beta = params[3]
         #scale = params[4]
