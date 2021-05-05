@@ -25,6 +25,10 @@ INPUT_REAL = 0
 INPUT_FOURIER = 1
 INPUT_FOURIER_RATIO = 2
 
+FRAME_DEPENDENCE_NONE = 0
+FRAME_DEPENDENCE_GRU = 1
+FRAME_DEPENDENCE_TRANSFORMER = 2
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1 or classname.find('Conv2d') != -1:
@@ -172,11 +176,13 @@ class NN(nn.Module):
             tip_tilt_separated = False,
             input_type = INPUT_FOURIER_RATIO,
             tt_calib = False,
-            pass_through = True,
-            use_lstm = True,
+            pass_through = False,
+            #use_lstm = True,
             use_neighbours=False,
             num_pix_apod = self.nx//8,
-            num_pix_pad = 0
+            num_pix_pad = 0,
+            frame_dependence_model = FRAME_DEPENDENCE_TRANSFORMER,
+            num_latent = 128
             )
         
         file = open(f"{self.dir_name}/{conf_file}.json",'w')
@@ -215,10 +221,12 @@ class NN(nn.Module):
         self.input_type = conf["input_type"]
         self.tt_calib = conf["tt_calib"]
         self.pass_through = conf["pass_through"]
-        self.use_lstm = conf["use_lstm"]
+        #self.use_lstm = conf["use_lstm"]
         self.use_neighbours = conf["use_neighbours"]
         self.num_pix_apod = conf["num_pix_apod"]
         self.num_pix_pad = conf["num_pix_pad"]
+        self.frame_dependence_model = conf["frame_dependence_model"]
+        self.num_latent = conf["num_latent"]
             
         if conf["activation_fn"] == "ELU" :
             self.activation_fn = nn.ELU
@@ -271,8 +279,7 @@ class NN(nn.Module):
 
         self.layers2 = nn.ModuleList()
         
-        size1 = 2048
-        size = 1024
+        size = self.num_latent#1024
         self.layers2.append(nn.Linear(l.out_channels*(self.nx//(2**len(self.layers1)))**2, size))
         self.layers2.append(self.activation_fn())
 
@@ -299,7 +306,23 @@ class NN(nn.Module):
             self.layers3_low.append(nn.Linear(size, 2))
             #self.layers3_low.append(nn.Tanh())
         else:
-            self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+            if self.frame_dependence_model == FRAME_DEPENDENCE_GRU:
+                self.lstm = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
+            else:
+                sys.path.append(os.path.join(os.path.dirname(__file__), "Transformer"))
+                from ZernikeEncoder import ZernikeEncoder
+                
+                hyperparameters = {        
+                    'input_dim' : size,                    # Embedding dimension for the Transformer Encoder
+                    'num_heads' : 8,                      # Number of heads of the Encoder
+                    'num_layers' : 6,                     # Number of layers of the Encoder
+                    'ff_dim' : size*4,                     # Dimension of the internal fully connected networks in the Encoder (should be divisible by the number of heads)
+                    'dropout' : 0.1,                      # Dropout in the Encoder
+                    'norm_in' : True,                     # Order of the Layer Norm in the Encoder (always True for good convergence using PreNorm)
+                    'weight_init_type' : 'xavier_normal', # Initialization of the Encoder
+                    'max_len' : self.num_frames,          # Use learning rate warmup during training (if PreNorm, not really necessary)        
+                    }                
+                self.zernike_encoder = ZernikeEncoder(hyperparameters)
             
             self.layers3 = nn.ModuleList()
             self.layers3.append(nn.Linear(size, self.num_modes))
@@ -381,7 +404,7 @@ class NN(nn.Module):
         for layer in self.layers2:
             x = layer(x)
 
-        if self.tip_tilt_separated or self.use_lstm:
+        if self.tip_tilt_separated or self.frame_dependence_model != FRAME_DEPENDENCE_NONE:
             if self.pass_through:
                 x1 = x
             # We want to use LSTM over the whole batch,
@@ -433,12 +456,16 @@ class NN(nn.Module):
             x = x.view(-1, self.num_modes)
                 
         else:
-            if self.use_lstm:
+            if self.frame_dependence_model == FRAME_DEPENDENCE_GRU:
                 x, _ = self.lstm(x)
                 #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
-                x = x.squeeze()
+            elif self.frame_dependence_model == FRAME_DEPENDENCE_TRANSFORMER:
+                mask = torch.zeros((1, self.num_frames), dtype=torch.bool)
+                x = zernike_encoder(x, mask)
+            x = x.squeeze()
+                
             
-            if self.use_lstm and self.pass_through:
+            if self.frame_dependence_model != FRAME_DEPENDENCE_NONE and self.pass_through:
                 x = x + x1
             # Fully connected layers
             for layer in self.layers3:
