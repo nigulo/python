@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 import numpy.fft as fft
 import scipy.optimize
 import pickle
-from multiprocessing import Pool
+from multiprocessing import Process, Queue
 
-chunk_size = 1 # For memory purposes
+chunk_size = 128 # For memory purposes
 nu_sampling = 10
 num_phi_interp = 8
 num_nu_interp = 5
@@ -26,10 +26,10 @@ def save(obj, f):
     with open(f, 'wb') as f:
         pickle.dump(obj, f, protocol=4)
         
-def f(d):
+def f(d, q):
     (alphas1, betas1, scales1, x) = d
     r2 = np.sum((x-alphas1)**2, axis=3)
-    return scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2))
+    q.put(scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2)))
     
 def basis_func(coords, params, func_type="lorenzian"):
     chunk_size_ = chunk_size
@@ -51,8 +51,10 @@ def basis_func(coords, params, func_type="lorenzian"):
         x = coords[:, :, :, :3]
         ys = np.zeros_like(x[:, :, :, 0])
         
-        with Pool(1) as p:
-            ys = np.sum(p.map(f, [(alphas[i], betas[i], scales[i], x) for i in range(len(alphas))]), axis=0)
+        q = Queue()
+        
+        #with Pool(1) as p:
+        #    ys = np.sum(p.map(f, [(alphas[i], betas[i], scales[i], x) for i in range(len(alphas))]), axis=0)
         
         '''
         for i in range(len(alphas)):
@@ -63,20 +65,29 @@ def basis_func(coords, params, func_type="lorenzian"):
             r2 = np.sum((x-alphas1)**2, axis=3)
             #fltr = r2 <= r2_max
             ys += scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2))
-
+        '''
         while len(alphas) > 0:
             print(len(alphas))
             chunk_size_ = min(chunk_size_, len(alphas))
+            ps = [Process(target=f, args=((alphas[i], betas[i], scales[i], x), q)) for i in range(chunk_size_)]
+            for p in ps:
+                p.start()
+            for _ in ps:
+                ys += q.get()
+            for p in ps:
+                p.join()
+            '''    
             alphas1 = np.tile(alphas[:chunk_size_, None, None, None, :], (1, coords.shape[0], coords.shape[1], coords.shape[2], 1))
             betas1 = betas[:chunk_size_]
             scales1 = scales[:chunk_size_]
             r2 = np.transpose(np.sum((x-alphas1)**2, axis=4), (1, 2, 3, 0))
             #fltr = r2 <= r2_max
             ys += np.sum(scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2)), axis=3)
+            '''
             alphas = alphas[chunk_size_:]
             betas = betas[chunk_size_:]
             scales = scales[chunk_size_:]
-        '''
+        
         #alphas = np.array([params[0], params[1], params[2]])
         #beta = params[3]
         #scale = params[4]
