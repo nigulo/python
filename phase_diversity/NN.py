@@ -322,7 +322,8 @@ class NN(nn.Module):
                     'weight_init_type' : 'xavier_normal', # Initialization of the Encoder
                     'max_len' : self.num_frames,          # Use learning rate warmup during training (if PreNorm, not really necessary)        
                     }                
-                self.zernike_encoder = ZernikeEncoder(hyperparameters)
+                self.zernike_encoder = ZernikeEncoder(hyperparameters, self.device)
+                self.mask = torch.zeros((1, self.num_frames), dtype=torch.bool).to(self.device)
             
             self.layers3 = nn.ModuleList()
             self.layers3.append(nn.Linear(size, self.num_modes))
@@ -460,8 +461,7 @@ class NN(nn.Module):
                 x, _ = self.lstm(x)
                 #x = x.reshape(x.size()[1]*num_chunks, x.size()[2])
             elif self.frame_dependence_model == FRAME_DEPENDENCE_TRANSFORMER:
-                mask = torch.zeros((1, self.num_frames), dtype=torch.bool)
-                x = zernike_encoder(x, mask)
+                x = self.zernike_encoder(x, self.mask)
             x = x.squeeze()
                 
             
@@ -1076,12 +1076,12 @@ class NN(nn.Module):
                             my_test_plot.colormap(wfs[j], [row, 5], show_colorbar=False)
                             #my_test_plot.colormap(np.abs(wf_true[j]-wfs[j]), [1, 2], show_colorbar=True)
                             row += 1
-                    my_test_plot.set_axis_title([0, 0], "MOMFBD PSF (focus)")
-                    my_test_plot.set_axis_title([0, 1], "NN PSF (focus)")
-                    my_test_plot.set_axis_title([0, 2], "MOMFBD PSF (defocus)")
-                    my_test_plot.set_axis_title([0, 3], "NN PSF (defocus)")
-                    my_test_plot.set_axis_title([0, 4], "MOMFBD wavefront")
-                    my_test_plot.set_axis_title([0, 5], "NN wavefront")
+                    my_test_plot.set_axis_title("MOMFBD PSF (focus)", [0, 0])
+                    my_test_plot.set_axis_title("NN PSF (focus)", [0, 1])
+                    my_test_plot.set_axis_title("MOMFBD PSF (defocus)", [0, 2])
+                    my_test_plot.set_axis_title("NN PSF (defocus)", [0, 3])
+                    my_test_plot.set_axis_title("MOMFBD wavefront", [0, 4])
+                    my_test_plot.set_axis_title("NN wavefront", [0, 5])
                     my_test_plot.toggle_axis()
                     my_test_plot.save(f"{self.dir_name}/psf{obj_index_i}.png")
                     my_test_plot.close()
@@ -1101,8 +1101,8 @@ class NN(nn.Module):
                         scale = 1.//utils.mode_scale[coef_index]
                         #scale = np.std(alphas[:, coef_index])/np.std(true_alphas[:, coef_index])
                         #mean = np.mean(alphas[:, coef_index])
-                        my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index], -1), [row, col], "r-")
-                        my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), [row, col], "b--")
+                        my_test_plot.plot(xs, np.reshape(alphas[:nf, coef_index], -1), "r-", [row, col])
+                        my_test_plot.plot(xs, np.reshape(true_alphas[:nf, coef_index]*scale, -1), "b--", [row, col])
                         col += 1
                         if col >= ncols:
                             row += 1
@@ -1210,8 +1210,8 @@ class NN(nn.Module):
             my_test_plot.colormap(full_reconstr, [0, 1])#, vmin=min_val, vmax=max_val)
             #my_test_plot.colormap(full_D, [2])
             
-            my_test_plot.set_axis_title([0, 0], "MOMFBD")
-            my_test_plot.set_axis_title([0, 1], "Neural network")
+            my_test_plot.set_axis_title("MOMFBD", [0, 0])
+            my_test_plot.set_axis_title("Neural network", [0, 1])
             #my_test_plot.set_axis_title([2], "Raw frame")
 
             if plot_loss_ratios:
@@ -1224,7 +1224,7 @@ class NN(nn.Module):
                 max_val = max(max_loss_ratio, min_loss_ratio)
                 my_test_plot.set_default_cmap(cmap_name="bwr")
                 my_test_plot.colormap(dat=loss_ratios10, ax_index=[0, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
-                my_test_plot.set_axis_title([0, num_cols-1], r"$L_{\rm NN}/L_{\rm MOMFBD}$")
+                my_test_plot.set_axis_title(r"$L_{\rm NN}/L_{\rm MOMFBD}$", [0, num_cols-1])
             
             if zoomin:
                 (x_low, x_high), (y_low, y_high) = my_test_plot.get_axis_limits(ax_index=[0, 0])
