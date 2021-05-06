@@ -176,7 +176,8 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         coords = np.zeros((num_objects, 2), dtype=np.int16)
         neighbours = np.zeros((num_objects, 8), dtype=np.int16)
         handler = None
-        
+    
+    neighbours[:, :] = -1
     dixy = [0]
     # Randomly extract patches and times for selecting the bursts
     # This way of extracting the patches is slightly limited because I only consider
@@ -292,26 +293,22 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         
         coords[loop, 0] = x0
         coords[loop, 1] = y0
+
     
-    neighbour_counts = np.zeros(num_objects, dtype="int")
     for obj_ind1 in range(num_objects):
         pos1 = positions[obj_ind1]
         x1 = pos1[0]
         y1 = pos1[1]
         for obj_ind2 in np.arange(obj_ind1 + 1, num_objects):
-            pos1 = positions[obj_ind1]
+            pos1 = positions[obj_ind2]
             x2 = pos1[0]
             y2 = pos1[1]
             if abs(x2 - x1) <= 1 and abs(y2 - y1) <= 1:
-                if neighbour_counts[obj_ind1] < 8:
-                    neighbours[obj_ind1, neighbour_counts[obj_ind1]] = obj_ind2
-                    neighbour_counts[obj_ind1] = neighbour_counts[obj_ind1] + 1
-                if neighbour_counts[obj_ind2] < 8:
-                    neighbours[obj_ind2, neighbour_counts[obj_ind2]] = obj_ind1
-                    neighbour_counts[obj_ind2] = neighbour_counts[obj_ind2] + 1
-    for obj_ind in range(num_objects):
-        for count in np.arange(neighbour_counts[obj_ind], 8):
-            neighbours[obj_ind, count] = -1
+                neighbour_ind = (x2 - x1 + 1)*3 + y2-y1+1
+                if neighbour_ind >= 5:
+                    neighbour_ind -= 1
+                neighbours[obj_ind1, neighbour_ind] = obj_ind2
+                neighbours[obj_ind2, 7-neighbour_ind] = obj_ind1
         
         
     return Ds, objs, momfbd_coefs, positions, coords, handler, neighbours
