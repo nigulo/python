@@ -73,7 +73,10 @@ class Dataset(torch.utils.data.Dataset):
                         # due to the split to train and validation sets
                         if ind >= 0 and ind < Ds.shape[0]:
                             Ds_out[ind_out:ind_out+2] = np.array(Ds[ind, frame_index, :, :, :])
-                            ind_out += 2
+                        else:
+                            # Fill void patches if the object was on the edge of field
+                            Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
+                        ind_out += 2
                 else:
                     # Just for backward compatibility
                     max_pos = self.max_pos[data_index]
@@ -109,9 +112,9 @@ class Dataset(torch.utils.data.Dataset):
                                         if num_found == num_neighbours:
                                             break
                             ind += 1
-                # Fill void patches if the object was on the edge of field
-                for ind_out in np.arange(ind_out, num_ch, step=2):
-                    Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
+                    # Fill void patches if the object was on the edge of field
+                    for ind_out in np.arange(ind_out, num_ch, step=2):
+                        Ds_out[ind_out:ind_out+2] = np.array(Ds[obj_index, frame_index, :, :, :])
                     
 
         if diversity is not None:
