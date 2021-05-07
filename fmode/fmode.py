@@ -70,13 +70,13 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
                     ky = k*np.sin(phi)
                     alpha = np.array([nu, kx, ky])
                     beta = params[param_ind + 1]
-                    fltr =np.abs(nus-nu) <= 2*beta
+                    fltr =np.abs(nus-nu) <= 10*beta
                     nus_close = nus[fltr]
                     nus_close_inds = nus_inds[fltr]
-                    fltr = np.abs(kxs-kx) <= 2*beta
+                    fltr = np.abs(kxs-kx) <= 10*beta
                     kxs_close = kxs[fltr]
                     kxs_close_inds = kxs_inds[fltr]
-                    fltr = np.abs(kys-ky) <= 2*beta
+                    fltr = np.abs(kys-ky) <= 10*beta
                     kys_close = kys[fltr]
                     kys_close_inds = kys_inds[fltr]
                     for nu_i in range(len(nus_close)):
@@ -87,9 +87,12 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
                                 #print(nu_i, kx_i, ky_i)
                                 x = np.array([nu, kx, kys_close[ky_i]])
                                 r2 = np.sum((x-alpha)**2)
-                                if r2 <= 4*beta**2:
+                                if r2 <= 100*beta**2:
                                     scale = params[param_ind + 2]
                                     ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] += scale/(np.pi*beta*(1+(np.sqrt(r2)/beta)**2))
+                                    #assert(np.product(np.isnan(ys).astype(int) == 0))
+                                    #print(nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i], ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]])
+        #assert(np.all(np.abs(ys) < 1e5))
         
         '''    
         q = Queue()
@@ -408,7 +411,15 @@ def fit(coords, params, mode_params):
     #    a = p.map(f, np.arange(len(params) // num_params))
     #for i in range(len(params) // num_params):
         #print("fit", i, len(params) // num_params)
+    print(params)
     fitted_data = basis_func(coords, params, mode_params)
+    for i in range(0, coords.shape[0], 50):
+        fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(fitted_data.shape[1], fitted_data.shape[2]))
+        #fig.contour(coords[0, :, 0, 1], coords[0, 0, :, 2], fitted_data[i, :, :])
+        fig.set_axis_title(r"$\nu=" + str(coords[i, 0, 0, 0]) + "$")
+        fig.colormap(fitted_data[i, :, :], cmap_name="gnuplot", show_colorbar=True)
+        fig.save(os.path.join(output_dir, f"fitted_data{i}.png"))
+    
     return fitted_data
 
 
@@ -739,7 +750,7 @@ if (__name__ == '__main__'):
                                 beta_prior = 0.04#.2/num_components
                                 params.append(beta_prior)
                                 #params.append(1./100)
-                                bounds.append((1e-10 , 2*beta_prior))
+                                bounds.append((1e-10 , 10*beta_prior))
         
                                 scale_prior = 1.
                                 params.append(scale_prior)
