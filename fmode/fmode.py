@@ -16,6 +16,9 @@ num_proc = 128
 nu_sampling = 10
 num_phi_interp = 8
 num_nu_interp = 5
+chunk_size = 10
+
+percentile = .95
 
 def load(f):
     if not os.path.exists(f):
@@ -30,6 +33,20 @@ def f(d, q):
     (alphas1, betas1, scales1, x) = d
     r2 = np.sum((x-alphas1)**2, axis=3)
     q.put(scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2)))
+
+def downsample(data, factors=(3, 2)):
+    print(np.min(data), np.max(data), np.mean(data))
+    data = fft.fftshift(fft.fftn(data))
+    #data = data[:data.shape[0]//2, :, :]
+    nu_ind = int(round(data.shape[0]*(1-1/factors[0])*.5))
+    kx_ind = int(round(data.shape[1]*(1-1/factors[1])*.5))
+    ky_ind = int(round(data.shape[2]*(1-1/factors[1])*.5))
+    data = fft.ifftshift(data[nu_ind:-nu_ind, kx_ind:-kx_ind, ky_ind:-ky_ind])
+    data = np.real(fft.ifftn(data))
+    data += -np.min(data)+1e-10
+    print(data.shape, np.min(data), np.max(data), np.mean(data))
+    return data
+    
     
 def basis_func(coords, params, mode_params, func_type="lorenzian"):
     chunk_size = num_proc
@@ -70,13 +87,14 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
                     ky = k*np.sin(phi)
                     alpha = np.array([nu, kx, ky])
                     beta = params[param_ind + 1]
-                    fltr =np.abs(nus-nu) <= 10*beta
+                    radius = beta*np.tan(np.pi*(percentile-.5))
+                    fltr =np.abs(nus-nu) <= radius
                     nus_close = nus[fltr]
                     nus_close_inds = nus_inds[fltr]
-                    fltr = np.abs(kxs-kx) <= 10*beta
+                    fltr = np.abs(kxs-kx) <= radius
                     kxs_close = kxs[fltr]
                     kxs_close_inds = kxs_inds[fltr]
-                    fltr = np.abs(kys-ky) <= 10*beta
+                    fltr = np.abs(kys-ky) <= radius
                     kys_close = kys[fltr]
                     kys_close_inds = kys_inds[fltr]
                     for nu_i in range(len(nus_close)):
@@ -87,7 +105,7 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
                                 #print(nu_i, kx_i, ky_i)
                                 x = np.array([nu, kx, kys_close[ky_i]])
                                 r2 = np.sum((x-alpha)**2)
-                                if r2 <= 100*beta**2:
+                                if r2 <= radius**2:
                                     scale = params[param_ind + 2]
                                     ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] += scale/(np.pi*beta*(1+(np.sqrt(r2)/beta)**2))
                                     #assert(np.product(np.isnan(ys).astype(int) == 0))
@@ -122,19 +140,77 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
         raise ValueError(f"func_type {func_type} not supported")
     return ys
 
-def basis_func_grad(coords, params, func_type="lorenzian"):
+def basis_func_grad(coords, params, mode_params, start_index=0, chunk_size=0, func_type="lorenzian"):
     if func_type == "lorenzian":
-        x = coords[:, :, :, :3]
-        all_grads = np.empty((coords.shape[0], coords.shape[1], coords.shape[2], 0))
+        xs = coords[:, :, :, :3]
+        if chunk_size <= 0 or chunk_size > len(params):
+            chunk_size = len(params)
+            assert(start_index == 0)
+        all_grads = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2], chunk_size))
+        
+        nus = xs[:, 0, 0, 0]
+        kxs = xs[0, :, 0, 1]
+        kys = xs[0, 0, :, 2]
+        ys = np.zeros_like(xs[:, :, :, 0])
+        
+        nus_inds = np.arange(len(nus))
+        kxs_inds = np.arange(len(kxs))
+        kys_inds = np.arange(len(kys))
+        
+        for mode_index in mode_params.keys():
+            for nu_ind in mode_params[mode_index].keys():
+                #print("Fitting mode", mode_index, nu_ind)
+                for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
+                    param_ind -= start_index
+                    if param_ind < 0 or param_ind >= len(params):
+                        continue
+                    k = params[param_ind]
+                    cos_phi = np.cos(phi)
+                    sin_phi = np.sin(phi)
+                    kx = k*cos_phi
+                    ky = k*sin_phi
+                    alpha = np.array([nu, kx, ky])
+                    beta = params[param_ind + 1]
+                    fltr =np.abs(nus-nu) <= closeness_coef*beta
+                    nus_close = nus[fltr]
+                    nus_close_inds = nus_inds[fltr]
+                    fltr = np.abs(kxs-kx) <= closeness_coef*beta
+                    kxs_close = kxs[fltr]
+                    kxs_close_inds = kxs_inds[fltr]
+                    fltr = np.abs(kys-ky) <= closeness_coef*beta
+                    kys_close = kys[fltr]
+                    kys_close_inds = kys_inds[fltr]
+                    for nu_i in range(len(nus_close)):
+                        nu = nus_close[nu_i]
+                        for kx_i in range(len(kxs_close)):
+                            kx = kxs_close[kx_i]
+                            for ky_i in range(len(kys_close)):
+                                #print(nu_i, kx_i, ky_i)
+                                x = np.array([nu, kx, kys_close[ky_i]])
+                                r2 = np.sum((x-alpha)**2)
+                                if r2 <= (closeness_coef*beta)**2:
+                                    scale = params[param_ind + 2]
+                                    
+                                    coef1 = scale/np.pi
+                                    coef1a = coef1/beta
+                                    coef1b = 1./(1+r2/beta**2)**2
+                                    coef1c = 1./beta**2
+                                    coef2a = 1./(1+r2/beta**2)
+                                    
+                                    k_grad = coef1a*coef1b*coef1c*2.*((x[1]-alpha[1])*cos_phi+(x[2]-alpha[2])*sin_phi)
+                                    
+                                    beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
+                                    scale_grad = 1./(np.pi*beta)*coef2a
+                                    grads = [k_grad, beta_grad, scale_grad]
+                                    
+                                    all_grads[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i], param_ind:param_ind+3] = grads
+        
+        '''
         for i in range(len(params)):
             alphas = params[i, :3]
             beta = params[i, 3]
             scale = params[i, 4]
-            '''
-            alphas = params[i*5:i*5+3]
-            beta = params[i*5+3]
-            scale = params[i*5+4]
-            '''
+
         
             #ys = np.zeros_like(x[:, :, :, 0])
             #r2_max = (approx_width*scale/beta-1)*beta
@@ -153,7 +229,7 @@ def basis_func_grad(coords, params, func_type="lorenzian"):
             scale_grad = 1./(np.pi*beta)*coef2a
             grads = np.concatenate([alpha_grad, beta_grad[:, :, :, None], scale_grad[:, :, :, None]], axis=3)
             all_grads = np.concatenate([all_grads, grads], axis=3)
-    
+        '''
         return all_grads
         
     else:
@@ -417,7 +493,7 @@ def fit(coords, params, mode_params):
         fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(fitted_data.shape[1], fitted_data.shape[2]))
         #fig.contour(coords[0, :, 0, 1], coords[0, 0, :, 2], fitted_data[i, :, :])
         fig.set_axis_title(r"$\nu=" + str(coords[i, 0, 0, 0]) + "$")
-        fig.colormap(fitted_data[i, :, :], cmap_name="gnuplot", show_colorbar=True)
+        fig.colormap(fitted_data[i, :, :].T, cmap_name="gnuplot", show_colorbar=True)
         fig.save(os.path.join(output_dir, f"fitted_data{i}.png"))
     
     return fitted_data
@@ -427,7 +503,7 @@ def calc_loglik(data_fitted, data, data_mask, sigma):
     loglik = -0.5 * np.sum(((data_fitted - data)*data_mask)**2/sigma) - 0.5*np.log(sigma) - 0.5*np.log(2.0*np.pi)
     return loglik        
         
-def calc_loglik_grad(coords, data_fitted, data, data_mask, sigma, params, func_type="lorenzian"):
+def calc_loglik_grad(coords, data_fitted, data, data_mask, sigma, params, mode_params, func_type="lorenzian"):
     all_grads = np.empty_like(params)
     delta2 = ((data_fitted-data)*data_mask**2)[:, :, :, None]
     chunk_size_ = chunk_size*get_num_params(func_type)
@@ -435,7 +511,7 @@ def calc_loglik_grad(coords, data_fitted, data, data_mask, sigma, params, func_t
     while len(params) > 0:
         chunk_size_ = min(chunk_size_, len(params))
         params1 = params[:chunk_size_]
-        grads = basis_func_grad(coords, params1)
+        grads = basis_func_grad(coords, params1, mode_params, start_index=chunk_start, chunk_size=chunk_size_)
         print(chunk_start, chunk_size_, len(params1), grads.shape)
         all_grads[chunk_start:chunk_start+chunk_size_] = np.sum(np.tile(delta2, len(params1))*grads, axis=(0, 1, 2))
         chunk_start += chunk_size_
@@ -531,27 +607,12 @@ if (__name__ == '__main__'):
     MODE_PERP_TO_RIDGE = 1
     mode = MODE_PERP_TO_RIDGE
     
-    ny = 300
     map_scale = 0.05
-    #k = np.arange(ny)
-    #k = (k-((ny-1)/2))*(2.*180./(ny*map_scale))
-    #k0 = np.where(k == np.min(np.abs(k)))[0][0]
-    #k1 = np.where(k == np.max(np.abs(k)))[0][0]
-    #k = k[k0:k1+1]
-    
-    #k = np.linspace(0, 3600, 151)
-    ks = np.linspace(-3600, 3600, 300)
-    print(ks)
-    
-    #cadence = 45.0
-    #nf = 641
-    #omega = np.arange((nf-1)/2+1)
-    #omega = omega*2.*np.pi/(nf*cadence/1000.)
-    #nu = omega/(2.*np.pi)
-    
-    #nu = np.linspace(0, 11.076389, 320)
-    nus = np.linspace(-11.076389, 11.076389, 641)
-    print(nus)
+
+    #ks = np.linspace(-3600, 3600, 300)
+    #print(ks)
+    #nus = np.linspace(-11.076389, 11.076389, 641)
+    #print(nus)
     
     k_min = 700
     k_max = 3000#sys.maxsize
@@ -602,25 +663,29 @@ if (__name__ == '__main__'):
             #data = data[:data.shape[0]//2, :, :]
             data = np.real(data*np.conj(data))
             data = fft.fftshift(data)
+            data = downsample(data)
+            
+            ks = np.linspace(-3600, 3600, data.shape[1])
+            nus = np.linspace(-11.076389, 11.076389, data.shape[0])
             
             noise_var = get_noise_var(data, ks, nus)        
             sig_var = np.var(data) - noise_var
             true_sigma = np.sqrt(noise_var)
             
             #######################################################################
-            '''
-            for i in range(0, 320, 10):            
-                levels = np.linspace(np.min(np.log(data[i]))+2, np.max(np.log(data[i]))-2, 200)
+            
+            for i in range(0, len(nus), 10):
+                log_data = np.log(data[i])
                 
                 fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
-                fig.contour(ks, ks, data[i, :, :])
+                fig.contour(ks, ks, data[i])
                 fig.save(os.path.join(output_dir, f"ring_diagram{i}.png"))
     
                 #fig, ax = plt.subplots(nrows=1, ncols=1)
                 #ax.contour(ks, ks, np.log(data[i]), levels=levels)
                 #fig.savefig(os.path.join(output_dir, f"ring_diagram{i}.png"))
                 #plt.close(fig)
-            '''
+            
             #######################################################################
             
             hdul.close()
@@ -747,10 +812,10 @@ if (__name__ == '__main__'):
                                 #params.append(k2)
                                 #bounds.append((k2-.5 , k2+.5))
         
-                                beta_prior = 0.04#.2/num_components
+                                beta_prior = 0.1#.2/num_components
                                 params.append(beta_prior)
                                 #params.append(1./100)
-                                bounds.append((1e-10 , 10*beta_prior))
+                                bounds.append((1e-4 , 0.5))
         
                                 scale_prior = 1.
                                 params.append(scale_prior)
@@ -772,7 +837,9 @@ if (__name__ == '__main__'):
             scales_est = []
                 
             min_loglik = None
+            data_fitted = None
             def lik_fn(params):
+                global data_fitted
                 #interpolated_params = interpolate_params(coords, params, mode_params)
                 data_fitted = fit(coords, params, mode_params)
                 loglik = -calc_loglik(data_fitted, data, data_mask, true_sigma)
@@ -780,8 +847,8 @@ if (__name__ == '__main__'):
                 return loglik
             
             def jac(params):
-                data_fitted = fit(coords, params)
-                return calc_loglik_grad(coords, data_fitted, data, data_mask, true_sigma, params)
+                #data_fitted = fit(coords, params, mode_params)
+                return calc_loglik_grad(coords, data_fitted, data, data_mask, true_sigma, params, mode_params)
                 
             
 
@@ -792,7 +859,7 @@ if (__name__ == '__main__'):
                     
                 #initial_lik = lik_fn(params)
                 #res = scipy.optimize.minimize(lik_fn, params, method='CG', jac=None, options={'disp': True, 'gtol':1e-7})#, 'eps':.1})
-                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=None, bounds=bounds, options={'disp': True, 'gtol':1e-7})
+                res = scipy.optimize.minimize(lik_fn, params, method='L-BFGS-B', jac=jac, bounds=bounds, options={'disp': True, 'gtol':1e-7})
                 loglik = res['fun']
                 if min_loglik is None or loglik < min_loglik:
                     min_loglik = loglik

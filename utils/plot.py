@@ -160,7 +160,10 @@ class plot:
         ax = self.get_ax(ax_index)
         if log:
             data = np.log(data)
-        levels = np.linspace(np.min(data)+2, np.max(data)-2, levels)        
+        min_data = np.min(data)
+        max_data = np.max(data)
+        delta = max_data - min_data
+        levels = np.linspace(min_data+delta/10, max_data-delta/10, levels)        
         ax.contour(x, y, data, levels=levels)
         self.post_processing(ax)
         
