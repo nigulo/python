@@ -295,7 +295,7 @@ def generate_set(path, files, num_objects=None, num_frames=100, shuffle=True):
         coords[loop, 1] = y0
 
     
-    for obj_ind1 in range(num_objects):
+    for obj_ind1 in tqdm(range(num_objects)):
         pos1 = positions[obj_ind1]
         x1 = pos1[0]
         y1 = pos1[1]
@@ -360,3 +360,4 @@ if __name__ == '__main__':
         pupil_zarr[:] = pupil
         modes_zarr[:] = modes
         diversity_zarr[:] = diversity
+    print("Done.")
