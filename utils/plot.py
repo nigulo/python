@@ -163,7 +163,7 @@ class plot:
         min_data = np.min(data)
         max_data = np.max(data)
         delta = max_data - min_data
-        levels = np.linspace(min_data+delta/10, max_data-delta/10, levels)        
+        levels = np.linspace(min_data, max_data, levels)        
         ax.contour(x, y, data, levels=levels)
         self.post_processing(ax)
         

@@ -59,7 +59,6 @@ def trunc(ds, perc):
 def meshgrid(*arrs):
     arrs = tuple(reversed(arrs))  #edit
     lens = list(map(len, arrs))
-    print(lens)
     dim = len(arrs)
 
     sz = 1

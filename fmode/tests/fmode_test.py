@@ -37,7 +37,8 @@ class test_fmode(unittest.TestCase):
         # Check against values calculated using finite differences
         delta_params = np.ones_like(params)*1.0e-8
 
-        f = fmode.basis_func(coords, params, mode_params)
+        f, _ = fmode.basis_func(coords, params, mode_params)
+        print(f.shape)
 
         fs = np.tile(f[:, :, :, None], (1, 1, 1, len(params)))
         fs1 = np.empty_like(fs)
@@ -46,7 +47,7 @@ class test_fmode(unittest.TestCase):
         for l in np.arange(len(params)):
             delta = np.zeros_like(params)
             delta[l] = delta_params[l]
-            fs1[:, :, :, l] = fmode.basis_func(coords, params+delta, mode_params)
+            fs1[:, :, :, l], _ = fmode.basis_func(coords, params+delta, mode_params)
 
         grads_expected = (fs1 - fs) / np.tile(delta_params[None, None, None, :], (coords.shape[0], coords.shape[1], coords.shape[2], 1))
 
@@ -77,11 +78,9 @@ class test_fmode(unittest.TestCase):
                 params.append(beta)
                 params.append(scale)
 
-        data_fitted = fmode.basis_func(coords, params, mode_params)
+        data_fitted, data_mask = fmode.basis_func(coords, params, mode_params)
         sigma = 1.0
         data = np.random.normal(size=(coords.shape[0], coords.shape[1]))
-        data_mask = np.ones_like(data)
-        #sys.exit()
 
         grads = fmode.calc_loglik_grad(coords, data_fitted, data, data_mask, sigma, params, mode_params)
         
@@ -100,7 +99,7 @@ class test_fmode(unittest.TestCase):
         for l in np.arange(len(params)):
             delta = np.zeros_like(params)
             delta[l] = delta_params[l]
-            data_fitted = fmode.basis_func(coords, params+delta, mode_params)
+            data_fitted, data_mask = fmode.basis_func(coords, params+delta, mode_params)
             liks1[l] = fmode.calc_loglik(data_fitted, data, data_mask, sigma)
 
         grads_expected = (liks1 - liks) / delta_params

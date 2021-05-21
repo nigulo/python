@@ -1,6 +1,5 @@
 import matplotlib as mpl
 mpl.use('nbAgg')
-print(mpl.get_backend())
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
@@ -12,6 +11,7 @@ import numpy.fft as fft
 import scipy.optimize
 from geomdl import fitting
 import pickle
+from fmode import downsample
 
 def load(f):
     if not os.path.exists(f):
@@ -86,9 +86,8 @@ if (__name__ == '__main__'):
     i = 1
     
     if len(argv) <= 1:
-        print("Usage: python fmode input_path [year] [input_file]")
+        print("Usage: python fmode_priors.py input_path [year] [input_file]")
         sys.exit(1)
-        
     year = ""
     input_file = None
     
@@ -115,20 +114,6 @@ if (__name__ == '__main__'):
     #k0 = np.where(k == np.min(np.abs(k)))[0][0]
     #k1 = np.where(k == np.max(np.abs(k)))[0][0]
     #k = k[k0:k1+1]
-    
-    #k = np.linspace(0, 3600, 151)
-    ks = np.linspace(-3600, 3600, 300)
-    print(ks)
-    
-    #cadence = 45.0
-    #nf = 641
-    #omega = np.arange((nf-1)/2+1)
-    #omega = omega*2.*np.pi/(nf*cadence/1000.)
-    #nu = omega/(2.*np.pi)
-    
-    #nu = np.linspace(0, 11.076389, 320)
-    nus = np.linspace(-11.076389, 11.076389, 641)
-    print(nus)
     
     k_min = 700
     k_max = 1500#sys.maxsize
@@ -179,6 +164,10 @@ if (__name__ == '__main__'):
             #data = data[:data.shape[0]//2, :, :]
             data = np.real(data*np.conj(data))
             data = fft.fftshift(data)
+            data = downsample(data)
+            
+            ks = np.linspace(-3600, 3600, data.shape[1])
+            nus = np.linspace(-11.076389, 11.076389, data.shape[0])
                         
             hdul.close()
 
