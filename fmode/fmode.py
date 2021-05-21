@@ -22,6 +22,8 @@ chunk_size = 15
 
 percentile = .95
 
+supported_funcs = ["lorenzian", "lorenzian+gaussian"]
+
 def load(f):
     if not os.path.exists(f):
         return None
@@ -67,195 +69,202 @@ def downsample(data, factors=(3, 2)):
     
     
 def basis_func(coords, params, mode_params, func_type="lorenzian"):
-    chunk_size = num_proc
-    if func_type == "lorenzian":
-        '''
-        ai1 = np.arange(0, len(params), 5)
-        ai2 = np.arange(1, len(params), 5)
-        ai3 = np.arange(2, len(params), 5)
-        ai = np.stack([ai1, ai2, ai3], axis=1)
-        bi = np.arange(3, len(params), 5)
-        si = np.arange(4, len(params), 5)
-        alphas = params[ai]
-        betas = params[bi]
-        scales = params[si]
-        a = np.zeros((21, 231, 150, 150, 3))
-        '''
-        #print("params", len(params))
-        #alphas = params[:, :3]
-        #betas = params[:, 3]
-        #scales = params[:, 4]
-
-        xs = coords[:, :, :, :3]
-        nus = xs[:, 0, 0, 0]
-        kxs = xs[0, :, 0, 1]
-        kys = xs[0, 0, :, 2]
-        ys = np.zeros_like(xs[:, :, :, 0])
-        data_mask = np.zeros_like(ys, dtype=int)
-        
-        nus_inds = np.arange(len(nus))
-        kxs_inds = np.arange(len(kxs))
-        kys_inds = np.arange(len(kys))
-        
-        for mode_index in mode_params.keys():
-            for nu_ind in mode_params[mode_index].keys():
-                #print("Fitting mode", mode_index, nu_ind)
-                for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
-                    k = params[param_ind]
-                    kx = k*np.cos(phi)
-                    ky = k*np.sin(phi)
-                    alpha = np.array([nu, kx, ky])
-                    beta = params[param_ind + 1]
-                    radius = beta*np.tan(np.pi*(percentile-.5))
-                    #print(mode_index, nus[nu_ind], radius)
-                    fltr = np.abs(nus-nu) <= radius
-                    nus_close = nus[fltr]
-                    nus_close_inds = nus_inds[fltr]
-                    fltr = np.abs(kxs-kx) <= radius
-                    kxs_close = kxs[fltr]
-                    kxs_close_inds = kxs_inds[fltr]
-                    fltr = np.abs(kys-ky) <= radius
-                    kys_close = kys[fltr]
-                    kys_close_inds = kys_inds[fltr]
-                    for nu_i in range(len(nus_close)):
-                        nu = nus_close[nu_i]
-                        for kx_i in range(len(kxs_close)):
-                            kx = kxs_close[kx_i]
-                            for ky_i in range(len(kys_close)):
-                                #print(nu_i, kx_i, ky_i)
-                                x = np.array([nu, kx, kys_close[ky_i]])
-                                r2 = np.sum((x-alpha)**2)
-                                if r2 <= radius**2:
-                                    scale = params[param_ind + 2]
-                                    ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] += scale/(np.pi*beta*(1+(np.sqrt(r2)/beta)**2))
-                                    data_mask[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] = 1
-                                    #assert(np.product(np.isnan(ys).astype(int) == 0))
-                                    #print(nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i], ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]])
-        #assert(np.all(np.abs(ys) < 1e5))
-        
-        '''    
-        q = Queue()
-        
-        while len(alphas) > 0:
-            print(len(alphas))
-            chunk_size = min(chunk_size, len(alphas))
-            ps = [Process(target=f, args=((alphas[i], betas[i], scales[i], x), q)) for i in range(chunk_size)]
-            for p in ps:
-                p.start()
-            for _ in ps:
-                ys += q.get()
-            for p in ps:
-                p.join()
-            #alphas1 = np.tile(alphas[:chunk_size_, None, None, None, :], (1, coords.shape[0], coords.shape[1], coords.shape[2], 1))
-            #betas1 = betas[:chunk_size_]
-            #scales1 = scales[:chunk_size_]
-            #r2 = np.transpose(np.sum((x-alphas1)**2, axis=4), (1, 2, 3, 0))
-            ##fltr = r2 <= r2_max
-            #ys += np.sum(scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2)), axis=3)
-            alphas = alphas[chunk_size:]
-            betas = betas[chunk_size:]
-            scales = scales[chunk_size:]
-        '''
-        
-    else:
+    if func_type not in supported_funcs:
         raise ValueError(f"func_type {func_type} not supported")
+        
+    chunk_size = num_proc
+
+    xs = coords[:, :, :, :3]
+    nus = xs[:, 0, 0, 0]
+    kxs = xs[0, :, 0, 1]
+    kys = xs[0, 0, :, 2]
+    ys = np.zeros_like(xs[:, :, :, 0])
+    data_mask = np.zeros_like(ys, dtype=int)
+
+    nus_inds = np.arange(len(nus))
+    kxs_inds = np.arange(len(kxs))
+    kys_inds = np.arange(len(kys))
+    
+    for mode_index in mode_params.keys():
+        for nu_ind in mode_params[mode_index].keys():
+            #print("Fitting mode", mode_index, nu_ind)
+            for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
+                k = params[param_ind]
+                kx = k*np.cos(phi)
+                ky = k*np.sin(phi)
+                alpha = np.array([nu, kx, ky])
+                beta = params[param_ind + 1]
+
+                radius = beta*np.tan(np.pi*(percentile-.5))
+
+                if func_type == "lorenzian+gaussian":
+                    sigma = params[param_ind + 3]
+                    radius = max(radius, 2*sigma)
+
+                #print(mode_index, nus[nu_ind], radius)
+                fltr = np.abs(nus-nu) <= radius
+                nus_close = nus[fltr]
+                nus_close_inds = nus_inds[fltr]
+                fltr = np.abs(kxs-kx) <= radius
+                kxs_close = kxs[fltr]
+                kxs_close_inds = kxs_inds[fltr]
+                fltr = np.abs(kys-ky) <= radius
+                kys_close = kys[fltr]
+                kys_close_inds = kys_inds[fltr]
+                for nu_i in range(len(nus_close)):
+                    nu = nus_close[nu_i]
+                    for kx_i in range(len(kxs_close)):
+                        kx = kxs_close[kx_i]
+                        for ky_i in range(len(kys_close)):
+                            #print(nu_i, kx_i, ky_i)
+                            x = np.array([nu, kx, kys_close[ky_i]])
+                            r2 = np.sum((x-alpha)**2)
+                            if r2 <= radius**2:
+                                scale = params[param_ind + 2]
+                                ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] += scale/(np.pi*beta*(1+(np.sqrt(r2)/beta)**2))
+                                data_mask[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] = 1
+                                if func_type == "lorenzian+gaussian":
+                                    scale_gauss = params[param_ind + 4]
+                                    ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]] += scale_gauss*np.exp(-.5*r2/(sigma**2))
+                                #assert(np.product(np.isnan(ys).astype(int) == 0))
+                                #print(nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i], ys[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i]])
+    #assert(np.all(np.abs(ys) < 1e5))
+    
+    '''    
+    q = Queue()
+    
+    while len(alphas) > 0:
+        print(len(alphas))
+        chunk_size = min(chunk_size, len(alphas))
+        ps = [Process(target=f, args=((alphas[i], betas[i], scales[i], x), q)) for i in range(chunk_size)]
+        for p in ps:
+            p.start()
+        for _ in ps:
+            ys += q.get()
+        for p in ps:
+            p.join()
+        #alphas1 = np.tile(alphas[:chunk_size_, None, None, None, :], (1, coords.shape[0], coords.shape[1], coords.shape[2], 1))
+        #betas1 = betas[:chunk_size_]
+        #scales1 = scales[:chunk_size_]
+        #r2 = np.transpose(np.sum((x-alphas1)**2, axis=4), (1, 2, 3, 0))
+        ##fltr = r2 <= r2_max
+        #ys += np.sum(scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2)), axis=3)
+        alphas = alphas[chunk_size:]
+        betas = betas[chunk_size:]
+        scales = scales[chunk_size:]
+    '''
+    
     return ys, data_mask
 
 def basis_func_grad(coords, params, mode_params, start_index=0, chunk_size=0, func_type="lorenzian"):
-    if func_type == "lorenzian":
-        xs = coords[:, :, :, :3]
-        if chunk_size <= 0 or chunk_size > len(params):
-            chunk_size = len(params)
-            assert(start_index == 0)
-        all_grads = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2], chunk_size))
-        
-        nus = xs[:, 0, 0, 0]
-        kxs = xs[0, :, 0, 1]
-        kys = xs[0, 0, :, 2]
-        ys = np.zeros_like(xs[:, :, :, 0])
-        
-        nus_inds = np.arange(len(nus))
-        kxs_inds = np.arange(len(kxs))
-        kys_inds = np.arange(len(kys))
-        
-        for mode_index in mode_params.keys():
-            for nu_ind in mode_params[mode_index].keys():
-                #print("Fitting mode", mode_index, nu_ind)
-                for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
-                    param_ind -= start_index
-                    if param_ind < 0 or param_ind >= len(params):
-                        continue
-                    k = params[param_ind]
-                    cos_phi = np.cos(phi)
-                    sin_phi = np.sin(phi)
-                    kx = k*cos_phi
-                    ky = k*sin_phi
-                    alpha = np.array([nu, kx, ky])
-                    beta = params[param_ind + 1]
-                    radius = beta*np.tan(np.pi*(percentile-.5))
-                    fltr =np.abs(nus-nu) <= radius
-                    nus_close = nus[fltr]
-                    nus_close_inds = nus_inds[fltr]
-                    fltr = np.abs(kxs-kx) <= radius
-                    kxs_close = kxs[fltr]
-                    kxs_close_inds = kxs_inds[fltr]
-                    fltr = np.abs(kys-ky) <= radius
-                    kys_close = kys[fltr]
-                    kys_close_inds = kys_inds[fltr]
-                    for nu_i in range(len(nus_close)):
-                        nu = nus_close[nu_i]
-                        for kx_i in range(len(kxs_close)):
-                            kx = kxs_close[kx_i]
-                            for ky_i in range(len(kys_close)):
-                                #print(nu_i, kx_i, ky_i)
-                                x = np.array([nu, kx, kys_close[ky_i]])
-                                r2 = np.sum((x-alpha)**2)
-                                if r2 <= radius**2:
-                                    scale = params[param_ind + 2]
-                                    
-                                    coef1 = scale/np.pi
-                                    coef1a = coef1/beta
-                                    coef1b = 1./(1+r2/beta**2)**2
-                                    coef1c = 1./beta**2
-                                    coef2a = 1./(1+r2/beta**2)
-                                    
-                                    k_grad = coef1a*coef1b*coef1c*2.*((x[1]-alpha[1])*cos_phi+(x[2]-alpha[2])*sin_phi)
-                                    
-                                    beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
-                                    scale_grad = 1./(np.pi*beta)*coef2a
-                                    grads = [k_grad, beta_grad, scale_grad]
-                                    
-                                    all_grads[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i], param_ind:param_ind+3] = grads
-        
-        '''
-        for i in range(len(params)):
-            alphas = params[i, :3]
-            beta = params[i, 3]
-            scale = params[i, 4]
-
-        
-            #ys = np.zeros_like(x[:, :, :, 0])
-            #r2_max = (approx_width*scale/beta-1)*beta
-            r2 = np.sum((x-alphas)**2, axis=3)
-            #fltr = r2 <= r2_max
-            
-            # scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2))
-            coef1 = scale/np.pi
-            coef1a = coef1/beta
-            coef1b = 1./(1+r2/beta**2)**2
-            coef1c = 1./beta**2
-            coef2a = 1./(1+r2/beta**2)
-            
-            alpha_grad = np.tile((coef1a*coef1b*coef1c)[:, :, :, None], 3)*2.*(x-alphas)
-            beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
-            scale_grad = 1./(np.pi*beta)*coef2a
-            grads = np.concatenate([alpha_grad, beta_grad[:, :, :, None], scale_grad[:, :, :, None]], axis=3)
-            all_grads = np.concatenate([all_grads, grads], axis=3)
-        '''
-        return all_grads
-        
-    else:
+    if func_type not in supported_funcs:
         raise ValueError(f"func_type {func_type} not supported")
+
+    xs = coords[:, :, :, :3]
+    if chunk_size <= 0 or chunk_size > len(params):
+        chunk_size = len(params)
+        assert(start_index == 0)
+    all_grads = np.zeros((coords.shape[0], coords.shape[1], coords.shape[2], chunk_size))
+
+    num_params = 3
+    if func_type == "lorenzian+gaussian":
+        num_params = 5
+    
+    nus = xs[:, 0, 0, 0]
+    kxs = xs[0, :, 0, 1]
+    kys = xs[0, 0, :, 2]
+    ys = np.zeros_like(xs[:, :, :, 0])
+    
+    nus_inds = np.arange(len(nus))
+    kxs_inds = np.arange(len(kxs))
+    kys_inds = np.arange(len(kys))
+    
+    for mode_index in mode_params.keys():
+        for nu_ind in mode_params[mode_index].keys():
+            #print("Fitting mode", mode_index, nu_ind)
+            for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
+                param_ind -= start_index
+                if param_ind < 0 or param_ind >= len(params):
+                    continue
+                k = params[param_ind]
+                cos_phi = np.cos(phi)
+                sin_phi = np.sin(phi)
+                kx = k*cos_phi
+                ky = k*sin_phi
+                alpha = np.array([nu, kx, ky])
+                beta = params[param_ind + 1]
+                radius = beta*np.tan(np.pi*(percentile-.5))
+                if func_type == "lorenzian+gaussian":
+                    sigma = params[param_ind + 3]
+                    radius = max(radius, 2*sigma)
+                fltr =np.abs(nus-nu) <= radius
+                nus_close = nus[fltr]
+                nus_close_inds = nus_inds[fltr]
+                fltr = np.abs(kxs-kx) <= radius
+                kxs_close = kxs[fltr]
+                kxs_close_inds = kxs_inds[fltr]
+                fltr = np.abs(kys-ky) <= radius
+                kys_close = kys[fltr]
+                kys_close_inds = kys_inds[fltr]
+                for nu_i in range(len(nus_close)):
+                    nu = nus_close[nu_i]
+                    for kx_i in range(len(kxs_close)):
+                        kx = kxs_close[kx_i]
+                        for ky_i in range(len(kys_close)):
+                            #print(nu_i, kx_i, ky_i)
+                            x = np.array([nu, kx, kys_close[ky_i]])
+                            r2 = np.sum((x-alpha)**2)
+                            if r2 <= radius**2:
+                                scale = params[param_ind + 2]
+                                
+                                coef1 = scale/np.pi
+                                coef1a = coef1/beta
+                                coef1b = 1./(1+r2/beta**2)**2
+                                coef1c = 1./beta**2
+                                coef2a = 1./(1+r2/beta**2)
+                                
+                                k_grad = coef1a*coef1b*coef1c*2.*((x[1]-alpha[1])*cos_phi+(x[2]-alpha[2])*sin_phi)
+                                
+                                beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
+                                scale_grad = 1./(np.pi*beta)*coef2a
+                                grads = [k_grad, beta_grad, scale_grad]
+                                
+                                if func_type == "lorenzian+gaussian":
+                                    scale_gauss = params[param_ind + 4]
+                                    gauss_val = np.exp(-.5*r2/(sigma**2))
+                                    sigma_grad = scale_gauss*gauss_val*r2/(sigma**3)
+                                    scale_grad_gauss = gauss_val
+                                    grads.extend([sigma_grad, scale_grad_gauss])
+                                
+                                all_grads[nus_close_inds[nu_i], kxs_close_inds[kx_i], kys_close_inds[ky_i], param_ind:param_ind+num_params] = grads
+    
+    '''
+    for i in range(len(params)):
+        alphas = params[i, :3]
+        beta = params[i, 3]
+        scale = params[i, 4]
+
+    
+        #ys = np.zeros_like(x[:, :, :, 0])
+        #r2_max = (approx_width*scale/beta-1)*beta
+        r2 = np.sum((x-alphas)**2, axis=3)
+        #fltr = r2 <= r2_max
+        
+        # scales1/(np.pi*betas1*(1+(np.sqrt(r2)/betas1)**2))
+        coef1 = scale/np.pi
+        coef1a = coef1/beta
+        coef1b = 1./(1+r2/beta**2)**2
+        coef1c = 1./beta**2
+        coef2a = 1./(1+r2/beta**2)
+        
+        alpha_grad = np.tile((coef1a*coef1b*coef1c)[:, :, :, None], 3)*2.*(x-alphas)
+        beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
+        scale_grad = 1./(np.pi*beta)*coef2a
+        grads = np.concatenate([alpha_grad, beta_grad[:, :, :, None], scale_grad[:, :, :, None]], axis=3)
+        all_grads = np.concatenate([all_grads, grads], axis=3)
+    '''
+    return all_grads
+    
 
 
 def plot_mode(mode_index, params, nu_k_scale, fig, color, func_type="lorenzian"):
