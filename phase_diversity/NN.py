@@ -362,7 +362,7 @@ class NN(nn.Module):
         if self.use_neighbours:
             neighbours = torch.flatten(image_input[:, 2:], start_dim=0, end_dim=1)
             image_input = image_input[:, :2]
-            x = torch.cat(image_input, neighbours, dim=0)
+            x = torch.cat([image_input, neighbours], dim=0)
         if self.input_type == INPUT_FOURIER:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
