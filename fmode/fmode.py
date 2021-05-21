@@ -21,6 +21,8 @@ num_nu_interp = 2
 chunk_size = 15
 
 percentile = .95
+func_type == "lorenzian+gaussian":
+
 
 supported_funcs = ["lorenzian", "lorenzian+gaussian"]
 
@@ -540,7 +542,7 @@ def fit(coords, params, mode_params):
     #for i in range(len(params) // num_params):
         #print("fit", i, len(params) // num_params)
     print(params)
-    fitted_data, data_mask = basis_func(coords, params, mode_params)
+    fitted_data, data_mask = basis_func(coords, params, mode_params, func_type=func_type)
     
     return fitted_data, data_mask
 
@@ -863,6 +865,17 @@ if (__name__ == '__main__'):
                                 scale_prior = np.mean(data[nu_ind])#.01
                                 params.append(scale_prior)
                                 bounds.append((0, None))
+                                
+                                if func_type == "lorenzian+gaussian":
+                                    sigma_prior = beta_prior
+                                    scale_gauss_prior = scale_prior
+                                    
+                                    params.append(sigma_prior)
+                                    bounds.append((1e-4 , .1))
+                                    
+                                    params.append(scale_gauss_prior)
+                                    bounds.append((0, None))
+                                
                 
             
                 #for i in mode_info.keys():
@@ -899,7 +912,7 @@ if (__name__ == '__main__'):
                 
                 loglik = -calc_loglik(data_fitted, data, data_mask, true_sigma)
                 print(loglik)
-                return loglik, -calc_loglik_grad(coords, data_fitted, data, data_mask, true_sigma, params, mode_params)
+                return loglik, -calc_loglik_grad(coords, data_fitted, data, data_mask, true_sigma, params, mode_params, func_type=func_type)
 
             
 
