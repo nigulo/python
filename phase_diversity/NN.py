@@ -256,16 +256,16 @@ class NN(nn.Module):
         num_in_channels = 2
         if self.use_neighbours:
             assert(self.frame_dependence_model == FRAME_DEPENDENCE_TRANSFORMER)
-            num_in_channels = 18#32
+            #num_in_channels = 18#32
         if self.input_type == INPUT_FOURIER:
             num_in_channels = 6
-            if self.use_neighbours:
-                num_in_channels = 6*9#32 + 64
+            #if self.use_neighbours:
+            #    num_in_channels = 6*9#32 + 64
         elif self.input_type == INPUT_FOURIER_RATIO:
             num_in_channels = 4
             
-            if self.use_neighbours:
-                num_in_channels *= 9#16
+            #if self.use_neighbours:
+            #    num_in_channels *= 9#16
 
         self.layers1 = nn.ModuleList()
 
@@ -360,7 +360,7 @@ class NN(nn.Module):
 
         x = image_input
         if self.use_neighbours:
-            neighbours = torch.flatten(image_input[:, 2:], start_dim=0, end_dim=1)
+            neighbours = torch.flatten(image_input[:, 2:], start_dim=0, end_dim=1).view(-1, 2, self.nx, self.nx)
             image_input = image_input[:, :2]
             x = torch.cat([image_input, neighbours], dim=0)
         if self.input_type == INPUT_FOURIER:
