@@ -52,21 +52,19 @@ class Dataset(torch.utils.data.Dataset):
         #print("index, obj_index, frame_index", index, obj_index, frame_index, Ds.shape)
         num_ch = 2
         if self.use_neighbours:
-            num_ch = 32
+            num_ch = 18#32
         Ds_out = np.empty((num_ch, Ds.shape[3], Ds.shape[4])).astype('float32')
         Ds_out[:2] = np.array(Ds[obj_index, frame_index, :, :, :])
-        if self.use_neighbours:
-            Ds_out[2:num_ch//2] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (num_ch//4-1, 1, 1))  
+        #if self.use_neighbours:
+        #    Ds_out[2:num_ch//2] = np.tile(np.array(Ds[obj_index, frame_index, :, :, :]), (num_ch//4-1, 1, 1))  
         
-        #Ds_out = np.array(Ds[obj_index, frame_index, :, :, :]).astype('float32')
-        #Ds_out = np.reshape(Ds_out, (2, Ds.shape[3], Ds.shape[4]))
 
         if positions is not None:
             pos_x = positions[obj_index, 0]
             pos_y = positions[obj_index, 1]
             
             if self.use_neighbours:
-                ind_out = num_ch // 2
+                ind_out = 2#num_ch // 2
                 if neighbours is not None:
                     for ind in neighbours[obj_index]:
                         # The neighbouring patch may not exist in this dataset

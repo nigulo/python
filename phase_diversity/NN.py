@@ -255,16 +255,17 @@ class NN(nn.Module):
         
         num_in_channels = 2
         if self.use_neighbours:
-            num_in_channels = 32
+            assert(self.frame_dependence_model == FRAME_DEPENDENCE_TRANSFORMER)
+            num_in_channels = 18#32
         if self.input_type == INPUT_FOURIER:
             num_in_channels = 6
             if self.use_neighbours:
-                num_in_channels = 32 + 64
+                num_in_channels = 6*9#32 + 64
         elif self.input_type == INPUT_FOURIER_RATIO:
             num_in_channels = 4
             
             if self.use_neighbours:
-                num_in_channels *= 16
+                num_in_channels *= 9#16
 
         self.layers1 = nn.ModuleList()
 
@@ -285,6 +286,7 @@ class NN(nn.Module):
 
         #self.lstm = nn.LSTM(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
         if self.tip_tilt_separated:
+            assert(self.frame_dependence_model == FRAME_DEPENDENCE_GRU)
             self.lstm_high = nn.GRU(size, size//2, batch_first=True, bidirectional=True, dropout=0.0)
 
             self.layers3_high = nn.ModuleList()
@@ -358,7 +360,9 @@ class NN(nn.Module):
 
         x = image_input
         if self.use_neighbours:
+            neighbours = torch.flatten(image_input[:, 2:], start_dim=0, end_dim=1)
             image_input = image_input[:, :2]
+            x = torch.cat(image_input, neighbours, dim=0)
         if self.input_type == INPUT_FOURIER:
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
@@ -476,6 +480,8 @@ class NN(nn.Module):
             x = torch.cat([x_low, x_high], dim=-1)
         
         alphas = x
+        if self.use_neighbours:
+            alphas = alphas[:self.num_frames]
 
         #################################################
         # To filter out only tip-tilt (for test purposes)
