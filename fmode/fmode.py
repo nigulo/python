@@ -21,7 +21,7 @@ num_nu_interp = 2
 chunk_size = 15
 
 percentile = .95
-func_type == "lorenzian+gaussian":
+func_type = "lorenzian+gaussian"
 
 
 supported_funcs = ["lorenzian", "lorenzian+gaussian"]
@@ -225,15 +225,22 @@ def basis_func_grad(coords, params, mode_params, start_index=0, chunk_size=0, fu
                                 coef1c = 1./beta**2
                                 coef2a = 1./(1+r2/beta**2)
                                 
-                                k_grad = coef1a*coef1b*coef1c*2.*((x[1]-alpha[1])*cos_phi+(x[2]-alpha[2])*sin_phi)
+                                k_coef = (x[1]-alpha[1])*cos_phi+(x[2]-alpha[2])*sin_phi
+                                
+                                k_grad = coef1a*coef1b*coef1c*2.*k_coef
+
+                                if func_type == "lorenzian+gaussian":
+                                    scale_gauss = params[param_ind + 4]
+                                    gauss_val = np.exp(-.5*r2/(sigma**2))
+                                    k_grad += gauss_val*scale_gauss*(1./(sigma**2))*k_coef
                                 
                                 beta_grad = coef1*(-coef2a + 2*r2*coef1b/beta**2)/beta**2
                                 scale_grad = 1./(np.pi*beta)*coef2a
                                 grads = [k_grad, beta_grad, scale_grad]
                                 
                                 if func_type == "lorenzian+gaussian":
-                                    scale_gauss = params[param_ind + 4]
-                                    gauss_val = np.exp(-.5*r2/(sigma**2))
+                                    #scale_gauss = params[param_ind + 4]
+                                    #gauss_val = np.exp(-.5*r2/(sigma**2))
                                     sigma_grad = scale_gauss*gauss_val*r2/(sigma**3)
                                     scale_grad_gauss = gauss_val
                                     grads.extend([sigma_grad, scale_grad_gauss])
