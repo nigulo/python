@@ -16,8 +16,8 @@ import misc
 num_proc = 128
 nu_sampling = 4
 k_sampling = 5
-num_phi_interp = 20
-num_nu_interp = 2
+num_phi_interp = 5
+num_nu_interp = 5
 chunk_size = 15
 
 percentile = .95
@@ -952,7 +952,7 @@ if (__name__ == '__main__'):
                 
             min_loglik = None
             def lik_fn(params):
-                interp_params, interp_mode_params = interpolate_params(coords, params, mode_params)
+                interp_params, interp_mode_params = interpolate_params(coords, params, mode_params, func_type=func_type)
                 data_fitted, data_mask = fit(coords, interp_params, interp_mode_params)
                 #data_fitted, data_mask = fit(coords, params, mode_params)
                 
