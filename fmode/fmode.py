@@ -88,9 +88,11 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
     kys_inds = np.arange(len(kys))
     
     for mode_index in mode_params.keys():
+        print(mode_index)
         for nu_ind in mode_params[mode_index].keys():
             #print("Fitting mode", mode_index, nu_ind)
             for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
+                print(param_ind)
                 k = params[param_ind]
                 kx = k*np.cos(phi)
                 ky = k*np.sin(phi)
@@ -391,7 +393,7 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
     nus = coords[:, 0, 0, 0]
     mode_params_out = dict()
     params_out = []
-    if func_type == "lorenzian":
+    if func_type == "lorenzian" or func_type == "lorenzian+gaussian":
         for mode_index in mode_params.keys():
             if mode_index not in mode_params_out:
                 mode_params_out[mode_index] = dict()
@@ -403,6 +405,9 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
             all_scales = []
             len_phis = []
             used_nus = []
+            if func_type == "lorenzian+gaussian":
+                all_sigmas = []
+                all_scales_gauss = []
             for nu_ind in mode_params[mode_index].keys():
                 if nu_ind not in mode_params_out[mode_index]:
                     mode_params_out[mode_index][nu_ind] = []
@@ -413,6 +418,9 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
                 ks = params[param_indices]
                 betas = params[param_indices+1]
                 scales = params[param_indices+2]
+                if func_type == "lorenzian+gaussian":
+                    sigmas = params[param_indices+3]
+                    scales_gauss = params[param_indices+4]                    
                 deg = 2
                 coefs = np.polyfit(phis, ks, deg=2)
                 powers = np.arange(deg+1)[::-1]
@@ -422,11 +430,17 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
                 ks_test = np.sum(ws*phis_test**powers, axis=0)
                 betas_test = np.zeros_like(phis_test)
                 scales_test = np.zeros_like(phis_test)
+                if func_type == "lorenzian+gaussian":
+                    sigmas_test = np.zeros_like(phis_test)
+                    scales_gauss_test = np.zeros_like(phis_test)
                 norm = 0
                 for i in range(len(phis)):
                     delta = np.abs(phis_test - phis[i])
                     betas_test += delta*betas[i]
                     scales_test += delta*scales[i]
+                    if func_type == "lorenzian+gaussian":
+                        sigmas_test += delta*sigmas[i]
+                        scales_gauss_test += delta*scales_gauss[i]
                     norm += delta
                 betas_test /= norm
                 scales_test /= norm
@@ -436,6 +450,12 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
                 all_phis.extend(phis_test)
                 all_betas.extend(betas_test)
                 all_scales.extend(scales_test)
+                if func_type == "lorenzian+gaussian":
+                    sigmas_test /= norm
+                    scales_gauss_test /= norm
+                    all_sigmas.extend(sigmas_test)
+                    all_scales_gauss.extend(scales_gauss_test)
+                
                 len_phis.append(len(phis_test))
                 used_nus.append(nus[nu_ind])
             all_nus = np.asarray(all_nus)
@@ -444,6 +464,10 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
             all_phis = np.asarray(all_phis)
             all_betas = np.asarray(all_betas)
             all_scales = np.asarray(all_scales)
+            if func_type == "lorenzian+gaussian":
+                all_sigmas = np.asarray(all_sigmas)
+                all_scales_gauss = np.asarray(all_scales_gauss)
+
             assert(all_nus.shape == all_ks.shape)
             assert(all_nus.shape == all_nu_inds.shape)
             assert(all_nus.shape == all_phis.shape)
@@ -459,6 +483,10 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
             all_phis2 = []
             all_betas2 = []
             all_scales2 = []
+
+            if func_type == "lorenzian+gaussian":
+                all_sigmas2 = []
+                all_scales_gauss2 = []
 
             min_nu = np.min(used_nus)
             max_nu = np.max(used_nus)
@@ -495,6 +523,12 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
                 lower_betas = all_betas[lower]
                 upper_scales = all_scales[upper]
                 lower_scales = all_scales[lower]
+                if func_type == "lorenzian+gaussian":
+                    upper_sigmas = all_sigmas[upper]
+                    lower_sigmas = all_sigmas[lower]
+                    upper_scales_gauss = all_scales_gauss[upper]
+                    lower_scales_gauss = all_scales_gauss[lower]
+                    
                 for phi in phis_test:
                     upper = np.argmin(np.abs(upper_phis-phi))
                     lower = np.argmin(np.abs(lower_phis-phi))
@@ -504,6 +538,12 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
                     all_ks2.append(k)
                     all_betas2.append(beta)
                     all_scales2.append(scale)
+                    if func_type == "lorenzian+gaussian":
+                        sigma = (upper_sigmas[upper]*delta2 + lower_sigmas[lower]*delta1)/norm
+                        scale_gauss = (upper_scales_gauss[upper]*delta2 + lower_scales_gauss[lower]*delta1)/norm
+                        all_sigmas2.append(sigma)
+                        all_scales_gauss2.append(scale_gauss)
+                        
                 all_phis2.extend(phis_test)
                 all_nus2.extend(np.repeat(nu, len(phis_test)))
                 all_nu_inds2.extend(np.repeat(i, len(phis_test)))
@@ -516,13 +556,24 @@ def interpolate_params(coords, params, mode_params, func_type="lorenzian"):
             all_scales = np.append(all_scales, all_scales2)
             all_k1 = all_ks*np.cos(all_phis)
             all_k2 = all_ks*np.sin(all_phis)
+            
+            num_params = 3
+            if func_type == "lorenzian+gaussian":
+                all_sigmas = np.append(all_sigmas, all_sigmas2)
+                all_scales_gauss = np.append(all_scales_gauss, all_scales_gauss2)
+                num_params = 5
+                
             assert(all_nus.shape == all_ks.shape)
             assert(all_nus.shape == all_nu_inds.shape)
             assert(all_nus.shape == all_phis.shape)
             assert(all_nus.shape == all_betas.shape)
             assert(all_nus.shape == all_scales.shape)
-            lens = np.arange(len(params_out), len(params_out) + len(all_ks)*3, 3)
-            params_out.extend(np.concatenate([all_ks[:, None], all_betas[:, None], all_scales[:, None]], axis=1).flatten())
+            
+            lens = np.arange(len(params_out), len(params_out) + len(all_ks)*num_params, num_params)
+            param_list = [all_ks[:, None], all_betas[:, None], all_scales[:, None]]
+            if func_type == "lorenzian+gaussian":
+                param_list.extend([all_sigmas[:, None], all_scales_gauss[:, None]])
+            params_out.extend(np.concatenate(param_list, axis=1).flatten())
             #params_out.extend(np.concatenate([all_nus[:, None], all_k1[:, None], all_k2[:, None], all_betas[:, None], all_scales[:, None]], axis=1))
             for i in range(len(all_nu_inds)):
                 nu_ind = all_nu_inds[i]
