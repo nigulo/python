@@ -125,7 +125,7 @@ if (__name__ == '__main__'):
             plot_step = len(nus)//num_plots
             ks_hist = np.linspace(0, ks[-1], k_len_half)
             
-            fig = plot.plot(nrows=nrows, ncols=ncols, size=plot.default_size(data.shape[1], data.shape[2]))
+            fig = plot.plot(nrows=nrows, ncols=ncols, size=plot.default_size(data.shape[1]//3, data.shape[2]//3), smart_axis="x")
             
             num_plots_done = 0
             for nu_ind in range(0, len(nus), plot_step):
@@ -141,7 +141,7 @@ if (__name__ == '__main__'):
                             histogram[dist] += data_slice[kx_ind, ky_ind]
                             
                 fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=fig.get_current_ax())
-                fig.plot(ks_hist, histogram, "k-")
+                fig.plot(ks_hist[1:], histogram[1:], "k-")
             fig.save(os.path.join(output_dir, f"histograms.png"))
                         
                     

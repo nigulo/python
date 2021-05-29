@@ -54,7 +54,7 @@ class plot:
             self.current_row = 0
             self.current_col = 0
         
-        if type(smart_axis) == str :
+        if type(smart_axis) == str:
             self.smart_axis = smart_axis
         else:
             self.smart_axis = ""
