@@ -27,7 +27,7 @@ def default_size(nx, ny):
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy"):
+    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True):
         if size is not None:
             width = size[0]
             height = size[1]
@@ -49,6 +49,10 @@ class plot:
         self.width = width
         self.height = height
         self.used_axis = set()
+        self.auto_ax_index = auto_ax_index
+        if auto_ax_index:
+            self.current_row = 0
+            self.current_col = 0
         
         if type(smart_axis) == str :
             self.smart_axis = smart_axis
@@ -100,8 +104,18 @@ class plot:
     '''
     def get_ax(self, ax_index = None):
         if ax_index is None:
-            return self.axes
-            
+            if self.auto_ax_index:
+                if self.nrows > 1:
+                    if self.ncols > 1:
+                        return self.axes[self.current_row][self.current_col]
+                    else:
+                        return self.axes[self.current_row]
+                else:
+                    return self.axes
+            else:
+                return self.axes
+        
+        #TODO: simplify as above
         if isinstance(ax_index, (list, tuple, np.ndarray)):
             if len(ax_index) == 2:
                 if isinstance(self.axes, (list, tuple, np.ndarray)):
@@ -307,6 +321,21 @@ class plot:
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
         self.used_axis.add(ax)
+        if self.auto_ax_index:
+            self.current_col += 1
+            if self.current_col >= self.ncols:
+                self.current_col = 0
+                self.current_row += 1
+                
+    def get_current_ax(self):
+        assert(self.auto_ax_index)
+        if self.nrows > 1:
+            if self.ncols > 1:
+                return [self.current_row, self.current_col]
+            else:
+                return self.current_row
+        else:
+            return 0
         
     def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
         ax = self.get_ax(ax_index)
@@ -515,7 +544,7 @@ class plot:
                 ax_index = [row, col]
                 self.process_colorbar(ax_index)
                 ax = self.get_ax(ax_index)
-                
+                                
                 # Remove empty subplots
                 if ax not in self.used_axis:
                     ax.axis('off')

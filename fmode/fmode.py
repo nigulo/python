@@ -16,9 +16,11 @@ import misc
 num_proc = 128
 nu_sampling = 4
 k_sampling = 5
-num_phi_interp = 5
-num_nu_interp = 5
+num_phi_interp = 20
+num_nu_interp = 2
 chunk_size = 15
+
+average = True
 
 percentile = .95
 func_type = "lorenzian+gaussian"
@@ -92,7 +94,6 @@ def basis_func(coords, params, mode_params, func_type="lorenzian"):
         for nu_ind in mode_params[mode_index].keys():
             #print("Fitting mode", mode_index, nu_ind)
             for param_ind, nu, _, _, phi in mode_params[mode_index][nu_ind]:
-                print(param_ind)
                 k = params[param_ind]
                 kx = k*np.cos(phi)
                 ky = k*np.sin(phi)
@@ -298,6 +299,8 @@ def plot_mode(mode_index, params, nu_k_scale, fig, color, func_type="lorenzian")
 def get_num_params(func_type="lorenzian"):
     if func_type == "lorenzian":
         return 3
+    elif func_type == "lorenzian+gaussian":
+        return 5
     else:
         raise ValueError(f"func_type {func_type} not supported")
     
@@ -772,6 +775,12 @@ if (__name__ == '__main__'):
             noise_var = get_noise_var(data, ks, nus)        
             sig_var = np.var(data) - noise_var
             true_sigma = np.sqrt(noise_var)
+
+            if average:
+                data = data[:, data.shape[1]//2:, data.shape[2]//2:] + data[:, :data.shape[1]//2-1:-1, data.shape[2]//2:] + \
+                    data[:, :data.shape[1]//2-1:-1, :data.shape[2]//2-1:-1] + data[:, data.shape[1]//2:, :data.shape[2]//2-1:-1]
+            
+                ks = np.linspace(0, 3600, data.shape[1])
             
             #######################################################################
             '''
