@@ -7,6 +7,7 @@ import plot
 from astropy.io import fits
 import numpy as np
 import numpy.fft as fft
+import pickle
 
 
 def is_odd(num):
@@ -43,8 +44,15 @@ def downsample(data, factors=(3, 2)):
     print(data.shape, np.min(data), np.max(data), np.mean(data))
     return data
     
+def load(f):
+    if not os.path.exists(f):
+        return None
+    return pickle.load(open(f, 'rb'))
 
-
+def save(obj, f):
+    with open(f, 'wb') as f:
+        pickle.dump(obj, f, protocol=4)
+        
 if (__name__ == '__main__'):
 
     argv = sys.argv
@@ -69,10 +77,11 @@ if (__name__ == '__main__'):
     if len(year) > 0:
         input_path = os.path.join(input_path, year)
     
+    nu_min = 2
+    nu_max = 10
     
-    
-    #k_min = 700
-    #k_max = 3000#sys.maxsize
+    k_min = 700
+    k_max = 3000#sys.maxsize
     #if len(sys.argv) > 1:
     #    k_min = float(sys.argv[1])
     
@@ -128,6 +137,10 @@ if (__name__ == '__main__'):
             
             fig = plot.plot(nrows=nrows, ncols=ncols, size=plot.default_size(data.shape[1]//3, data.shape[2]//3), smart_axis="x")
             
+            colors = ["k", "b", "g", "r", "m"]
+
+            ring_radii, nus_filtered = load("ring_radii.dat")
+
             num_plots_done = 0
             for nu_ind in range(0, len(nus), plot_step):
                 if num_plots_done >= num_plots:
@@ -140,9 +153,24 @@ if (__name__ == '__main__'):
                         dist = int(np.sqrt((kx_ind - k_len_half)**2 + (ky_ind - k_len_half)**2))
                         if dist < len(histogram):
                             histogram[dist] += data_slice[kx_ind, ky_ind]
-                            
-                fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=fig.get_current_ax())
-                fig.plot(ks_hist[1:], histogram[1:], "k-")
+                ax_index = fig.get_current_ax()
+                print(ax_index)
+                fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=ax_index)
+                fig.plot(ks_hist[1:], histogram[1:], "k-", ax_index=ax_index)
+                
+                #max_val = np.max(histogram[1:])
+                #max_val = np.max(histogram[1:])
+                
+                (_, _), (y_min, y_max) = fig.get_axis_limits(ax_index)
+                
+                for mode_index in range(5):
+                    mode_radii = ring_radii[mode_index]
+                    r = mode_radii[nus_filtered == abs(nus[nu_ind])]
+                    if len(r) == 1:
+                        r = r[0]
+                        fig.plot([r, r], [y_min, y_max], colors[mode_index], ax_index=ax_index)
+                fig.next_ax()    
+
             fig.save(os.path.join(output_dir, f"histograms.png"))
                         
                     

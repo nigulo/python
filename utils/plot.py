@@ -321,6 +321,8 @@ class plot:
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
         self.used_axis.add(ax)
+
+    def next_ax(self):
         if self.auto_ax_index:
             self.current_col += 1
             if self.current_col >= self.ncols:
