@@ -12,6 +12,7 @@ import numpy.fft as fft
 def is_odd(num):
     return num & 0x1
 
+
 def downsample(data, factors=(3, 2)):
     print(np.min(data), np.max(data), np.mean(data))
     data = fft.fftshift(fft.fftn(data))
@@ -70,8 +71,8 @@ if (__name__ == '__main__'):
     
     
     
-    k_min = 700
-    k_max = 3000#sys.maxsize
+    #k_min = 700
+    #k_max = 3000#sys.maxsize
     #if len(sys.argv) > 1:
     #    k_min = float(sys.argv[1])
     
