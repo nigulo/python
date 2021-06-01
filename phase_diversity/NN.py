@@ -314,6 +314,11 @@ class NN(nn.Module):
                 sys.path.append(os.path.join(os.path.dirname(__file__), "Transformer"))
                 from ZernikeEncoder import ZernikeEncoder
                 
+                max_len = self.num_frames
+                
+                if self.use_neighbours:
+                    max_len *= 9
+                
                 hyperparameters = {        
                     'input_dim' : size,                    # Embedding dimension for the Transformer Encoder
                     'num_heads' : 8,                      # Number of heads of the Encoder
@@ -322,10 +327,10 @@ class NN(nn.Module):
                     'dropout' : 0.1,                      # Dropout in the Encoder
                     'norm_in' : True,                     # Order of the Layer Norm in the Encoder (always True for good convergence using PreNorm)
                     'weight_init_type' : 'xavier_normal', # Initialization of the Encoder
-                    'max_len' : self.num_frames,          # Use learning rate warmup during training (if PreNorm, not really necessary)        
+                    'max_len' : max_len,          # Use learning rate warmup during training (if PreNorm, not really necessary)        
                     }                
                 self.zernike_encoder = ZernikeEncoder(hyperparameters, self.device)
-                self.mask = torch.zeros((1, self.num_frames), dtype=torch.bool).to(self.device)
+                self.mask = torch.zeros((1, max_len), dtype=torch.bool).to(self.device)
             
             self.layers3 = nn.ModuleList()
             self.layers3.append(nn.Linear(size, self.num_modes))
