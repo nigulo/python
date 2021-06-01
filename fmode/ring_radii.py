@@ -25,11 +25,11 @@ def save(obj, f):
 def calc_mode_radius(mode_index, params):
     r_mean = 0
     nu_mean = 0
-    for nu, k1, k2 in params:
+    for nu, k in params:
         nu_mean += nu
-        r_mean += (k1**2 + k2**2)
+        r_mean += k
     nu_mean /= len(params)
-    r_mean = np.sqrt(r_mean/len(params))
+    r_mean /= len(params)
     print(f"Mode {mode_index}: ", nu_mean, r_mean)
     return nu_mean, r_mean
 
@@ -99,7 +99,7 @@ if (__name__ == '__main__'):
     #k = k[k0:k1+1]
     
     k_min = 700
-    k_max = 1500#sys.maxsize
+    k_max = 3000#sys.maxsize
     #if len(sys.argv) > 1:
     #    k_min = float(sys.argv[1])
     
@@ -154,15 +154,17 @@ if (__name__ == '__main__'):
             hdul.close()
 
             k_max_ = ks[ks < k_max][-1]
+            
+            print("k_max", k_max_)
              
             
             print(data.shape, nus.shape)
             nus_filtered = np.array(nus)
             fltr = (nus_filtered > 2.) * (nus_filtered < 10.)
             nus_filtered = nus_filtered[fltr]
-            #data = data[fltr, :, :]
-            fltr = ks >= 0
-            ks_filtered = ks[fltr]
+            data = data[fltr, :, :]
+            #fltr = ks >= 0
+            #ks_filtered = ks[fltr]
             #data = data[:, fltr, :]
             #data = data[:, :, fltr]
             
@@ -170,25 +172,28 @@ if (__name__ == '__main__'):
             mode_params = load("mode_params.dat")
             if mode_params is None:
 
-                mode_params = [[]]*len(nus)
+                mode_params = [[]]*len(nus_filtered)
                 
-                for nu_ind in range(0, len(nus), 10):
+                for nu_ind in range(0, len(nus_filtered)):
                     for k_ind1 in range(0, len(ks)):
                         for k_ind2 in range(0, len(ks)):
                             k1, k2 = np.abs(ks[k_ind1]), np.abs(ks[k_ind2])
                             k = np.sqrt(k1**2 + k2**2)
                             if k >= k_min and k <= k_max_:
                                 num_components = get_num_components(k)
-                                
+
                                 for mode_index in range(num_components):
+                                    if mode_index > 0:
+                                        break
                                     nu_prior = get_mode_prior(mode_index, k)
-                                    nu_index = np.argmin(np.abs(np.abs(nus) - nu_prior))
+                                    nu_index = np.argmin(np.abs(np.abs(nus_filtered) - nu_prior))
                                     if nu_index == nu_ind:
+                                        print(nu_prior, k)
                                         if len(mode_params[nu_ind]) == 0:
                                             mode_params[nu_ind] = [[]]*5
                                             mode_params[nu_ind][mode_index] = []
     
-                                        mode_params[nu_ind][mode_index].append([nu_prior, k1, k2])
+                                        mode_params[nu_ind][mode_index].append([nu_prior, k])
                 save(mode_params, "mode_params.dat")                        
                                 
 
@@ -196,20 +201,22 @@ if (__name__ == '__main__'):
             mode_stats = dict()
             colors = ["k", "b", "g", "r", "m"]
             
-            for i in range(0, len(mode_params)):
+            '''
+            for nu_ind in range(0, len(mode_params)):
                 contains_data = False
                 for mode_index in range(5):
-                    if len(mode_params[i]) > mode_index:
+                    if len(mode_params[nu_ind]) > mode_index:
                         contains_data = True
                 if not contains_data:
                     continue
                 for mode_index in range(5):
                     if mode_index not in mode_stats:
                         mode_stats[mode_index] = []
-                    if len(mode_params[i][mode_index]) > 0:
-                        nu_mean, r_mean = calc_mode_radius(mode_index, mode_params[i][mode_index])
+                    if len(mode_params[nu_ind][mode_index]) > 0:
+                        nu_mean, r_mean = calc_mode_radius(mode_index, mode_params[nu_ind][mode_index])
                         mode_stats[mode_index].append([nu_mean, r_mean])
-                
+            
+            
             fitted = dict()
             for mode_index in mode_stats.keys():
                 deg = 1
@@ -234,6 +241,63 @@ if (__name__ == '__main__'):
                 fig.set_axis_title(r"$\nu=" + str(nus_filtered[i]) + "$")
                 for mode_index in fitted.keys():
                     r = fitted[mode_index][i]
+                    if r > 0:
+                        print(i, mode_index, r)
+                        phi = np.linspace(0, 2*np.pi, 100)
+                        x = np.cos(phi)*r
+                        y = np.sin(phi)*r
+                        fig.plot(x, y, f"{colors[mode_index]}.", lw=0.1, ms=0.1)
+                fig.save(os.path.join(output_dir, f"fitted_rings{i}.png"))
+            '''
+
+            for nu_ind in range(0, len(mode_params)):
+                contains_data = False
+                for mode_index in range(5):
+                    if len(mode_params[nu_ind]) > mode_index:
+                        contains_data = True
+                if not contains_data:
+                    continue
+                for mode_index in range(5):
+                    if mode_index not in mode_stats:
+                        mode_stats[mode_index] = [0.0]*len(nus_filtered)
+                    if len(mode_params[nu_ind][mode_index]) > 0:
+                        nu_mean, r_mean = calc_mode_radius(mode_index, mode_params[nu_ind][mode_index])
+                        nu_index = np.argmin(np.abs(np.abs(nus_filtered) - nu_mean))
+                        mode_stats[mode_index][nu_index] = r_mean
+
+            for mode_index in mode_stats.keys():
+                for nu_ind in range(len(mode_stats[mode_index])):
+                    if mode_stats[mode_index][nu_ind] == 0:
+                        #lower_r = 0
+                        #upper_r = 0
+                        for nu_ind2 in range(nu_ind-1, -1, -1):
+                            if mode_stats[mode_index][nu_ind2] > 0:
+                                lower_r = mode_stats[mode_index][nu_ind2]
+                                mode_stats[mode_index][nu_ind] = lower_r
+                                break
+                        for nu_ind2 in range(nu_ind+1, len(mode_stats[mode_index])):
+                            if mode_stats[mode_index][nu_ind2] > 0:
+                                upper_r = mode_stats[mode_index][nu_ind2]
+                                mode_stats[mode_index][nu_ind] += upper_r
+                                mode_stats[mode_index][nu_ind] /= 2
+                                #print(upper_r)
+                                break
+                        #print(nu_ind, lower_r, upper_r)
+                        #mode_stats[mode_index][nu_ind] = (lower_r + upper_r)/2
+
+            for mode_index in mode_stats.keys():
+                for nu_ind in range(len(mode_stats[mode_index])):
+                    print(mode_stats[mode_index][nu_ind])
+                
+
+            save((mode_stats, nus_filtered, fltr), "ring_radii.dat")
+
+            for i in range(0, len(nus_filtered), 10):
+                fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1]//2, data.shape[2]//2))
+                fig.contour(ks, ks, data[i, :, :], levels=100)
+                fig.set_axis_title(r"$\nu=" + str(nus_filtered[i]) + "$")
+                for mode_index in mode_stats.keys():
+                    r = mode_stats[mode_index][i]
                     if r > 0:
                         print(i, mode_index, r)
                         phi = np.linspace(0, 2*np.pi, 100)

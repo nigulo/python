@@ -121,25 +121,27 @@ if (__name__ == '__main__'):
             #data = downsample(data)
             
             ks = np.linspace(-3600, 3600, data.shape[1])
-            nus = np.linspace(-11.076389, 11.076389, data.shape[0])
+            #nus = np.linspace(-11.076389, 11.076389, data.shape[0])
             
 
             hdul.close()
 
+            ring_radii, nus, fltr = load("ring_radii.dat")
+
             k_len = data.shape[1]
             k_len_half = k_len//2 + is_odd(k_len)
-            
-            nrows = 5
-            ncols = 5
+                        
+            nrows = 6
+            ncols = 6
             num_plots = nrows*ncols
+            data = data[fltr]
             plot_step = len(nus)//num_plots
             ks_hist = np.linspace(0, ks[-1], k_len_half)
             
             fig = plot.plot(nrows=nrows, ncols=ncols, size=plot.default_size(data.shape[1]//3, data.shape[2]//3), smart_axis="x")
             
-            colors = ["k", "b", "g", "r", "m"]
+            colors = ["k--", "b--", "g--", "r--", "m--"]
 
-            ring_radii, nus_filtered = load("ring_radii.dat")
 
             num_plots_done = 0
             for nu_ind in range(0, len(nus), plot_step):
@@ -163,11 +165,10 @@ if (__name__ == '__main__'):
                 
                 (_, _), (y_min, y_max) = fig.get_axis_limits(ax_index)
                 
-                for mode_index in range(5):
-                    mode_radii = ring_radii[mode_index]
-                    r = mode_radii[nus_filtered == abs(nus[nu_ind])]
-                    if len(r) == 1:
-                        r = r[0]
+                for mode_index in ring_radii.keys():
+                    mode_radii = np.asarray(ring_radii[mode_index])
+                    r = mode_radii[nu_ind]#nus_filtered == abs(nus[nu_ind])]
+                    if r > 0:
                         fig.plot([r, r], [y_min, y_max], colors[mode_index], ax_index=ax_index)
                 fig.next_ax()    
 
