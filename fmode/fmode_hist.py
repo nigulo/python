@@ -53,6 +53,35 @@ def save(obj, f):
     with open(f, 'wb') as f:
         pickle.dump(obj, f, protocol=4)
         
+def find_mode_params(r, histogram, ks, nu):
+    if nu < 3:
+        smooth_win = 100
+    elif nu < 4:
+        smooth_win = 200
+    else:
+        smooth_win = 300
+    mode_guess_ind = np.argmin(np.abs(ks - r))
+    mode_guess_amplitude = histogram[mode_guess_ind]
+    max_amplitude = 0
+    max_ind = mode_guess_ind
+    for k_ind in range(mode_guess_ind, -1, -1):
+        if histogram[k_ind] > max_amplitude and abs(ks[k_ind] - ks[max_ind]) < smooth_win:
+            max_amplitude = histogram[k_ind]
+            max_ind = k_ind
+
+    assert(max_ind <= mode_guess_ind)
+
+    min_amplitude = max_amplitude
+    min_ind = max_ind
+
+    for k_ind in range(max_ind, -1, -1):
+        if histogram[k_ind] < min_amplitude and abs(ks[k_ind] - ks[min_ind]) < smooth_win:
+            min_amplitude = histogram[k_ind]
+            min_ind = k_ind
+
+    assert(min_ind < max_ind)
+    return ks[min_ind], ks[max_ind] + 2*(ks[max_ind] - ks[min_ind]), ks[max_ind]   
+        
 if (__name__ == '__main__'):
 
     argv = sys.argv
@@ -133,18 +162,20 @@ if (__name__ == '__main__'):
                         
             nrows = 6
             ncols = 6
-            num_plots = nrows*ncols
+            num_plots = len(nus)#nrows*ncols
             data = data[fltr]
             plot_step = len(nus)//num_plots
             ks_hist = np.linspace(0, ks[-1], k_len_half)
             
-            fig = plot.plot(nrows=nrows, ncols=ncols, size=plot.default_size(data.shape[1]//3, data.shape[2]//3), smart_axis="x")
-            
-            colors = ["k--", "b--", "g--", "r--", "m--"]
+            #fig = plot.plot(nrows=nrows, ncols=ncols, size=plot.default_size(data.shape[1]//3, data.shape[2]//3), smart_axis="x")
+                        
+            nu_start, nu_end = 2, 5
 
 
             num_plots_done = 0
             for nu_ind in range(0, len(nus), plot_step):
+                if nus[nu_ind] <= nu_start or nus[nu_ind] > nu_end:
+                    continue
                 if num_plots_done >= num_plots:
                     break
                 num_plots_done += 1
@@ -155,8 +186,10 @@ if (__name__ == '__main__'):
                         dist = int(np.sqrt((kx_ind - k_len_half)**2 + (ky_ind - k_len_half)**2))
                         if dist < len(histogram):
                             histogram[dist] += data_slice[kx_ind, ky_ind]
-                ax_index = fig.get_current_ax()
-                print(ax_index)
+                fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(300, 200))
+                
+                ax_index = None#fig.get_current_ax()
+                
                 fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=ax_index)
                 fig.plot(ks_hist[1:], histogram[1:], "k-", ax_index=ax_index)
                 
@@ -165,14 +198,20 @@ if (__name__ == '__main__'):
                 
                 (_, _), (y_min, y_max) = fig.get_axis_limits(ax_index)
                 
-                for mode_index in ring_radii.keys():
+                for mode_index in [0]:#ring_radii.keys():
                     mode_radii = np.asarray(ring_radii[mode_index])
                     r = mode_radii[nu_ind]#nus_filtered == abs(nus[nu_ind])]
-                    if r > 0:
-                        fig.plot([r, r], [y_min, y_max], colors[mode_index], ax_index=ax_index)
-                fig.next_ax()    
+                    assert(r > 0)
+                    left, right, peak = find_mode_params(r, histogram, ks_hist, nus[nu_ind])
+                    fig.plot([r, r], [y_min, y_max], "k--", ax_index=ax_index)
+                    fig.plot([peak, peak], [y_min, y_max], "r--", ax_index=ax_index)
+                    fig.plot([left, left], [y_min, y_max], "g--", ax_index=ax_index)
+                    fig.plot([right, right], [y_min, y_max], "b--", ax_index=ax_index)
+                    
+                #fig.next_ax()    
 
-            fig.save(os.path.join(output_dir, f"histograms.png"))
+                fig.save(os.path.join(output_dir, f"histogram{nu_ind}.png"))
+            #fig.save(os.path.join(output_dir, f"histograms.png"))
                         
                     
 
