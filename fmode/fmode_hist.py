@@ -9,6 +9,7 @@ import numpy as np
 import numpy.fft as fft
 import pickle
 
+do_plots = False
 
 def is_odd(num):
     return num & 0x1
@@ -69,6 +70,11 @@ def find_mode_params(r, histogram, ks, nu):
             max_amplitude = histogram[k_ind]
             max_ind = k_ind
 
+    #for k_ind in range(mode_guess_ind, len(ks)):
+    #    if histogram[k_ind] > max_amplitude and abs(ks[k_ind] - ks[max_ind]) < smooth_win:
+    #        max_amplitude = histogram[k_ind]
+    #        max_ind = k_ind
+
     assert(max_ind <= mode_guess_ind)
 
     min_amplitude = max_amplitude
@@ -119,7 +125,9 @@ if (__name__ == '__main__'):
         
     if not os.path.exists("results"):
         os.mkdir("results")
-        
+
+    stats = []    
+    
     for root, dirs, files in os.walk(input_path):
         for file in files:
             if file[-5:] != ".fits":
@@ -186,12 +194,14 @@ if (__name__ == '__main__'):
                         dist = int(np.sqrt((kx_ind - k_len_half)**2 + (ky_ind - k_len_half)**2))
                         if dist < len(histogram):
                             histogram[dist] += data_slice[kx_ind, ky_ind]
-                fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(300, 200))
                 
-                ax_index = None#fig.get_current_ax()
-                
-                fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=ax_index)
-                fig.plot(ks_hist[1:], histogram[1:], "k-", ax_index=ax_index)
+                if do_plots:
+                    fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(300, 200))
+                    
+                    ax_index = None#fig.get_current_ax()
+                    
+                    fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=ax_index)
+                    fig.plot(ks_hist[1:], histogram[1:], "k-", ax_index=ax_index)
                 
                 #max_val = np.max(histogram[1:])
                 #max_val = np.max(histogram[1:])
@@ -203,17 +213,29 @@ if (__name__ == '__main__'):
                     r = mode_radii[nu_ind]#nus_filtered == abs(nus[nu_ind])]
                     assert(r > 0)
                     left, right, peak = find_mode_params(r, histogram, ks_hist, nus[nu_ind])
-                    fig.plot([r, r], [y_min, y_max], "k--", ax_index=ax_index)
-                    fig.plot([peak, peak], [y_min, y_max], "r--", ax_index=ax_index)
-                    fig.plot([left, left], [y_min, y_max], "g--", ax_index=ax_index)
-                    fig.plot([right, right], [y_min, y_max], "b--", ax_index=ax_index)
+                    #fig.plot([r, r], [y_min, y_max], "k--", ax_index=ax_index)
+                    stats.append([left, right, peak])
+                    
+                    if do_plots:
+                        fig.plot([peak, peak], [y_min, y_max], "r--", ax_index=ax_index)
+                        fig.plot([left, left], [y_min, y_max], "k--", ax_index=ax_index)
+                        fig.plot([right, right], [y_min, y_max], "k--", ax_index=ax_index)
                     
                 #fig.next_ax()    
 
-                fig.save(os.path.join(output_dir, f"histogram{nu_ind}.png"))
+                if do_plots:
+                    fig.save(os.path.join(output_dir, f"histogram{nu_ind}.png"))
             #fig.save(os.path.join(output_dir, f"histograms.png"))
                         
                     
+    stats = np.asarray(stats)
+    xs = np.arange(len(stats))
+    fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(300, 200))
+    fig.plot(xs, stats[:, 2], "r--", ax_index=ax_index)
+    fig.plot(xs, stats[:, 0], "k--", ax_index=ax_index)
+    fig.plot(xs, stats[:, 1], "k--", ax_index=ax_index)
+    fig.save(f"stats.png")
+    
 
             
             
