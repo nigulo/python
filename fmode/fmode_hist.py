@@ -202,11 +202,8 @@ if (__name__ == '__main__'):
                     
                     fig.set_axis_title(r"$\nu=" + str(nus[nu_ind]) + "$", ax_index=ax_index)
                     fig.plot(ks_hist[1:], histogram[1:], "k-", ax_index=ax_index)
-                
-                #max_val = np.max(histogram[1:])
-                #max_val = np.max(histogram[1:])
-                
-                (_, _), (y_min, y_max) = fig.get_axis_limits(ax_index)
+                                
+                    (_, _), (y_min, y_max) = fig.get_axis_limits(ax_index)
                 
                 for mode_index in [0]:#ring_radii.keys():
                     mode_radii = np.asarray(ring_radii[mode_index])
