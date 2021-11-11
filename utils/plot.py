@@ -37,6 +37,7 @@ class plot:
             fig.suptitle(title, fontsize=16)
         self.fig = fig
         self.axes = axes
+        self.twin_axes = dict()
         self.title = None
         self.colorbars = dict()
         self.ims = dict()
@@ -150,8 +151,12 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1):
+    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1, y_axis=0):
         ax = self.get_ax(ax_index)
+        if y_axis == 1:
+            if ax not in self.twin_axes:
+                self.twin_axes[ax] = ax.twinx()
+            ax = self.twin_axes[ax]
         ax.plot(x, y, params, label=label, lw=lw, ms=ms)
         self.post_processing(ax)
         
@@ -316,11 +321,12 @@ class plot:
         self.post_processing(ax)
         
     def post_processing(self, ax):
-        if self.title is not None:
-            ax.set_title(self.title, fontsize=self.axis_title_font_size)
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
-        self.used_axis.add(ax)
+        if ax not in self.twin_axes.values():
+            if self.title is not None:
+                ax.set_title(self.title, fontsize=self.axis_title_font_size)
+            self.used_axis.add(ax)
 
     def next_ax(self):
         if self.auto_ax_index:
@@ -404,6 +410,8 @@ class plot:
                 if limits is None:
                     ax1.set_xlim(left=None, right=None)
                     ax1.set_ylim(bottom=None, top=None)
+                    if ax1 in self.twin_axes:
+                        self.twin_axes[ax1].set_ylim(bottom=None, top=None)
                 else:
                     if limits[0] is None:
                         ax1.set_xlim(left=None, right=None)
@@ -413,8 +421,22 @@ class plot:
                         ax1.set_ylim(bottom=None, top=None)
                     else:
                         ax1.set_ylim(bottom=limits[1][0], top=limits[1][1])
+                    if len(limits) > 2:
+                        if ax1 not in self.twin_axes:
+                            self.twin_axes[ax1] = ax1.twinx()
+                        ax2 = self.twin_axes[ax1]
+                        if limits[2] is None:
+                            ax2.set_ylim(bottom=None, top=None)
+                        else:
+                            ax2.set_ylim(bottom=limits[2][0], top=limits[2][1])
+                        
 
-    def set_axis_labels(self, ax_index = None, labels = None):
+    '''
+    x label: labels[0]
+    y label: labels[1]
+    Secondary y label: labels[2] (optional)
+    '''
+    def set_axis_labels(self, ax_index = None, labels = None, colors = None):
         if ax_index is None:
             ax = None
         else:
@@ -428,10 +450,19 @@ class plot:
                 if labels is None:
                     ax1.set_xlabel(None)
                     ax1.set_ylabel(None)
+                    if ax1 in self.twin_axes:
+                        self.twin_axes[ax1].set_ylabel(None)
                 else:                    
                     if isinstance(labels, (list, tuple, np.ndarray)):
-                        ax1.set_xlabel(labels[0], fontsize=self.axis_label_font_size)
-                        ax1.set_ylabel(labels[1], fontsize=self.axis_label_font_size)
+                        if colors is None:
+                            colors = ["black", "black", "black"]
+                        ax1.set_xlabel(labels[0], color=colors[0], fontsize=self.axis_label_font_size)
+                        ax1.set_ylabel(labels[1], color=colors[1], fontsize=self.axis_label_font_size)
+                        if len(labels) > 2:
+                            if ax1 not in self.twin_axes:
+                                self.twin_axes[ax1] = ax1.twinx()
+                            self.twin_axes[ax1].set_ylabel(labels[2], color=colors[2], fontsize=self.axis_label_font_size)
+                            
                     else:
                         raise "Identical text for both axis? Really?"
 
