@@ -42,9 +42,9 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 4*max(width, height)
-        self.axis_label_font_size = 3*max(width, height)
-        self.axis_units_font_size = 2.5*max(width, height)
+        self.axis_title_font_size = 1.6*width#max(width, height)
+        self.axis_label_font_size = 1.3*width#max(width, height)
+        self.axis_units_font_size = width#max(width, height)
         self.nrows = nrows
         self.ncols = ncols
         self.width = width
@@ -524,7 +524,7 @@ class plot:
                         ax1.set_xticks(ticks[0])
                         ax1.set_yticks(ticks[1])
                     else:
-                        raise "Identical text for both axis? Really?"
+                        ax1.set_xticks(ticks)
 
     def set_axis_title(self, title = None, ax_index = None):
         if ax_index is None:
