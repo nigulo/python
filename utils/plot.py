@@ -479,6 +479,8 @@ class plot:
                         ax1.yaxis.label.set_color(colors[1])
                         ax1.tick_params(axis='x', colors=colors[0])
                         ax1.tick_params(axis='y', colors=colors[1])
+                        ax1.spines['bottom'].set_color(colors[0])
+                        ax1.spines['left'].set_color(colors[1])
                         if len(labels) > 2:
                             if ax1 not in self.twin_y_axes:
                                 self.twin_y_axes[ax1] = ax1.twinx()
@@ -486,6 +488,7 @@ class plot:
                             ax2.set_xlabel(labels[2], fontsize=self.axis_label_font_size)
                             ax2.xaxis.label.set_color(colors[2])
                             ax2.tick_params(axis='x', colors=colors[2])
+                            ax2.spines['top'].set_color(colors[2])
                         if len(labels) > 3:
                             if ax1 not in self.twin_x_axes:
                                 self.twin_x_axes[ax1] = ax1.twinx()
@@ -493,6 +496,7 @@ class plot:
                             ax2.set_ylabel(labels[3], color=colors[3], fontsize=self.axis_label_font_size)
                             ax2.yaxis.label.set_color(colors[3])
                             ax2.tick_params(axis='y', colors=colors[3])
+                            ax2.spines['right'].set_color(colors[3])
                             
                     else:
                         raise "Identical text for both axis? Really?"
