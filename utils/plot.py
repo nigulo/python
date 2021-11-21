@@ -37,7 +37,8 @@ class plot:
             fig.suptitle(title, fontsize=16)
         self.fig = fig
         self.axes = axes
-        self.twin_axes = dict()
+        self.twin_x_axes = dict()
+        self.twin_y_axes = dict()
         self.title = None
         self.colorbars = dict()
         self.ims = dict()
@@ -151,12 +152,16 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1, y_axis=0):
+    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1, x_axis=0, y_axis=0):
         ax = self.get_ax(ax_index)
+        if x_axis == 1:
+            if ax not in self.twin_y_axes:
+                self.twin_y_axes[ax] = ax.twiny()
+            ax = self.twin_y_axes[ax]
         if y_axis == 1:
-            if ax not in self.twin_axes:
-                self.twin_axes[ax] = ax.twinx()
-            ax = self.twin_axes[ax]
+            if ax not in self.twin_x_axes:
+                self.twin_x_axes[ax] = ax.twinx()
+            ax = self.twin_x_axes[ax]
         ax.plot(x, y, params, label=label, lw=lw, ms=ms)
         self.post_processing(ax)
         
@@ -323,7 +328,7 @@ class plot:
     def post_processing(self, ax):
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
-        if ax not in self.twin_axes.values():
+        if ax not in self.twin_x_axes.values() and ax not in self.twin_y_axes.values():
             if self.title is not None:
                 ax.set_title(self.title, fontsize=self.axis_title_font_size)
             self.used_axis.add(ax)
@@ -410,8 +415,10 @@ class plot:
                 if limits is None:
                     ax1.set_xlim(left=None, right=None)
                     ax1.set_ylim(bottom=None, top=None)
-                    if ax1 in self.twin_axes:
-                        self.twin_axes[ax1].set_ylim(bottom=None, top=None)
+                    if ax1 in self.twin_x_axes:
+                        self.twin_x_axes[ax1].set_ylim(bottom=None, top=None)
+                    if ax1 in self.twin_y_axes:
+                        self.twin_y_axes[ax1].set_xlim(bottom=None, top=None)
                 else:
                     if limits[0] is None:
                         ax1.set_xlim(left=None, right=None)
@@ -422,13 +429,21 @@ class plot:
                     else:
                         ax1.set_ylim(bottom=limits[1][0], top=limits[1][1])
                     if len(limits) > 2:
-                        if ax1 not in self.twin_axes:
-                            self.twin_axes[ax1] = ax1.twinx()
-                        ax2 = self.twin_axes[ax1]
+                        if ax1 not in self.twin_y_axes:
+                            self.twin_y_axes[ax1] = ax1.twiny()
+                        ax2 = self.twin_y_axes[ax1]
+                        if limits[2] is None:
+                            ax2.set_xlim(bottom=None, top=None)
+                        else:
+                            ax2.set_xlim(bottom=limits[2][0], top=limits[2][1])
+                    if len(limits) > 3:
+                        if ax1 not in self.twin_x_axes:
+                            self.twin_x_axes[ax1] = ax1.twinx()
+                        ax2 = self.twin_x_axes[ax1]
                         if limits[2] is None:
                             ax2.set_ylim(bottom=None, top=None)
                         else:
-                            ax2.set_ylim(bottom=limits[2][0], top=limits[2][1])
+                            ax2.set_ylim(bottom=limits[3][0], top=limits[3][1])
                         
 
     '''
@@ -450,18 +465,34 @@ class plot:
                 if labels is None:
                     ax1.set_xlabel(None)
                     ax1.set_ylabel(None)
-                    if ax1 in self.twin_axes:
-                        self.twin_axes[ax1].set_ylabel(None)
+                    if ax1 in self.twin_x_axes:
+                        self.twin_x_axes[ax1].set_ylabel(None)
+                    if ax1 in self.twin_y_axes:
+                        self.twin_y_axes[ax1].set_xlabel(None)
                 else:                    
                     if isinstance(labels, (list, tuple, np.ndarray)):
                         if colors is None:
-                            colors = ["black", "black", "black"]
-                        ax1.set_xlabel(labels[0], color=colors[0], fontsize=self.axis_label_font_size)
-                        ax1.set_ylabel(labels[1], color=colors[1], fontsize=self.axis_label_font_size)
+                            colors = ["black", "black", "black", "black"]
+                        ax1.set_xlabel(labels[0], fontsize=self.axis_label_font_size)
+                        ax1.set_ylabel(labels[1], fontsize=self.axis_label_font_size)
+                        ax1.xaxis.label.set_color(colors[0])
+                        ax1.yaxis.label.set_color(colors[1])
+                        ax1.tick_params(axis='x', colors=colors[0])
+                        ax1.tick_params(axis='y', colors=colors[1])
                         if len(labels) > 2:
-                            if ax1 not in self.twin_axes:
-                                self.twin_axes[ax1] = ax1.twinx()
-                            self.twin_axes[ax1].set_ylabel(labels[2], color=colors[2], fontsize=self.axis_label_font_size)
+                            if ax1 not in self.twin_y_axes:
+                                self.twin_y_axes[ax1] = ax1.twinx()
+                            ax2 = self.twin_y_axes[ax1]
+                            ax2.set_xlabel(labels[2], fontsize=self.axis_label_font_size)
+                            ax2.xaxis.label.set_color(colors[2])
+                            ax2.tick_params(axis='x', colors=colors[2])
+                        if len(labels) > 3:
+                            if ax1 not in self.twin_x_axes:
+                                self.twin_x_axes[ax1] = ax1.twinx()
+                            ax2 = self.twin_x_axes[ax1]
+                            ax2.set_ylabel(labels[3], color=colors[3], fontsize=self.axis_label_font_size)
+                            ax2.yaxis.label.set_color(colors[3])
+                            ax2.tick_params(axis='y', colors=colors[3])
                             
                     else:
                         raise "Identical text for both axis? Really?"
