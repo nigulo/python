@@ -152,7 +152,7 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1, x_axis=0, y_axis=0):
+    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1, x_axis=0, y_axis=0, alpha=1):
         ax = self.get_ax(ax_index)
         if x_axis == 1:
             if ax not in self.twin_y_axes:
@@ -162,7 +162,7 @@ class plot:
             if ax not in self.twin_x_axes:
                 self.twin_x_axes[ax] = ax.twinx()
             ax = self.twin_x_axes[ax]
-        ax.plot(x, y, params, label=label, lw=lw, ms=ms)
+        ax.plot(x, y, params, label=label, lw=lw, ms=ms, alpha=alpha)
         self.post_processing(ax)
         
     def line(self, x1, y1, x2, y2, ax_index=None, color='red', linestyle='dashed',linewidth=1.0):
