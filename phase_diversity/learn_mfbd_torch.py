@@ -183,7 +183,7 @@ if train:
         
         n_train = int(num_data*train_perc)
         n_test = num_data - n_train
-        n_test = min(len(datasets[-1]), n_test)
+        n_test = min(len(datasets[-1][0]), n_test)
         print("n_train, n_test", n_train, n_test)
 
         if n_test == len(datasets[-1][0]):

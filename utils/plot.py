@@ -34,12 +34,12 @@ class plot:
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
         if title is not None:
-            fig.suptitle(title, fontsize=16)
+            fig.suptitle(title, fontsize=1.8*width)
         self.fig = fig
         self.axes = axes
         self.twin_x_axes = dict()
         self.twin_y_axes = dict()
-        self.title = None
+        self.titles = dict()
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
@@ -65,15 +65,24 @@ class plot:
     def set_axis_title_font_size(self, axis_title_font_size):
         self.axis_title_font_size = axis_title_font_size
 
+    def set_axis_title_font_size(self):
+        return self.axis_title_font_size
+        
     def set_axis_label_font_size(self, axis_label_font_size):
         self.axis_label_font_size = axis_label_font_size
+        
+    def set_axis_label_font_size(self):
+        return self.axis_label_font_size
 
-    def set_axis_utits_font_size(self, axis_units_font_size):
+    def set_axis_units_font_size(self, axis_units_font_size):
         self.axis_units_font_size = axis_units_font_size
 
+    def get_axis_units_font_size(self):
+        return self.axis_units_font_size
 
     def rescale_axis_title_font_size(self, scale):
         self.axis_title_font_size *= scale
+        
     def rescale_axis_label_font_size(self, scale):
         self.axis_label_font_size *= scale
 
@@ -95,10 +104,10 @@ class plot:
 
 
     '''
-        Set the current axis title
+        Set axis title
     '''
-    def set_title(self, title):
-        self.title = title
+    def set_title(self, title, ax_index = None):
+        self.titles[self.get_ax(ax_index)] = title
 
 
     '''
@@ -329,8 +338,9 @@ class plot:
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
         if ax not in self.twin_x_axes.values() and ax not in self.twin_y_axes.values():
-            if self.title is not None:
-                ax.set_title(self.title, fontsize=self.axis_title_font_size)
+            if ax in self.titles:
+                ax.set_title(self.titles[ax], fontsize=self.axis_title_font_size)
+                
             self.used_axis.add(ax)
 
     def next_ax(self):

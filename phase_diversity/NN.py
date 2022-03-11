@@ -15,7 +15,6 @@ import tqdm
 
 import time
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
 import plot
 import psf_torch
 import utils
@@ -179,9 +178,9 @@ class NN(nn.Module):
             pass_through = False,
             #use_lstm = True,
             use_neighbours=False,
-            num_pix_apod = self.nx//8,
+            num_pix_apod = self.nx//4,
             num_pix_pad = 0,
-            frame_dependence_model = FRAME_DEPENDENCE_TRANSFORMER,
+            frame_dependence_model = FRAME_DEPENDENCE_GRU,
             num_latent = 128
             )
         
