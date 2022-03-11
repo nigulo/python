@@ -12,7 +12,7 @@ for root, dirs, files in os.walk("data_full"):
         dat = readsav(os.path.join(root, file), idict=None, python_dict=False, uncompressed_file_name=None, verbose=False)
         levels = np.linspace(np.min(np.log(dat.p_kyom_kx0))+2, np.max(np.log(dat.p_kyom_kx0))-2, 42)
         
-        stats.append([float(time_index)/4, np.sum(dat.p_kyom_kx0)])
+        stats.append([float(time_index)/3, np.sum(dat.p_kyom_kx0)])
         '''
         fig, ax = plt.subplots(nrows=1, ncols=1)
         ax.contour(dat.k_y, dat.nu, np.log(dat.p_kyom_kx0), levels=levels)
