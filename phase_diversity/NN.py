@@ -179,9 +179,9 @@ class NN(nn.Module):
             pass_through = False,
             #use_lstm = True,
             use_neighbours=False,
-            num_pix_apod = self.nx//8,
+            num_pix_apod = self.nx//4,
             num_pix_pad = 0,
-            frame_dependence_model = FRAME_DEPENDENCE_TRANSFORMER,
+            frame_dependence_model = FRAME_DEPENDENCE_GRU,
             num_latent = 128
             )
         
@@ -362,6 +362,7 @@ class NN(nn.Module):
     def forward(self, data):
 
         image_input, diversity_input, tt_mean, alphas_input = data
+        n_frames = 32
 
         x = image_input
         if self.use_neighbours:
@@ -372,18 +373,18 @@ class NN(nn.Module):
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
         elif self.input_type == INPUT_FOURIER_RATIO:
+            image_input = image_input[:n_frames]
+            diversity_input = diversity_input[:n_frames]
             x_f = psf_torch.fft(psf_torch.to_complex(x))
-            
             x = None
-            
             for ch_ind in np.arange(x_f.size()[1], step=2):
                 x_f_ch = x_f[:, ch_ind:ch_ind+2]
             
                 x_f_mean = torch.mean(x_f_ch, dim=[0, 1], keepdim=True)
                 #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter2)).to(device, dtype=torch.float32))
                 eps = psf_torch.to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
-                x_f1 = psf_torch.div(x_f_ch[:, 0], x_f_mean[:, 0] + eps)
-                x_f2 = psf_torch.div(x_f_ch[:, 1], x_f_mean[:, 0] + eps)
+                x_f1 = psf_torch.div(x_f_ch[:n_frames, 0] + eps, x_f_mean[:n_frames, 0] + eps)
+                x_f2 = psf_torch.div(x_f_ch[:n_frames, 1] + eps, x_f_mean[:n_frames, 0] + eps)
 
                 #x_f3 = psf_torch.ifft(x_f1)
                 #x_f4 = psf_torch.ifft(x_f2)
@@ -393,7 +394,6 @@ class NN(nn.Module):
 
                 #x_f3 = torch.unsqueeze(x_f3, 1)
                 #x_f4 = torch.unsqueeze(x_f4, 1)
-    
                 x1 = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
                 #x1 = torch.cat([x1, x_f3[..., 0], x_f3[..., 1], x_f4[..., 0], x_f4[..., 1]], dim=1)
                 if x is None:

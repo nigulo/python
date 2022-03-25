@@ -71,7 +71,7 @@ if len(sys.argv) > i:
     state_file = sys.argv[i]
 
 num_reps = 1000
-train_perc = 0.8
+train_perc = 0.99
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
@@ -183,7 +183,7 @@ if train:
         
         n_train = int(num_data*train_perc)
         n_test = num_data - n_train
-        n_test = min(len(datasets[-1]), n_test)
+        n_test = min(len(datasets[-1][0]), n_test)
         print("n_train, n_test", n_train, n_test)
 
         if n_test == len(datasets[-1][0]):
