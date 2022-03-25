@@ -123,7 +123,7 @@ class NN(nn.Module):
         
     def save_state(self, state):
         date = datetime.datetime.now().strftime("%Y-%m-%dT%H")#:%M:%S.%f")
-        state_file = f"state{date}.tar"
+        state_file = f"state{date}_{state['val_loss']}.tar"
         torch.save(state, f"{self.dir_name}/{state_file}")
         state_file_link = f"{self.dir_name}/state.tar"
         try:
