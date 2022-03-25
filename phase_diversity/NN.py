@@ -898,11 +898,9 @@ class NN(nn.Module):
     def do_test(self, dataset, file_prefix, num_test_frames, true_coefs=None, benchmarking_level=0):
         
         self.test = True
-        batch_size = num_test_frames
-        self.batch_size = batch_size
-        
-        #num_frames = Ds_.shape[1]
-        #num_objects = Ds_.shape[0]
+        #batch_size = num_test_frames
+        #self.batch_size = batch_size
+        batch_size = self.batch_size
         
         Ds_test = Dataset([dataset], use_neighbours=self.use_neighbours)
 
