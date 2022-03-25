@@ -34,16 +34,18 @@ class plot:
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
         if title is not None:
-            fig.suptitle(title, fontsize=16)
+            fig.suptitle(title, fontsize=1.8*width)
         self.fig = fig
         self.axes = axes
-        self.title = None
+        self.twin_x_axes = dict()
+        self.twin_y_axes = dict()
+        self.titles = dict()
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 4*max(width, height)
-        self.axis_label_font_size = 3*max(width, height)
-        self.axis_units_font_size = 2.5*max(width, height)
+        self.axis_title_font_size = 1.6*width#max(width, height)
+        self.axis_label_font_size = 1.3*width#max(width, height)
+        self.axis_units_font_size = width#max(width, height)
         self.nrows = nrows
         self.ncols = ncols
         self.width = width
@@ -63,15 +65,24 @@ class plot:
     def set_axis_title_font_size(self, axis_title_font_size):
         self.axis_title_font_size = axis_title_font_size
 
+    def set_axis_title_font_size(self):
+        return self.axis_title_font_size
+        
     def set_axis_label_font_size(self, axis_label_font_size):
         self.axis_label_font_size = axis_label_font_size
+        
+    def set_axis_label_font_size(self):
+        return self.axis_label_font_size
 
-    def set_axis_utits_font_size(self, axis_units_font_size):
+    def set_axis_units_font_size(self, axis_units_font_size):
         self.axis_units_font_size = axis_units_font_size
 
+    def get_axis_units_font_size(self):
+        return self.axis_units_font_size
 
     def rescale_axis_title_font_size(self, scale):
         self.axis_title_font_size *= scale
+        
     def rescale_axis_label_font_size(self, scale):
         self.axis_label_font_size *= scale
 
@@ -93,10 +104,10 @@ class plot:
 
 
     '''
-        Set the current axis title
+        Set axis title
     '''
-    def set_title(self, title):
-        self.title = title
+    def set_title(self, title, ax_index = None):
+        self.titles[self.get_ax(ax_index)] = title
 
 
     '''
@@ -150,9 +161,17 @@ class plot:
     '''
         Plot 2d data
     '''          
-    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1):
+    def plot(self, x, y, params="k-", ax_index=None, label=None, lw=1, ms=1, x_axis=0, y_axis=0, alpha=1):
         ax = self.get_ax(ax_index)
-        ax.plot(x, y, params, label=label, lw=lw, ms=ms)
+        if x_axis == 1:
+            if ax not in self.twin_y_axes:
+                self.twin_y_axes[ax] = ax.twiny()
+            ax = self.twin_y_axes[ax]
+        if y_axis == 1:
+            if ax not in self.twin_x_axes:
+                self.twin_x_axes[ax] = ax.twinx()
+            ax = self.twin_x_axes[ax]
+        ax.plot(x, y, params, label=label, lw=lw, ms=ms, alpha=alpha)
         self.post_processing(ax)
         
     def line(self, x1, y1, x2, y2, ax_index=None, color='red', linestyle='dashed',linewidth=1.0):
@@ -316,11 +335,13 @@ class plot:
         self.post_processing(ax)
         
     def post_processing(self, ax):
-        if self.title is not None:
-            ax.set_title(self.title, fontsize=self.axis_title_font_size)
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
-        self.used_axis.add(ax)
+        if ax not in self.twin_x_axes.values() and ax not in self.twin_y_axes.values():
+            if ax in self.titles:
+                ax.set_title(self.titles[ax], fontsize=self.axis_title_font_size)
+                
+            self.used_axis.add(ax)
 
     def next_ax(self):
         if self.auto_ax_index:
@@ -404,6 +425,10 @@ class plot:
                 if limits is None:
                     ax1.set_xlim(left=None, right=None)
                     ax1.set_ylim(bottom=None, top=None)
+                    if ax1 in self.twin_x_axes:
+                        self.twin_x_axes[ax1].set_ylim(bottom=None, top=None)
+                    if ax1 in self.twin_y_axes:
+                        self.twin_y_axes[ax1].set_xlim(bottom=None, top=None)
                 else:
                     if limits[0] is None:
                         ax1.set_xlim(left=None, right=None)
@@ -413,8 +438,30 @@ class plot:
                         ax1.set_ylim(bottom=None, top=None)
                     else:
                         ax1.set_ylim(bottom=limits[1][0], top=limits[1][1])
+                    if len(limits) > 2:
+                        if ax1 not in self.twin_y_axes:
+                            self.twin_y_axes[ax1] = ax1.twiny()
+                        ax2 = self.twin_y_axes[ax1]
+                        if limits[2] is None:
+                            ax2.set_xlim(bottom=None, top=None)
+                        else:
+                            ax2.set_xlim(bottom=limits[2][0], top=limits[2][1])
+                    if len(limits) > 3:
+                        if ax1 not in self.twin_x_axes:
+                            self.twin_x_axes[ax1] = ax1.twinx()
+                        ax2 = self.twin_x_axes[ax1]
+                        if limits[2] is None:
+                            ax2.set_ylim(bottom=None, top=None)
+                        else:
+                            ax2.set_ylim(bottom=limits[3][0], top=limits[3][1])
+                        
 
-    def set_axis_labels(self, ax_index = None, labels = None):
+    '''
+    x label: labels[0]
+    y label: labels[1]
+    Secondary y label: labels[2] (optional)
+    '''
+    def set_axis_labels(self, ax_index = None, labels = None, colors = None):
         if ax_index is None:
             ax = None
         else:
@@ -428,10 +475,39 @@ class plot:
                 if labels is None:
                     ax1.set_xlabel(None)
                     ax1.set_ylabel(None)
+                    if ax1 in self.twin_x_axes:
+                        self.twin_x_axes[ax1].set_ylabel(None)
+                    if ax1 in self.twin_y_axes:
+                        self.twin_y_axes[ax1].set_xlabel(None)
                 else:                    
                     if isinstance(labels, (list, tuple, np.ndarray)):
+                        if colors is None:
+                            colors = ["black", "black", "black", "black"]
                         ax1.set_xlabel(labels[0], fontsize=self.axis_label_font_size)
                         ax1.set_ylabel(labels[1], fontsize=self.axis_label_font_size)
+                        ax1.xaxis.label.set_color(colors[0])
+                        ax1.yaxis.label.set_color(colors[1])
+                        ax1.tick_params(axis='x', colors=colors[0])
+                        ax1.tick_params(axis='y', colors=colors[1])
+                        ax1.spines['bottom'].set_color(colors[0])
+                        ax1.spines['left'].set_color(colors[1])
+                        if len(labels) > 2:
+                            if ax1 not in self.twin_y_axes:
+                                self.twin_y_axes[ax1] = ax1.twinx()
+                            ax2 = self.twin_y_axes[ax1]
+                            ax2.set_xlabel(labels[2], fontsize=self.axis_label_font_size)
+                            ax2.xaxis.label.set_color(colors[2])
+                            ax2.tick_params(axis='x', colors=colors[2])
+                            ax2.spines['top'].set_color(colors[2])
+                        if len(labels) > 3:
+                            if ax1 not in self.twin_x_axes:
+                                self.twin_x_axes[ax1] = ax1.twinx()
+                            ax2 = self.twin_x_axes[ax1]
+                            ax2.set_ylabel(labels[3], color=colors[3], fontsize=self.axis_label_font_size)
+                            ax2.yaxis.label.set_color(colors[3])
+                            ax2.tick_params(axis='y', colors=colors[3])
+                            ax2.spines['right'].set_color(colors[3])
+                            
                     else:
                         raise "Identical text for both axis? Really?"
 
@@ -493,7 +569,7 @@ class plot:
                         ax1.set_xticks(ticks[0])
                         ax1.set_yticks(ticks[1])
                     else:
-                        raise "Identical text for both axis? Really?"
+                        ax1.set_xticks(ticks)
 
     def set_axis_title(self, title = None, ax_index = None):
         if ax_index is None:

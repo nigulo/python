@@ -15,7 +15,6 @@ import tqdm
 
 import time
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../utils"))
 import plot
 import psf_torch
 import utils
