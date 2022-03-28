@@ -378,7 +378,7 @@ class NN(nn.Module):
             x = None
             for ch_ind in np.arange(x_f.size()[1], step=2):
                 x_f_ch = x_f[:, ch_ind:ch_ind+2]
-            
+                
                 x_f_mean = torch.mean(x_f_ch, dim=[0, 1], keepdim=True)
                 #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter2)).to(device, dtype=torch.float32))
                 eps = psf_torch.to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
@@ -897,9 +897,9 @@ class NN(nn.Module):
     def do_test(self, dataset, file_prefix, num_test_frames, true_coefs=None, benchmarking_level=0):
         
         self.test = True
-        #batch_size = num_test_frames
-        #self.batch_size = batch_size
-        batch_size = self.batch_size
+        batch_size = num_test_frames
+        self.batch_size = batch_size
+        #batch_size = self.batch_size
         
         Ds_test = Dataset([dataset], use_neighbours=self.use_neighbours)
 
@@ -941,7 +941,6 @@ class NN(nn.Module):
         min_loss_plot = None
         max_loss_plot = None
 
-    
         for i in range(Ds_test.length()):
             obj_index_i, obj, _, _ = Ds_test.get_obj_data(i)
             coords = Ds_test.get_coords()
@@ -984,6 +983,7 @@ class NN(nn.Module):
             wfs = []
             print("nums, dens, psf, wf", nums_conj.shape, dens.shape, psf.shape, wf.shape)
             if pred_alphas is not None:
+                coef = Ds_test.length()//pred_alphas.shape[0]
                 for j in range(i, Ds_test.length()):
                     obj_index_j, _, _, _ = Ds_test.get_obj_data(j)
                     if obj_index_j == obj_index_i:
@@ -995,16 +995,16 @@ class NN(nn.Module):
                             #DF_d = fft.fft2(D_d)
                             Ds_.append(D)
                             #DFs.append(np.array([DF, DF_d]))
-                            alphas.append(pred_alphas[j, l*self.num_modes:(l+1)*self.num_modes])
-                            DP1 += np.sum(DF * psf_f_np[j].conj(), axis = 0)
+                            alphas.append(pred_alphas[j//coef, l*self.num_modes:(l+1)*self.num_modes])
+                            DP1 += np.sum(DF * psf_f_np[j//coef].conj(), axis = 0)
 
                         if j % batch_size == 0:
                             DP += nums_conj[j//batch_size]
                             PP += dens[j//batch_size]
                             DD += DDs[j//batch_size]
-                        psfs_f.append(psf_f[j])
-                        psfs.append(psf[j])
-                        wfs.append(wf[j])
+                        psfs_f.append(psf_f[j//coef])
+                        psfs.append(psf[j//coef])
+                        wfs.append(wf[j//coef])
             Ds_ = np.asarray(Ds_)
             #DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)

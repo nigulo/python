@@ -71,7 +71,7 @@ if len(sys.argv) > i:
     state_file = sys.argv[i]
 
 num_reps = 1000
-train_perc = 0.99
+train_perc = 0.9
 
 if dir_name is None:
     dir_name = "results" + time.strftime("%Y%m%d-%H%M%S")
