@@ -181,7 +181,7 @@ class NN(nn.Module):
             num_pix_apod = self.nx//4,
             num_pix_pad = 0,
             frame_dependence_model = FRAME_DEPENDENCE_GRU,
-            num_latent = 128
+            num_latent = 256#128
             )
         
         file = open(f"{self.dir_name}/{conf_file}.json",'w')
@@ -361,7 +361,7 @@ class NN(nn.Module):
     def forward(self, data):
 
         image_input, diversity_input, tt_mean, alphas_input = data
-        n_frames = 32
+        n_frames = image_input.size()[0]#32
 
         x = image_input
         if self.use_neighbours:
