@@ -167,7 +167,7 @@ class NN(nn.Module):
             momentum = .9,
             num_frames = 64,
             batch_size = 64,
-            num_channels = 64,
+            num_channels = 128,
             num_gpus=1,
             tt_weight = 0.0,#0.001
             sum_over_batch = True,
@@ -181,7 +181,7 @@ class NN(nn.Module):
             num_pix_apod = self.nx//4,
             num_pix_pad = 0,
             frame_dependence_model = FRAME_DEPENDENCE_GRU,
-            num_latent = 256#128
+            num_latent = 128
             )
         
         file = open(f"{self.dir_name}/{conf_file}.json",'w')
