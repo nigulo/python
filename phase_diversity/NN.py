@@ -28,6 +28,8 @@ FRAME_DEPENDENCE_NONE = 0
 FRAME_DEPENDENCE_GRU = 1
 FRAME_DEPENDENCE_TRANSFORMER = 2
 
+use_diversity = False
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1 or classname.find('Conv2d') != -1:
@@ -361,6 +363,9 @@ class NN(nn.Module):
     def forward(self, data):
 
         image_input, diversity_input, tt_mean, alphas_input = data
+        if not use_diversity:
+            image_input = torch.cat([image_input[:, 0], image_input[:, 0]], dim=1)
+            diversity_input = torch.cat([diversity_input[:, 0], diversity_input[:, 0]], dim=1)
         n_frames = image_input.size()[0]#32
 
         x = image_input

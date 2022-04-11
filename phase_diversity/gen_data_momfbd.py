@@ -23,7 +23,7 @@ add_neighbours = False
 if use_zarr:
     import zarr
     
-pad_or_upsample = False
+pad_or_upsample = True
 
 dir_name = "mihi/data"
 if len(sys.argv) > 1:
