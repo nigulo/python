@@ -169,7 +169,7 @@ class NN(nn.Module):
             momentum = .9,
             num_frames = 64,
             batch_size = 64,
-            num_channels = 128,
+            num_channels = 64,
             num_gpus=1,
             tt_weight = 0.0,#0.001
             sum_over_batch = True,
@@ -364,8 +364,10 @@ class NN(nn.Module):
 
         image_input, diversity_input, tt_mean, alphas_input = data
         if not use_diversity:
-            image_input = torch.cat([image_input[:, 0], image_input[:, 0]], dim=1)
-            diversity_input = torch.cat([diversity_input[:, 0], diversity_input[:, 0]], dim=1)
+            #print(image_input.size(), diversity_input.size())
+            image_input = torch.cat([torch.unsqueeze(image_input[:, 0], dim=1), torch.unsqueeze(image_input[:, 0], dim=1)], dim=1)
+            diversity_input = torch.cat([torch.unsqueeze(diversity_input[:, 0], dim=1), torch.unsqueeze(diversity_input[:, 0], dim=1)], dim=1)
+            #print(image_input.size(), diversity_input.size())
         n_frames = image_input.size()[0]#32
 
         x = image_input
