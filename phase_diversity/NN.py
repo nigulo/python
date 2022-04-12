@@ -547,6 +547,10 @@ class NN(nn.Module):
         diversity = torch.tensor(diversity).to(self.device, dtype=torch.float32)
         Ds = torch.tensor(Ds).to(self.device, dtype=torch.float32)
         #Ds = tf.reshape(tf.transpose(Ds, [0, 2, 3, 1, 4]), [num_objs, nx, nx, 2*num_frames])
+        if not use_diversity:
+            #print(image_input.size(), diversity_input.size())
+            Ds = torch.cat([torch.unsqueeze(Ds[:, 0], dim=1), torch.unsqueeze(Ds[:, 0], dim=1)], dim=1)
+            diversity = torch.cat([torch.unsqueeze(diversity[:, 0], dim=1), torch.unsqueeze(diversity[:, 0], dim=1)], dim=1)
         print("Ds", Ds.size())
         image_deconv, Ps, wf, loss = self.psf_test.deconvolve(Ds, alphas, diversity, do_fft=do_fft)
         return image_deconv, Ps, wf, loss
