@@ -146,7 +146,7 @@ def findSolution(grid, filledCells = [], stopAt = 81, unallowed = dict()):
                         grid[row, col] = num;
                         filledCells.append((row, col))
                         updateUnallowed(grid, unallowed)
-                        if len(filledCells) >= stopAt or not solvable(grid, unallowed):
+                        if len(filledCells) >= stopAt or not solvable(grid, unallowed) or not possiblyUnique(grid):
                             return filledCells
                         nfc += 1
                         break
@@ -178,8 +178,8 @@ def findSolution2(grid, filledCells = [], stopAt = 81, unallowed = dict()):
                 col = colSector*3 + options[i][1];
                 if allowed(grid, row, col, num, IGNORE_NONE, unallowed):
                     grid[row, col] = num;
-                    if not solvable(grid, unallowed):
-                        grid[row, num] = 0
+                    if not solvable(grid, unallowed) or not possiblyUnique(grid):
+                        grid[row, col] = 0
                         continue
                     filledCells.append((row, col))
                     updateUnallowed(grid, unallowed)
@@ -214,16 +214,20 @@ def possiblyUnique(grid):
 def hasPermutation(grid, num1, num2, num3, rowSector, colSector, horizontalOrVertical):
     permutations = [[num2, num3, num1],
                     [num3, num1, num2],
-                    [num2, num1, 0],
-                    [num3, 0, num1],
-                    [0, num3, num2]]
+                    [num2, num1, -1],
+                    [num3, -1, num1],
+                    [-1, num3, num2]]
     for index1 in [0, 1, 2]:
         for permutation in permutations:
             numMatched = 0
             for index2 in [0, 1, 2]:
-                if horizontalOrVertical and permutation[index2] == 0 or permutation[index2] == grid[rowSector*3 + index1, colSector*3 + index2]:
+                if permutation[index2] == 0:
+                    continue
+                elif permutation[index2] == -1:
                     numMatched += 1
-                elif not horizontalOrVertical and permutation[index2] == 0 or permutation[index2] == grid[rowSector*3 + index2, colSector*3 + index1]:
+                elif horizontalOrVertical and  permutation[index2] == grid[rowSector*3 + index1, colSector*3 + index2]:
+                    numMatched += 1
+                elif not horizontalOrVertical and permutation[index2] == grid[rowSector*3 + index2, colSector*3 + index1]:
                     numMatched += 1
             if (numMatched == 3):
                 return True
