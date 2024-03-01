@@ -58,6 +58,7 @@ def randomSolution():
 
 def randomGrid(stopAt):
     while (True):
+        print(f"Generating grid {stopAt}")
         grid = emptyGrid()
         unallowed = dict()
         filledCells = findSolution2(grid, [], stopAt, unallowed)
@@ -222,7 +223,7 @@ def hasPermutation(grid, num1, num2, num3, rowSector, colSector, horizontalOrVer
             numMatched = 0
             for index2 in [0, 1, 2]:
                 if permutation[index2] == 0:
-                    continue
+                    break
                 elif permutation[index2] == -1:
                     numMatched += 1
                 elif horizontalOrVertical and  permutation[index2] == grid[rowSector*3 + index1, colSector*3 + index2]:
@@ -305,7 +306,10 @@ def optionsInSector(grid, rowSector, colSector, num, unallowed = dict()):
     for i in range(rowStart, rowEnd):
         for j in range(colStart, colEnd):
             if allowed(grid, i, j, num, IGNORE_NONE, unallowed):
-                options.append([i - rowStart, j - colStart])
+                grid[i, j] = num
+                if solvable(grid, unallowed) and possiblyUnique(grid):
+                    options.append([i - rowStart, j - colStart])
+                grid[i, j] = 0
     return options;
 
         
