@@ -314,6 +314,8 @@ def optionsInSector(grid, rowSector, colSector, num, unallowed = dict()):
 
         
 def allowed(grid, row, col, num, ignore = IGNORE_NONE, unallowed = dict()):
+    if num == col + 1 and row > 0:
+        return False
     if grid[row, col] != 0 or (len(unallowed) > 0 and num in unallowed.keys() and (row, col) in unallowed[num]):
         return False
         
