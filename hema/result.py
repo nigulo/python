@@ -6,4 +6,5 @@ class Result:
     battery: np.array
     buy: np.array
     sell: np.array
+    cons:np.array
     
