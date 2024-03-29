@@ -17,21 +17,19 @@ num_dev = 2
 c = np.concatenate((np.zeros(2), grid_buy, grid_sell))
 
 # battery_min <= battery_start + sum(battery_i) <= battery_max
-# battery_start + sum(battery_i-1) >= sell_i + consumption_i
 A_ub = np.array([[1, 0, 0, 0, 0, 0],
                   [1, 1, 0, 0, 0, 0],
                   [-1, 0, 0, 0, 0, 0],
-                  [-1, -1, 0, 0, 0, 0],
-                  [-1, 0, 0, 0, 0, 1]])
+                  [-1, -1, 0, 0, 0, 0]])
 b_ub = np.concatenate((np.repeat(battery_max-battery_start, 2), 
-                       np.repeat(battery_start-battery_min, 2),
-                       np.array([battery_start - consumption[1]])))
+                       np.repeat(battery_start-battery_min, 2)))
 
 # battery_i + consumption_i + sell_i = sol_i + buy_i
+# buy_i*sell_i = 0 (not used)
 A_eq = np.array([[1, 0, -1, 0, 1, 0],
-                 [1, 1, 0, -1, 0, 1]])
+                 [0, 1, 0, -1, 0, 1]])
 b_eq = sol - consumption
-bounds = [(battery_min, battery_max), (battery_min, battery_max), (0, None), (0, None), (0, None), (0, None)]
+bounds = [(None, None), (None, None), (0, None), (0, None), (0, None), (0, None)]
 
 res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
 print(res)
