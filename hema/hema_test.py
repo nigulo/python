@@ -6,19 +6,15 @@ from conf import Conf
 
 class test_hema(unittest.TestCase):
     
-    def test_optimize_1(self):
+    def test_buy_low_sell_high(self):
 
-        battery_min = 0.1
-        battery_max = 20
-
-        sol = np.array([2.0, 1.0])
-        grid_buy = np.array([1.0, 2.0])
-        grid_sell = np.array([-0.9, -1.9])
-        cons = np.array([0.5, 0.4])
-        battery_start = 0.5
-        
-        data = Data(sol=sol, grid_buy=grid_buy, grid_sell=grid_sell, cons=cons, battery_start=battery_start)
-        conf = Conf(battery_min=battery_min, battery_max=battery_max)
+        data = Data(sol=np.array([2.0, 1.0]), 
+                    grid_buy=np.array([1.0, 2.0]), 
+                    grid_sell=np.array([-0.9, -1.9]), 
+                    fixed_cons=np.array([0.5, 0.4]), 
+                    battery_start=0.5)
+        conf = Conf(battery_min=0.1, 
+                    battery_max=20)
 
         res = optimize(data, conf)
         print(res)

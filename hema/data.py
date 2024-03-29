@@ -6,6 +6,6 @@ class Data:
     sol: np.array
     grid_buy: np.array
     grid_sell: np.array
-    cons: np.array
+    fixed_cons: np.array
     battery_start: float
     
