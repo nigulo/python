@@ -7,35 +7,35 @@ from result import Result
 def optimize(data: Data, conf: Conf):
     data_len = len(data.sol)
     if len(data.grid_buy) != data_len or len(data.grid_sell) != data_len or len(data.fixed_cons) != data_len:
-        raise "Input data arrays lengths do not match"
+        raise Exception("Input data arrays lengths do not match")
         
     if np.any(data.sol < 0):
-        raise "Solar energy production cannot be negative"
+        raise Exception("Solar energy production cannot be negative")
     if np.any(data.fixed_cons < 0):
-        raise "Energy consumption cannot be negative"
+        raise Exception("Energy consumption cannot be negative")
         
     if conf.battery_min < 0:
-        raise "Minimum battery level must be nonnegative"
+        raise Exception("Minimum battery level must be nonnegative")
     if data.battery_start < conf.battery_min:
-        raise "Initial battery level must be greater than or equal to maximum battery level"
+        raise Exception("Initial battery level must be greater than or equal to maximum battery level")
 
     if conf.battery_max is not None:
         if conf.battery_max < 0:
-            raise "Maximum battery level must be nonnegative"
+            raise Exception("Maximum battery level must be nonnegative")
         if conf.battery_max < conf.battery_min:
-            raise "Maximum battery level must be greater than or equal to minimum battery level"
+            raise Exception("Maximum battery level must be greater than or equal to minimum battery level")
         if data.battery_start > conf.battery_max:
-            raise "Initial battery level must be less than or equal to maximum battery level"
+            raise Exception("Initial battery level must be less than or equal to maximum battery level")
             
     if conf.buy_max is not None and conf.buy_max < 0:
-        raise "Maximum grid buy must be nonnegative"
+        raise Exception("Maximum grid buy must be nonnegative")
     if conf.sell_max is not None and conf.sell_max < 0:
-        raise "Maximum grid sell must be nonnegative"
+        raise Exception("Maximum grid sell must be nonnegative")
     if conf.cons_max is not None and conf.cons_max < 0:
-        raise "Maximum consumption must be nonnegative"
+        raise Exception("Maximum consumption must be nonnegative")
         
     # x = [battery1, battery2, ...,  buy1, buy2, ..., sell1, sell2, ..., cons1, cons2, ...]
-    c = np.concatenate((np.zeros(data_len), data.grid_buy, data.grid_sell, np.zeros(data_len)))
+    c = np.concatenate((np.zeros(data_len), data.grid_buy, -data.grid_sell, np.zeros(data_len)))
 
     # battery_min <= battery_start + sum(battery_i) <= battery_max
     #A_ub = np.array([[-1, 0, 0, 0, 0, 0, 0, 0],
@@ -69,5 +69,8 @@ def optimize(data: Data, conf: Conf):
     
     res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
     if not res.success:
-        raise res.message
-    return Result(battery=res.x[:data_len], buy=res.x[data_len:2*data_len], sell=res.x[2*data_len:3*data_len], cons=None)
+        raise Exception(res.message)
+    return Result(battery=res.x[:data_len], 
+                  buy=res.x[data_len:2*data_len], 
+                  sell=res.x[2*data_len:3*data_len], 
+                  cons=res.x[3*data_len:])
