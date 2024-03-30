@@ -33,8 +33,8 @@ def optimize(data: Data, conf: Conf):
         raise Exception("Maximum grid sell must be nonnegative")
         
     # x = [battery1, battery2, ...,  buy1, buy2, ..., sell1, sell2, ..., cons1, cons2, ...]
-    # We use min(grid_buy, -eps) as a weight for battery
-    c = np.concatenate((np.min((data.grid_buy, -np.ones_like(data.grid_buy)*1e-9), axis = 0), 
+    # Set -eps as a weight for battery to prefer charging over consuming in the case of negative grid buy
+    c = np.concatenate((-np.ones_like(data.grid_buy)*1e-6, 
                         data.grid_buy, 
                         -data.grid_sell, 
                         np.zeros(data_len)))
