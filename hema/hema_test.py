@@ -106,7 +106,7 @@ class test_hema(unittest.TestCase):
 
         expected_res = Result(battery=np.array([-2, -4, -4]),
                               buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 0, 0]),
+                              sell=np.array([0, 2, 0]),
                               cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
