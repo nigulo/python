@@ -31,11 +31,13 @@ def optimize(data: Data, conf: Conf):
         raise Exception("Maximum grid buy must be nonnegative")
     if conf.sell_max is not None and conf.sell_max < 0:
         raise Exception("Maximum grid sell must be nonnegative")
-    if conf.cons_max is not None and conf.cons_max < 0:
-        raise Exception("Maximum consumption must be nonnegative")
         
     # x = [battery1, battery2, ...,  buy1, buy2, ..., sell1, sell2, ..., cons1, cons2, ...]
-    c = np.concatenate((np.zeros(data_len), data.grid_buy, -data.grid_sell, np.zeros(data_len)))
+    # We use grid_buy as a weight for battery
+    c = np.concatenate((data.grid_buy, 
+                        data.grid_buy, 
+                        -data.grid_sell, 
+                        np.zeros(data_len)))
 
     # battery_min <= battery_start + sum(battery_i) <= battery_max
     #A_ub = np.array([[-1, 0, 0, 0, 0, 0, 0, 0],
@@ -65,7 +67,7 @@ def optimize(data: Data, conf: Conf):
     bounds = np.concatenate((np.tile((None, None), (data_len, 1)), 
                              np.tile((0, conf.buy_max), (data_len, 1)),
                              np.tile((0, conf.sell_max), (data_len, 1)),
-                             np.tile((0, conf.cons_max), (data_len, 1))))
+                             np.tile((0, None), (data_len, 1))))
     
     res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
     if not res.success:

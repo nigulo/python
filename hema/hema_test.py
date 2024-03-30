@@ -14,8 +14,7 @@ class test_hema(unittest.TestCase):
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
                     fixed_cons=np.array([2.5, 1.4, 3.2]), 
                     battery_start=0)
-        conf = Conf(battery_max=20,
-                    cons_max=0)
+        conf = Conf(battery_max=20)
 
         res = optimize(data, conf)
 
@@ -32,8 +31,7 @@ class test_hema(unittest.TestCase):
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
                     fixed_cons=np.array([2.5, 1.4, 3.2]), 
                     battery_start=0)
-        conf = Conf(battery_max=20,
-                    cons_max=2)
+        conf = Conf(battery_max=20)
 
         res = optimize(data, conf)
 
@@ -69,19 +67,14 @@ class test_hema(unittest.TestCase):
                     fixed_cons=np.array([2.5, 1.4]), 
                     battery_start=0.5)
         conf = Conf(battery_max=2,
-                    buy_max=10,
-                    cons_max=8)
+                    buy_max=10)
 
         res = optimize(data, conf)
-        print(res)
 
-        # Here it would be more preferable solution where
-        # battery = [-0.5, 2]
-        # cons = [0, 7.6]
-        expected_res = Result(battery=np.array([-0.5, 1.6]),
+        expected_res = Result(battery=np.array([-0.5, 2]),
                               buy=np.array([0, 10]),
                               sell=np.array([0, 0]),
-                              cons=np.array([0, 8]))        
+                              cons=np.array([0, 7.6]))        
         assert_result(res, expected_res)
 
 
