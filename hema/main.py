@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from datetime import datetime
 
 from hema import optimize
@@ -15,9 +16,7 @@ if __name__ == '__main__':
                      dtype=object, 
                      converters={1: lambda x: np.datetime64(datetime.strptime(x.decode("utf-8")[1:-1], "%Y-%m-%d %H:%M:%S")),
                                  6: np.float64})
-    
-    print(sol[sol[:,0] <= np.datetime64("2024-03-20 04:15:00")])
-    
+        
     price = np.loadtxt("prices.csv", 
                      delimiter=",", 
                      skiprows=1, 
@@ -28,23 +27,32 @@ if __name__ == '__main__':
     
     min_time = max(np.min(sol[:, 0]), np.min(price[:, 1]))
     max_time = min(np.max(sol[:, 0]), np.max(price[:, 1]))
+    min_time_h = min_time.astype('datetime64[h]')
+    max_time_h = max_time.astype('datetime64[h]')
+    if (min_time_h < min_time):
+        min_time = min_time_h + np.timedelta64(1, 'h')
+    else:
+        min_time = min_time_h
+    if (max_time_h > max_time):
+        max_time = max_time_h - np.timedelta64(1, 'h')
+    else:
+        max_time = max_time_h
     print(min_time)
     print(max_time)
+    assert(min_time < max_time)
+
     sol = sol[sol[:,0] >= min_time]
     sol = sol[sol[:,0] <= max_time]
     price = price[price[:,1] >= min_time]
     price = price[price[:,1] <= max_time]
     
-    print(sol[0], sol[-1])
-    print(price[0], price[-1])
-    print((sol[-1,0] - sol[0,0]).item().total_seconds()/(3600))
     times_list = []
     sol_list = []
     price_list = []
     minutes = np.arange((sol[-1,0] - sol[0,0]).item().total_seconds()//60, dtype=int, step=15)
+    
     j = 0
     k = 0
-    print(sol[0], price[0])
     for i in range(len(minutes)):
         time = sol[0, 0] + np.timedelta64(minutes[i], 'm')
         can_add = len(price_list) > 0
@@ -60,26 +68,37 @@ if __name__ == '__main__':
             j += 1
         elif can_add:
             sol_list.append([time, 0.])
-        
+
     sol = np.asarray(sol_list)
     price = np.asarray(price_list)
 
-    data = Data(sol=sol[:96, 1]/1000, 
-                grid_buy=price[:96, 0], 
-                grid_sell=price[:96, 0], 
-                fixed_cons=np.zeros(96), 
-                battery_start=0)
-    conf = Conf(battery_max=15,
-                battery_charging=5/4,
-                battery_discharging=7/4,
-                buy_max=16*220/1000/4,
-                sell_max=10/4)
+    avg_n = 4
+    period = 1
+    if avg_n > 1:
+        sol_list = []
+        price_list = []
+        for i in range(0, len(sol), avg_n):
+            sol_list.append([sol[i, 0], np.sum(sol[i:i+4, 1])])
+        sol = np.asarray(sol_list)
+        price = np.asarray(price[::avg_n])
+    
+    n = 7*96//avg_n
+    data = Data(sol=sol[:n, 1], 
+                grid_buy=price[:n, 0], 
+                grid_sell=price[:n, 0], 
+                fixed_cons=np.zeros(n), 
+                battery_start=15*1000/2)
+    conf = Conf(battery_max=15*1000,
+                battery_charging=5000*period,
+                battery_discharging=7000*period,
+                buy_max=16*220*3*period,
+                sell_max=10*1000*period)
 
     res = optimize(data, conf)
-    print(res)
-    n = 96
-    output = np.concatenate((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m').reshape(n, 1), 
+
+    output = np.concatenate((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m').reshape(n, 1),
+                             price[:n, 0].reshape(n, 1),
                              (res.buy-res.sell).reshape(n, 1), 
-                             np.cumsum(res.battery).reshape(n, 1)), axis=1, dtype=(object))
+                             (np.cumsum(res.battery) + data.battery_start).reshape(n, 1)), axis=1, dtype=(object))
     print(output)
-    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.3f", "%.3f"), header="time,buy(sell),battery")
+    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.2f", "%.0f", "%.0f"), header="time,price,buy(sell),battery SOC")

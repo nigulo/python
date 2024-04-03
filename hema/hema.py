@@ -7,7 +7,7 @@ from result import Result
 def optimize(data: Data, conf: Conf):
     data_len = len(data.sol)
     if len(data.grid_buy) != data_len or len(data.grid_sell) != data_len or len(data.fixed_cons) != data_len:
-        raise Exception("Input data arrays lengths do not match")
+        raise Exception("Input data array lengths do not match")
         
     if np.any(data.sol < 0):
         raise Exception("Solar energy production cannot be negative")
