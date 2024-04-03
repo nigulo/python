@@ -64,12 +64,22 @@ if __name__ == '__main__':
     sol = np.asarray(sol_list)
     price = np.asarray(price_list)
 
-    data = Data(sol=sol[:96, 1], 
+    data = Data(sol=sol[:96, 1]/1000, 
                 grid_buy=price[:96, 0], 
                 grid_sell=price[:96, 0], 
                 fixed_cons=np.zeros(96), 
                 battery_start=0)
-    conf = Conf(battery_max=1000)
+    conf = Conf(battery_max=15,
+                battery_charging=5/4,
+                battery_discharging=7/4,
+                buy_max=16*220/1000/4,
+                sell_max=10/4)
 
     res = optimize(data, conf)
     print(res)
+    n = 96
+    output = np.concatenate((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m').reshape(n, 1), 
+                             (res.buy-res.sell).reshape(n, 1), 
+                             np.cumsum(res.battery).reshape(n, 1)), axis=1, dtype=(object))
+    print(output)
+    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.3f", "%.3f"), header="time,buy(sell),battery")

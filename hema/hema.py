@@ -64,12 +64,11 @@ def optimize(data: Data, conf: Conf):
                            np.identity(data_len)), axis=1)
     b_eq = data.sol-data.fixed_cons
 
-    charging_power = conf.battery_charging_power
-    if charging_power is not None:
-        discharging_power = -charging_power
+    if conf.battery_discharging is not None:
+        discharging = -conf.battery_discharging
     else:
-        discharging_power = None
-    bounds = np.concatenate((np.tile((discharging_power, charging_power), (data_len, 1)), 
+        discharging = None
+    bounds = np.concatenate((np.tile((discharging, conf.battery_charging), (data_len, 1)), 
                              np.tile((0, conf.buy_max), (data_len, 1)),
                              np.tile((0, conf.sell_max), (data_len, 1)),
                              np.tile((0, None), (data_len, 1))))

@@ -75,7 +75,7 @@ class test_hema(unittest.TestCase):
                               cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_plus_buy_eq_sell_with_charging_power(self):
+    def test_battery_plus_buy_eq_sell_with_limited_charging_power(self):
 
         data = Data(sol=np.array([0, 0, 0, 0, 0]), 
                     grid_buy=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
@@ -83,13 +83,14 @@ class test_hema(unittest.TestCase):
                     fixed_cons=np.array([0, 0, 0, 0, 0]), 
                     battery_start=4)
         conf = Conf(battery_max=19,
-                    battery_charging_power=5)
+                    battery_charging=5,
+                    battery_discharging=6)
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([5, -5, 5, -4, -5]),
+        expected_res = Result(battery=np.array([5, -6, 5, -2, -6]),
                               buy=np.array([5, 0, 5, 0, 0]),
-                              sell=np.array([0, 5, 0, 4, 5]),
+                              sell=np.array([0, 6, 0, 2, 6]),
                               cons=np.array([0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
@@ -255,7 +256,8 @@ class test_hema(unittest.TestCase):
                     grid_sell=np.array([0.4, 1.9, 0.9]), 
                     fixed_cons=np.array([2, 3, 2]), 
                     battery_start=8)
-        conf = Conf(battery_charging_power=9)
+        conf = Conf(battery_charging=9,
+                    battery_discharging=9)
 
         res = optimize(data, conf)
 
