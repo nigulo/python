@@ -99,6 +99,6 @@ if __name__ == '__main__':
     output = np.concatenate((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m').reshape(n, 1),
                              price[:n, 0].reshape(n, 1),
                              (res.buy-res.sell).reshape(n, 1), 
-                             (np.cumsum(res.battery) + data.battery_start).reshape(n, 1)), axis=1, dtype=(object))
+                             ((np.cumsum(res.battery) + data.battery_start)/conf.battery_max*100).reshape(n, 1)), axis=1, dtype=(object))
     print(output)
     np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.2f", "%.0f", "%.0f"), header="time,price,buy(sell),battery SOC")
