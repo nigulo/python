@@ -69,11 +69,28 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        # Here the first buy does not give any other benefit than just charging the battery
         expected_res = Result(battery=np.array([10, -20, 0]),
                               buy=np.array([10, 0, 0]),
                               sell=np.array([0, 20, 0]),
                               cons=np.array([0, 0, 0]))        
+        assert_result(res, expected_res)
+
+    def test_battery_plus_buy_eq_sell_with_charging_power(self):
+
+        data = Data(sol=np.array([0, 0, 0, 0, 0]), 
+                    grid_buy=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
+                    grid_sell=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
+                    fixed_cons=np.array([0, 0, 0, 0, 0]), 
+                    battery_start=4)
+        conf = Conf(battery_max=19,
+                    battery_charging_power=5)
+
+        res = optimize(data, conf)
+
+        expected_res = Result(battery=np.array([5, -5, 5, -4, -5]),
+                              buy=np.array([5, 0, 5, 0, 0]),
+                              sell=np.array([0, 5, 0, 4, 5]),
+                              cons=np.array([0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_eq_fixed_cons(self):
@@ -234,17 +251,17 @@ class test_hema(unittest.TestCase):
     def test_sol_eq_battery_plus_fixed_cons_plus_sell(self):
 
         data = Data(sol=np.array([12, 1, 10]), 
-                    grid_buy=np.array([1.0, 2.0, 0.5]), 
-                    grid_sell=np.array([0.9, 1.9, 0.4]), 
+                    grid_buy=np.array([0.5, 2.0, 1.0]), 
+                    grid_sell=np.array([0.4, 1.9, 0.9]), 
                     fixed_cons=np.array([2, 3, 2]), 
-                    battery_start=10)
-        conf = Conf(battery_max=20)
+                    battery_start=8)
+        conf = Conf(battery_charging_power=9)
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([10, -20, 0]),
+        expected_res = Result(battery=np.array([9, -9, -8]),
                               buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 18, 8]),
+                              sell=np.array([1, 7, 16]),
                               cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
