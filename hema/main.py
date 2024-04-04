@@ -82,24 +82,27 @@ if __name__ == '__main__':
         sol = np.asarray(sol_list)
         price = np.asarray(price[::avg_n])
     
-    n = 7*96//avg_n
+    n_days = 1
+    n = n_days*96//avg_n
     data = Data(sol=sol[:n, 1], 
                 grid_buy=price[:n, 0], 
                 grid_sell=np.zeros(n),#price[:n, 0], 
-                fixed_cons=np.ones(n)*1000, 
+                cons=np.ones(n)*2000, 
                 battery_start=15*1000/2)
     conf = Conf(battery_min= 3*1000,
                 battery_max=15*1000,
                 battery_charging=5000*period,
                 battery_discharging=7000*period,
                 buy_max=16*220*3*period,
-                sell_max=10*1000*period)
+                sell_max=10*1000*period,
+                cons_off_total=6*n_days,
+                cons_max_gap=2)
 
     res = optimize(data, conf)
 
-    output = np.concatenate((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m').reshape(n, 1),
-                             price[:n, 0].reshape(n, 1),
-                             (res.buy-res.sell).reshape(n, 1), 
-                             ((np.cumsum(res.battery) + data.battery_start)/conf.battery_max*100).reshape(n, 1)), axis=1, dtype=(object))
-    print(output)
-    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.2f", "%.0f", "%.0f"), header="time,price,buy(sell),battery SOC")
+    output = np.vstack((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m'),
+                             data.grid_buy,
+                             (res.buy-res.sell), 
+                             res.cons,
+                             (np.cumsum(res.battery) + data.battery_start)/conf.battery_max*100), dtype=(object)).T
+    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.2f", "%.0f", "%.0f", "%.0f"), header="time,price,buy(sell),cons,battery SOC")

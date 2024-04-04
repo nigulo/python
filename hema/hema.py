@@ -5,7 +5,6 @@ from conf import Conf
 from result import Result
 
 def optimize(data: Data, conf: Conf):
-
     if data.sol is not None:
         data_len = len(data.sol)
     elif data.grid_buy is not None:
@@ -75,42 +74,92 @@ def optimize(data: Data, conf: Conf):
                         data.grid_buy, 
                         -data.grid_sell, 
                         np.zeros(2*data_len)))
+    
+    A_ub, b_ub = get_ub(data, conf)
+    A_eq, b_eq = get_eq(data, conf)
+    bounds = get_bounds(data, conf)
+    
+    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
 
+    if not res.success:
+        raise Exception(res.message)
+    
+    res_cons = res.x[4*data_len:]
+    if np.max(data.cons) > 0:
+        print(res_cons)
+        cons_diff = data.cons - res_cons
+        idx = cons_diff < data.cons/2
+        res_cons[idx] = data.cons[idx]
+        res_cons[res_cons < data.cons] = 0
+        data.fixed_cons += res_cons
+        data.cons = np.zeros(data_len)
+        print(res_cons)
+        
+        A_ub, b_ub = get_ub(data, conf)
+        A_eq, b_eq = get_eq(data, conf)
+        bounds = get_bounds(data, conf)
+    
+        res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
+    
+        if not res.success:
+            raise Exception(res.message)
+
+    return Result(battery=res.x[:data_len], 
+                  buy=res.x[data_len:2*data_len], 
+                  sell=res.x[2*data_len:3*data_len], 
+                  excess_cons=res.x[3*data_len:4*data_len],
+                  cons=res_cons)
+
+
+def get_ub(data: Data, conf: Conf):
+    data_len = len(data.sol)
+    
     # battery_min <= battery_start + sum(battery_i) <= battery_max
     #A_ub = np.array([[-1, 0, 0, 0, 0, 0, 0, 0],
     #                 [-1, -1, 0, 0, 0, 0, 0, 0],
     #                 [1, 0, 0, 0, 0, 0, 0, 0],
     #                 [1, 1, 0, 0, 0, 0, 0, 0]])
-    
+
     ones_triangle = np.tril(np.ones((data_len, data_len)))
     ones_triangle_pad = np.pad(ones_triangle, ((0, 0), (0, 4*data_len)))
-    
+
     A_ub = -ones_triangle_pad
     b_ub = np.repeat(data.battery_start-conf.battery_min, data_len)
     if conf.battery_max is not None:
         A_ub = np.concatenate((A_ub, ones_triangle_pad))
         b_ub = np.concatenate((b_ub, np.repeat(conf.battery_max-data.battery_start, data_len)))
-    if (conf.cons_max_gap > 0):
-        # In each interval of length cons_max_gap+1 there must be positive consumption
-        # sum(cons_i, ... cons_{i+cons_max_gap+1}) >= cons_power, where 0 <= i = n-cons_max_gap
-        for i in range(data_len-conf.cons_max_gap):
-            A_ub = np.concatenate((A_ub, np.pad(-np.ones(conf.cons_max_gap+1), (4*data_len+i, data_len-i-conf.cons_max_gap-1)).reshape(1, -1)))
-            b_ub = np.concatenate((b_ub, np.array([-np.min(data.cons[i:i+conf.cons_max_gap+1])])))
-    # Total off hours must be <= cons_off_total
-    # sum(cons_i, ... cons_n >= cons_power*(n-cons_off_total)
-    A_ub = np.concatenate((A_ub, (np.pad(-np.ones(data_len), (4*data_len, 0))).reshape(1, -1)))
-    b_ub = np.concatenate((b_ub, np.array([-np.sum(np.sort(data.cons)[:data_len-conf.cons_off_total])])))
+    if np.max(data.cons) > 0:
+        if (conf.cons_max_gap > 0):
+            # In each interval of length cons_max_gap+1 there must be positive consumption
+            # sum(cons_i, ... cons_{i+cons_max_gap+1}) >= cons, where 0 <= i = n-cons_max_gap
+            for i in range(data_len-conf.cons_max_gap):
+                A_ub = np.concatenate((A_ub, np.pad(-np.ones(conf.cons_max_gap+1), (4*data_len+i, data_len-i-conf.cons_max_gap-1)).reshape(1, -1)))
+                b_ub = np.concatenate((b_ub, np.array([-np.min(data.cons[i:i+conf.cons_max_gap+1])])))
+        # Total off hours must be <= cons_off_total
+        # sum(cons_i, ... cons_n >= cons*(n-cons_off_total)
+        A_ub = np.concatenate((A_ub, (np.pad(-np.ones(data_len), (4*data_len, 0))).reshape(1, -1)))
+        b_ub = np.concatenate((b_ub, np.array([-np.sum(np.sort(data.cons)[:data_len-conf.cons_off_total])])))
+    
+    return A_ub, b_ub
+
+def get_eq(data: Data, conf: Conf):
+    data_len = len(data.sol)
 
     # battery_i + fixed_cons_i + cons_i + sell_i = sol_i + buy_i
     # buy_i*sell_i = 0 (not used)
-    #A_eq = np.array([[1, 0, -1, 0, 1, 0, 1, 0],
-    #                 [0, 1, 0, -1, 0, 1, 0, 1]])
+    #A_eq = np.array([[1, 0, -1, 0, 1, 0, 1, 0, 1, 0],
+    #                 [0, 1, 0, -1, 0, 1, 0, 1, 0, 1]])
     A_eq = np.concatenate((np.identity(data_len), 
                            -np.identity(data_len), 
                            np.identity(data_len),
                            np.identity(data_len),
                            np.identity(data_len)), axis=1)
     b_eq = data.sol-data.fixed_cons
+    
+    return A_eq, b_eq
+
+def get_bounds(data: Data, conf: Conf):
+    data_len = len(data.sol)
 
     if conf.battery_discharging is not None:
         discharging = -conf.battery_discharging
@@ -121,12 +170,5 @@ def optimize(data: Data, conf: Conf):
                              np.tile((0, conf.sell_max), (data_len, 1)),
                              np.tile((0, None), (data_len, 1)),
                              np.vstack((np.zeros(data_len), data.cons)).T))
-    
-    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
-    if not res.success:
-        raise Exception(res.message)
-    return Result(battery=res.x[:data_len], 
-                  buy=res.x[data_len:2*data_len], 
-                  sell=res.x[2*data_len:3*data_len], 
-                  excess_cons=res.x[3*data_len:4*data_len],
-                  cons=res.x[4*data_len:])
+
+    return bounds
