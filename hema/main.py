@@ -85,7 +85,7 @@ if __name__ == '__main__':
     n = 7*96//avg_n
     data = Data(sol=sol[:n, 1], 
                 grid_buy=price[:n, 0], 
-                grid_sell=price[:n, 0], 
+                grid_sell=np.zeros(n),#price[:n, 0], 
                 fixed_cons=np.ones(n)*1000, 
                 battery_start=15*1000/2)
     conf = Conf(battery_min= 3*1000,

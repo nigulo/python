@@ -22,7 +22,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([2.5, 1.4, 3.2]),
                               sell=np.array([0, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_eq_sell_limited_buy_battery_max(self):
@@ -40,7 +40,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 10, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_eq_sell(self):
@@ -58,7 +58,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 10, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_plus_buy_eq_sell(self):
@@ -76,7 +76,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([10, 0, 0]),
                               sell=np.array([0, 20, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_plus_buy_eq_sell_with_limited_charging_power(self):
@@ -96,7 +96,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([5, 0, 5, 0, 0]),
                               sell=np.array([0, 6, 0, 2, 6]),
                               cons=np.array([0, 0, 0, 0, 0]),
-                              free_cons=np.array([0, 0, 0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_eq_fixed_cons(self):
@@ -114,7 +114,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_battery_eq_fixed_cons_plus_sell(self):
@@ -132,7 +132,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 2, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_fixed_cons(self):
@@ -150,7 +150,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_sell(self):
@@ -168,7 +168,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([4, 1, 3]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_fixed_cons_plus_sell(self):
@@ -186,7 +186,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([1.5, 0, 0.1]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_battery(self):
@@ -204,7 +204,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_battery_plus_sell(self):
@@ -223,7 +223,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([3.5, 1.5, 3.5]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_battery_plus_fixed_cons(self):
@@ -242,7 +242,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_battery_plus_fixed_cons_zero_sell_price(self):
@@ -260,7 +260,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([0, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_eq_battery_plus_fixed_cons_plus_sell(self):
@@ -279,7 +279,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0, 0]),
                               sell=np.array([1, 7, 16]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_plus_buy_eq_battery_plus_fixed_cons_plus_sell(self):
@@ -297,7 +297,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([4, 0, 0]),
                               sell=np.array([0, 18, 8]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_buy_low_sell_high_with_battery(self):
@@ -316,7 +316,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([19.5, 0]),
                               sell=np.array([0, 19.9]),
                               cons=np.array([0, 0]),
-                              free_cons=np.array([0, 0]))        
+                              excess_cons=np.array([0, 0]))        
         assert_result(res, expected_res)
     
     def test_buy_low_sell_high_with_sol_and_fixed_cons(self):
@@ -335,7 +335,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([18, 0]),
                               sell=np.array([0, 20.5]),
                               cons=np.array([0, 0]),
-                              free_cons=np.array([0, 0]))        
+                              excess_cons=np.array([0, 0]))        
         assert_result(res, expected_res)
 
     def test_sol_plus_buy_eq_fixed_cons_plus_sell(self):
@@ -353,7 +353,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 0.4, 0.2]),
                               sell=np.array([1.5, 0, 0]),
                               cons=np.array([0, 0, 0]),
-                              free_cons=np.array([0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_neg_grid_buy(self):
@@ -372,20 +372,17 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 10]),
                               sell=np.array([0, 0]),
                               cons=np.array([0, 0]),
-                              free_cons=np.array([0, 7.6]))        
+                              excess_cons=np.array([0, 7.6]))        
         assert_result(res, expected_res)
 
     def test_cons_off_at_high_buy_max_gap_2(self):
 
-        data = Data(sol=np.array([0, 0, 0, 0, 0, 0, 0]), 
-                    grid_buy=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]), 
-                    grid_sell=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]), 
-                    fixed_cons=np.array([0, 0, 0, 0, 0, 0, 0]), 
-                    battery_start=0)
+        data = Data(grid_buy=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]), 
+                    grid_sell=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]),
+                    cons=np.array([1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7]))
         conf = Conf(battery_max=0,
                     cons_max_gap=2,
-                    cons_off_total=3,
-                    cons_power=1.7)
+                    cons_off_total=3)
 
         res = optimize(data, conf)
 
@@ -393,20 +390,17 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 1.7, 1.7, 1.7, 0, 0, 1.7]),
                               sell=np.array([0, 0, 0, 0, 0, 0, 0]),
                               cons=np.array([0, 1.7, 1.7, 1.7, 0, 0, 1.7]),
-                              free_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_cons_off_at_high_buy_max_gap_1(self):
 
-        data = Data(sol=np.array([0, 0, 0, 0, 0, 0, 0]), 
-                    grid_buy=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
+        data = Data(grid_buy=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
                     grid_sell=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
-                    fixed_cons=np.array([0, 0, 0, 0, 0, 0, 0]), 
-                    battery_start=0)
+                    cons=np.array([1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7]))
         conf = Conf(battery_max=0,
                     cons_max_gap=1,
-                    cons_off_total=3,
-                    cons_power=1.7)
+                    cons_off_total=3)
 
         res = optimize(data, conf)
 
@@ -414,7 +408,7 @@ class test_hema(unittest.TestCase):
                               buy=np.array([0, 1.7, 0, 1.7, 1.7, 0, 1.7]),
                               sell=np.array([0, 0, 0, 0, 0, 0, 0]),
                               cons=np.array([0, 1.7, 0, 1.7, 1.7, 0, 1.7]),
-                              free_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
+                              excess_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
 
@@ -423,7 +417,7 @@ def assert_result(res, expected_res):
         np.testing.assert_array_almost_equal(res.buy, expected_res.buy)
         np.testing.assert_array_almost_equal(res.sell, expected_res.sell)
         np.testing.assert_array_almost_equal(res.cons, expected_res.cons)
-        np.testing.assert_array_almost_equal(res.free_cons, expected_res.free_cons)
+        np.testing.assert_array_almost_equal(res.excess_cons, expected_res.excess_cons)
     
 
 if __name__ == '__main__':

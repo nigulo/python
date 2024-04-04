@@ -3,9 +3,10 @@ import numpy as np
 
 @dataclass
 class Data:
-    sol: np.array
-    grid_buy: np.array
-    grid_sell: np.array
-    fixed_cons: np.array
-    battery_start: float
+    sol: np.array = None
+    grid_buy: np.array = None
+    grid_sell: np.array = None
+    cons: np.array = None
+    fixed_cons: np.array = None
+    battery_start: float = 0
     

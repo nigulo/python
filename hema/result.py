@@ -7,5 +7,5 @@ class Result:
     buy: np.array
     sell: np.array
     cons: np.array
-    free_cons: np.array
+    excess_cons: np.array
     
