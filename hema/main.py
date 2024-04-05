@@ -80,7 +80,7 @@ if __name__ == '__main__':
         pv_power = np.asarray(pv_power_list)
         price = np.asarray(price[::avg_n])
     
-    n_days = 7
+    n_days = 1
     n = n_days*96//avg_n
     data = Data(pv_power=pv_power[:n, 1], 
                 grid_buy=price[:n, 0], 
@@ -95,6 +95,9 @@ if __name__ == '__main__':
                 sell_max=10*1000*period,
                 cons_off_total=6*n_days,
                 cons_max_gap=2)
+
+    print(data)
+    print(conf)
 
     res = optimize(data, conf)
 

@@ -26,8 +26,12 @@ def optimize(data: Data, conf: Conf):
         data.grid_sell = np.zeros(data_len)
     if data.cons is None:
         data.cons = np.zeros(data_len)
+    elif np.isscalar(data.cons):
+        data.cons = np.repeat(data.cons, data_len)
     if data.fixed_cons is None:
         data.fixed_cons = np.zeros(data_len)
+    elif np.isscalar(data.fixed_cons):
+        data.fixed_cons = np.repeat(data.fixed_cons, data_len)
     
     if len(data.grid_buy) != data_len or len(data.grid_sell) != data_len or len(data.fixed_cons) != data_len or len(data.cons) != data_len:
         raise Exception("Input data array lengths do not match")
