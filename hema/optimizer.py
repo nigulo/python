@@ -5,8 +5,8 @@ from conf import Conf
 from result import Result
 
 def optimize(data: Data, conf: Conf):
-    if data.sol is not None:
-        data_len = len(data.sol)
+    if data.pv_power is not None:
+        data_len = len(data.pv_power)
     elif data.grid_buy is not None:
         data_len = len(data.grid_buy)
     elif data.grid_sell is not None:
@@ -18,8 +18,8 @@ def optimize(data: Data, conf: Conf):
     else:
         raise Exception("Missing input data")
 
-    if data.sol is None:
-        data.sol = np.zeros(data_len)
+    if data.pv_power is None:
+        data.pv_power = np.zeros(data_len)
     if data.grid_buy is None:
         data.grid_buy = np.zeros(data_len)
     if data.grid_sell is None:
@@ -32,7 +32,7 @@ def optimize(data: Data, conf: Conf):
     if len(data.grid_buy) != data_len or len(data.grid_sell) != data_len or len(data.fixed_cons) != data_len or len(data.cons) != data_len:
         raise Exception("Input data array lengths do not match")
         
-    if np.any(data.sol < 0):
+    if np.any(data.pv_power < 0):
         raise Exception("Solar energy production cannot be negative")
     if np.any(data.fixed_cons < 0):
         raise Exception("Energy consumption cannot be negative")
@@ -109,7 +109,7 @@ def optimize(data: Data, conf: Conf):
                   cons=res_cons)
 
 def get_ub(data: Data, conf: Conf):
-    data_len = len(data.sol)
+    data_len = len(data.pv_power)
     
     # battery_min <= battery_start + sum(battery_i) <= battery_max
     #A_ub = np.array([[-1, 0, 0, 0, 0, 0, 0, 0],
@@ -140,9 +140,9 @@ def get_ub(data: Data, conf: Conf):
     return A_ub, b_ub
 
 def get_eq(data: Data, conf: Conf):
-    data_len = len(data.sol)
+    data_len = len(data.pv_power)
 
-    # battery_i + fixed_cons_i + cons_i + sell_i = sol_i + buy_i
+    # battery_i + fixed_cons_i + cons_i + sell_i = pv_power_i + buy_i
     # buy_i*sell_i = 0 (not used)
     #A_eq = np.array([[1, 0, -1, 0, 1, 0, 1, 0, 1, 0],
     #                 [0, 1, 0, -1, 0, 1, 0, 1, 0, 1]])
@@ -151,12 +151,12 @@ def get_eq(data: Data, conf: Conf):
                            np.identity(data_len),
                            np.identity(data_len),
                            np.identity(data_len)), axis=1)
-    b_eq = data.sol-data.fixed_cons
+    b_eq = data.pv_power-data.fixed_cons
     
     return A_eq, b_eq
 
 def get_bounds(data: Data, conf: Conf):
-    data_len = len(data.sol)
+    data_len = len(data.pv_power)
 
     if conf.battery_discharging is not None:
         discharging = -conf.battery_discharging
