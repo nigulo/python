@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from datetime import datetime
 
-from hema import optimize
+from optimizer import optimize
 from data import Data
 from conf import Conf
 from result import Result
@@ -37,8 +37,6 @@ if __name__ == '__main__':
         max_time = max_time_h - np.timedelta64(1, 'h')
     else:
         max_time = max_time_h
-    print(min_time)
-    print(max_time)
     assert(min_time < max_time)
 
     sol = sol[sol[:,0] >= min_time]
@@ -82,12 +80,12 @@ if __name__ == '__main__':
         sol = np.asarray(sol_list)
         price = np.asarray(price[::avg_n])
     
-    n_days = 1
+    n_days = 7
     n = n_days*96//avg_n
     data = Data(sol=sol[:n, 1], 
                 grid_buy=price[:n, 0], 
-                grid_sell=np.zeros(n),#price[:n, 0], 
-                cons=np.ones(n)*2000, 
+                grid_sell=np.zeros(n),
+                fixed_cons=np.ones(n)*800, 
                 battery_start=15*1000/2)
     conf = Conf(battery_min= 3*1000,
                 battery_max=15*1000,
@@ -101,8 +99,9 @@ if __name__ == '__main__':
     res = optimize(data, conf)
 
     output = np.vstack((np.datetime_as_string(sol[:n, 0].astype("datetime64[ns]"), unit='m'),
-                             data.grid_buy,
-                             (res.buy-res.sell), 
-                             res.cons,
-                             (np.cumsum(res.battery) + data.battery_start)/conf.battery_max*100), dtype=(object)).T
-    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.2f", "%.0f", "%.0f", "%.0f"), header="time,price,buy(sell),cons,battery SOC")
+                        data.sol,
+                        data.grid_buy,
+                        (res.buy-res.sell), 
+                        data.fixed_cons,
+                        (np.cumsum(res.battery) + data.battery_start)/conf.battery_max*100), dtype=(object)).T
+    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.0f", "%.2f", "%.0f", "%.0f", "%.0f"), header="time,PV power,price,grid buy,consumption,battery SOC")

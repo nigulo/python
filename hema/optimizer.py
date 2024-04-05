@@ -86,14 +86,12 @@ def optimize(data: Data, conf: Conf):
     
     res_cons = res.x[4*data_len:]
     if np.max(data.cons) > 0:
-        print(res_cons)
         cons_diff = data.cons - res_cons
         idx = cons_diff < data.cons/2
         res_cons[idx] = data.cons[idx]
         res_cons[res_cons < data.cons] = 0
         data.fixed_cons += res_cons
         data.cons = np.zeros(data_len)
-        print(res_cons)
         
         A_ub, b_ub = get_ub(data, conf)
         A_eq, b_eq = get_eq(data, conf)
@@ -109,7 +107,6 @@ def optimize(data: Data, conf: Conf):
                   sell=res.x[2*data_len:3*data_len], 
                   excess_cons=res.x[3*data_len:4*data_len],
                   cons=res_cons)
-
 
 def get_ub(data: Data, conf: Conf):
     data_len = len(data.sol)

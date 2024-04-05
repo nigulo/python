@@ -1,6 +1,6 @@
 import numpy as np
 import unittest
-from hema import optimize
+from optimizer import optimize
 from data import Data
 from conf import Conf
 from result import Result
