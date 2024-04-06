@@ -96,6 +96,10 @@ def load_conf(input):
         conf.cons_off_total = conf_dict["cons_off_total"]
     if "cons_max_gap" in conf_dict:
         conf.cons_max_gap = conf_dict["cons_max_gap"]
+    if "battery_energy_loss" in conf_dict:
+        conf.battery_energy_loss = conf_dict["battery_energy_loss"]
+    if "pv_energy_loss" in conf_dict:
+        conf.pv_energy_loss = conf_dict["pv_energy_loss"]
 
     return conf
 

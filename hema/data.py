@@ -9,4 +9,3 @@ class Data:
     cons: np.array = None
     fixed_cons: np.array = None
     battery_start: float = 0
-    

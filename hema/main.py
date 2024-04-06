@@ -1,12 +1,9 @@
 import numpy as np
-import sys
 from datetime import datetime
 
 from optimizer import optimize
 from data import Data
 from conf import Conf
-from result import Result
-
 
 if __name__ == '__main__':
     pv_power = np.loadtxt("solar_forecast.csv", 

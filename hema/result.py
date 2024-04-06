@@ -8,4 +8,3 @@ class Result:
     sell: np.array
     cons: np.array
     excess_cons: np.array
-    

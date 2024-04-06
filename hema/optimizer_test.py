@@ -8,7 +8,6 @@ from result import Result
 class test_hema(unittest.TestCase):
 
     def test_buy_eq_fixed_cons(self):
-
         data = Data(pv_power=np.array([0, 0, 0]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
@@ -26,7 +25,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_battery_eq_sell_limited_buy_battery_max(self):
-
         data = Data(pv_power=np.array([0, 0, 0]), 
                     grid_buy=np.array([1.0, 1.1, 0.9]), 
                     grid_sell=np.array([1.0, 1.1, 0.9]), 
@@ -44,7 +42,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_battery_eq_sell(self):
-
         data = Data(pv_power=np.array([0, 0, 0]), 
                     grid_buy=np.array([1.1, 1.2, 0.9]), 
                     grid_sell=np.array([1.0, 1.1, 0.9]), 
@@ -62,7 +59,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_battery_plus_buy_eq_sell(self):
-
         data = Data(pv_power=np.array([0, 0, 0]), 
                     grid_buy=np.array([1.0, 1.1, 0.9]), 
                     grid_sell=np.array([1.0, 1.1, 0.9]), 
@@ -80,7 +76,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_battery_plus_buy_eq_sell_with_limited_charging_power(self):
-
         data = Data(pv_power=np.array([0, 0, 0, 0, 0]), 
                     grid_buy=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
                     grid_sell=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
@@ -100,7 +95,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_battery_eq_fixed_cons(self):
-
         data = Data(pv_power=np.array([0, 0, 0]), 
                     grid_buy=np.array([1.1, 2.2, 1.5]), 
                     grid_sell=np.array([0, 0, 0]), 
@@ -118,7 +112,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_battery_eq_fixed_cons_plus_sell(self):
-
         data = Data(pv_power=np.array([0, 0, 0]), 
                     grid_buy=np.array([1.2, 1.3, 1.2]), 
                     grid_sell=np.array([1.0, 1.1, 0.9]), 
@@ -136,7 +129,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_fixed_cons(self):
-
         data = Data(pv_power=np.array([4, 1, 3]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
@@ -154,7 +146,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_sell(self):
-
         data = Data(pv_power=np.array([4, 1, 3]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
@@ -172,7 +163,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_fixed_cons_plus_sell(self):
-
         data = Data(pv_power=np.array([4, 1, 3.1]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
@@ -190,7 +180,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_battery(self):
-
         data = Data(pv_power=np.array([4, 1, 3]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([0, 0, 0]), 
@@ -208,7 +197,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_battery_plus_sell(self):
-
         data = Data(pv_power=np.array([4, 1, 10]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([1.9, 0.9, 0.5]), 
@@ -227,7 +215,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_battery_plus_fixed_cons(self):
-
         data = Data(pv_power=np.array([1, 2, 2]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([1.9, 0.9, 0.4]), 
@@ -246,7 +233,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_battery_plus_fixed_cons_zero_sell_price(self):
-
         data = Data(pv_power=np.array([4, 1, 10]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([0, 0, 0]), 
@@ -264,7 +250,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_eq_battery_plus_fixed_cons_plus_sell(self):
-
         data = Data(pv_power=np.array([12, 1, 10]), 
                     grid_buy=np.array([0.5, 2.0, 1.0]), 
                     grid_sell=np.array([0.4, 1.9, 0.9]), 
@@ -283,7 +268,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_plus_buy_eq_battery_plus_fixed_cons_plus_sell(self):
-
         data = Data(pv_power=np.array([8, 1, 10]), 
                     grid_buy=np.array([1.0, 2.0, 0.5]), 
                     grid_sell=np.array([0.9, 1.9, 0.4]), 
@@ -301,7 +285,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_buy_low_sell_high_with_battery(self):
-
         data = Data(pv_power=np.array([0, 0]), 
                     grid_buy=np.array([1.0, 2.0]), 
                     grid_sell=np.array([0.9, 1.9]), 
@@ -320,7 +303,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
     
     def test_buy_low_sell_high_with_pv_power_and_fixed_cons(self):
-
         data = Data(pv_power=np.array([2.0, 1.0]), 
                     grid_buy=np.array([1.0, 2.0]), 
                     grid_sell=np.array([0.9, 1.9]), 
@@ -339,7 +321,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_pv_power_plus_buy_eq_fixed_cons_plus_sell(self):
-
         data = Data(pv_power=np.array([4, 1, 3]), 
                     grid_buy=np.array([2.0, 1.0, 0.5]), 
                     grid_sell=np.array([2.0, 1.0, 0.5]), 
@@ -357,7 +338,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_neg_grid_buy(self):
-
         data = Data(pv_power=np.array([2.0, 1.0]), 
                     grid_buy=np.array([1.0, -2.0]), 
                     grid_sell=np.array([1.0, -2.0]), 
@@ -376,7 +356,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_cons_off_at_high_buy_max_gap_2(self):
-
         data = Data(grid_buy=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]), 
                     grid_sell=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]),
                     cons=np.array([1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7]))
@@ -394,7 +373,6 @@ class test_hema(unittest.TestCase):
         assert_result(res, expected_res)
 
     def test_cons_off_at_high_buy_max_gap_1(self):
-
         data = Data(grid_buy=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
                     grid_sell=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
                     cons=np.array([1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7]))
@@ -411,6 +389,49 @@ class test_hema(unittest.TestCase):
                               excess_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
+    def test_pv_power_eq_battery_with_battery_energy_loss(self):
+        data = Data(pv_power=np.array([10, 15, 21.1, 0]),
+                    grid_buy = np.array([1, 1, 1, 1]))
+        conf = Conf(battery_energy_loss=0.08)
+
+        res = optimize(data, conf)
+
+        expected_res = Result(battery=np.array([9.2, 13.8, 19.412, 0]),
+                              buy=np.array([0, 0, 0, 0]),
+                              sell=np.array([0, 0, 0, 0]),
+                              cons=np.array([0, 0, 0, 0]),
+                              excess_cons=np.array([0, 0, 0, 0]))        
+        assert_result(res, expected_res)
+
+    def test_pv_power_eq_battery_with_pv_energy_loss(self):
+        data = Data(pv_power=np.array([10, 15, 21.1, 0]),
+                    grid_buy=np.array([1, 1, 1, 1]))
+        conf = Conf(pv_energy_loss=0.08)
+
+        res = optimize(data, conf)
+
+        expected_res = Result(battery=np.array([9.2, 13.8, 19.412, 0]),
+                              buy=np.array([0, 0, 0, 0]),
+                              sell=np.array([0, 0, 0, 0]),
+                              cons=np.array([0, 0, 0, 0]),
+                              excess_cons=np.array([0, 0, 0, 0]))        
+        assert_result(res, expected_res)
+
+    def test_battery_eq_fixed_cons_with_battery_energy_loss(self):
+        data = Data(grid_buy=np.array([1, 1, 1, 1]),
+                    fixed_cons=np.array([1.5, 2.66, 2, 0]),
+                    battery_start=10)
+        conf = Conf(battery_discharging=2.5,
+                    battery_energy_loss=0.06)
+
+        res = optimize(data, conf)
+
+        expected_res = Result(battery=np.array([-1.595745, -2.5, -2.12766, 0]),
+                              buy=np.array([0, 0.31, 0, 0]),
+                              sell=np.array([0, 0, 0, 0]),
+                              cons=np.array([0, 0, 0, 0]),
+                              excess_cons=np.array([0, 0, 0, 0]))        
+        assert_result(res, expected_res)
 
 def assert_result(res, expected_res):
         np.testing.assert_array_almost_equal(res.battery, expected_res.battery)

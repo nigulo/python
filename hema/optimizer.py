@@ -5,6 +5,52 @@ from conf import Conf
 from result import Result
 
 def optimize(data: Data, conf: Conf):
+    _validate_data(data)    
+    _validate_conf(data, conf)    
+                   
+    data_len = _data_len(data)
+
+    # x = [battery1, battery2, ...,  buy1, buy2, ..., sell1, sell2, ..., excess_cons1, excess_cons2, ..., cons1, cons2, ...]
+    # Set -eps as a weight for battery to prefer charging over consuming in the case of negative grid buy
+    c = np.concatenate((-np.ones(data_len)*1e-6, 
+                        data.grid_buy, 
+                        -data.grid_sell, 
+                        np.zeros(2*data_len)))
+    
+    A_ub, b_ub = _get_ub(data, conf)
+    A_eq, b_eq = _get_eq(data, conf)
+    bounds = _get_bounds(data, conf)
+    
+    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
+
+    if not res.success:
+        raise Exception(res.message)
+    
+    res_cons = res.x[4*data_len:]
+    if np.max(data.cons) > 0:
+        cons_diff = data.cons - res_cons
+        idx = cons_diff < data.cons/2
+        res_cons[idx] = data.cons[idx]
+        res_cons[res_cons < data.cons] = 0
+        data.fixed_cons += res_cons
+        data.cons = np.zeros(data_len)
+        
+        A_ub, b_ub = _get_ub(data, conf)
+        A_eq, b_eq = _get_eq(data, conf)
+        bounds = _get_bounds(data, conf)
+    
+        res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
+    
+        if not res.success:
+            raise Exception(res.message)
+
+    return Result(battery=res.x[:data_len], 
+                  buy=res.x[data_len:2*data_len], 
+                  sell=res.x[2*data_len:3*data_len], 
+                  excess_cons=res.x[3*data_len:4*data_len],
+                  cons=res_cons)
+
+def _validate_data(data: Data):
     if data.pv_power is not None:
         data_len = len(data.pv_power)
     elif data.grid_buy is not None:
@@ -40,7 +86,10 @@ def optimize(data: Data, conf: Conf):
         raise Exception("Solar energy production cannot be negative")
     if np.any(data.fixed_cons < 0):
         raise Exception("Energy consumption cannot be negative")
-        
+
+def _validate_conf(data: Data, conf: Conf):
+    data_len = _data_len(data)
+    
     if conf.battery_min < 0:
         raise Exception("Minimum battery level must be nonnegative")
     if data.battery_start < conf.battery_min:
@@ -57,6 +106,11 @@ def optimize(data: Data, conf: Conf):
         raise Exception("Battery charging power must be nonnegative")
     if conf.battery_discharging is not None and conf.battery_discharging < 0:
         raise Exception("Battery discharging power must be nonnegative")
+
+    if conf.battery_energy_loss < 0:
+        raise Exception("Battery energy loss must be nonnegative")
+    if conf.pv_energy_loss < 0:
+        raise Exception("PV energy loss must be nonnegative")
     
     if conf.cons_max_gap < 0:
         raise Exception("Consumption maximum gap must be nonnegative")
@@ -71,55 +125,15 @@ def optimize(data: Data, conf: Conf):
         raise Exception("Maximum grid buy must be nonnegative")
     if conf.sell_max is not None and conf.sell_max < 0:
         raise Exception("Maximum grid sell must be nonnegative")
-               
-    # x = [battery1, battery2, ...,  buy1, buy2, ..., sell1, sell2, ..., excess_cons1, excess_cons2, ..., cons1, cons2, ...]
-    # Set -eps as a weight for battery to prefer charging over consuming in the case of negative grid buy
-    c = np.concatenate((-np.ones(data_len)*1e-6, 
-                        data.grid_buy, 
-                        -data.grid_sell, 
-                        np.zeros(2*data_len)))
-    
-    A_ub, b_ub = get_ub(data, conf)
-    A_eq, b_eq = get_eq(data, conf)
-    bounds = get_bounds(data, conf)
-    
-    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
 
-    if not res.success:
-        raise Exception(res.message)
-    
-    res_cons = res.x[4*data_len:]
-    if np.max(data.cons) > 0:
-        cons_diff = data.cons - res_cons
-        idx = cons_diff < data.cons/2
-        res_cons[idx] = data.cons[idx]
-        res_cons[res_cons < data.cons] = 0
-        data.fixed_cons += res_cons
-        data.cons = np.zeros(data_len)
-        
-        A_ub, b_ub = get_ub(data, conf)
-        A_eq, b_eq = get_eq(data, conf)
-        bounds = get_bounds(data, conf)
-    
-        res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method='highs-ipm')
-    
-        if not res.success:
-            raise Exception(res.message)
-
-    return Result(battery=res.x[:data_len], 
-                  buy=res.x[data_len:2*data_len], 
-                  sell=res.x[2*data_len:3*data_len], 
-                  excess_cons=res.x[3*data_len:4*data_len],
-                  cons=res_cons)
-
-def get_ub(data: Data, conf: Conf):
-    data_len = len(data.pv_power)
+def _get_ub(data: Data, conf: Conf):
+    data_len = _data_len(data)
     
     # battery_min <= battery_start + sum(battery_i) <= battery_max
-    #A_ub = np.array([[-1, 0, 0, 0, 0, 0, 0, 0],
-    #                 [-1, -1, 0, 0, 0, 0, 0, 0],
-    #                 [1, 0, 0, 0, 0, 0, 0, 0],
-    #                 [1, 1, 0, 0, 0, 0, 0, 0]])
+    #A_ub = np.array([[-1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [-1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]])
 
     ones_triangle = np.tril(np.ones((data_len, data_len)))
     ones_triangle_pad = np.pad(ones_triangle, ((0, 0), (0, 4*data_len)))
@@ -143,24 +157,22 @@ def get_ub(data: Data, conf: Conf):
     
     return A_ub, b_ub
 
-def get_eq(data: Data, conf: Conf):
-    data_len = len(data.pv_power)
-
-    # battery_i + fixed_cons_i + cons_i + sell_i = pv_power_i + buy_i
-    # buy_i*sell_i = 0 (not used)
+def _get_eq(data: Data, conf: Conf):
+    data_len = _data_len(data)
+    
+    # battery_i + fixed_cons_i + excess_cons + cons_i + sell_i = pv_power_i + buy_i
     #A_eq = np.array([[1, 0, -1, 0, 1, 0, 1, 0, 1, 0],
     #                 [0, 1, 0, -1, 0, 1, 0, 1, 0, 1]])
-    A_eq = np.concatenate((np.identity(data_len), 
-                           -np.identity(data_len), 
-                           np.identity(data_len),
-                           np.identity(data_len),
-                           np.identity(data_len)), axis=1)
-    b_eq = data.pv_power-data.fixed_cons
+    id = np.identity(data_len)
+    battery_loss = 1-conf.battery_energy_loss
+    id_with_loss = id/battery_loss
+    A_eq = np.hstack((id, -id_with_loss, id_with_loss, id_with_loss, id_with_loss))
+    b_eq = data.pv_power*(1-conf.pv_energy_loss)*battery_loss - data.fixed_cons/battery_loss
     
     return A_eq, b_eq
 
-def get_bounds(data: Data, conf: Conf):
-    data_len = len(data.pv_power)
+def _get_bounds(data: Data, conf: Conf):
+    data_len = _data_len(data)
 
     if conf.battery_discharging is not None:
         discharging = -conf.battery_discharging
@@ -173,3 +185,6 @@ def get_bounds(data: Data, conf: Conf):
                              np.vstack((np.zeros(data_len), data.cons)).T))
 
     return bounds
+
+def _data_len(data: Data):
+    return len(data.pv_power)

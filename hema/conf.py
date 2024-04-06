@@ -10,3 +10,5 @@ class Conf:
     sell_max: float = None
     cons_off_total: int = 0
     cons_max_gap: int = 0
+    battery_energy_loss: float = 0
+    pv_energy_loss: float = 0
