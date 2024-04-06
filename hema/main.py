@@ -103,7 +103,7 @@ if __name__ == '__main__':
     output = np.vstack((np.datetime_as_string(pv_power[:n, 0].astype("datetime64[ns]"), unit='m'),
                         data.pv_forecast_power,
                         data.grid_import_price,
-                        (res.buy-res.sell), 
+                        (res.import_power-res.export_power), 
                         data.baseline_load_power,
-                        (np.cumsum(res.battery) + battery_start)/battery_max*100), dtype=(object)).T
-    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.0f", "%.2f", "%.0f", "%.0f", "%.0f"), header="time,PV power,price,grid buy,consumption,battery SOC")
+                        (np.cumsum(res.battery_power) + battery_start)/battery_max*100), dtype=(object)).T
+    np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.0f", "%.2f", "%.0f", "%.0f", "%.0f"), header="time,PV power,price,grid import_power,baseline load power,battery SOC")

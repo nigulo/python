@@ -36,11 +36,11 @@ def predict():
     
     res_dict = {
         "result": {
-            "battery": res.battery.tolist(),
-            "buy": res.buy.tolist(),
-            "sell": res.sell.tolist(),
+            "battery_power": res.battery_power.tolist(),
+            "import_power": res.import_power.tolist(),
+            "export_power": res.export_power.tolist(),
             "controllable_load_power": res.controllable_load_power.tolist(),
-            "excess_cons": res.excess_cons.tolist()
+            "excess_load_power": res.excess_load_power.tolist()
             }
         }
 

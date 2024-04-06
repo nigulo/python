@@ -10,8 +10,8 @@ def optimize(data: Data, conf: Conf):
                    
     data_len = _data_len(data)
 
-    # x = [battery1, battery2, ...,  buy1, buy2, ..., sell1, sell2, ..., excess_cons1, excess_cons2, ..., controllable_load_power1, controllable_load_power2, ...]
-    # Set -eps as a weight for battery to prefer charging over consuming in the case of negative grid buy
+    # x = [battery_power1, battery_power2, ...,  import_power1, import_power2, ..., export_power1, export_power2, ..., excess_load_power1, excess_load_power2, ..., controllable_load_power1, controllable_load_power2, ...]
+    # Set -eps as a weight for battery_power to prefer charging over consuming in the case of negative grid import_power
     c = np.concatenate((-np.ones(data_len)*1e-6, 
                         data.grid_import_price, 
                         -data.grid_export_price, 
@@ -44,10 +44,10 @@ def optimize(data: Data, conf: Conf):
         if not res.success:
             raise Exception(res.message)
 
-    return Result(battery=res.x[:data_len], 
-                  buy=res.x[data_len:2*data_len], 
-                  sell=res.x[2*data_len:3*data_len], 
-                  excess_cons=res.x[3*data_len:4*data_len],
+    return Result(battery_power=res.x[:data_len], 
+                  import_power=res.x[data_len:2*data_len], 
+                  export_power=res.x[2*data_len:3*data_len], 
+                  excess_load_power=res.x[3*data_len:4*data_len],
                   controllable_load_power=res_controllable_load_power)
 
 def _validate_data(data: Data):
@@ -117,13 +117,13 @@ def _validate_conf(data: Data, conf: Conf):
         raise Exception("PV energy loss must be nonnegative")
     
     if conf.max_hours_gap < 0:
-        raise Exception("Consumption maximum gap must be nonnegative")
+        raise Exception("Controllable load power maximum gap must be nonnegative")
     if conf.max_hours_gap > data_len:
-        raise Exception(f"Consumption maximum gap must be less than {data_len}")
+        raise Exception(f"Controllable load power maximum gap must be less than {data_len}")
     if conf.max_hours+conf.max_hours_gap > data_len:
-        raise Exception(f"Max hours plus max hours gap must less than or equal to {data_len}")
+        raise Exception(f"Controllable load power max hours plus max hours gap must less than or equal to {data_len}")
     if conf.max_hours > data_len:
-        raise Exception(f"Max hours must be less than or equal to {data_len}")
+        raise Exception(f"Controllable load power max hours must be less than or equal to {data_len}")
         
     if conf.import_max_power is not None and conf.import_max_power < 0:
         raise Exception("Maximum import power must be nonnegative")
@@ -161,8 +161,7 @@ def _get_ub(data: Data, conf: Conf):
         b_ub = np.concatenate((b_ub, np.repeat(battery_max-battery_start, data_len)))
     if np.max(data.controllable_load_power) > 0:
         if (conf.max_hours_gap > 0):
-            # In each interval of length max_hours_gap+1 there must be positive consumption
-            # sum(controllable_load_power_i, ... controllable_load_power_{i+max_hours_gap+1}) >= cons, where 0 <= i = n-max_hours_gap
+            # In each interval of length max_hours_gap+1 there must be positive controllable load power
             for i in range(data_len-conf.max_hours_gap):
                 A_ub = np.concatenate((A_ub, np.pad(-np.ones(conf.max_hours_gap+1), (4*data_len+i, data_len-i-conf.max_hours_gap-1)).reshape(1, -1)))
                 b_ub = np.concatenate((b_ub, np.array([-np.min(data.controllable_load_power[i:i+conf.max_hours_gap+1])])))
@@ -175,7 +174,7 @@ def _get_ub(data: Data, conf: Conf):
 def _get_eq(data: Data, conf: Conf):
     data_len = _data_len(data)
     
-    # battery_i + baseline_load_power_i + excess_cons + controllable_load_power_i + sell_i = pv_forecast_power_i + buy_i
+    # battery_i + baseline_load_power_i + excess_load_power + controllable_load_power_i + export_power_i = pv_forecast_power_i + import_power_i
     #A_eq = np.array([[1, 0, -1, 0, 1, 0, 1, 0, 1, 0],
     #                 [0, 1, 0, -1, 0, 1, 0, 1, 0, 1]])
     id = np.identity(data_len)

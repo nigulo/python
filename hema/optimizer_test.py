@@ -7,7 +7,7 @@ from result import Result
 
 class test_hema(unittest.TestCase):
 
-    def test_buy_eq_baseline_load_power(self):
+    def test_import_power_eq_baseline_load_power(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([2.0, 1.0, 0.5]), 
@@ -17,14 +17,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0]),
-                              buy=np.array([2.5, 1.4, 3.2]),
-                              sell=np.array([0, 0, 0]),
+        expected_res = Result(battery_power=np.array([0, 0, 0]),
+                              import_power=np.array([2.5, 1.4, 3.2]),
+                              export_power=np.array([0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_eq_sell_limited_buy_battery_max(self):
+    def test_battery_power_eq_export_power_limited_import_power_battery_max(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0]), 
                     grid_import_price=np.array([1.0, 1.1, 0.9]), 
                     grid_export_price=np.array([1.0, 1.1, 0.9]), 
@@ -34,14 +34,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, -10, 0]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 10, 0]),
+        expected_res = Result(battery_power=np.array([0, -10, 0]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 10, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_eq_sell(self):
+    def test_battery_power_eq_export_power(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0]), 
                     grid_import_price=np.array([1.1, 1.2, 0.9]), 
                     grid_export_price=np.array([1.0, 1.1, 0.9]), 
@@ -51,14 +51,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, -10, 0]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 10, 0]),
+        expected_res = Result(battery_power=np.array([0, -10, 0]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 10, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_plus_buy_eq_sell(self):
+    def test_battery_power_plus_import_power_eq_export_power(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0]), 
                     grid_import_price=np.array([1.0, 1.1, 0.9]), 
                     grid_export_price=np.array([1.0, 1.1, 0.9]), 
@@ -69,14 +69,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([10, -20, 0]),
-                              buy=np.array([10, 0, 0]),
-                              sell=np.array([0, 20, 0]),
+        expected_res = Result(battery_power=np.array([10, -20, 0]),
+                              import_power=np.array([10, 0, 0]),
+                              export_power=np.array([0, 20, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_plus_buy_eq_sell_with_limited_charging_power(self):
+    def test_battery_power_plus_import_power_eq_export_power_with_limited_charging_power(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0, 0, 0]), 
                     grid_import_price=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
                     grid_export_price=np.array([1.0, 1.2, 0.9, 1.1, 1.3]), 
@@ -89,14 +89,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([5, -6, 5, -2, -6]),
-                              buy=np.array([5, 0, 5, 0, 0]),
-                              sell=np.array([0, 6, 0, 2, 6]),
+        expected_res = Result(battery_power=np.array([5, -6, 5, -2, -6]),
+                              import_power=np.array([5, 0, 5, 0, 0]),
+                              export_power=np.array([0, 6, 0, 2, 6]),
                               controllable_load_power=np.array([0, 0, 0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_eq_baseline_load_power(self):
+    def test_battery_power_eq_baseline_load_power(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0]), 
                     grid_import_price=np.array([1.1, 2.2, 1.5]), 
                     grid_export_price=np.array([0, 0, 0]), 
@@ -106,14 +106,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([-2, -3, -5]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 0, 0]),
+        expected_res = Result(battery_power=np.array([-2, -3, -5]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_eq_baseline_load_power_plus_sell(self):
+    def test_battery_power_eq_baseline_load_power_plus_export_power(self):
         data = Data(pv_forecast_power=np.array([0, 0, 0]), 
                     grid_import_price=np.array([1.2, 1.3, 1.2]), 
                     grid_export_price=np.array([1.0, 1.1, 0.9]), 
@@ -123,11 +123,11 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([-2, -4, -4]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 2, 0]),
+        expected_res = Result(battery_power=np.array([-2, -4, -4]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 2, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_pv_forecast_power_eq_baseline_load_power(self):
@@ -140,14 +140,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 0, 0]),
+        expected_res = Result(battery_power=np.array([0, 0, 0]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_sell(self):
+    def test_pv_forecast_power_eq_export_power(self):
         data = Data(pv_forecast_power=np.array([4, 1, 3]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([2.0, 1.0, 0.5]), 
@@ -157,14 +157,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([4, 1, 3]),
+        expected_res = Result(battery_power=np.array([0, 0, 0]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([4, 1, 3]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_baseline_load_power_plus_sell(self):
+    def test_pv_forecast_power_eq_baseline_load_power_plus_export_power(self):
         data = Data(pv_forecast_power=np.array([4, 1, 3.1]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([2.0, 1.0, 0.5]), 
@@ -174,14 +174,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([1.5, 0, 0.1]),
+        expected_res = Result(battery_power=np.array([0, 0, 0]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([1.5, 0, 0.1]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery(self):
+    def test_pv_forecast_power_eq_battery_power(self):
         data = Data(pv_forecast_power=np.array([4, 1, 3]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([0, 0, 0]), 
@@ -192,14 +192,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([4, 1, 3]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 0, 0]),
+        expected_res = Result(battery_power=np.array([4, 1, 3]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery_plus_sell(self):
+    def test_pv_forecast_power_eq_battery_power_plus_export_power(self):
         data = Data(pv_forecast_power=np.array([4, 1, 10]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([1.9, 0.9, 0.5]), 
@@ -210,14 +210,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0.5, -0.5, 6.5]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([3.5, 1.5, 3.5]),
+        expected_res = Result(battery_power=np.array([0.5, -0.5, 6.5]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([3.5, 1.5, 3.5]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery_plus_baseline_load_power(self):
+    def test_pv_forecast_power_eq_battery_power_plus_baseline_load_power(self):
         data = Data(pv_forecast_power=np.array([1, 2, 2]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([1.9, 0.9, 0.4]), 
@@ -228,14 +228,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([-1, 0, 0]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 0, 0]),
+        expected_res = Result(battery_power=np.array([-1, 0, 0]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery_plus_baseline_load_power_zero_sell_price(self):
+    def test_pv_forecast_power_eq_battery_power_plus_baseline_load_power_zero_export_price(self):
         data = Data(pv_forecast_power=np.array([4, 1, 10]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([0, 0, 0]), 
@@ -245,14 +245,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([2, -1, 8]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([0, 0, 0]),
+        expected_res = Result(battery_power=np.array([2, -1, 8]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery_plus_baseline_load_power_plus_sell(self):
+    def test_pv_forecast_power_eq_battery_power_plus_baseline_load_power_plus_export_power(self):
         data = Data(pv_forecast_power=np.array([12, 1, 10]), 
                     grid_import_price=np.array([0.5, 2.0, 1.0]), 
                     grid_export_price=np.array([0.4, 1.9, 0.9]), 
@@ -264,14 +264,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([9, -9, -8]),
-                              buy=np.array([0, 0, 0]),
-                              sell=np.array([1, 7, 16]),
+        expected_res = Result(battery_power=np.array([9, -9, -8]),
+                              import_power=np.array([0, 0, 0]),
+                              export_power=np.array([1, 7, 16]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_plus_buy_eq_battery_plus_baseline_load_power_plus_sell(self):
+    def test_pv_forecast_power_plus_import_power_eq_battery_power_plus_baseline_load_power_plus_export_power(self):
         data = Data(pv_forecast_power=np.array([8, 1, 10]), 
                     grid_import_price=np.array([1.0, 2.0, 0.5]), 
                     grid_export_price=np.array([0.9, 1.9, 0.4]), 
@@ -281,11 +281,11 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([10, -20, 0]),
-                              buy=np.array([4, 0, 0]),
-                              sell=np.array([0, 18, 8]),
+        expected_res = Result(battery_power=np.array([10, -20, 0]),
+                              import_power=np.array([4, 0, 0]),
+                              export_power=np.array([0, 18, 8]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_buy_low_sell_high_with_battery(self):
@@ -299,11 +299,11 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([19.5, -19.9]),
-                              buy=np.array([19.5, 0]),
-                              sell=np.array([0, 19.9]),
+        expected_res = Result(battery_power=np.array([19.5, -19.9]),
+                              import_power=np.array([19.5, 0]),
+                              export_power=np.array([0, 19.9]),
                               controllable_load_power=np.array([0, 0]),
-                              excess_cons=np.array([0, 0]))        
+                              excess_load_power=np.array([0, 0]))        
         assert_result(res, expected_res)
     
     def test_buy_low_sell_high_with_pv_forecast_power_and_baseline_load_power(self):
@@ -317,14 +317,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([19.5, -19.9]),
-                              buy=np.array([18, 0]),
-                              sell=np.array([0, 20.5]),
+        expected_res = Result(battery_power=np.array([19.5, -19.9]),
+                              import_power=np.array([18, 0]),
+                              export_power=np.array([0, 20.5]),
                               controllable_load_power=np.array([0, 0]),
-                              excess_cons=np.array([0, 0]))        
+                              excess_load_power=np.array([0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_plus_buy_eq_baseline_load_power_plus_sell(self):
+    def test_pv_forecast_power_plus_import_power_eq_baseline_load_power_plus_export_power(self):
         data = Data(pv_forecast_power=np.array([4, 1, 3]), 
                     grid_import_price=np.array([2.0, 1.0, 0.5]), 
                     grid_export_price=np.array([2.0, 1.0, 0.5]), 
@@ -334,11 +334,11 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0]),
-                              buy=np.array([0, 0.4, 0.2]),
-                              sell=np.array([1.5, 0, 0]),
+        expected_res = Result(battery_power=np.array([0, 0, 0]),
+                              import_power=np.array([0, 0.4, 0.2]),
+                              export_power=np.array([1.5, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0]))        
         assert_result(res, expected_res)
 
     def test_neg_grid_import_price(self):
@@ -352,14 +352,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([-0.5, 2]),
-                              buy=np.array([0, 10]),
-                              sell=np.array([0, 0]),
+        expected_res = Result(battery_power=np.array([-0.5, 2]),
+                              import_power=np.array([0, 10]),
+                              export_power=np.array([0, 0]),
                               controllable_load_power=np.array([0, 0]),
-                              excess_cons=np.array([0, 7.6]))        
+                              excess_load_power=np.array([0, 7.6]))        
         assert_result(res, expected_res)
 
-    def test_controllable_load_power_off_at_high_buy_max_gap_2(self):
+    def test_controllable_load_power_off_at_high_import_power_max_gap_2(self):
         data = Data(grid_import_price=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]), 
                     grid_export_price=np.array([2.0, 1.0, 1.1, 0.5, 1.2, 2.3, 1.1]),
                     controllable_load_power=np.array([1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7]))
@@ -369,14 +369,14 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0, 0, 0, 0, 0]),
-                              buy=np.array([0, 1.7, 1.7, 1.7, 0, 0, 1.7]),
-                              sell=np.array([0, 0, 0, 0, 0, 0, 0]),
+        expected_res = Result(battery_power=np.array([0, 0, 0, 0, 0, 0, 0]),
+                              import_power=np.array([0, 1.7, 1.7, 1.7, 0, 0, 1.7]),
+                              export_power=np.array([0, 0, 0, 0, 0, 0, 0]),
                               controllable_load_power=np.array([0, 1.7, 1.7, 1.7, 0, 0, 1.7]),
-                              excess_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_controllable_load_power_off_at_high_buy_max_gap_1(self):
+    def test_controllable_load_power_off_at_high_import_power_max_gap_1(self):
         data = Data(grid_import_price=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
                     grid_export_price=np.array([1.6, 1.5, 1.6, 1.5, 1.1, 2.3, 1.3]), 
                     controllable_load_power=np.array([1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7]))
@@ -386,42 +386,42 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([0, 0, 0, 0, 0, 0, 0]),
-                              buy=np.array([0, 1.7, 0, 1.7, 1.7, 0, 1.7]),
-                              sell=np.array([0, 0, 0, 0, 0, 0, 0]),
+        expected_res = Result(battery_power=np.array([0, 0, 0, 0, 0, 0, 0]),
+                              import_power=np.array([0, 1.7, 0, 1.7, 1.7, 0, 1.7]),
+                              export_power=np.array([0, 0, 0, 0, 0, 0, 0]),
                               controllable_load_power=np.array([0, 1.7, 0, 1.7, 1.7, 0, 1.7]),
-                              excess_cons=np.array([0, 0, 0, 0, 0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0, 0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery_with_battery_energy_loss(self):
+    def test_pv_forecast_power_eq_battery_power_with_battery_energy_loss(self):
         data = Data(pv_forecast_power=np.array([10, 15, 21.1, 0]),
                     grid_import_price=np.array([1, 1, 1, 1]))
         conf = Conf(battery_energy_loss=0.08)
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([9.2, 13.8, 19.412, 0]),
-                              buy=np.array([0, 0, 0, 0]),
-                              sell=np.array([0, 0, 0, 0]),
+        expected_res = Result(battery_power=np.array([9.2, 13.8, 19.412, 0]),
+                              import_power=np.array([0, 0, 0, 0]),
+                              export_power=np.array([0, 0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_pv_forecast_power_eq_battery_with_pv_energy_loss(self):
+    def test_pv_forecast_power_eq_battery_power_with_pv_energy_loss(self):
         data = Data(pv_forecast_power=np.array([10, 15, 21.1, 0]),
                     grid_import_price=np.array([1, 1, 1, 1]))
         conf = Conf(pv_energy_loss=0.08)
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([9.2, 13.8, 19.412, 0]),
-                              buy=np.array([0, 0, 0, 0]),
-                              sell=np.array([0, 0, 0, 0]),
+        expected_res = Result(battery_power=np.array([9.2, 13.8, 19.412, 0]),
+                              import_power=np.array([0, 0, 0, 0]),
+                              export_power=np.array([0, 0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
-    def test_battery_eq_baseline_load_power_with_battery_energy_loss(self):
+    def test_battery_power_eq_baseline_load_power_with_battery_energy_loss(self):
         data = Data(grid_import_price=np.array([1, 1, 1, 1]),
                     baseline_load_power=np.array([1.5, 2.66, 2, 0]),
                     battery_current_soc=0.1)
@@ -431,19 +431,19 @@ class test_hema(unittest.TestCase):
 
         res = optimize(data, conf)
 
-        expected_res = Result(battery=np.array([-1.595745, -2.5, -2.12766, 0]),
-                              buy=np.array([0, 0.31, 0, 0]),
-                              sell=np.array([0, 0, 0, 0]),
+        expected_res = Result(battery_power=np.array([-1.595745, -2.5, -2.12766, 0]),
+                              import_power=np.array([0, 0.31, 0, 0]),
+                              export_power=np.array([0, 0, 0, 0]),
                               controllable_load_power=np.array([0, 0, 0, 0]),
-                              excess_cons=np.array([0, 0, 0, 0]))        
+                              excess_load_power=np.array([0, 0, 0, 0]))        
         assert_result(res, expected_res)
 
 def assert_result(res, expected_res):
-        np.testing.assert_array_almost_equal(res.battery, expected_res.battery)
-        np.testing.assert_array_almost_equal(res.buy, expected_res.buy)
-        np.testing.assert_array_almost_equal(res.sell, expected_res.sell)
+        np.testing.assert_array_almost_equal(res.battery_power, expected_res.battery_power)
+        np.testing.assert_array_almost_equal(res.import_power, expected_res.import_power)
+        np.testing.assert_array_almost_equal(res.export_power, expected_res.export_power)
         np.testing.assert_array_almost_equal(res.controllable_load_power, expected_res.controllable_load_power)
-        np.testing.assert_array_almost_equal(res.excess_cons, expected_res.excess_cons)
+        np.testing.assert_array_almost_equal(res.excess_load_power, expected_res.excess_load_power)
     
 
 if __name__ == '__main__':

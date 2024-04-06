@@ -3,8 +3,8 @@ import numpy as np
 
 @dataclass
 class Result:
-    battery: np.array
-    buy: np.array
-    sell: np.array
+    battery_power: np.array
+    import_power: np.array
+    export_power: np.array
     controllable_load_power: np.array
-    excess_cons: np.array
+    excess_load_power: np.array
