@@ -6,5 +6,5 @@ class Result:
     battery: np.array
     buy: np.array
     sell: np.array
-    cons: np.array
+    controllable_load_power: np.array
     excess_cons: np.array

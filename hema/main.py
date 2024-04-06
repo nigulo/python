@@ -79,29 +79,31 @@ if __name__ == '__main__':
     
     n_days = 1
     n = n_days*96//avg_n
-    data = Data(pv_power=pv_power[:n, 1], 
-                grid_buy=price[:n, 0], 
-                grid_sell=np.zeros(n),
-                fixed_cons=np.ones(n)*800, 
-                battery_start=15*1000/2)
-    conf = Conf(battery_min= 3*1000,
-                battery_max=15*1000,
-                battery_charging=5000*period,
-                battery_discharging=7000*period,
-                buy_max=16*220*3*period,
-                sell_max=10*1000*period,
-                cons_off_total=6*n_days,
-                cons_max_gap=2)
+    data = Data(pv_forecast_power=pv_power[:n, 1], 
+                grid_import_price=price[:n, 0], 
+                grid_export_price=np.zeros(n),
+                baseline_load_power=np.ones(n)*800, 
+                battery_current_soc=0.5)
+    conf = Conf(battery_capacity=15*1000,
+                battery_min_soc=0.2,
+                battery_max_soc=1.0,
+                battery_charge_power=5000*period,
+                battery_discharge_power=7000*period,
+                import_max_power=16*220*3*period,
+                export_max_power=10*1000*period,
+                max_hours=n//2,
+                max_hours_gap=2)
 
     print(data)
     print(conf)
 
     res = optimize(data, conf)
-
+    battery_start = conf.battery_capacity*data.battery_current_soc;
+    battery_max = conf.battery_capacity*conf.battery_max_soc;
     output = np.vstack((np.datetime_as_string(pv_power[:n, 0].astype("datetime64[ns]"), unit='m'),
-                        data.pv_power,
-                        data.grid_buy,
+                        data.pv_forecast_power,
+                        data.grid_import_price,
                         (res.buy-res.sell), 
-                        data.fixed_cons,
-                        (np.cumsum(res.battery) + data.battery_start)/conf.battery_max*100), dtype=(object)).T
+                        data.baseline_load_power,
+                        (np.cumsum(res.battery) + battery_start)/battery_max*100), dtype=(object)).T
     np.savetxt("output.csv", output, delimiter=",", fmt=("%s", "%.0f", "%.2f", "%.0f", "%.0f", "%.0f"), header="time,PV power,price,grid buy,consumption,battery SOC")

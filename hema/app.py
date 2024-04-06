@@ -39,7 +39,7 @@ def predict():
             "battery": res.battery.tolist(),
             "buy": res.buy.tolist(),
             "sell": res.sell.tolist(),
-            "cons": res.cons.tolist(),
+            "controllable_load_power": res.controllable_load_power.tolist(),
             "excess_cons": res.excess_cons.tolist()
             }
         }
@@ -50,26 +50,26 @@ def load_data(input):
     data = Data()
     data_dict = input["data"]
     
-    if "pv_power" in data_dict:
-        data.pv_power = np.asarray(data_dict["pv_power"])
-    if "grid_buy" in data_dict:
-        data.grid_buy = np.asarray(data_dict["grid_buy"])
-    if "grid_sell" in data_dict:
-        data.grid_sell = np.asarray(data_dict["grid_sell"])
-    if "cons" in data_dict:
-        cons = data_dict["cons"]
-        if type(cons) == list:
-            data.cons = np.asarray(cons)
+    if "pv_forecast_power" in data_dict:
+        data.pv_forecast_power = np.asarray(data_dict["pv_forecast_power"])
+    if "grid_import_price" in data_dict:
+        data.grid_import_price = np.asarray(data_dict["grid_import_price"])
+    if "grid_export_price" in data_dict:
+        data.grid_export_price = np.asarray(data_dict["grid_export_price"])
+    if "controllable_load_power" in data_dict:
+        controllable_load_power = data_dict["controllable_load_power"]
+        if type(controllable_load_power) == list:
+            data.controllable_load_power = np.asarray(controllable_load_power)
         else:
-            data.cons = cons
-    if "fixed_cons" in data_dict:
-        fixed_cons = data_dict["fixed_cons"]
-        if type(fixed_cons) == list:
-            data.fixed_cons = np.asarray(fixed_cons)
+            data.controllable_load_power = controllable_load_power
+    if "baseline_load_power" in data_dict:
+        baseline_load_power = data_dict["baseline_load_power"]
+        if type(baseline_load_power) == list:
+            data.baseline_load_power = np.asarray(baseline_load_power)
         else:
-            data.fixed_cons = fixed_cons
-    if "battery_start" in data_dict:
-        data.battery_start = data_dict["battery_start"]
+            data.baseline_load_power = baseline_load_power
+    if "battery_current_soc" in data_dict:
+        data.battery_current_soc = data_dict["battery_current_soc"]/100
     
     return data
 
@@ -80,26 +80,28 @@ def load_conf(input):
         return conf
 
     conf_dict = input["conf"]
-    if "battery_min" in conf_dict:
-        conf.battery_min = conf_dict["battery_min"]
-    if "battery_max" in conf_dict:
-        conf.battery_max = conf_dict["battery_max"]
-    if "battery_charging" in conf_dict:
-        conf.battery_charging = conf_dict["battery_charging"]
-    if "battery_discharging" in conf_dict:
-        conf.battery_discharging = conf_dict["battery_discharging"]
-    if "buy_max" in conf_dict:
-        conf.buy_max = conf_dict["buy_max"]
-    if "sell_max" in conf_dict:
-        conf.sell_max = conf_dict["sell_max"]
-    if "cons_off_total" in conf_dict:
-        conf.cons_off_total = conf_dict["cons_off_total"]
-    if "cons_max_gap" in conf_dict:
-        conf.cons_max_gap = conf_dict["cons_max_gap"]
+    if "battery_capacity" in conf_dict:
+        conf.battery_capacity = conf_dict["battery_capacity"]
+    if "battery_min_soc" in conf_dict:
+        conf.battery_min_soc = conf_dict["battery_min_soc"]/100
+    if "battery_max_soc" in conf_dict:
+        conf.battery_max_soc = conf_dict["battery_max_soc"]/100
+    if "battery_charge_power" in conf_dict:
+        conf.battery_charge_power = conf_dict["battery_charge_power"]
+    if "battery_discharge_power" in conf_dict:
+        conf.battery_discharge_power = conf_dict["battery_discharge_power"]
+    if "import_max_power" in conf_dict:
+        conf.import_max_power = conf_dict["import_max_power"]
+    if "export_max_power" in conf_dict:
+        conf.export_max_power = conf_dict["export_max_power"]
+    if "max_hours" in conf_dict:
+        conf.max_hours = conf_dict["max_hours"]
+    if "max_hours_gap" in conf_dict:
+        conf.max_hours_gap = conf_dict["max_hours_gap"]
     if "battery_energy_loss" in conf_dict:
-        conf.battery_energy_loss = conf_dict["battery_energy_loss"]
+        conf.battery_energy_loss = conf_dict["battery_energy_loss"]/100
     if "pv_energy_loss" in conf_dict:
-        conf.pv_energy_loss = conf_dict["pv_energy_loss"]
+        conf.pv_energy_loss = conf_dict["pv_energy_loss"]/100
 
     return conf
 

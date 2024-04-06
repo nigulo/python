@@ -2,13 +2,14 @@ from dataclasses import dataclass
 
 @dataclass
 class Conf:
-    battery_min: float = 0
-    battery_max: float = None
-    battery_charging: float = None
-    battery_discharging: float = None
-    buy_max: float = None
-    sell_max: float = None
-    cons_off_total: int = 0
-    cons_max_gap: int = 0
+    battery_capacity: float = None
+    battery_min_soc: float = 0
+    battery_max_soc: float = None
+    battery_charge_power: float = None
+    battery_discharge_power: float = None
+    import_max_power: float = None
+    export_max_power: float = None
+    max_hours: int = 0
+    max_hours_gap: int = 0
     battery_energy_loss: float = 0
     pv_energy_loss: float = 0

@@ -3,9 +3,9 @@ import numpy as np
 
 @dataclass
 class Data:
-    pv_power: np.array = None
-    grid_buy: np.array = None
-    grid_sell: np.array = None
-    cons: np.array = None
-    fixed_cons: np.array = None
-    battery_start: float = 0
+    pv_forecast_power: np.array = None
+    grid_import_price: np.array = None
+    grid_export_price: np.array = None
+    controllable_load_power: np.array = None
+    baseline_load_power: np.array = None
+    battery_current_soc: float = 0
