@@ -333,6 +333,13 @@ class plot:
 
         self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
         self.post_processing(ax)
+
+    def image(self, image, ax_index=None, interpolation=None):
+        ax = self.get_ax(ax_index)
+        im = ax.imshow(image, interpolation=interpolation)
+        self.ims[ax] = im
+        self.post_processing(ax)
+        
         
     def post_processing(self, ax):
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
