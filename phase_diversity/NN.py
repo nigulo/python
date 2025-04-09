@@ -28,6 +28,8 @@ FRAME_DEPENDENCE_NONE = 0
 FRAME_DEPENDENCE_GRU = 1
 FRAME_DEPENDENCE_TRANSFORMER = 2
 
+use_diversity = False
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1 or classname.find('Conv2d') != -1:
@@ -123,7 +125,7 @@ class NN(nn.Module):
         
     def save_state(self, state):
         date = datetime.datetime.now().strftime("%Y-%m-%dT%H")#:%M:%S.%f")
-        state_file = f"state{date}.tar"
+        state_file = f"state{date}_{state['val_loss']}.tar"
         torch.save(state, f"{self.dir_name}/{state_file}")
         state_file_link = f"{self.dir_name}/state.tar"
         try:
@@ -361,6 +363,12 @@ class NN(nn.Module):
     def forward(self, data):
 
         image_input, diversity_input, tt_mean, alphas_input = data
+        if not use_diversity:
+            #print(image_input.size(), diversity_input.size())
+            image_input = torch.cat([torch.unsqueeze(image_input[:, 0], dim=1), torch.unsqueeze(image_input[:, 0], dim=1)], dim=1)
+            diversity_input = torch.cat([torch.unsqueeze(diversity_input[:, 0], dim=1), torch.unsqueeze(diversity_input[:, 0], dim=1)], dim=1)
+            #print(image_input.size(), diversity_input.size())
+        n_frames = image_input.size()[0]#32
 
         x = image_input
         if self.use_neighbours:
@@ -371,18 +379,18 @@ class NN(nn.Module):
             x_f = psf_torch.fft(psf_torch.to_complex(x))
             x = torch.cat([x, x_f[..., 0], x_f[..., 1]], dim=1)
         elif self.input_type == INPUT_FOURIER_RATIO:
+            image_input = image_input[:n_frames]
+            diversity_input = diversity_input[:n_frames]
             x_f = psf_torch.fft(psf_torch.to_complex(x))
-            
             x = None
-            
             for ch_ind in np.arange(x_f.size()[1], step=2):
                 x_f_ch = x_f[:, ch_ind:ch_ind+2]
-            
+                
                 x_f_mean = torch.mean(x_f_ch, dim=[0, 1], keepdim=True)
                 #x_f = psf_torch.mul(x_f, psf_torch.to_complex(torch.from_numpy(self.filter2)).to(device, dtype=torch.float32))
                 eps = psf_torch.to_complex(torch.tensor(1e-10)).to(self.device, dtype=torch.float32)
-                x_f1 = psf_torch.div(x_f_ch[:, 0], x_f_mean[:, 0] + eps)
-                x_f2 = psf_torch.div(x_f_ch[:, 1], x_f_mean[:, 0] + eps)
+                x_f1 = psf_torch.div(x_f_ch[:n_frames, 0] + eps, x_f_mean[:n_frames, 0] + eps)
+                x_f2 = psf_torch.div(x_f_ch[:n_frames, 1] + eps, x_f_mean[:n_frames, 0] + eps)
 
                 #x_f3 = psf_torch.ifft(x_f1)
                 #x_f4 = psf_torch.ifft(x_f2)
@@ -392,7 +400,6 @@ class NN(nn.Module):
 
                 #x_f3 = torch.unsqueeze(x_f3, 1)
                 #x_f4 = torch.unsqueeze(x_f4, 1)
-    
                 x1 = torch.cat([x_f1[..., 0], x_f1[..., 1], x_f2[..., 0], x_f2[..., 1]], dim=1)
                 #x1 = torch.cat([x1, x_f3[..., 0], x_f3[..., 1], x_f4[..., 0], x_f4[..., 1]], dim=1)
                 if x is None:
@@ -540,6 +547,10 @@ class NN(nn.Module):
         diversity = torch.tensor(diversity).to(self.device, dtype=torch.float32)
         Ds = torch.tensor(Ds).to(self.device, dtype=torch.float32)
         #Ds = tf.reshape(tf.transpose(Ds, [0, 2, 3, 1, 4]), [num_objs, nx, nx, 2*num_frames])
+        if not use_diversity:
+            #print(image_input.size(), diversity_input.size())
+            Ds = torch.cat([torch.unsqueeze(Ds[:, 0], dim=1), torch.unsqueeze(Ds[:, 0], dim=1)], dim=1)
+            diversity = torch.cat([torch.unsqueeze(diversity[:, 0], dim=1), torch.unsqueeze(diversity[:, 0], dim=1)], dim=1)
         print("Ds", Ds.size())
         image_deconv, Ps, wf, loss = self.psf_test.deconvolve(Ds, alphas, diversity, do_fft=do_fft)
         return image_deconv, Ps, wf, loss
@@ -899,9 +910,7 @@ class NN(nn.Module):
         self.test = True
         batch_size = num_test_frames
         self.batch_size = batch_size
-        
-        #num_frames = Ds_.shape[1]
-        #num_objects = Ds_.shape[0]
+        #batch_size = self.batch_size
         
         Ds_test = Dataset([dataset], use_neighbours=self.use_neighbours)
 
@@ -943,7 +952,6 @@ class NN(nn.Module):
         min_loss_plot = None
         max_loss_plot = None
 
-    
         for i in range(Ds_test.length()):
             obj_index_i, obj, _, _ = Ds_test.get_obj_data(i)
             coords = Ds_test.get_coords()
@@ -986,6 +994,7 @@ class NN(nn.Module):
             wfs = []
             print("nums, dens, psf, wf", nums_conj.shape, dens.shape, psf.shape, wf.shape)
             if pred_alphas is not None:
+                coef = Ds_test.length()//pred_alphas.shape[0]
                 for j in range(i, Ds_test.length()):
                     obj_index_j, _, _, _ = Ds_test.get_obj_data(j)
                     if obj_index_j == obj_index_i:
@@ -997,16 +1006,16 @@ class NN(nn.Module):
                             #DF_d = fft.fft2(D_d)
                             Ds_.append(D)
                             #DFs.append(np.array([DF, DF_d]))
-                            alphas.append(pred_alphas[j, l*self.num_modes:(l+1)*self.num_modes])
-                            DP1 += np.sum(DF * psf_f_np[j].conj(), axis = 0)
+                            alphas.append(pred_alphas[j//coef, l*self.num_modes:(l+1)*self.num_modes])
+                            DP1 += np.sum(DF * psf_f_np[j//coef].conj(), axis = 0)
 
                         if j % batch_size == 0:
                             DP += nums_conj[j//batch_size]
                             PP += dens[j//batch_size]
                             DD += DDs[j//batch_size]
-                        psfs_f.append(psf_f[j])
-                        psfs.append(psf[j])
-                        wfs.append(wf[j])
+                        psfs_f.append(psf_f[j//coef])
+                        psfs.append(psf[j//coef])
+                        wfs.append(wf[j//coef])
             Ds_ = np.asarray(Ds_)
             #DFs = np.asarray(DFs, dtype="complex")
             alphas = np.asarray(alphas)
