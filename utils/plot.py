@@ -152,6 +152,8 @@ class plot:
                 return self.axes
         else:
             if isinstance(self.axes, (list, tuple, np.ndarray)):
+                print(self.axes)
+                print(ax_index)
                 return self.axes[ax_index]
             else:
                 assert(ax_index == 0)
@@ -309,9 +311,6 @@ class plot:
         else:
             self.show_colorbar = show_colorbar
         
-        self.set_default_cmap(cmap_name)
-        if self.get_default_cmap is None:
-            self.set_default_cmap("binary")
         if cmap_name is None:
             cmap = self.get_default_cmap()
         else:
@@ -366,10 +365,14 @@ class plot:
                 return self.current_row
         else:
             return 0
-        
-    def vectors(self, x1s, x2s, y1s, y2s, ax_index = [], units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
+   
+    def arrow(self, x, y, dx, dy, ax_index = None, **kwargs):
         ax = self.get_ax(ax_index)
-        q = ax.quiver(x1s, x2s, y1s, y2s, units=units, scale = scale, color = color)
+        ax.arrow(x, y, dx, dy, **kwargs)
+    
+    def vectors(self, X, Y, U, V, ax_index = None, units='width', scale=None, color = 'k', key = '', key_pos = 'E'):
+        ax = self.get_ax(ax_index)
+        q = ax.quiver(X, Y, U, V, units=units, scale = scale, color = color)
         if key is not None and key != '':
             ax.quiverkey(q, X=0.3, Y=1.1, U=10,
                  label=key, labelpos='E')
