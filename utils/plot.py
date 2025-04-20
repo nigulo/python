@@ -34,7 +34,7 @@ class plot:
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
         fig.set_size_inches(width*ncols, height*nrows)
         if title is not None:
-            fig.suptitle(title, fontsize=1.8*width)
+            fig.suptitle(title, fontsize=3.6*width)
         self.fig = fig
         self.axes = axes
         self.twin_x_axes = dict()
@@ -43,9 +43,9 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 1.6*width#max(width, height)
-        self.axis_label_font_size = 1.3*width#max(width, height)
-        self.axis_units_font_size = width#max(width, height)
+        self.axis_title_font_size = 3.2*width#max(width, height)
+        self.axis_label_font_size = 2.6*width#max(width, height)
+        self.axis_units_font_size = 2*width#max(width, height)
         self.nrows = nrows
         self.ncols = ncols
         self.width = width
@@ -157,7 +157,7 @@ class plot:
                 return self.axes[ax_index]
             else:
                 assert(ax_index == 0)
-                return self.axis
+                return self.axes
                 
     
     '''
