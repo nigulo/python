@@ -67,8 +67,8 @@ if __name__ == '__main__':
     rt = RaceTrack(track)
     mc = MC(rt.actions, rt.transitions, rt.b, rt.s0, state=load())
     if args.train:
-        for _ in tqdm(range(10), desc="Training"):
-            mc.train(gamma=1, n_episodes=100)
+        for _ in tqdm(range(100), desc="Training"):
+            mc.train(gamma=1, n_episodes=10)
             save(mc.get_state())
     q, pi = mc.get_result()
     
