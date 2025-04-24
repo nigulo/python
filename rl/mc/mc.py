@@ -33,11 +33,11 @@ class MC:
             as_ = []
             s = self.s0()
             while True:
-                states.append(s)
                 a, p = self.random_action(s)                
                 s_r = self.random_transition(s, a)
                 if not s_r:
                     break
+                states.append(s)
                 s, r = s_r
                 ps.append(p)
                 rs.append(r)
@@ -45,19 +45,22 @@ class MC:
             
             g = 0
             w = 1
-            for t, s in enumerate(states[::-1]):
-                g += gamma*g + rs[t]
-                c_s_a = c.get((s, a), 0) + w
-                c[(s, a)] = c_s_a
+            n = len(states) - 1
+            for i, s in enumerate(states[::-1]):
+                t = n - i
+                a_t = as_[t]
+                g = gamma*g + rs[t]
+                c_s_a = c.get((s, a_t), 0) + w
+                c[(s, a_t)] = c_s_a
                 q_s = q.get(s, {})
-                q_s_a = q_s.get(a, 0)
+                q_s_a = q_s.get(a_t, 0)
                 q_s_a += w/c_s_a*(g - q_s_a)
-                q_s[a] = q_s_a
+                q_s[a_t] = q_s_a
                 q[s] = q_s
                 a, w_s = list(zip(*q_s.items()))
                 a_max = a[np.argmax(w_s)]
                 pi[s] = a_max
-                if a_max != as_[t]:
+                if a_max != a_t:
                     break
                 w /= ps[t]
                 

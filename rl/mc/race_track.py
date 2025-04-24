@@ -32,10 +32,13 @@ class RaceTrack:
         x, y, v_x, v_y = s
         actions = set()
         for a_x in [-1, 0, 1]:
-            if 0 <= v_x + a_x <= 4:    
+            v_x1 = v_x + a_x
+            if 0 <= v_x1 <= 4:    
                 for a_y in [-1, 0, 1]:
-                    if 0 <= v_y + a_y <= 4:
-                        actions.add((a_x, a_y))
+                    v_y1 = v_y + a_y
+                    if -4 <= v_y1 <= 4:
+                        if v_x1 or v_y1:
+                            actions.add((a_x, a_y))
         return actions
 
     def transitions(self, s, a):
@@ -67,16 +70,18 @@ if __name__ == '__main__':
     rt = RaceTrack(track)
     mc = MC(rt.actions, rt.transitions, rt.b, rt.s0, state=load())
     if args.train:
-        for _ in tqdm(range(100), desc="Training"):
+        for _ in tqdm(range(10), desc="Training"):
             mc.train(gamma=1, n_episodes=10)
             save(mc.get_state())
     q, pi = mc.get_result()
-    
     s = rt.s0()
     result = np.array(track)
     while True:
         result[s[0], s[1]] = 4
-        s_r = mc.random_transition(s, pi.get(s, mc.random_action(s)[0]))
+        if s not in pi:
+            break
+        s_r = mc.random_transition(s, pi[s])
+        #s_r = mc.random_transition(s, pi.get(s, mc.random_action(s)[0]))
         if not s_r:
             break
         s, r = s_r
