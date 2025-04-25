@@ -65,13 +65,13 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--train', default=False, action='store_true')
     args = parser.parse_args()
     
-    track = np.genfromtxt("track1.txt", dtype=int, delimiter=1)[::-1]
+    track = np.genfromtxt("track2.txt", dtype=int, delimiter=1)[::-1]
     
     rt = RaceTrack(track)
     mc = MC(rt.actions, rt.transitions, rt.b, rt.s0, state=load())
     if args.train:
         for _ in tqdm(range(10), desc="Training"):
-            mc.train(gamma=1, n_episodes=10)
+            mc.train(gamma=1, n_episodes=10, discounting_aware=True)
             save(mc.get_state())
     q, pi = mc.get_result()
     s = rt.s0()

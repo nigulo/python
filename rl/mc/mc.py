@@ -18,10 +18,13 @@ class MC:
         self.s0 = s0
         self.state = state
         
-    def train(self, gamma=0.9, n_episodes=1000, eps=1e-7, random_initial_policy=False):
+    def train(self, gamma=0.9, n_episodes=1000, eps=1e-7, random_initial_policy=False, discounting_aware=False):
         q: Dict[int, Dict[int, float]] = {}        
         pi: Dict[int, int] = {}
         c: Dict[Tuple[int, int], float] = {}
+        if discounting_aware:
+            wg: Dict[Tuple[int, int], float] = {}
+
         episode = 0
         if self.state:
             q, pi, c, episode = self.state
@@ -43,26 +46,46 @@ class MC:
                 rs.append(r)
                 as_.append(a)
             
+            if discounting_aware:
+                w1 = [0]
+                wg1 = [0]
+                pass
             g = 0
             w = 1
             n = len(states) - 1
             for i, s in enumerate(states[::-1]):
                 t = n - i
                 a_t = as_[t]
-                g = gamma*g + rs[t]
-                c_s_a = c.get((s, a_t), 0) + w
-                c[(s, a_t)] = c_s_a
                 q_s = q.get(s, {})
                 q_s_a = q_s.get(a_t, 0)
-                q_s_a += w/c_s_a*(g - q_s_a)
+                if discounting_aware:
+                    c_s_a = c.get((s, a_t), 0) + (1 - gamma)*np.sum(w1) + w
+                    wg_s_a = wg.get((s, a_t), 0) + (1 - gamma)*np.sum(wg1) + w*g
+                    w1.append(w1[-1] + w)
+                    wg1.append(wg1[-1] + w*g)
+                    
+                    r = rs[t]
+                    rho = gamma/ps[t]
+                    g += r
+                    w *= rho 
+
+                    wg[(s, a)] = wg_s_a
+                    q_s_a = wg_s_a/c_s_a
+                else:
+                    g = gamma*g + rs[t]
+                    c_s_a = c.get((s, a_t), 0) + w
+                    q_s_a += w/c_s_a*(g - q_s_a)
+                    w /= ps[t]
+                c[(s, a_t)] = c_s_a
                 q_s[a_t] = q_s_a
                 q[s] = q_s
+                
+                
                 a, w_s = list(zip(*q_s.items()))
                 a_max = a[np.argmax(w_s)]
                 pi[s] = a_max
                 if a_max != a_t:
                     break
-                w /= ps[t]
                 
         self.state = q, pi, c, n_episodes
         return q, pi
