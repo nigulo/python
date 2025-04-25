@@ -68,10 +68,10 @@ if __name__ == '__main__':
     track = np.genfromtxt("track2.txt", dtype=int, delimiter=1)[::-1]
     
     rt = RaceTrack(track)
-    mc = MC(rt.actions, rt.transitions, rt.b, rt.s0, state=load())
+    mc = MC(rt.actions, rt.transitions, rt.b, rt.s0, state=load(), discounting_aware=True)
     if args.train:
-        for _ in tqdm(range(10), desc="Training"):
-            mc.train(gamma=1, n_episodes=10, discounting_aware=True)
+        for _ in tqdm(range(1), desc="Training"):
+            mc.train(gamma=1, n_episodes=100)
             save(mc.get_state())
     q, pi = mc.get_result()
     s = rt.s0()
