@@ -69,15 +69,16 @@ class MC:
 
                     c_s_a += one_minus_gamma*w_cumsum + w
                     wg_s_a = wg.get((s, a_t), 0) + one_minus_gamma*wg_cumsum + w_times_g
-                    
+
                     w_cumsum += w_sum + w
-                    w_sum += w
                     wg_cumsum += wg_sum + w_times_g
+                    w_sum += w
                     wg_sum += w_times_g
 
                     q_s_a = wg_s_a/c_s_a
                     w *= gamma/ps[t]
                     wg[(s, a_t)] = wg_s_a
+
                 else:
                     g = gamma*g + rs[t]
                     c_s_a += w

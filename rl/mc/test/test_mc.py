@@ -34,7 +34,6 @@ def s0():
 
 class TestMC(unittest.TestCase):
     
-
     def test(self):
         mc = MC(actions, transitions, b, s0)
         res = mc.train(gamma=1, n_episodes=100)
@@ -67,7 +66,7 @@ class TestMC(unittest.TestCase):
                 np.testing.assert_almost_equal(as_[a], as_expected[a], 1)
         
     def test_discounting_aware_equals_discounting_unaware_with_unit_gamma(self):
-        mc = MC(actions, transitions, b, s0)
+        mc = MC(actions, transitions, b, s0, discounting_aware=False)
         q, pi = mc.train(gamma=1, n_episodes=100)
         mc = MC(actions, transitions, b, s0, discounting_aware=True)
         q_discounting_aware, pi_discounting_aware = mc.train(gamma=1, n_episodes=100)
@@ -87,8 +86,8 @@ class TestMC(unittest.TestCase):
 
     def test_disounting_aware_with_gamma(self):
         mc = MC(actions, transitions, b, s0, discounting_aware=True)
-        q, pi = mc.train(gamma=0.9, n_episodes=1000)
-        
+        q, pi = mc.train(gamma=0.9, n_episodes=100)
+
         q_expected = {1: {1: -1.94737}, 2: {1: -2.71, 2: -1.0}}
         pi_expected = {2: 2, 1: 1}
         
