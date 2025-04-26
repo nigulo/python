@@ -31,12 +31,12 @@ class MC:
         if self.state:
             q, pi, c, wg, episode, discounting_aware = self.state
 
-        for _ in range(episode, episode + n_episodes):
+        for e in range(episode, episode + n_episodes):
             states = []
             ps = []
             rs = []
             as_ = []
-            s = self.s0()
+            s = self.s0(e)
             while True:
                 a, p = self._random_action(s)                
                 s_r = self._random_transition(s, a)

@@ -18,7 +18,7 @@ for x in range(N):
         for a in actions:
             if x == 0 and y == 0:
                 transitions[((x, y), a)] = [((x, y), 0, 0)]
-            elif x == 3 and y == 3:
+            elif x == N-1 and y == N-1:
                 transitions[((x, y), a)] = [((x, y), 0, 0)]
             elif a == LEFT:
                 if x == 0:
@@ -41,7 +41,7 @@ for x in range(N):
                 else:
                     transitions[((x, y), a)] = [((x, y+1), -1, 1)]
 
-class TestMC(unittest.TestCase):
+class TestDP(unittest.TestCase):
     
     def test(self):
                         

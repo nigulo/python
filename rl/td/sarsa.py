@@ -28,8 +28,8 @@ class Sarsa:
             
         pi = self.pi
 
-        for _ in range(episode, episode + n_episodes):
-            s = self.s0()
+        for e in range(episode, episode + n_episodes):
+            s = self.s0(e)
             a = self._get_action(s)                
             for step in range(max_steps):
                 s_r = self._random_transition(s, a)

@@ -1,7 +1,6 @@
 import sys
 sys.path.append("../")
 sys.path.append("../../..")
-import numpy as np
 
 from sarsa import Sarsa
 import utils.plot as plot
@@ -18,6 +17,7 @@ X_GOAL, Y_GOAL = 7, 3
 def actions(s):
     x, y = s
     actions = {(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)}
+    #actions = {(-1, 0), (0, -1), (0, 1), (1, 0)}
     if x == 0:
         actions = actions.difference({(-1, -1), (-1, 0), (-1, 1)})
     if y == 0:
@@ -43,7 +43,7 @@ def transitions(s, a):
 
 if __name__ == '__main__':                        
                     
-    sarsa = Sarsa(actions, transitions, (lambda: (X_START, Y_START)))
+    sarsa = Sarsa(actions, transitions, (lambda _: (X_START, Y_START)))
     q, pi = sarsa.train(n_episodes=100)
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))

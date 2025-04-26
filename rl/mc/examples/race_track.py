@@ -58,7 +58,7 @@ class RaceTrack:
         p = 1/len(actions)
         return [(a, p) for a in actions]
 
-    def s0(self):
+    def s0(self, _):
         x0, y0 = self.start[random.choice(len(self.start))]
         return x0, y0, 0, 0
 
@@ -76,17 +76,16 @@ if __name__ == '__main__':
             mc.train(gamma=1, n_episodes=100)
             save(mc.get_state())
     q, pi = mc.get_result()
-    s = rt.s0()
+    s = rt.s0(0)
     result = np.array(track)
     while True:
         result[s[0], s[1]] = 4
         if s not in pi:
             break
-        s_r = mc.random_transition(s, pi[s])
-        #s_r = mc.random_transition(s, pi.get(s, mc.random_action(s)[0]))
-        if not s_r:
+        transition = rt.transitions(s, pi[s])
+        if not transition:
             break
-        s, r = s_r
+        [(s, _, _)] = transition
         if not rt.on_track(s[0], s[1]):
             break
     print(result)

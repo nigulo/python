@@ -29,7 +29,7 @@ def b(s):
     p = 1/len(as_)
     return [(a, p) for a in as_]
 
-def s0():
+def s0(_):
     return STATE_1
 
 class TestMC(unittest.TestCase):
