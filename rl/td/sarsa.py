@@ -41,7 +41,7 @@ class Sarsa:
                 q_s_a += alpha*(r_prime + gamma*q.get((s_prime, a_prime), 0) - q_s_a)
                 q[(s, a)] = q_s_a
                 
-                if q_s_a > q.get((s, pi.get(s, a)), 0):
+                if q_s_a >= q.get((s, pi.get(s, a)), 0):
                     pi[s] = a
 
                 s = s_prime

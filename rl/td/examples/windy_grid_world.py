@@ -33,15 +33,18 @@ def transitions(s, a):
         return []
     x, y = s
     dx, dy = a
-    dy += WIND[x]
-    return [((x + dx, y + dy), -1, 1)]
+    y += dy
+    wind = WIND[x]
+    if y + wind < NY - 1:
+        y += wind
+    else:
+        y = NY - 1
+    return [((x + dx, y), -1, 1)]
 
 if __name__ == '__main__':                        
                     
     sarsa = Sarsa(actions, transitions, (lambda: (X_START, Y_START)))
-    q, pi = sarsa.train(n_episodes=1)
-    print(q)
-    print(pi)
+    q, pi = sarsa.train(n_episodes=100)
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))
     plt.set_axis_limits([0], limits=[[0, NX], [0, NY]])
@@ -57,14 +60,15 @@ if __name__ == '__main__':
                 plt.text(x+0.5, y+0.5, "G", size=20.0, ha="center", va="center")
 
     x, y = X_START, Y_START
-    for step in range(100_000):
+    for _ in range(NX*NY):
         if (x, y) == (X_GOAL, Y_GOAL):
             break
         if (x, y) not in pi:
             break
         a = pi[(x, y)]
-        [(x_prime, y_prime), _, _] = transitions((x, y), a)
+        [((x_prime, y_prime), _, _)] = transitions((x, y), a)
         plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, color='lightblue', linestyle='-', linewidth=1.5)
+        x, y = x_prime, y_prime
     
     plt.set_axis_ticks(None)
     plt.save("windy_grid_world.png")
