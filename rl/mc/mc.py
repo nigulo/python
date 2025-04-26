@@ -19,7 +19,7 @@ class MC:
         self.state = state
         self.discounting_aware = discounting_aware
         
-    def train(self, gamma=0.9, n_episodes=1000, eps=1e-7, random_initial_policy=False):
+    def train(self, gamma=0.9, n_episodes=1000):
         discounting_aware = self.discounting_aware
         q: Dict[int, Dict[int, float]] = {}        
         pi: Dict[int, int] = {}
@@ -38,8 +38,8 @@ class MC:
             as_ = []
             s = self.s0()
             while True:
-                a, p = self.random_action(s)                
-                s_r = self.random_transition(s, a)
+                a, p = self._random_action(s)                
+                s_r = self._random_transition(s, a)
                 if not s_r:
                     break
                 states.append(s)
@@ -96,12 +96,12 @@ class MC:
         self.state = q, pi, c, wg, n_episodes, discounting_aware
         return q, pi
     
-    def random_action(self, s):
+    def _random_action(self, s):
         a, p = list(zip(*self.b(s)))
         ind = np.argmax(np.cumsum(p) >= random.random())
         return a[ind], p[ind]
     
-    def random_transition(self, s, a):
+    def _random_transition(self, s, a):
         s_r_p = self.transitions(s, a)
         if not s_r_p:
             return None
