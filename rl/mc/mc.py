@@ -93,7 +93,7 @@ class MC:
                 pi[s] = a_max
                 if a_max != a_t:
                     break
-        self.state = q, pi, c, wg, n_episodes, discounting_aware
+        self.state = q, pi, c, wg, e, discounting_aware
         return q, pi
     
     def _random_action(self, s):

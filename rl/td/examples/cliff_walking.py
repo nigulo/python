@@ -41,10 +41,13 @@ def transitions(s, a):
 if __name__ == '__main__':                        
                     
     td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
-    q_sarsa, pi_sarsa = td.train(n_episodes=100, method=Method.SARSA)
+    q_sarsa, pi_sarsa = td.train(n_episodes=50, method=Method.SARSA)
     
     td.reset()
-    q_q_learning, pi_q_learning = td.train(n_episodes=100, method=Method.Q_LEARNING)
+    q_q_learning, pi_q_learning = td.train(n_episodes=50, method=Method.Q_LEARNING)
+
+    td.reset()
+    q_expected_sarsa, pi_expected_sarsa = td.train(n_episodes=50, method=Method.EXPECTED_SARSA)
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))
     plt.set_axis_limits([0], limits=[[0, NX], [0, NY]])
@@ -79,6 +82,17 @@ if __name__ == '__main__':
         a = pi_q_learning[(x, y)]
         [((x_prime, y_prime), _, _)] = transitions((x, y), a)
         plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, color='red', linestyle='-', linewidth=1.5)
+        x, y = x_prime, y_prime
+
+    x, y = X_START, Y_START
+    for _ in range(NX*NY):
+        if (x, y) == (X_GOAL, Y_GOAL):
+            break
+        if (x, y) not in pi_expected_sarsa:
+            break
+        a = pi_expected_sarsa[(x, y)]
+        [((x_prime, y_prime), _, _)] = transitions((x, y), a)
+        plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, color='green', linestyle=':', linewidth=1.5)
         x, y = x_prime, y_prime
     
     plt.set_axis_ticks(None)

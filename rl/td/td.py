@@ -8,6 +8,7 @@ import types
 class Method(Enum):
     SARSA = 0
     Q_LEARNING = 1
+    EXPECTED_SARSA = 2
 
 
 class TD:
@@ -17,47 +18,50 @@ class TD:
     #             transitions: Callable[[int, int], List[Tuple[int, float, float]]]], 
     #             b: Callable[int, List[Tuple[int, float]]]], 
     #             s0: Callable[[], int], 
-    def __init__(self, actions, transitions, s0, state=None, eps=0.1):
+    def __init__(self, actions, transitions, s0, b=None, state=None, eps=0.1):
         self.actions = actions
         self.transitions = transitions
         self.s0 = s0
+        self.b = b
         self.state = state
         self.eps = eps
+        
+        self.reset()
                 
-    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.Q_LEARNING):
-        if method not in {Method.SARSA, Method.Q_LEARNING}:
+    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA):
+        if method not in {Method.SARSA, Method.Q_LEARNING, Method.EXPECTED_SARSA}:
             print("Unsupported method")
             return
-        q: Dict[Tuple[int, int], float] = {}        
-        self.pi: Dict[int, int] = {}
 
-        episode = 0
-        if self.state:
-            q, self.pi, episode = self.state
-            
+        q = self.q            
         pi = self.pi
 
-        for e in range(episode, episode + n_episodes):
+        for e in range(self.episode, self.episode + n_episodes):
             s = self.s0(e)
-            a = self._get_action(s)                
+            a = self._get_b_action(s)
             for step in range(max_steps):
                 s_r = self._random_transition(s, a)
                 if not s_r:
                     break
                 s_prime, r_prime = s_r
-                a_prime = self._get_action(s_prime)
+                a_prime = self._get_b_action(s_prime)
                 q_s_a = q.get((s, a), 0)
                 if method == Method.SARSA:
-                    q_s_a += alpha*(r_prime + gamma*q.get((s_prime, a_prime), 0) - q_s_a)
+                    q_s_a_prime = q.get((s_prime, a_prime), 0)
+                elif method == Method.EXPECTED_SARSA:
+                    q_s_a_prime = 0
+                    actions, probs = self._get_actions_probs(s_prime)
+                    for i_a, a_prime2 in enumerate(actions):
+                        q_s_a_prime += probs[i_a]*q.get((s_prime, a_prime2), 0)
                 else: # Q_LEARNING
                     q_s_a_prime = -np.inf
                     for a_prime2 in self.actions(s_prime):
                         q_s_a_prime = max(q_s_a_prime, q.get((s_prime, a_prime2), 0))
-                    q_s_a += alpha*(r_prime + gamma*q_s_a_prime - q_s_a)
+                q_s_a += alpha*(r_prime + gamma*q_s_a_prime - q_s_a)
                     
                 q[(s, a)] = q_s_a
                 
-                if q_s_a >= q.get((s, pi.get(s, a)), 0):
+                if s not in pi or q_s_a > q.get((s, pi[s]), 0):
                     pi[s] = a
 
                 s = s_prime
@@ -65,21 +69,34 @@ class TD:
             if step == max_steps:
                 print("Maximum number of steps reached")
 
-        self.state = q, pi, n_episodes
+        self.episode = e
         return q, pi
     
-    def _pi0(self, s):
-        actions = self.actions(s)
-        p = 1/len(actions)
-        return [(a, p) for a in actions]
+    def _get_actions_probs(self, s):
+        actions = list(self.actions(s))
+        n_actions = len(actions)
+        norm = n_actions
+        a_pi_prob = 0
+        if s in self.pi:
+            a_pi_prob = self.eps
+            norm -= 1
+        probs = [(1-a_pi_prob)/norm]*n_actions
+        if a_pi_prob > 0:
+            probs[actions.index(self.pi[s])] = a_pi_prob
+        return actions, probs
     
-    def _get_action(self, s):
-        if random.random() < self.eps and s in self.pi:
-            return self.pi[s]
-        a, p = list(zip(*self._pi0(s)))
-        ind = np.argmax(np.cumsum(p) >= random.random())
-        return a[ind]
-
+    def _get_b_action(self, s):
+        if self.b is not None:
+            return self.b(s)
+        r = random.random()
+        if s in self.pi:
+            if r < self.eps:
+                return self.pi[s]
+        actions = self.actions(s)
+        r = int(len(actions)*r)
+        a = list(actions)[r]
+        return a 
+    
     def _random_transition(self, s, a):
         s_r_p = self.transitions(s, a)
         if not s_r_p:
@@ -89,14 +106,15 @@ class TD:
         return s[ind], r[ind]
 
     def get_state(self):
-        return self.state
+        return self.q, self.pi, self.episode
     
     def get_result(self):
-        q = {}        
-        pi = {}
-        if self.state:
-            q, pi, _ = self.state
-        return q, pi
+        return self.q, self.pi
     
     def reset(self):
-        self.state = None
+        if self.state:
+            self.q, self.pi, self.episode = self.state
+        else:
+            self.q: Dict[Tuple[int, int], float] = {}        
+            self.pi: Dict[int, int] = {}
+            self.episode = 0
