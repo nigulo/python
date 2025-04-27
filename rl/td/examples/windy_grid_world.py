@@ -2,7 +2,8 @@ import sys
 sys.path.append("../")
 sys.path.append("../../..")
 
-from sarsa import Sarsa
+from td import Method
+from td import TD
 import utils.plot as plot
 
 WIND = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
@@ -43,8 +44,8 @@ def transitions(s, a):
 
 if __name__ == '__main__':                        
                     
-    sarsa = Sarsa(actions, transitions, (lambda _: (X_START, Y_START)))
-    q, pi = sarsa.train(n_episodes=100)
+    td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
+    q, pi = td.train(n_episodes=100, method=Method.SARSA)
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))
     plt.set_axis_limits([0], limits=[[0, NX], [0, NY]])

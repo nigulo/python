@@ -1,10 +1,16 @@
 import numpy as np
 import numpy.random as random
+from enum import Enum
 
 from typing import List, Dict, Set, Tuple, Callable
 import types
 
-class Sarsa:
+class Method(Enum):
+    SARSA = 0
+    Q_LEARNING = 1
+
+
+class TD:
     
     #def __init__(self, 
     #             actions: Callable[int, Set[int]], 
@@ -18,7 +24,10 @@ class Sarsa:
         self.state = state
         self.eps = eps
                 
-    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000):
+    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.Q_LEARNING):
+        if method not in {Method.SARSA, Method.Q_LEARNING}:
+            print("Unsupported method")
+            return
         q: Dict[Tuple[int, int], float] = {}        
         self.pi: Dict[int, int] = {}
 
@@ -38,7 +47,14 @@ class Sarsa:
                 s_prime, r_prime = s_r
                 a_prime = self._get_action(s_prime)
                 q_s_a = q.get((s, a), 0)
-                q_s_a += alpha*(r_prime + gamma*q.get((s_prime, a_prime), 0) - q_s_a)
+                if method == Method.SARSA:
+                    q_s_a += alpha*(r_prime + gamma*q.get((s_prime, a_prime), 0) - q_s_a)
+                else: # Q_LEARNING
+                    q_s_a_prime = -np.inf
+                    for a_prime2 in self.actions(s_prime):
+                        q_s_a_prime = max(q_s_a_prime, q.get((s_prime, a_prime2), 0))
+                    q_s_a += alpha*(r_prime + gamma*q_s_a_prime - q_s_a)
+                    
                 q[(s, a)] = q_s_a
                 
                 if q_s_a >= q.get((s, pi.get(s, a)), 0):
@@ -63,7 +79,7 @@ class Sarsa:
         a, p = list(zip(*self._pi0(s)))
         ind = np.argmax(np.cumsum(p) >= random.random())
         return a[ind]
-    
+
     def _random_transition(self, s, a):
         s_r_p = self.transitions(s, a)
         if not s_r_p:
@@ -81,3 +97,6 @@ class Sarsa:
         if self.state:
             q, pi, _ = self.state
         return q, pi
+    
+    def reset(self):
+        self.state = None
