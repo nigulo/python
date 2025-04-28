@@ -78,7 +78,7 @@ class TD:
         norm = n_actions
         a_pi_prob = 0
         if s in self.pi:
-            a_pi_prob = self.eps
+            a_pi_prob = 1 - self.eps
             norm -= 1
         probs = [(1-a_pi_prob)/norm]*n_actions
         if a_pi_prob > 0:
@@ -90,8 +90,9 @@ class TD:
             return self.b(s)
         r = random.random()
         if s in self.pi:
-            if r < self.eps:
+            if r > self.eps:
                 return self.pi[s]
+            r /= self.eps
         actions = self.actions(s)
         r = int(len(actions)*r)
         a = list(actions)[r]

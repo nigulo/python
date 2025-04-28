@@ -38,16 +38,28 @@ def transitions(s, a):
         return [((X_START, Y_START), -100, 1)]
     return [((x, y), -1, 1)]
 
+def total_reward(pi):
+    reward = 0
+    s = X_START, Y_START
+    for _ in range(NX*NY):
+        if s == (X_GOAL, Y_GOAL):
+            return reward
+        if s not in pi:
+            break
+        [(s, r, _)] = transitions(s, pi[s])
+        reward += r
+    return -NX*NY*100
+
 if __name__ == '__main__':                        
                     
     td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
-    q_sarsa, pi_sarsa = td.train(n_episodes=50, method=Method.SARSA)
+    q_sarsa, pi_sarsa = td.train(n_episodes=1000, method=Method.SARSA)
     
     td.reset()
-    q_q_learning, pi_q_learning = td.train(n_episodes=50, method=Method.Q_LEARNING)
+    q_q_learning, pi_q_learning = td.train(n_episodes=1000, method=Method.Q_LEARNING)
 
     td.reset()
-    q_expected_sarsa, pi_expected_sarsa = td.train(n_episodes=50, method=Method.EXPECTED_SARSA)
+    q_expected_sarsa, pi_expected_sarsa = td.train(n_episodes=1000, method=Method.EXPECTED_SARSA)
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))
     plt.set_axis_limits([0], limits=[[0, NX], [0, NY]])
