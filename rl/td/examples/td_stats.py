@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import sys
 from tqdm import tqdm
 sys.path.append("../")
@@ -40,6 +41,8 @@ def transitions(s, a):
         return [((X_START, Y_START), -100, 1)]
     return [((x, y), -1, 1)]
 
+def b(s):
+    return random.choice(list(actions(s)))
 
 def total_reward(pi):
     reward = 0
@@ -54,7 +57,7 @@ def total_reward(pi):
     return -NX*NY*100
 
 if __name__ == '__main__':                        
-    n_episodes=100000
+    n_episodes=10000
     batch_size = 100
 
     alphas = np.arange(0.1, 1.1, step=0.1)
@@ -69,25 +72,25 @@ if __name__ == '__main__':
 
     t = tqdm(total=len(alphas)*3*n_episodes//batch_size, desc="Calculating stats")
     for i, alpha in enumerate(alphas):
-        td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
+        td = TD(actions, transitions, (lambda _: (X_START, Y_START)), eps=0.5)
         for _ in range(n_episodes//batch_size):
-            q, pi = td.train(n_episodes=batch_size, method=Method.SARSA)
+            q, pi = td.train(n_episodes=batch_size, method=Method.SARSA, alpha=alpha)
             interim_sarsa_rewards[i] += total_reward(pi)
 
             t.update()
         sarsa_rewards[i] = total_reward(pi)
         
-        td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
+        td = TD(actions, transitions, (lambda _: (X_START, Y_START)), eps=0.5)
         for _ in range(n_episodes//batch_size):
-            q, pi = td.train(n_episodes=batch_size, method=Method.Q_LEARNING)
+            q, pi = td.train(n_episodes=batch_size, method=Method.Q_LEARNING, alpha=alpha)
             interim_q_learning_rewards[i] += total_reward(pi)
             
             t.update()
         q_learning_rewards[i] = total_reward(pi)
     
-        td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
+        td = TD(actions, transitions, (lambda _: (X_START, Y_START)), eps=0.5)
         for _ in range(n_episodes//batch_size):
-            q, pi = td.train(n_episodes=batch_size, method=Method.EXPECTED_SARSA)
+            q, pi = td.train(n_episodes=batch_size, method=Method.EXPECTED_SARSA, alpha=alpha)
             interim_expected_sarsa_rewards[i] += total_reward(pi)
             
             t.update()
@@ -99,13 +102,13 @@ if __name__ == '__main__':
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(250, 150))
     
-    plt.plot(alphas, sarsa_rewards, "b-")    
-    plt.plot(alphas, q_learning_rewards, "r-")    
-    plt.plot(alphas, expected_sarsa_rewards, "g-")    
+    plt.plot(alphas, sarsa_rewards, "b-")
+    plt.plot(alphas, q_learning_rewards, "r-")
+    plt.plot(alphas, expected_sarsa_rewards, "g-")
 
     plt.plot(alphas, interim_sarsa_rewards, "bx:", ms=5)
     plt.plot(alphas, interim_q_learning_rewards, "ro:", ms=5)
-    plt.plot(alphas, interim_expected_sarsa_rewards, "g+:", ms=5)    
+    plt.plot(alphas, interim_expected_sarsa_rewards, "g+:", ms=5)
 
     plt.set_axis_labels(labels=[r"$\alpha$", "Total reward"])
     
