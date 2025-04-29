@@ -1,6 +1,7 @@
 import numpy as np
 import random
 from enum import Enum
+from collections import deque
 
 from typing import List, Dict, Set, Tuple, Callable
 import types
@@ -29,7 +30,7 @@ class TD:
         
         self.reset()
                 
-    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA):
+    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1):
         if method not in {Method.SARSA, Method.Q_LEARNING, Method.EXPECTED_SARSA}:
             print("Unsupported method")
             return
@@ -37,9 +38,18 @@ class TD:
         pi = self.pi
 
         for e in range(self.episode, self.episode + n_episodes):
+            rewards_buf = deque(maxlen=n_steps)
+            states_buf = deque(maxlen=n_steps)
+            actions_buf = deque(maxlen=n_steps)
+            gammas = gamma**np.arange(n_steps)
+            gamma_n = gamma**n_steps
+
             s = self.s0(e)
             a = self._get_b_action(s)
+
             for step in range(max_steps):
+                states_buf.append(s)
+                actions_buf.append(a)
                 if self.q2 is not None:
                     if bool(random.getrandbits(1)):
                         q = self.q
@@ -51,44 +61,54 @@ class TD:
                     q = self.q
                     q2 = self.q
                 s_r = self._random_transition(s, a)
+                if s_r:
+                    s_prime, r_prime = s_r
+                    rewards_buf.append(r_prime)
+                    a_prime = self._get_b_action(s_prime)
+                if step >= n_steps - 1 or not s_r:
+                    if s_r:
+                        if method == Method.SARSA:
+                            q_s_a_prime = q2.get((s_prime, a_prime), 0)
+                        elif method == Method.EXPECTED_SARSA:
+                            q_s_a_prime = 0
+                            actions, probs = self._get_pi_actions_probs(s_prime)
+                            for i_a, a_prime2 in enumerate(actions):
+                                q_s_a_prime += probs[i_a]*q2.get((s_prime, a_prime2), 0)
+                        else: # Q_LEARNING
+                            if self.q2 is None:
+                                q_s_a_prime = -np.inf
+                                for a_prime2 in self.actions(s_prime):
+                                    q_s_a_prime = max(q_s_a_prime, q.get((s_prime, a_prime2), 0))
+                            else:
+                                q_s_a_prime_max = -np.inf
+                                a_max = None
+                                for a_prime2 in self.actions(s_prime):
+                                    q_s_a_prime = q.get((s_prime, a_prime2), 0)
+                                    if q_s_a_prime > q_s_a_prime_max:
+                                        q_s_a_prime_max = q_s_a_prime
+                                        a_max = a_prime2
+                                q_s_a_prime = q2.get((s_prime, a_max), 0)
+                        g = np.sum(gammas[:len(rewards_buf)]*rewards_buf) + gamma_n*q_s_a_prime
+                    else:
+                        g = np.sum(gammas[:len(rewards_buf)-1]*np.asarray(rewards_buf)[:-1])
+
+                    s0 = states_buf[0]
+                    a0 = actions_buf[0]
+                    q_s_a = q.get((s0, a0), 0)
+                    q_s_a += alpha*(g - q_s_a)
+                        
+                    q[(s0, a0)] = q_s_a
+                    
+                    if s0 not in pi:
+                        pi[s0] = a0
+                    elif self.q2 is not None:
+                        q_s_a_2 = q2.get((s0, a0), 0)
+                        if q_s_a + q_s_a_2 > q.get((s0, pi[s0]), 0) + q2.get((s0, pi[s0]), 0):
+                            pi[s0] = a0
+                    elif q_s_a > q.get((s0, pi[s0]), 0):
+                        pi[s0] = a0
                 if not s_r:
                     break
-                s_prime, r_prime = s_r
-                a_prime = self._get_b_action(s_prime)
-                q_s_a = q.get((s, a), 0)
-                if method == Method.SARSA:
-                    q_s_a_prime = q2.get((s_prime, a_prime), 0)
-                elif method == Method.EXPECTED_SARSA:
-                    q_s_a_prime = 0
-                    actions, probs = self._get_pi_actions_probs(s_prime)
-                    for i_a, a_prime2 in enumerate(actions):
-                        q_s_a_prime += probs[i_a]*q2.get((s_prime, a_prime2), 0)
-                else: # Q_LEARNING
-                    if self.q2 is None:
-                        q_s_a_prime = -np.inf
-                        for a_prime2 in self.actions(s_prime):
-                            q_s_a_prime = max(q_s_a_prime, q.get((s_prime, a_prime2), 0))
-                    else:
-                        q_s_a_prime_max = -np.inf
-                        a_max = None
-                        for a_prime2 in self.actions(s_prime):
-                            q_s_a_prime = q.get((s_prime, a_prime2), 0)
-                            if q_s_a_prime > q_s_a_prime_max:
-                                q_s_a_prime_max = q_s_a_prime
-                                a_max = a_prime2
-                        q_s_a_prime = q2.get((s_prime, a_max), 0)
-                q_s_a += alpha*(r_prime + gamma*q_s_a_prime - q_s_a)
-                    
-                q[(s, a)] = q_s_a
-                
-                if s not in pi:
-                    pi[s] = a
-                elif self.q2 is not None:
-                    q_s_a_2 = q2.get((s, a), 0)
-                    if q_s_a + q_s_a_2 > q.get((s, pi[s]), 0) + q2.get((s, pi[s]), 0):
-                        pi[s] = a
-                elif q_s_a > q.get((s, pi[s]), 0):
-                    pi[s] = a
 
                 s = s_prime
                 a = a_prime
@@ -97,7 +117,7 @@ class TD:
 
         self.episode = e
         return q, pi
-    
+        
     def _get_pi_actions_probs(self, s):
         actions = list(self.actions(s))
         n_actions = len(actions)
@@ -108,6 +128,7 @@ class TD:
             norm -= 1
         probs = [(1-a_pi_prob)/norm]*n_actions
         if a_pi_prob > 0:
+            #print(s, actions, self.pi[s])
             probs[actions.index(self.pi[s])] = a_pi_prob
         return actions, probs
     
@@ -121,6 +142,7 @@ class TD:
             r /= self.eps
         actions = self.actions(s)
         r = int(len(actions)*r)
+        #print(s, list(actions), r)
         a = list(actions)[r]
         return a 
     

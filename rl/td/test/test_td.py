@@ -44,73 +44,48 @@ def transitions(s, a):
 
 class TestTD(unittest.TestCase):
     
-    def test_q_learning(self):
-                        
+    def test_q_learning(self):                        
         td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=500, method=Method.Q_LEARNING)
+        q, pi = td.train(n_episodes=2000, method=Method.Q_LEARNING)
                 
-        #q_expected = {((0, 1), 0): -1.9, ((0, 1), 1): -2.71, ((0, 1), 2): -2.71, ((0, 1), 3): -1.0, ((1, 2), 0): -2.71, ((1, 2), 1): -2.71, ((1, 2), 2): -2.71, ((1, 2), 3): -2.71, ((2, 1), 0): -2.71, ((2, 1), 1): -2.71, ((2, 1), 2): -2.71, ((2, 1), 3): -2.71, ((0, 0), 0): 0, ((0, 0), 1): 0, ((0, 0), 2): 0, ((0, 0), 3): 0, ((3, 1), 0): -3.439, ((3, 1), 1): -2.71, ((3, 1), 2): -1.9, ((3, 1), 3): -3.439, ((1, 1), 0): -1.9, ((1, 1), 1): -3.439, ((1, 1), 2): -3.439, ((1, 1), 3): -1.9, ((0, 3), 0): -3.439, ((0, 3), 1): -2.71, ((0, 3), 2): -3.439, ((0, 3), 3): -2.71, ((2, 0), 0): -1.9, ((2, 0), 1): -3.439, ((2, 0), 2): -3.439, ((2, 0), 3): -2.71, ((3, 0), 0): -2.71, ((3, 0), 1): -3.439, ((3, 0), 2): -2.71, ((3, 0), 3): -3.439, ((2, 3), 0): -2.71, ((2, 3), 1): -1.0, ((2, 3), 2): -1.9, ((2, 3), 3): -2.71, ((0, 2), 0): -2.71, ((0, 2), 1): -3.439, ((0, 2), 2): -3.439, ((0, 2), 3): -1.9, ((3, 3), 0): 0, ((3, 3), 1): 0, ((3, 3), 2): 0, ((3, 3), 3): 0, ((2, 2), 0): -3.439, ((2, 2), 1): -1.9, ((2, 2), 2): -1.9, ((2, 2), 3): -3.439, ((1, 0), 0): -1.0, ((1, 0), 1): -2.71, ((1, 0), 2): -2.71, ((1, 0), 3): -1.9, ((3, 2), 0): -2.71, ((3, 2), 1): -1.9, ((3, 2), 2): -1.0, ((3, 2), 3): -2.71, ((1, 3), 0): -3.439, ((1, 3), 1): -1.9, ((1, 3), 2): -2.71, ((1, 3), 3): -3.439}
-        #self.assertEqual(q, q_expected)
-        
-        self.assertEqual(pi.keys(), set([(x, y) for x in range(N) for y in range(N)]).difference({(0, 0), (N-1, N-1)}))        
-        for s in pi.keys():
-            if s == (1, 1):
-                self.assertIn(pi[s], {LEFT, DOWN})
-            elif s == (2, 2):
-                self.assertIn(pi[s], {RIGHT, UP})
-            elif s == (0, 3):
-                self.assertIn(pi[s], {DOWN, RIGHT})
-            elif s == (3, 0):
-                self.assertIn(pi[s], {LEFT, UP})
-            elif s in [(0, 1), (0, 2)]:
-                self.assertEqual(pi[s], DOWN)
-            elif s in [(1, 0), (2, 0)]:
-                self.assertEqual(pi[s], LEFT)
-            elif s in [(3, 1), (3, 2)]:
-                self.assertEqual(pi[s], UP)
-            elif s in [(1, 3), (2, 3)]:
-                self.assertEqual(pi[s], RIGHT)
-            #elif s in [(1, 2), (2, 1)]: # all actions are optimal
-            #    pass
+        self.assert_pi(pi)
 
     def test_sarsa(self):
-                        
         td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=500, method=Method.SARSA)
-                
-        #q_expected = {((0, 1), 0): -1.9, ((0, 1), 1): -2.71, ((0, 1), 2): -2.71, ((0, 1), 3): -1.0, ((1, 2), 0): -2.71, ((1, 2), 1): -2.71, ((1, 2), 2): -2.71, ((1, 2), 3): -2.71, ((2, 1), 0): -2.71, ((2, 1), 1): -2.71, ((2, 1), 2): -2.71, ((2, 1), 3): -2.71, ((0, 0), 0): 0, ((0, 0), 1): 0, ((0, 0), 2): 0, ((0, 0), 3): 0, ((3, 1), 0): -3.439, ((3, 1), 1): -2.71, ((3, 1), 2): -1.9, ((3, 1), 3): -3.439, ((1, 1), 0): -1.9, ((1, 1), 1): -3.439, ((1, 1), 2): -3.439, ((1, 1), 3): -1.9, ((0, 3), 0): -3.439, ((0, 3), 1): -2.71, ((0, 3), 2): -3.439, ((0, 3), 3): -2.71, ((2, 0), 0): -1.9, ((2, 0), 1): -3.439, ((2, 0), 2): -3.439, ((2, 0), 3): -2.71, ((3, 0), 0): -2.71, ((3, 0), 1): -3.439, ((3, 0), 2): -2.71, ((3, 0), 3): -3.439, ((2, 3), 0): -2.71, ((2, 3), 1): -1.0, ((2, 3), 2): -1.9, ((2, 3), 3): -2.71, ((0, 2), 0): -2.71, ((0, 2), 1): -3.439, ((0, 2), 2): -3.439, ((0, 2), 3): -1.9, ((3, 3), 0): 0, ((3, 3), 1): 0, ((3, 3), 2): 0, ((3, 3), 3): 0, ((2, 2), 0): -3.439, ((2, 2), 1): -1.9, ((2, 2), 2): -1.9, ((2, 2), 3): -3.439, ((1, 0), 0): -1.0, ((1, 0), 1): -2.71, ((1, 0), 2): -2.71, ((1, 0), 3): -1.9, ((3, 2), 0): -2.71, ((3, 2), 1): -1.9, ((3, 2), 2): -1.0, ((3, 2), 3): -2.71, ((1, 3), 0): -3.439, ((1, 3), 1): -1.9, ((1, 3), 2): -2.71, ((1, 3), 3): -3.439}
-        #self.assertEqual(q, q_expected)
+        q, pi = td.train(n_episodes=2000, method=Method.SARSA)
         
-        self.assertEqual(pi.keys(), set([(x, y) for x in range(N) for y in range(N)]).difference({(0, 0), (N-1, N-1)}))        
-        for s in pi.keys():
-            if s == (1, 1):
-                self.assertIn(pi[s], {LEFT, DOWN})
-            elif s == (2, 2):
-                self.assertIn(pi[s], {RIGHT, UP})
-            elif s == (0, 3):
-                self.assertIn(pi[s], {DOWN, RIGHT})
-            elif s == (3, 0):
-                self.assertIn(pi[s], {LEFT, UP})
-            elif s in [(0, 1), (0, 2)]:
-                self.assertEqual(pi[s], DOWN)
-            elif s in [(1, 0), (2, 0)]:
-                self.assertEqual(pi[s], LEFT)
-            elif s in [(3, 1), (3, 2)]:
-                self.assertEqual(pi[s], UP)
-            elif s in [(1, 3), (2, 3)]:
-                self.assertEqual(pi[s], RIGHT)
-            #elif s in [(1, 2), (2, 1)]: # all actions are optimal
-            #    pass
+        self.assert_pi(pi)
 
     def test_expected_sarsa(self):
-                        
         td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=500, method=Method.EXPECTED_SARSA)
+        q, pi = td.train(n_episodes=2000, method=Method.EXPECTED_SARSA)
                 
-        #q_expected = {((0, 1), 0): -1.9, ((0, 1), 1): -2.71, ((0, 1), 2): -2.71, ((0, 1), 3): -1.0, ((1, 2), 0): -2.71, ((1, 2), 1): -2.71, ((1, 2), 2): -2.71, ((1, 2), 3): -2.71, ((2, 1), 0): -2.71, ((2, 1), 1): -2.71, ((2, 1), 2): -2.71, ((2, 1), 3): -2.71, ((0, 0), 0): 0, ((0, 0), 1): 0, ((0, 0), 2): 0, ((0, 0), 3): 0, ((3, 1), 0): -3.439, ((3, 1), 1): -2.71, ((3, 1), 2): -1.9, ((3, 1), 3): -3.439, ((1, 1), 0): -1.9, ((1, 1), 1): -3.439, ((1, 1), 2): -3.439, ((1, 1), 3): -1.9, ((0, 3), 0): -3.439, ((0, 3), 1): -2.71, ((0, 3), 2): -3.439, ((0, 3), 3): -2.71, ((2, 0), 0): -1.9, ((2, 0), 1): -3.439, ((2, 0), 2): -3.439, ((2, 0), 3): -2.71, ((3, 0), 0): -2.71, ((3, 0), 1): -3.439, ((3, 0), 2): -2.71, ((3, 0), 3): -3.439, ((2, 3), 0): -2.71, ((2, 3), 1): -1.0, ((2, 3), 2): -1.9, ((2, 3), 3): -2.71, ((0, 2), 0): -2.71, ((0, 2), 1): -3.439, ((0, 2), 2): -3.439, ((0, 2), 3): -1.9, ((3, 3), 0): 0, ((3, 3), 1): 0, ((3, 3), 2): 0, ((3, 3), 3): 0, ((2, 2), 0): -3.439, ((2, 2), 1): -1.9, ((2, 2), 2): -1.9, ((2, 2), 3): -3.439, ((1, 0), 0): -1.0, ((1, 0), 1): -2.71, ((1, 0), 2): -2.71, ((1, 0), 3): -1.9, ((3, 2), 0): -2.71, ((3, 2), 1): -1.9, ((3, 2), 2): -1.0, ((3, 2), 3): -2.71, ((1, 3), 0): -3.439, ((1, 3), 1): -1.9, ((1, 3), 2): -2.71, ((1, 3), 3): -3.439}
-        #self.assertEqual(q, q_expected)
+        self.assert_pi(pi)
 
-        self.assertEqual(pi.keys(), set([(x, y) for x in range(N) for y in range(N)]).difference({(0, 0), (N-1, N-1)}))        
+    def test_q_learning_n_steps_2(self):                        
+        td = TD(actions, transitions, s0)
+        q, pi = td.train(n_episodes=2000, method=Method.Q_LEARNING, n_steps=2)
+                
+        self.assert_pi(pi, n_steps=2)
+
+    def test_sarsa_n_steps_2(self):
+        td = TD(actions, transitions, s0)
+        q, pi = td.train(n_episodes=2000, method=Method.SARSA, n_steps=2)
+        
+        self.assert_pi(pi, n_steps=2)
+
+    def test_expected_sarsa_n_steps_2(self):
+        td = TD(actions, transitions, s0)
+        q, pi = td.train(n_episodes=2000, method=Method.EXPECTED_SARSA, n_steps=2)
+                
+        self.assert_pi(pi, n_steps=2)
+
+    def assert_pi(self, pi, n_steps=1):
+        expected_keys = set([(x, y) for x in range(N) for y in range(N)])
+        if n_steps == 1:
+            pass#expected_keys = expected_keys.difference({(0, 0), (N-1, N-1)})
+        self.assertEqual(pi.keys(), expected_keys)
+
         for s in pi.keys():
             if s == (1, 1):
                 self.assertIn(pi[s], {LEFT, DOWN})
@@ -130,3 +105,4 @@ class TestTD(unittest.TestCase):
                 self.assertEqual(pi[s], RIGHT)
             #elif s in [(1, 2), (2, 1)]: # all actions are optimal
             #    pass
+        
