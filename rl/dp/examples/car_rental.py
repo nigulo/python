@@ -118,6 +118,14 @@ def get_transitions(s, a):
         return [((n1_prime, n2_prime, DAY), -MOVE_COST*abs(a), 1)]
     return [((n1, n2, DAY), -MOVE_COST*MAX_CARS_MOVE, 1)]
     
+def get_after_states(states):
+    after_states = set()
+    for s in states:
+        _, _, time = s
+        if time == NIGHT:
+            after_states.add(s)
+    return after_states
+    
 if __name__ == '__main__':
     transitions = load()
     if transitions is None:
@@ -129,11 +137,12 @@ if __name__ == '__main__':
         save(transitions)
 
     result = load("result")
+    states = States()
     if result is None:
         print("Optimizing...")
-        dp = DP(States(), get_actions, transitions)
+        dp = DP(states, get_actions, transitions, after_states=get_after_states(states))
         result = dp.solve()
-        save(result, "result")
+        #save(result, "result")
     v, q, pi = result
     
     policy = np.empty((MAX_CARS, MAX_CARS))
