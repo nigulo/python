@@ -38,7 +38,7 @@ class MC:
             as_ = []
             s = self.s0(e)
             while True:
-                a, p = self._random_action(s)                
+                a, p = self._random_action(s, e, pi)                
                 s_r = self._random_transition(s, a)
                 if not s_r:
                     break
@@ -96,8 +96,8 @@ class MC:
         self.state = q, pi, c, wg, e, discounting_aware
         return q, pi
     
-    def _random_action(self, s):
-        a, p = list(zip(*self.b(s)))
+    def _random_action(self, s, episode, pi):
+        a, p = self.b(s, episode, pi)
         ind = np.argmax(np.cumsum(p) >= random.random())
         return a[ind], p[ind]
     

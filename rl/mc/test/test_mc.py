@@ -24,10 +24,10 @@ def transitions(s, a, deterministic=True):
     else:
         return []
 
-def b(s):
-    as_ = actions(s)
-    p = 1/len(as_)
-    return [(a, p) for a in as_]
+def b(s, episode, pi):
+    a = list(actions(s))
+    n = len(a)
+    return a, [1/n]*n
 
 def s0(_):
     return STATE_1
