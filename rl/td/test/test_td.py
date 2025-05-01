@@ -82,8 +82,6 @@ class TestTD(unittest.TestCase):
 
     def assert_pi(self, pi, n_steps=1):
         expected_keys = set([(x, y) for x in range(N) for y in range(N)])
-        if n_steps == 1:
-            pass#expected_keys = expected_keys.difference({(0, 0), (N-1, N-1)})
         self.assertEqual(pi.keys(), expected_keys)
 
         for s in pi.keys():

@@ -41,15 +41,19 @@ class TD:
             rewards_buf = deque(maxlen=n_steps)
             states_buf = deque(maxlen=n_steps)
             actions_buf = deque(maxlen=n_steps)
+            rhos_buf = deque(maxlen=n_steps-1)
+
             gammas = gamma**np.arange(n_steps)
             gamma_n = gamma**n_steps
 
+
             s = self.s0(e)
-            a = self._get_b_action(s)
+            a, p = self._get_b_action(s)
 
             for step in range(max_steps):
                 states_buf.append(s)
                 actions_buf.append(a)
+                rhos_buf.append(1/p) if pi.get(s, a) == a else rhos_buf.append(0)
                 if self.q2 is not None:
                     if bool(random.getrandbits(1)):
                         q = self.q
@@ -64,7 +68,7 @@ class TD:
                 if s_r:
                     s_prime, r_prime = s_r
                     rewards_buf.append(r_prime)
-                    a_prime = self._get_b_action(s_prime)
+                    a_prime, p_prime = self._get_b_action(s_prime)
                 if step >= n_steps - 1 or not s_r:
                     if s_r:
                         if method == Method.SARSA:
@@ -95,7 +99,7 @@ class TD:
                     s0 = states_buf[0]
                     a0 = actions_buf[0]
                     q_s_a = q.get((s0, a0), 0)
-                    q_s_a += alpha*(g - q_s_a)
+                    q_s_a += alpha*np.product(rhos_buf)*(g - q_s_a)
                         
                     q[(s0, a0)] = q_s_a
                     
@@ -112,6 +116,7 @@ class TD:
 
                 s = s_prime
                 a = a_prime
+                p = p_prime
             if step == max_steps - 1:
                 print("Maximum number of steps reached")
 
@@ -133,18 +138,20 @@ class TD:
         return actions, probs
     
     def _get_b_action(self, s):
-        if self.b is not None:
-            return self.b(s)
         r = random.random()
+        if self.b is not None:
+            a, p = list(zip(*self.b(s)))
+            ind = np.argmax(np.cumsum(p) >= random.random())
+            return a[ind], p[ind]
         if s in self.pi:
             if r > self.eps:
-                return self.pi[s]
+                return self.pi[s], 1 - self.eps
             r /= self.eps
         actions = self.actions(s)
         r = int(len(actions)*r)
         #print(s, list(actions), r)
         a = list(actions)[r]
-        return a 
+        return a, self.eps
     
     def _random_transition(self, s, a):
         s_r_p = self.transitions(s, a)
