@@ -1,6 +1,7 @@
 import sys
 sys.path.append("../")
 sys.path.append("../../..")
+import numpy as np
 
 from td import Method
 from td import TD
@@ -14,6 +15,7 @@ NY = 7
 X_START, Y_START = 0, 3
 X_GOAL, Y_GOAL = 7, 3
 
+N_EPISODES = 1000
 
 def actions(s):
     x, y = s
@@ -42,10 +44,19 @@ def transitions(s, a):
         y = NY - 1
     return [((x + dx, y), -1, 1)]
 
+def b(s, episode, pi):
+    a = list(actions(s))
+    n = len(a)
+    if s in pi:
+        p_pi = min(0.9, max(0.1, episode/N_EPISODES))
+        p = [(1 - p_pi)/n]*n
+        return a + [pi[s]], p + [p_pi]
+    return a, [1/n]*n
+
 if __name__ == '__main__':                        
                     
-    td = TD(actions, transitions, (lambda _: (X_START, Y_START)))
-    q, pi = td.train(n_episodes=100, method=Method.SARSA)
+    td = TD(actions, transitions, (lambda _: (X_START, Y_START)), b=b)
+    q, pi = td.train(n_episodes=N_EPISODES, method=Method.EXPECTED_SARSA)
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))
     plt.set_axis_limits([0], limits=[[0, NX], [0, NY]])

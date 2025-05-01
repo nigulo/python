@@ -17,7 +17,7 @@ class TD:
     #def __init__(self, 
     #             actions: Callable[int, Set[int]], 
     #             transitions: Callable[[int, int], List[Tuple[int, float, float]]]], 
-    #             b: Callable[int, List[Tuple[int, float]]]], 
+    #             b: Callable[[int, int, Callable[int]], Tuple[List[int], List[float]]], 
     #             s0: Callable[[], int], 
     def __init__(self, actions, transitions, s0, b=None, state=None, eps=0.1, double=False):
         self.actions = actions
@@ -48,7 +48,7 @@ class TD:
 
 
             s = self.s0(e)
-            a, p = self._get_b_action(s)
+            a, p = self._get_b_action_prob(s, e)
 
             for step in range(max_steps):
                 states_buf.append(s)
@@ -68,7 +68,7 @@ class TD:
                 if s_r:
                     s_prime, r_prime = s_r
                     rewards_buf.append(r_prime)
-                    a_prime, p_prime = self._get_b_action(s_prime)
+                    a_prime, p_prime = self._get_b_action_prob(s_prime, e)
                 if step >= n_steps - 1 or not s_r:
                     if s_r:
                         if method == Method.SARSA:
@@ -133,14 +133,13 @@ class TD:
             norm -= 1
         probs = [(1-a_pi_prob)/norm]*n_actions
         if a_pi_prob > 0:
-            #print(s, actions, self.pi[s])
             probs[actions.index(self.pi[s])] = a_pi_prob
         return actions, probs
     
-    def _get_b_action(self, s):
+    def _get_b_action_prob(self, s, episode):
         r = random.random()
         if self.b is not None:
-            a, p = list(zip(*self.b(s)))
+            a, p = self.b(s, episode, self.pi)
             ind = np.argmax(np.cumsum(p) >= random.random())
             return a[ind], p[ind]
         if s in self.pi:
