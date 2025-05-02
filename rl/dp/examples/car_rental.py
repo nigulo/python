@@ -44,7 +44,7 @@ class States:
     def __iter__(self):
         return self
 
-    def __next__(self): # Python 2: def next(self)
+    def __next__(self):
         n1 = self.n1
         n2 = self.n2
         time = self.time

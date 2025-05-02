@@ -99,7 +99,7 @@ class TD:
                     s0 = states_buf[0]
                     a0 = actions_buf[0]
                     q_s_a = q.get((s0, a0), 0)
-                    q_s_a += alpha*np.product(rhos_buf)*(g - q_s_a)
+                    q_s_a += alpha*np.prod(rhos_buf)*(g - q_s_a)
                         
                     q[(s0, a0)] = q_s_a
                     
@@ -131,7 +131,10 @@ class TD:
         if s in self.pi:
             a_pi_prob = 1 - self.eps
             norm -= 1
-        probs = [(1-a_pi_prob)/norm]*n_actions
+        if norm > 0:
+            probs = [(1-a_pi_prob)/norm]*n_actions
+        else:
+            probs = [0]
         if a_pi_prob > 0:
             probs[actions.index(self.pi[s])] = a_pi_prob
         return actions, probs
