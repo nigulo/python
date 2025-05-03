@@ -30,7 +30,7 @@ class TD:
         
         self.reset()
                 
-    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1):
+    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
         if method not in {Method.SARSA, Method.Q_LEARNING, Method.EXPECTED_SARSA}:
             print("Unsupported method")
             return
@@ -42,6 +42,10 @@ class TD:
             states_buf = deque(maxlen=n_steps)
             actions_buf = deque(maxlen=n_steps)
             rhos_buf = deque(maxlen=n_steps-1)
+            sigmas_buf = deque(maxlen=n_steps-1)
+
+            pi_actions_buf = deque(maxlen=n_steps-1)
+            pi_probs_buf = deque(maxlen=n_steps-1)
 
             gammas = gamma**np.arange(n_steps)
             gamma_n = gamma**n_steps
@@ -53,7 +57,21 @@ class TD:
             for step in range(max_steps):
                 states_buf.append(s)
                 actions_buf.append(a)
-                rhos_buf.append(1/p) if pi.get(s, a) == a else rhos_buf.append(0)
+                sigma_step = sigma(step)
+                sigmas_buf.append(sigma_step)
+                
+                if sigma_step == 1:
+                    pi_actions_buf.append(None)
+                    pi_probs_buf.append(None)
+                else:
+                    pi_actions, pi_probs = self._get_pi_actions_probs(s)
+                    pi_actions_buf.append(pi_actions)
+                    pi_probs_buf.append(pi_probs)
+                if sigma_step == 0:
+                    rhos_buf.append(None)
+                else:
+                    rhos_buf.append(1/p) if pi.get(s, a) == a else rhos_buf.append(0)
+                
                 if self.q2 is not None:
                     if bool(random.getrandbits(1)):
                         q = self.q
@@ -69,6 +87,8 @@ class TD:
                     s_prime, r_prime = s_r
                     rewards_buf.append(r_prime)
                     a_prime, p_prime = self._get_b_action_prob(s_prime, e)
+                all_sigmas_one = np.all(np.array(sigmas_buf) == 1)
+                all_sigmas_zero = np.all(np.array(sigmas_buf) == 0)
                 if step >= n_steps - 1 or not s_r:
                     if s_r:
                         if method == Method.SARSA:
@@ -92,15 +112,28 @@ class TD:
                                         q_s_a_prime_max = q_s_a_prime
                                         a_max = a_prime2
                                 q_s_a_prime = q2.get((s_prime, a_max), 0)
-                        g = np.sum(gammas[:len(rewards_buf)]*rewards_buf) + gamma_n*q_s_a_prime
+                        if all_sigmas_one:
+                            g = np.sum(gammas[:len(rewards_buf)]*rewards_buf) + gamma_n*q_s_a_prime
+                        elif all_sigmas_zero:
+                            g = self._calc_g_sigma0(q_s_a_prime, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf)
+                        else:
+                            g = self._calc_g_sigma(q_s_a_prime, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf, sigmas_buf, rhos_buf)
+                            
                     else:
-                        g = np.sum(gammas[:len(rewards_buf)-1]*np.asarray(rewards_buf)[:-1])
+                        if all_sigmas_one:
+                            g = np.sum(gammas[:len(rewards_buf)-1]*np.asarray(rewards_buf)[:-1])
+                        elif all_sigmas_zero:
+                            g = self._calc_g_sigma0(None, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf)
+                        else:
+                            g = self._calc_g_sigma(None, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf, sigmas_buf, rhos_buf)
 
                     s0 = states_buf[0]
                     a0 = actions_buf[0]
                     q_s_a = q.get((s0, a0), 0)
-                    q_s_a += alpha*np.prod(rhos_buf)*(g - q_s_a)
-                        
+                    q_s_a_delta = alpha*(g - q_s_a)
+                    if all_sigmas_one:
+                        q_s_a_delta *= np.prod(rhos_buf)                        
+                    q_s_a += q_s_a_delta    
                     q[(s0, a0)] = q_s_a
                     
                     if s0 not in pi:
@@ -122,7 +155,49 @@ class TD:
 
         self.episode = e
         return q, pi
-        
+    
+    
+    def _calc_g_sigma0(self, q_s_a_prime, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf):
+        if q_s_a_prime is not None:
+            k_start = 2
+            g = rewards_buf[-1] + gamma*q_s_a_prime
+        else:
+            k_start = 3
+            g = rewards_buf[-2]
+        for k in range(len(rewards_buf) - k_start, 0, -1):
+            a_k = actions_buf[k]
+            prob_a_k = 0
+            g_l = 0
+            for l, a_k_l in enumerate(pi_actions_buf[k]):
+                if a_k_l == a_k:
+                    prob_a_k = pi_probs_buf[k][l]
+                    continue
+                g_l += pi_probs_buf[k][l]*q2.get((states_buf[k], a_k_l))
+            g += rewards_buf[k] + gamma*(g_l + prob_a_k*g)
+        return g
+
+    def _calc_g_sigma(self, q_s_a_prime, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf, sigmas_buf, rhos_buf):
+        if q_s_a_prime is not None:
+            k_start = 2
+            g = rewards_buf[-1] + gamma*q_s_a_prime
+        else:
+            k_start = 3
+            g = rewards_buf[-2]
+        for k in range(len(rewards_buf) - k_start, 0, -1):
+            a_k = actions_buf[k]
+            prob_a_k = 0
+            q_a_k = 0
+            g_l = 0
+            for l, a_k_l in enumerate(pi_actions_buf[k]):
+                q_a_k_l = q2.get((states_buf[k], a_k_l))
+                if a_k_l == a_k:
+                    prob_a_k = pi_probs_buf[k][l]
+                    q_a_k = q_a_k_l
+                g_l += pi_probs_buf[k][l]*q_a_k_l
+            sigma_k = sigmas_buf[k]
+            g += rewards_buf[k] + gamma*((sigma_k*rhos_buf[k] + (1-sigma_k)*prob_a_k)*(g - q_a_k) + g_l)
+        return g
+                
     def _get_pi_actions_probs(self, s):
         actions = list(self.actions(s))
         n_actions = len(actions)
