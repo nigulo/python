@@ -70,8 +70,10 @@ class TD:
                 if sigma_step == 0:
                     rhos_buf.append(None)
                 else:
-                    rhos_buf.append(1/p) if pi.get(s, a) == a else rhos_buf.append(0)
-                
+                    rho = (1-self.eps)/p if pi.get(s, a) == a else self.eps/p
+                    rhos_buf.append(rho)
+                    rhos_prod = np.prod(rhos_buf)
+
                 if self.q2 is not None:
                     if bool(random.getrandbits(1)):
                         q = self.q
@@ -113,7 +115,8 @@ class TD:
                                         a_max = a_prime2
                                 q_s_a_prime = q2.get((s_prime, a_max), 0)
                         if all_sigmas_one:
-                            g = np.sum(gammas[:len(rewards_buf)]*rewards_buf) + gamma_n*q_s_a_prime
+                            if rhos_prod:
+                                g = np.sum(gammas[:len(rewards_buf)]*rewards_buf) + gamma_n*q_s_a_prime
                         elif all_sigmas_zero:
                             g = self._calc_g_sigma0(q_s_a_prime, q2, gamma, rewards_buf, states_buf, actions_buf, pi_actions_buf, pi_probs_buf)
                         else:
@@ -130,11 +133,12 @@ class TD:
                     s0 = states_buf[0]
                     a0 = actions_buf[0]
                     q_s_a = q.get((s0, a0), 0)
-                    q_s_a_delta = alpha*(g - q_s_a)
-                    if all_sigmas_one:
-                        q_s_a_delta *= np.prod(rhos_buf)                        
-                    q_s_a += q_s_a_delta    
-                    q[(s0, a0)] = q_s_a
+                    if not all_sigmas_one or rhos_prod:
+                        q_s_a_delta = alpha*(g - q_s_a)
+                        if all_sigmas_one:
+                            q_s_a_delta *= rhos_prod
+                        q_s_a += q_s_a_delta    
+                        q[(s0, a0)] = q_s_a
                     
                     if s0 not in pi:
                         pi[s0] = a0
@@ -172,7 +176,7 @@ class TD:
                 if a_k_l == a_k:
                     prob_a_k = pi_probs_buf[k][l]
                     continue
-                g_l += pi_probs_buf[k][l]*q2.get((states_buf[k], a_k_l))
+                g_l += pi_probs_buf[k][l]*q2.get((states_buf[k], a_k_l), 0)
             g += rewards_buf[k] + gamma*(g_l + prob_a_k*g)
         return g
 
@@ -189,7 +193,7 @@ class TD:
             q_a_k = 0
             g_l = 0
             for l, a_k_l in enumerate(pi_actions_buf[k]):
-                q_a_k_l = q2.get((states_buf[k], a_k_l))
+                q_a_k_l = q2.get((states_buf[k], a_k_l), 0)
                 if a_k_l == a_k:
                     prob_a_k = pi_probs_buf[k][l]
                     q_a_k = q_a_k_l
