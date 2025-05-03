@@ -9,6 +9,8 @@ import matplotlib.colors as colors
 import matplotlib.ticker as ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.patches as patches
+from matplotlib.gridspec import GridSpec
+
 #import pyhdust.triangle as triangle
 import numpy as np
 
@@ -27,11 +29,31 @@ def default_size(nx, ny):
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True):
+    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True, ax_spans=None):
         if size is not None:
             width = size[0]
             height = size[1]
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
+        if ax_spans is None:
+            fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
+        else:
+            fig = plt.figure()
+
+            gs = GridSpec(nrows, ncols, figure=fig)
+            axes = np.empty((nrows, ncols), dtype="object")
+            for row in range(nrows):
+                for col in range(ncols):
+                    if (row, col) in ax_spans:
+                        row_span, col_span = ax_spans[(row, col)]
+                        ax = fig.add_subplot(gs[row:row+row_span+1, col:col+col_span+1])
+                        for r in range(row, row + row_span + 1):
+                            for c in range(col, col + col_span + 1):
+                                axes[r, c] = ax
+            for row in range(nrows):
+                for col in range(ncols):
+                    if axes[row, col]:
+                        continue
+                    ax = fig.add_subplot(gs[row:row+1, col:col+1])
+                    axes[row, col] = ax
         fig.set_size_inches(width*ncols, height*nrows)
         if title is not None:
             fig.suptitle(title, fontsize=3.6*width)
