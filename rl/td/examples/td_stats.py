@@ -57,7 +57,7 @@ def total_reward(pi):
     return -NX*NY*100
 
 if __name__ == '__main__':                        
-    n_episodes=10000
+    n_episodes = 10000
     batch_size = 100
 
     alphas = np.arange(0.1, 1.1, step=0.1)
@@ -72,25 +72,25 @@ if __name__ == '__main__':
 
     t = tqdm(total=len(alphas)*3*n_episodes//batch_size, desc="Calculating stats")
     for i, alpha in enumerate(alphas):
-        td = TD(actions, transitions, (lambda _: (X_START, Y_START)), eps=0.5)
+        td = TD(actions, transitions, eps=0.5)
         for _ in range(n_episodes//batch_size):
-            q, pi = td.train(n_episodes=batch_size, method=Method.SARSA, alpha=alpha)
+            q, pi = td.train((lambda _: (X_START, Y_START)), n_episodes=batch_size, method=Method.SARSA, alpha=alpha)
             interim_sarsa_rewards[i] += total_reward(pi)
 
             t.update()
         sarsa_rewards[i] = total_reward(pi)
         
-        td = TD(actions, transitions, (lambda _: (X_START, Y_START)), eps=0.5)
+        td = TD(actions, transitions, eps=0.5)
         for _ in range(n_episodes//batch_size):
-            q, pi = td.train(n_episodes=batch_size, method=Method.Q_LEARNING, alpha=alpha)
+            q, pi = td.train((lambda _: (X_START, Y_START)), n_episodes=batch_size, method=Method.Q_LEARNING, alpha=alpha)
             interim_q_learning_rewards[i] += total_reward(pi)
             
             t.update()
         q_learning_rewards[i] = total_reward(pi)
     
-        td = TD(actions, transitions, (lambda _: (X_START, Y_START)), eps=0.5)
+        td = TD(actions, transitions, eps=0.5)
         for _ in range(n_episodes//batch_size):
-            q, pi = td.train(n_episodes=batch_size, method=Method.EXPECTED_SARSA, alpha=alpha)
+            q, pi = td.train((lambda _: (X_START, Y_START)), n_episodes=batch_size, method=Method.EXPECTED_SARSA, alpha=alpha)
             interim_expected_sarsa_rewards[i] += total_reward(pi)
             
             t.update()

@@ -47,16 +47,16 @@ if __name__ == '__main__':
 
     t = tqdm(total=np.sum(n_episodes)*n_epochs*2, desc="Calculating")
     for i, ne in enumerate(n_episodes):
-        td = TD(actions, transitions, (lambda _: STATE_A))
+        td = TD(actions, transitions)
         for _ in range(n_epochs):
-            q, pi = td.train(n_episodes=ne, method=Method.Q_LEARNING)
+            q, pi = td.train((lambda _: STATE_A), n_episodes=ne, method=Method.Q_LEARNING)
             [(s, _, _)] = transitions(STATE_A, pi[STATE_A])
             lefts[i] += (s == STATE_B)
             t.update(ne)
 
-        td = TD(actions, transitions, (lambda _: STATE_A), double=True)
+        td = TD(actions, transitions, double=True)
         for _ in range(n_epochs):
-            q, pi = td.train(n_episodes=ne, method=Method.Q_LEARNING)
+            q, pi = td.train((lambda _: STATE_A), n_episodes=ne, method=Method.Q_LEARNING)
             [(s, _, _)] = transitions(STATE_A, pi[STATE_A])
             double_lefts[i] += (s == STATE_B)
             t.update(ne)

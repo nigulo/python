@@ -45,38 +45,38 @@ def transitions(s, a):
 class TestTD(unittest.TestCase):
     
     def test_q_learning(self):                        
-        td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=2000, method=Method.Q_LEARNING)
+        td = TD(actions, transitions)
+        q, pi = td.train(s0, n_episodes=2000, method=Method.Q_LEARNING)
                 
         self.assert_pi(pi)
 
     def test_sarsa(self):
-        td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=2000, method=Method.SARSA)
+        td = TD(actions, transitions)
+        q, pi = td.train(s0, n_episodes=2000, method=Method.SARSA)
         
         self.assert_pi(pi)
 
     def test_expected_sarsa(self):
-        td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=2000, method=Method.EXPECTED_SARSA)
+        td = TD(actions, transitions)
+        q, pi = td.train(s0, n_episodes=2000, method=Method.EXPECTED_SARSA)
                 
         self.assert_pi(pi)
 
     def test_q_learning_n_steps_2(self):                        
-        td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=2000, method=Method.Q_LEARNING, n_steps=2)
+        td = TD(actions, transitions)
+        q, pi = td.train(s0, n_episodes=2000, method=Method.Q_LEARNING, n_steps=2)
                 
         self.assert_pi(pi, n_steps=2)
 
     def test_sarsa_n_steps_2(self):
-        td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=2000, method=Method.SARSA, n_steps=2)
+        td = TD(actions, transitions)
+        q, pi = td.train(s0, n_episodes=2000, method=Method.SARSA, n_steps=2)
         
         self.assert_pi(pi, n_steps=2)
 
     def test_expected_sarsa_n_steps_2(self):
-        td = TD(actions, transitions, s0)
-        q, pi = td.train(n_episodes=2000, method=Method.EXPECTED_SARSA, n_steps=2)
+        td = TD(actions, transitions)
+        q, pi = td.train(s0, n_episodes=2000, method=Method.EXPECTED_SARSA, n_steps=2)
                 
         self.assert_pi(pi, n_steps=2)
 

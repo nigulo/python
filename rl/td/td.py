@@ -19,10 +19,9 @@ class TD:
     #             transitions: Callable[[int, int], List[Tuple[int, float, float]]]], 
     #             b: Callable[[int, int, Callable[int]], Tuple[List[int], List[float]]], 
     #             s0: Callable[[], int], 
-    def __init__(self, actions, transitions, s0, b=None, state=None, eps=0.1, double=False):
+    def __init__(self, actions, transitions, b=None, state=None, eps=0.1, double=False):
         self.actions = actions
         self.transitions = transitions
-        self.s0 = s0
         self.b = b
         self.state = state
         self.eps = eps
@@ -30,21 +29,21 @@ class TD:
         
         self.reset()
                 
-    def train(self, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
+    def train(self, s0, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
         for e in range(self.episode, self.episode + n_episodes):
-            s, a, p = self.start_episode(e, gamma, n_steps)
+            s, a_p = self.start_episode(e, gamma, n_steps, s0=s0)
             for step in range(max_steps):
-                s_a_p = self.step(e, step, (s, a, p), gamma, alpha, method, n_steps, sigma)
-                if not s_a_p:
+                s_r_a_p = self.step(e, step, (s, a_p), gamma, alpha, method, n_steps, sigma)
+                if not s_r_a_p:
                     break
-                s, a, p = s_a_p
+                s, r, a_p = s_r_a_p
             if step == max_steps - 1:
                 print("Maximum number of steps reached")
 
         self.episode = e
         return self.q, self.pi
-    
-    def start_episode(self, episode, gamma, n_steps):
+        
+    def start_episode(self, episode, gamma=0.9, n_steps=1, s0=None):
         self.rewards_buf = deque(maxlen=n_steps)
         self.states_buf = deque(maxlen=n_steps)
         self.actions_buf = deque(maxlen=n_steps)
@@ -57,13 +56,13 @@ class TD:
         self.gammas = gamma**np.arange(n_steps)
         self.gamma_n = gamma**n_steps
 
-        s = self.s0(episode)
-        a, p = self._get_b_action_prob(s, episode)
-
-        return s, a, p
+        if s0:
+            s = s0(episode)
+            a, p = self._get_b_action_prob(s, episode)
+            return s, (a, p)
     
     def step(self, episode, step, s_a_p, gamma=0.9, alpha=0.1, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
-        s, a, p = s_a_p
+        s, (a, p) = s_a_p
         self.states_buf.append(s)
         self.actions_buf.append(a)
         sigma_step = sigma(step)
@@ -160,7 +159,7 @@ class TD:
         if not s_r:
             return None
 
-        return s_prime, a_prime, p_prime
+        return s_prime, r_prime, (a_prime, p_prime)
     
     def _calc_g_sigma0(self, q_s_a_prime, q2, gamma):
         if q_s_a_prime is not None:
@@ -246,8 +245,14 @@ class TD:
     def get_state(self):
         return self.q, self.pi, self.episode, self.q2
     
+    def set_state(self, state):
+        self.q, self.pi, self.episode, self.q2 = state
+    
     def get_result(self):
         return self.q, self.pi
+
+    def get_episode(self):
+        return self.episode
     
     def reset(self):
         if self.state:

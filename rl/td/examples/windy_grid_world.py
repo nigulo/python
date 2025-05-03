@@ -58,8 +58,8 @@ def b(s, episode, pi):
 
 if __name__ == '__main__':                        
                     
-    td = TD(actions, transitions, (lambda _: (X_START, Y_START)), b=b)
-    q, pi = td.train(n_episodes=N_EPISODES, method=Method.EXPECTED_SARSA, n_steps=2, sigma=(lambda _: random.random()))
+    td = TD(actions, transitions, b=b)
+    q, pi = td.train((lambda _: (X_START, Y_START)), n_episodes=N_EPISODES, method=Method.EXPECTED_SARSA, n_steps=2, sigma=(lambda _: random.random()))
 
     plt = plot.plot(nrows=1, ncols=1, size=plot.default_size(NX*25, NY*25))
     plt.set_axis_limits([0], limits=[[0, NX], [0, NY]])
