@@ -132,7 +132,8 @@ class TD:
                     
             else:
                 if all_sigmas_one:
-                    g = np.sum(self.gammas[:len(self.rewards_buf)-1]*np.asarray(self.rewards_buf)[:-1])
+                    if rhos_prod:
+                        g = np.sum(self.gammas[:len(self.rewards_buf)-1]*np.asarray(self.rewards_buf)[:-1])
                 elif all_sigmas_zero:
                     g = self._calc_g_sigma0(None, q2, gamma)
                 else:
