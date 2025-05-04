@@ -33,6 +33,14 @@ MAZE_2 = np.array([
         [1, 1, 1, 1, 1, 1, 1, 1, 1],
         [1, 1, 1, 2, 1, 1, 1, 1, 1]])[::-1,::]
 
+MAZE_3 = np.array([
+        [1, 1, 1, 1, 1, 1, 1, 1, 3],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 2, 1, 1, 1, 1, 1]])[::-1,::]
+
 MAZE = MAZE_1
 NX = MAZE.shape[1]
 NY = MAZE.shape[0]
@@ -83,14 +91,14 @@ def b(s, episode, pi):
     a = list(actions(s))
     n = len(a)
     if s in pi:
-        p_pi = 0.1#min(0.9, max(0.1, episode/N_EPISODES))
+        p_pi = 0.5#min(0.9, max(0.1, episode/N_EPISODES))
         p = [(1 - p_pi)/n]*n
         return a + [pi[s]], p + [p_pi]
     return a, [1/n]*n
 
 if __name__ == '__main__':                        
-    dyna = Dyna(actions, transitions, b=b)
-    q, pi = dyna.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=6, method=Method.Q_LEARNING)
+    #dyna = Dyna(actions, transitions, b=b)
+    #q, pi = dyna.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=6, method=Method.Q_LEARNING)
     #td = TD(actions, transitions, b=b)
     #q, pi = td.train((lambda _: (X_START, Y_START)), gamma=0.95, n_episodes=20, method=Method.Q_LEARNING)
 
@@ -115,35 +123,44 @@ if __name__ == '__main__':
     rewards = []
     time_steps = []
 
-    dyna_plus = Dyna(actions, transitions, b=b, kappa=1e-3)
+    dyna_plus = Dyna(actions, transitions, b=b, kappa=1)
     rewards_plus = []
     time_steps_plus = []
     
+    MAZE = MAZE_1
     num_steps = 200
+    change_point = 100
     ax = [0, 0]
     for i in range(num_steps):
-        if i == num_steps//2:
+        if i == change_point:
             MAZE = MAZE_2
             ax = [0, 1]
-        for d, rs, ts, draw in [(dyna, rewards, time_steps, False), (dyna_plus, rewards_plus, time_steps_plus, True)]:
+        for d, rs, ts, color in [(dyna, rewards, time_steps, "b"), (dyna_plus, rewards_plus, time_steps_plus, "r")]:
             q, pi = d.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=1, method=Method.Q_LEARNING)
+            #if draw:
+            #    print(q)
     
             x, y = x_y_start()
+            r = 0
             for t in range(NX*NY):
                 if (x, y) == x_y_goal():
+                    r = np.sqrt(NX*NY)/t
                     break
                 if (x, y) not in pi:
                     break
                 a = pi[(x, y)]
-                [((x_prime, y_prime), r, _)] = transitions((x, y), a)
-                if draw and (i == num_steps//2 - 1 or i == num_steps - 1):
-                    plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, ax_index=ax, color='lightblue', linestyle='-', linewidth=1.5)
+                [((x_prime, y_prime), _, _)] = transitions((x, y), a)
+                if i == change_point - 1 or i == num_steps - 1:
+                    plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, ax_index=ax, color=color, linestyle='-', linewidth=1.5, alpha=0.5)
                 x, y = x_prime, y_prime
             rs.append(r)
-            ts.append(t)
+            ts.append(i)
+            
+    print("Dyna-Q total steps", dyna.get_step())
+    print("Dyna-Q+ total steps", dyna_plus.get_step())
     
-    plt.plot(np.cumsum(time_steps), np.cumsum(rewards), "b", ax_index=[1, 0])
-    plt.plot(np.cumsum(time_steps_plus), np.cumsum(rewards_plus), "r", ax_index=[1, 0])
+    plt.plot(time_steps, np.cumsum(rewards), "b", ax_index=[1, 0])
+    plt.plot(time_steps_plus, np.cumsum(rewards_plus), "r", ax_index=[1, 0])
     plt.legend(ax_index=[1, 0], legends=["Dyna-Q", "Dyna-Q+"], loc='lower right')
     
     plt.set_axis_ticks(ax_index=[0, 0], ticks=None)

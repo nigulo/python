@@ -30,20 +30,24 @@ class TD:
         self.reset()
                 
     def train(self, s0, gamma=0.9, alpha=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
-        for e in range(self.episode, self.episode + n_episodes):
-            s, a_p = self.start_episode(e, gamma, n_steps, s0=s0)
+        for _ in range(self.episode, self.episode + n_episodes):
+            s, a_p = self.next_episode(gamma, n_steps, s0=s0)
             for step in range(max_steps):
-                s_r_a_p = self.step(e, step, (s, a_p), gamma, alpha, method, n_steps, sigma)
+                s_r_a_p = self.step(step, (s, a_p), gamma, alpha, method, n_steps, sigma)
                 if not s_r_a_p:
                     break
                 s, r, a_p = s_r_a_p
             if step == max_steps - 1:
                 print("Maximum number of steps reached")
 
-        self.episode = e
         return self.q, self.pi
         
-    def start_episode(self, episode, gamma=0.9, n_steps=1, s0=None):
+    def next_episode(self, gamma=0.9, n_steps=1, s0=None):
+        self.episode += 1
+        return self.init(gamma, n_steps, s0)
+        
+
+    def init(self, gamma=0.9, n_steps=1, s0=None):
         self.rewards_buf = deque(maxlen=n_steps)
         self.states_buf = deque(maxlen=n_steps)
         self.actions_buf = deque(maxlen=n_steps)
@@ -57,11 +61,11 @@ class TD:
         self.gamma_n = gamma**n_steps
 
         if s0:
-            s = s0(episode)
-            a, p = self._get_b_action_prob(s, episode)
+            s = s0(self.episode)
+            a, p = self._get_b_action_prob(s, self.episode)
             return s, (a, p)
     
-    def step(self, episode, step, s_a_p, gamma=0.9, alpha=0.1, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
+    def step(self, step, s_a_p, gamma=0.9, alpha=0.1, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
         self.current_step += 1
         s, (a, p) = s_a_p
         self.states_buf.append(s)
@@ -97,7 +101,7 @@ class TD:
         if s_r:
             s_prime, r_prime = s_r
             self.rewards_buf.append(r_prime)
-            a_prime, p_prime = self._get_b_action_prob(s_prime, episode)
+            a_prime, p_prime = self._get_b_action_prob(s_prime, self.episode)
         all_sigmas_one = np.all(np.array(self.sigmas_buf) == 1)
         all_sigmas_zero = np.all(np.array(self.sigmas_buf) == 0)
         if step >= n_steps - 1 or not s_r:

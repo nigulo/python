@@ -99,9 +99,9 @@ class plot:
         ax.plot(x, y, params, label=label, lw=lw, ms=ms, alpha=alpha)
         self.post_processing(ax)
         
-    def line(self, x1, y1, x2, y2, ax_index=None, color='red', linestyle='dashed', linewidth=1.0):
+    def line(self, x1, y1, x2, y2, ax_index=None, color='red', linestyle='dashed', linewidth=1.0, alpha=1.0):
         ax = self.get_ax(ax_index)
-        ax.plot([x1, x2], [y1, y2], color=color, linestyle=linestyle, linewidth=linewidth)
+        ax.plot([x1, x2], [y1, y2], color=color, linestyle=linestyle, linewidth=linewidth, alpha=alpha)
         self.post_processing(ax)
         
     def rectangle(self, x1, y1, x2, y2, angle=0., ax_index=None, facecolor="red", edgecolor="red", linestyle='--', linewidth=1.0, fill=False, alpha=1.0):
