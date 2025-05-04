@@ -62,6 +62,7 @@ class TD:
             return s, (a, p)
     
     def step(self, episode, step, s_a_p, gamma=0.9, alpha=0.1, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1):
+        self.current_step += 1
         s, (a, p) = s_a_p
         self.states_buf.append(s)
         self.actions_buf.append(a)
@@ -244,20 +245,23 @@ class TD:
         return s[ind], r[ind]
 
     def get_state(self):
-        return self.q, self.pi, self.episode, self.q2
+        return self.q, self.pi, self.episode, self.q2, self.current_step
     
     def set_state(self, state):
-        self.q, self.pi, self.episode, self.q2 = state
+        self.q, self.pi, self.episode, self.q2, self.current_step = state
     
     def get_result(self):
         return self.q, self.pi
 
     def get_episode(self):
         return self.episode
+
+    def get_current_step(self):
+        return self.current_step
     
     def reset(self):
         if self.state:
-            self.q, self.pi, self.episode, self.q2 = self.state
+            self.q, self.pi, self.episode, self.q2, self.current_step = self.state
         else:
             self.q: Dict[Tuple[int, int], float] = {}        
             self.pi: Dict[int, int] = {}
@@ -265,3 +269,4 @@ class TD:
             self.q2 = None
             if self.double:
                 self.q2: Dict[Tuple[int, int], float] = {}
+            self.current_step = 0

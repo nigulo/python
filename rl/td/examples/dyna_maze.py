@@ -111,8 +111,13 @@ if __name__ == '__main__':
                     plt.text(x+0.5, y+0.5, "G", ax_index=ax, size=20.0, ha="center", va="center")
                 ax = [0, 1]
     
-    rewards = []
     dyna = Dyna(actions, transitions, b=b)
+    rewards = []
+    time_steps = []
+
+    dyna_plus = Dyna(actions, transitions, b=b, kappa=1e-3)
+    rewards_plus = []
+    time_steps_plus = []
     
     num_steps = 200
     ax = [0, 0]
@@ -120,22 +125,26 @@ if __name__ == '__main__':
         if i == num_steps//2:
             MAZE = MAZE_2
             ax = [0, 1]
-        q, pi = dyna.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=1, method=Method.Q_LEARNING)
-
-        x, y = x_y_start()
-        for _ in range(NX*NY):
-            if (x, y) == x_y_goal():
-                break
-            if (x, y) not in pi:
-                break
-            a = pi[(x, y)]
-            [((x_prime, y_prime), r, _)] = transitions((x, y), a)
-            if i == num_steps//2 - 1 or i == num_steps - 1:
-                plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, ax_index=ax, color='lightblue', linestyle='-', linewidth=1.5)
-            x, y = x_prime, y_prime
-        rewards.append(r)            
+        for d, rs, ts, draw in [(dyna, rewards, time_steps, False), (dyna_plus, rewards_plus, time_steps_plus, True)]:
+            q, pi = d.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=1, method=Method.Q_LEARNING)
     
-    plt.plot(np.arange(len(rewards)), np.cumsum(rewards), ax_index=[1, 0])
+            x, y = x_y_start()
+            for t in range(NX*NY):
+                if (x, y) == x_y_goal():
+                    break
+                if (x, y) not in pi:
+                    break
+                a = pi[(x, y)]
+                [((x_prime, y_prime), r, _)] = transitions((x, y), a)
+                if draw and (i == num_steps//2 - 1 or i == num_steps - 1):
+                    plt.line(x+0.5, y+0.5, x_prime+0.5, y_prime+0.5, ax_index=ax, color='lightblue', linestyle='-', linewidth=1.5)
+                x, y = x_prime, y_prime
+            rs.append(r)
+            ts.append(t)
+    
+    plt.plot(np.cumsum(time_steps), np.cumsum(rewards), "b", ax_index=[1, 0])
+    plt.plot(np.cumsum(time_steps_plus), np.cumsum(rewards_plus), "r", ax_index=[1, 0])
+    plt.legend(ax_index=[1, 0], legends=["Dyna-Q", "Dyna-Q+"], loc='lower right')
     
     plt.set_axis_ticks(ax_index=[0, 0], ticks=None)
     plt.set_axis_ticks(ax_index=[0, 1], ticks=None)
