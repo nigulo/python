@@ -19,7 +19,7 @@ class TD:
     #             transitions: Callable[[int, int], List[Tuple[int, float, float]]]], 
     #             b: Callable[[int, int, Callable[int]], Tuple[List[int], List[float]]], 
     #             s0: Callable[[], int], 
-    def __init__(self, actions, transitions, d, q, q_grad, b=None, state=None, eps=0.1):
+    def __init__(self, actions, transitions, d, q, q_grad, b=None, state=None, eps=0.5):
         self.actions = actions
         self.transitions = transitions
         self.w = np.zeros(d)
@@ -31,16 +31,18 @@ class TD:
         
         self.reset()
                 
-    def train(self, s0, alpha=0.1, beta=0.1, n_episodes=1000, steps_per_episode=10_000, method=Method.EXPECTED_SARSA, n_steps=1):
+    def train(self, s0, alpha=0.1, beta=0.1, n_episodes=1000, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, episodic=True):
         for _ in range(self.episode, self.episode + n_episodes):
             s, a_p = self.next_episode(n_steps, s0=s0)
-            for step in range(steps_per_episode):
+            for step in range(max_steps):
                 s_r_a_p = self.step(step, (s, a_p), alpha, beta, method, n_steps)
                 if not s_r_a_p:
                     break
                 s, r, a_p = s_r_a_p
+            if episodic and step == max_steps - 1:
+                print("Maximum number of steps reached")
 
-        return self.w, self.pi
+        return self.w
         
     def next_episode(self, n_steps=1, s0=None):
         self.episode += 1
@@ -103,15 +105,11 @@ class TD:
             w = self.w
             self.w += alpha*delta*self.q_grad(s0, a0, w)
 
-            q_s_a = self.q(s0, a0, self.w)
-
-            if s0 not in self.pi:
-                self.pi[s0] = a0
-            elif q_s_a > self.q(s0, self.pi[s0], w):
-                self.pi[s0] = a0
         if not s_r:
+            #print(None)
             return None
 
+        #print(s_prime, r_prime, a_prime)
         return s_prime, r_prime, (a_prime, p_prime)
     
     def _calc_delta(self, q_s_a_prime, s0, a0):
@@ -160,13 +158,13 @@ class TD:
         return s[ind], r[ind]
 
     def get_state(self):
-        return self.w, self.pi, self.episode, self.current_step
+        return self.w, self.episode, self.current_step
     
     def set_state(self, state):
-        self.w, self.pi, self.episode, self.current_step = state
+        self.w, self.episode, self.current_step = state
     
     def get_result(self):
-        return self.w, self.pi
+        return self.w
 
     def get_episode(self):
         return self.episode
@@ -176,8 +174,7 @@ class TD:
     
     def reset(self):
         if self.state:
-            self.w, self.pi, self.episode, self.current_step = self.state
+            self.w, self.episode, self.current_step = self.state
         else:
-            self.pi: Dict[int, int] = {}
             self.episode = 0
             self.current_step = 0

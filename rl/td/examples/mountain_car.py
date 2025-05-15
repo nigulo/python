@@ -16,7 +16,7 @@ x_min, x_max = -1.2, 0.5
 v_min, v_max = -0.07, 0.07
 
 n = 8
-d = 2*n + 3
+d = n*n*3
 
 def load(name="data"):
     file = f"{name}.pkl"
@@ -36,8 +36,8 @@ def transitions(s, a):
     x, v = s
     if x >= x_max:
         return []
-    if x <= x_min:
-        return [((x, 0), -1, 1)]
+    if x < x_min:
+        return [((x_min, 0), -1, 1)]
     
     x1 = max(x_min, min(x_max, x + v))
     v1 = max(v_min, min(v_max, v + 0.001*a - 0.0025*np.cos(3*x)))
@@ -51,14 +51,17 @@ def get_features(x, v, a):
     x_ind = int(round((n-1)*(x - x_min) / (x_max - x_min)))
     v_ind = int(round((n-1)*(v - v_min) / (v_max - v_min)))
     a_ind = a + 1
-    f_x = np.zeros(n)
-    f_v = np.zeros(n)
-    f_a = np.zeros(3)
-    f_x[x_ind] = 1
-    f_v[v_ind] = 1
-    f_a[a_ind] = 1
+    #f_x = np.zeros(n)
+    #f_v = np.zeros(n)
+    #f_a = np.zeros(3)
+    #f_x[x_ind] = 1
+    #f_v[v_ind] = 1
+    #f_a[a_ind] = 1
     
-    return np.concatenate((f_x, f_v, f_a)) 
+    features = np.zeros((n, n, 3))
+    features[x_ind, v_ind, a_ind] = 1
+    
+    return features.flatten()
 
 def q(s, a, w):
     x, v = s
@@ -71,9 +74,8 @@ def q_grad(s, a, w):
     return features
     
 if __name__ == '__main__':
-    print("Training...")
     td = TD(actions, transitions, d, q, q_grad)
-    w, pi = td.train(s0, n_episodes=10)
+    w = td.train(s0, n_episodes=100)
     
     q_max = np.empty((n, n))
     for i in range(n):
