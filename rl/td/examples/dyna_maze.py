@@ -41,7 +41,6 @@ MAZE_3 = np.array([
         [1, 1, 1, 1, 1, 1, 1, 1, 1],
         [1, 1, 1, 2, 1, 1, 1, 1, 1]])[::-1,::]
 
-MAZE = MAZE_1
 NX = MAZE.shape[1]
 NY = MAZE.shape[0]
 
@@ -98,19 +97,21 @@ def b(s, episode, pi):
 
 if __name__ == '__main__':                        
     #dyna = Dyna(actions, transitions, b=b)
-    #q, pi = dyna.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=6, method=Method.Q_LEARNING)
+    #q, pi = dyna.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=10, method=Method.Q_LEARNING, theta=0.001)
     #td = TD(actions, transitions, b=b)
-    #q, pi = td.train((lambda _: (X_START, Y_START)), gamma=0.95, n_episodes=20, method=Method.Q_LEARNING)
+    #q, pi = td.train((lambda _: x_y_start()), gamma=0.95, n_episodes=10, method=Method.Q_LEARNING)
+    
 
     plt = plot.plot(nrows=2, ncols=2, size=plot.default_size(NX*25, NY*25), ax_spans={(1, 0): (0, 1)})
     plt.set_axis_limits([0, 0], limits=[[0, NX], [0, NY]])
     plt.set_axis_limits([0, 1], limits=[[0, NX], [0, NY]])
 
+
     for x in range(NX):
         for y in range(NY):
             ax = [0, 0]
-            for maze in [MAZE_1, MAZE_2]:
-                if not maze[y, x]:
+            for MAZE in [MAZE_1, MAZE_2]:
+                if not MAZE[y, x]:
                     plt.rectangle(x, y, x+1, y+1, ax_index=ax, facecolor="gray", edgecolor=None, linestyle=None, linewidth=0, fill=True)
                 plt.rectangle(x, y, x+1, y+1, ax_index=ax, facecolor="k", edgecolor="k", linestyle='-', linewidth=1.5)
                 if (x, y) == x_y_start():
@@ -137,8 +138,6 @@ if __name__ == '__main__':
             ax = [0, 1]
         for d, rs, ts, color in [(dyna, rewards, time_steps, "b"), (dyna_plus, rewards_plus, time_steps_plus, "r")]:
             q, pi = d.plan((lambda _: x_y_start()), gamma=0.95, n_episodes=1, method=Method.Q_LEARNING)
-            #if draw:
-            #    print(q)
     
             x, y = x_y_start()
             r = 0

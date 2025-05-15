@@ -1,7 +1,7 @@
 import numpy as np
 import random
 from enum import Enum
-from collections import deque
+import heapq
 
 from td import TD, Method
 
@@ -15,7 +15,9 @@ class Dyna:
         self.td_plan = TD(actions=actions, transitions=self._model_transitions, b=b, state=state[0] if state else None, eps=eps, double=double)
         self.kappa = kappa
         
-    def plan(self, s0, gamma=0.9, alpha=0.1, n_episodes=100, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1, n_plan_steps=50):
+    def plan(self, s0, gamma=0.9, alpha=0.1, n_episodes=100, max_steps=100_000, method=Method.EXPECTED_SARSA, n_steps=1, sigma=lambda _: 1, theta=np.inf, n_plan_steps=100):
+        p_queue = []
+        p_queue_keys = set()
         for _ in range(self.td_learn.get_episode(), self.td_learn.get_episode() + n_episodes):
             s, a_p = self.td_learn.next_episode(gamma, n_steps, s0=s0)
             for step in range(max_steps):
@@ -26,21 +28,42 @@ class Dyna:
                 s_prime, r, a_p = s_r_a_p
 
                 self.model[(s, a)] = [(s_prime, r, 1, self.td_learn.get_episode())]
+                
+                if theta < np.inf:
+                    q, _ = self.td_learn.get_result()
+                    q_s_a = q[(s, a)]
+                    if (s, a) not in p_queue_keys and q_s_a >= theta:
+                        heapq.heappush(p_queue, (-q_s_a, (s, a)))
+                        p_queue_keys.add((s, a))
                 s = s_prime
             self.td_plan.set_state(self.td_learn.get_state())
             if step == max_steps - 1:
                 print("Maximum number of steps reached")
-            for _ in range(n_plan_steps):
-                s, a = random.choice(list(self.model.keys()))
-                a_p = (a, 1)
-                self.td_plan.init(gamma, n_steps)
-                for step in range(n_steps):
-                    #self._update_last_visits(s, a)
-                    s_r_a_p = self.td_plan.step(step, (s, a_p), gamma, alpha, method, n_steps, sigma)
-                    if not s_r_a_p:
-                        break
-                    s, r, a_p = s_r_a_p
-                    a, _ = a_p
+                
+            if theta == np.inf:
+                for i in range(n_plan_steps):
+                    s, a = random.choice(list(self.model.keys()))
+                    if (s, a) not in p_queue_keys:
+                        heapq.heappush(p_queue, (i, (s, a)))
+                        p_queue_keys.add((s, a))
+                    
+            while len(p_queue) > 0:
+                _, (s, a) = heapq.heappop(p_queue)
+                self.td_plan.init(gamma, n_steps=1)
+                self.td_plan.step(step=0, s_a_p=(s, (a, 1)), gamma=gamma, alpha=alpha, method=method, n_steps=1, sigma=sigma)
+                if theta == np.inf:
+                    continue
+                for (s_, a_) in self.model.keys():
+                    [(s_prime_, r_, _, _)] = self.model[(s_, a_)]
+                    if s_prime_ == s:
+                        self.td_plan.init(gamma, n_steps=1)
+                        self.td_plan.step(step=0, s_a_p=(s_, (a_, 1)), gamma=gamma, alpha=alpha, method=method, n_steps=1, sigma=sigma)
+                        q, _ = self.td_plan.get_result()
+                        q_s_a = q[(s_, a_)]
+                        if (s_, a_) not in p_queue_keys and q_s_a >= theta:
+                            heapq.heappush(p_queue, (-q_s_a, (s_, a_)))
+                            p_queue_keys.add((s_, a_))
+            p_queue_keys = set()
             self.td_learn.set_state(self.td_plan.get_state())
 
         return self.td_learn.get_result()
