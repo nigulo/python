@@ -19,10 +19,12 @@ class TD:
     #             transitions: Callable[[int, int], List[Tuple[int, float, float]]]], 
     #             b: Callable[[int, int, Callable[int]], Tuple[List[int], List[float]]], 
     #             s0: Callable[[], int], 
-    def __init__(self, actions, transitions, d, q, q_grad, b=None, state=None, eps=0.5):
+    def __init__(self, actions, transitions, d, q, q_grad, b=None, state=None, eps=0.5, w0=None):
         self.actions = actions
         self.transitions = transitions
-        self.w = np.zeros(d)
+        self.w = w0
+        if self.w is None:
+            self.w = np.zeros(d)
         self.q = q
         self.q_grad = q_grad
         self.b = b
@@ -102,20 +104,18 @@ class TD:
                 delta = self._calc_delta(None, s0, a0)
 
             self.avg_reward += beta*delta
-            w = self.w
-            self.w += alpha*delta*self.q_grad(s0, a0, w)
+            self.w += alpha*delta*self.q_grad(s0, a0, self.w)
 
         if not s_r:
-            #print(None)
             return None
 
-        #print(s_prime, r_prime, a_prime)
         return s_prime, r_prime, (a_prime, p_prime)
     
     def _calc_delta(self, q_s_a_prime, s0, a0):
         delta = np.sum(self.rewards_buf) - self.avg_reward*(len(self.rewards_buf))
         if q_s_a_prime is not None:
-            delta += q_s_a_prime - self.q(s0, a0, self.w)
+            delta += q_s_a_prime
+        delta -= self.q(s0, a0, self.w)
         return delta
                 
     def _get_pi_actions_probs(self, s):
@@ -138,10 +138,10 @@ class TD:
             return a[ind], p[ind]
         
         actions = list(self.actions(s))
-        q_s_a = [self.q(s, a, self.w) for a in actions]
-        q_max_ind = np.argmax(q_s_a)
         
         if r > self.eps:
+            q_s_a = [self.q(s, a, self.w) for a in actions]
+            q_max_ind = np.argmax(q_s_a)
             return actions[q_max_ind], 1 - self.eps
         r /= self.eps
         r = int(len(actions)*r)
