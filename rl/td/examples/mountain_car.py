@@ -103,7 +103,7 @@ if __name__ == '__main__':
         if not t:
             break
         [((x_prime, v_prime), _, _)] = t
-        if (x_min <= x <= x_max and x_min <= x_prime <= x_max):
+        if x_min < x < x_max and x_min < x_prime < x_max:
             plt.line((x-x_min)/x_range*nn2+0.5, (v-v_min)/v_range*nn2+0.5, (x_prime-x_min)/x_range*nn2+0.5, (v_prime-v_min)/v_range*nn2+0.5, ax_index=0, color='r', linestyle='-', linewidth=1.5, alpha=0.5)
         x = x_prime
         v = v_prime
