@@ -194,12 +194,23 @@ class plot:
     '''
         Plot histogram
     '''          
-    def hist(self, data, ax_index = [], bins = 20):
-        ax = self.get_ax(ax_index)
-        hist, bin_edges = np.histogram(data, bins = bins)
-        ax.bar(bin_edges[:-1], hist, width=(bin_edges[-1]-bin_edges[0])/bins)
-        self.post_processing(ax)
+    def hist(self, data, ax_index = [], bins = 20, props={}):
+        if len(data.shape) == 2:
+            h, x_edges, y_edges = np.histogram2d(data[:, 0], data[:, 1], bins=bins, range=None, density=None, weights=None)
+            extent = props.get("extent", None)
+            if not extent:
+                extent = [np.min(x_edges), np.max(x_edges), np.min(y_edges), np.max(y_edges)]
+            self.colormap(h.T[::-1,::], ax_index=ax_index, vmin=props.get("vmin", None), vmax=props.get("vmax", None),
+                    show_colorbar=props.get("show_colorbar", None), colorbar_prec=props.get("colorbar_prec", None),
+                    cmap_name=props.get("cmap_name", None), reverse_cmap=props.get("reverse_cmap", True),
+                    extent=props.get("extent", extent))
+            #self.set_axis_ticks(ax_index=ax_index, ticks = (x_edges, y_edges))
 
+        else:
+            ax = self.get_ax(ax_index)
+            hist, bin_edges = np.histogram(data, bins = bins)
+            ax.bar(bin_edges[:-1], hist, width=(bin_edges[-1]-bin_edges[0])/bins)
+            self.post_processing(ax)
 
     def fill(self, x, y_lower, y_upper, ax_index = [], color="lightsalmon", alpha=0.8):
         ax = self.get_ax(ax_index)
