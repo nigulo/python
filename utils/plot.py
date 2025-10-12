@@ -47,7 +47,7 @@ def default_size(nx, ny):
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True, ax_spans=None, dpi=200):
+    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True, ax_spans=None, dpi=200, font_scale=1.0):
         if size is not None:
             width = size[0]
             height = size[1]
@@ -74,7 +74,7 @@ class plot:
                     axes[row, col] = ax
         fig.set_size_inches(width*ncols, height*nrows)
         if title is not None:
-            fig.suptitle(title, fontsize=3.6*width)
+            fig.suptitle(title, fontsize=3.6*width*font_scale)
         self.fig = fig
         self.axes = axes
         self.twin_x_axes = dict()
@@ -83,9 +83,9 @@ class plot:
         self.colorbars = dict()
         self.ims = dict()
         self.show_colorbar = False
-        self.axis_title_font_size = 3.2*width#max(width, height)
-        self.axis_label_font_size = 2.6*width#max(width, height)
-        self.axis_units_font_size = 2*width#max(width, height)
+        self.axis_title_font_size = 3.2*width*font_scale#max(width, height)
+        self.axis_label_font_size = 2.6*width*font_scale#max(width, height)
+        self.axis_units_font_size = 2*width*font_scale#max(width, height)
         self.nrows = nrows
         self.ncols = ncols
         self.width = width
@@ -125,7 +125,7 @@ class plot:
     def rescale_axis_label_font_size(self, scale):
         self.axis_label_font_size *= scale
 
-    def rescale_axis_utits_font_size(self, scale):
+    def rescale_axis_units_font_size(self, scale):
         self.axis_units_font_size *= scale
         
     '''
