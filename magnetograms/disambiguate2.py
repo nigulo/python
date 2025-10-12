@@ -222,7 +222,7 @@ def load(file_name):
             for i in np.arange(0, y.shape[2]):
                 test_plot = plot.plot(nrows=1, ncols=1)
                 
-                test_plot.colormap(y[:, :, i, 2], cmap_name="bwr")
+                test_plot.colormap(y[:, :, i, 2], cmap="bwr")
                 test_plot.vectors(x_mesh[0], x_mesh[1], y[:, :, i, 0], y[:, :, i, 1], [], units='width', color = 'k')
                 test_plot.save("test_field" + str(i) +".png")
                 test_plot.close()
@@ -250,7 +250,7 @@ def load(file_name):
     
             truth_plot = plot.plot(nrows=num_layers, ncols=3)
             for layer in np.arange(0, num_layers):
-                truth_plot.colormap(bx[:, :, layer], [layer, 0], cmap_name="bwr")
+                truth_plot.colormap(bx[:, :, layer], [layer, 0], cmap="bwr")
                 truth_plot.colormap(by[:, :, layer], [layer, 1])
                 truth_plot.colormap(phi[:, :, layer], [layer, 2])
             
@@ -317,7 +317,7 @@ def convert(b, phi, theta):
         
         truth_plot = plot.plot(nrows=n3, ncols=4)
         for layer in np.arange(0, n3):
-            truth_plot.colormap(bx[:, :, layer], ax_index = [layer, 0], show_colorbar=True, cmap_name="bwr")
+            truth_plot.colormap(bx[:, :, layer], ax_index = [layer, 0], show_colorbar=True, cmap="bwr")
             truth_plot.colormap(by[:, :, layer], ax_index = [layer, 1])
             truth_plot.colormap(bz[:, :, layer], ax_index = [layer, 2])
             truth_plot.colormap(np.sqrt(bx[:, :, layer]**2 + by[:, :, layer]**2 + bz[:, :, layer]**2), ax_index = [layer, 3])
@@ -389,7 +389,7 @@ def do_plots(y, thetas, title = None, file_name=None):
     for layer in np.arange(0, n3):
         components_plot = plot.plot(nrows=3, ncols=3, title = title)
         
-        components_plot.colormap(bx_true[:, :, layer], [0, 0], show_colorbar=True, cmap_name="bwr")
+        components_plot.colormap(bx_true[:, :, layer], [0, 0], show_colorbar=True, cmap="bwr")
         components_plot.colormap(by_true[:, :, layer], [0, 1])
         
         phi_true = np.reshape(np.arctan2(by_true[:, :, layer], bx_true[:, :, layer]), (n1, n2))
@@ -408,9 +408,9 @@ def do_plots(y, thetas, title = None, file_name=None):
             phi_diff = phi_true[:, :] - phi_dis[:, :]
             
             modulus = np.sqrt(bx_true[:, :, layer]**2 + by_true[:, :, layer]**2)
-            components_plot.colormap(np.array(bx_diff != 0., dtype='float')*modulus, [2, 0], cmap_name="Greys", reverse_cmap=False)
-            components_plot.colormap(np.array(by_diff != 0., dtype='float')*modulus, [2, 1], cmap_name="Greys", reverse_cmap=False)
-            components_plot.colormap(np.array(phi_diff != 0., dtype='float')*modulus, [2, 2], cmap_name="Greys", reverse_cmap=False)
+            components_plot.colormap(np.array(bx_diff != 0., dtype='float')*modulus, [2, 0], cmap="Greys", reverse_cmap=False)
+            components_plot.colormap(np.array(by_diff != 0., dtype='float')*modulus, [2, 1], cmap="Greys", reverse_cmap=False)
+            components_plot.colormap(np.array(phi_diff != 0., dtype='float')*modulus, [2, 2], cmap="Greys", reverse_cmap=False)
 
         #if thetas is not None:
         #    components_plot.set_colormap('Greys')

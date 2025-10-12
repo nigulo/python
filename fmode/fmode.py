@@ -969,10 +969,10 @@ if (__name__ == '__main__'):
                     fig = plot.plot(nrows=1, ncols=4, size=plot.default_size(2*data.shape[1], 2*data.shape[2]))
                     #fig.contour(coords[0, :, 0, 1], coords[0, 0, :, 2], fitted_data[i, :, :])
                     fig.set_axis_title(r"$\nu=" + str(coords[i, 0, 0, 0]) + "$")
-                    fig.colormap((data[i]*data_mask[i])[::-1], cmap_name="gnuplot", show_colorbar=True, ax_index=0)
-                    fig.colormap((data_fitted[i]*data_mask[i])[::-1], cmap_name="gnuplot", show_colorbar=True, ax_index=1)
-                    fig.colormap((np.abs(data[i] - data_fitted[i])*data_mask[i])[::-1], cmap_name="gnuplot", show_colorbar=True, ax_index=2)
-                    fig.colormap((data_mask[i])[::-1], cmap_name="gnuplot", show_colorbar=True, ax_index=3)
+                    fig.colormap((data[i]*data_mask[i])[::-1], cmap="gnuplot", show_colorbar=True, ax_index=0)
+                    fig.colormap((data_fitted[i]*data_mask[i])[::-1], cmap="gnuplot", show_colorbar=True, ax_index=1)
+                    fig.colormap((np.abs(data[i] - data_fitted[i])*data_mask[i])[::-1], cmap="gnuplot", show_colorbar=True, ax_index=2)
+                    fig.colormap((data_mask[i])[::-1], cmap="gnuplot", show_colorbar=True, ax_index=3)
                     fig.save(os.path.join(output_dir, f"fitted_data{i}.png"))
                 
                 
@@ -1023,7 +1023,7 @@ if (__name__ == '__main__'):
                 fig = plot.plot(nrows=1, ncols=1, size=plot.default_size(data.shape[1], data.shape[2]))
                 fig.contour(ks_filtered, ks_filtered, data[i*nu_sampling, :, :])
                 fig.set_axis_title(r"$\nu=" + str(coords[i*nu_sampling, 0, 0, 0]) + "$")
-                fig.colormap(np.log(data[i, :, :]), cmap_name="gnuplot", show_colorbar=True)
+                fig.colormap(np.log(data[i, :, :]), cmap="gnuplot", show_colorbar=True)
                 for mode_index in range(5):
                     if len(params_[i][mode_index]) > 0:
                         plot_mode(mode_index, params_[i][mode_index], nu_k_scale, fig, colors[mode_index])

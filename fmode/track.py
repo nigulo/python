@@ -1051,7 +1051,7 @@ class track:
             print("process_frame 9")
         if DEBUG:
             test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1]//8, data_for_plot.data.shape[0]//8))
-            test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True)
+            test_plot.colormap(data_for_plot, cmap="bwr", show_colorbar=True)
             suffix = self.state.get_obs_time_str2()
             test_plot.save(f"frame_{suffix}.png")
             test_plot.close()

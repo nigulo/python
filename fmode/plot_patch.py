@@ -124,14 +124,14 @@ if (__name__ == '__main__'):
                 data_for_plot[i, j] = data3[0, 2]
     test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1], data_for_plot.data.shape[0]))
     vmax = max(abs(np.min(data_for_plot)), abs(np.max(data_for_plot)))
-    test_plot.colormap(data_for_plot, cmap_name="bwr", show_colorbar=True, vmin=-vmax, vmax=vmax)
+    test_plot.colormap(data_for_plot, cmap="bwr", show_colorbar=True, vmin=-vmax, vmax=vmax)
     test_plot.save("patch1.png")
     test_plot.close()
     data_for_plot = fits.getdata(input_file2, 1)[0]
     test_plot = plot.plot(nrows=1, ncols=1, size=plot.default_size(data_for_plot.data.shape[1], data_for_plot.data.shape[0]))
     vmax = max(abs(np.min(data_for_plot)), abs(np.max(data_for_plot)))
-    #test_plot.colormap(data_for_plot.T, 1, cmap_name="bwr", show_colorbar=True, vmin=-vmax, vmax=vmax)
-    test_plot.colormap(data_for_plot.T, cmap_name="gnuplot", show_colorbar=True)
+    #test_plot.colormap(data_for_plot.T, 1, cmap="bwr", show_colorbar=True, vmin=-vmax, vmax=vmax)
+    test_plot.colormap(data_for_plot.T, cmap="gnuplot", show_colorbar=True)
     test_plot.save("patch2.png")
     test_plot.close()
     

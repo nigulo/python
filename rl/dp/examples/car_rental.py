@@ -153,7 +153,7 @@ if __name__ == '__main__':
             value[n1, n2] = v.get((n1, n2, NIGHT), 0)
     
     plt = plot.plot(nrows=1, ncols=2, size=plot.default_size(policy.shape[0]*50, policy.shape[1]*50))
-    plt.colormap(policy.T[::-1,::], [0], show_colorbar=True, cmap_name="bwr", vmin=-MAX_CARS_MOVE, vmax=MAX_CARS_MOVE)
+    plt.colormap(policy.T[::-1,::], [0], show_colorbar=True, cmap="bwr", vmin=-MAX_CARS_MOVE, vmax=MAX_CARS_MOVE)
     plt.colormap(value.T[::-1,::], [1])
     
     plt.set_axis_title("Policy", [0])

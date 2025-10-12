@@ -1219,7 +1219,7 @@ class NN(nn.Module):
                 num_cols += 1
                 
             my_test_plot = plot.plot(nrows=num_rows, ncols=num_cols, size=plot.default_size(len(full_obj)*2, len(full_obj)*2))
-            my_test_plot.set_default_cmap(cmap_name="Greys")
+            my_test_plot.set_default_cmap(cmap="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
             #min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
             #max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
@@ -1241,7 +1241,7 @@ class NN(nn.Module):
                 if min_loss_ratio < 1.:
                     min_loss_ratio = 2. - min_loss_ratio
                 max_val = max(max_loss_ratio, min_loss_ratio)
-                my_test_plot.set_default_cmap(cmap_name="bwr")
+                my_test_plot.set_default_cmap(cmap="bwr")
                 my_test_plot.colormap(dat=loss_ratios10, ax_index=[0, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
                 my_test_plot.set_axis_title(r"$L_{\rm NN}/L_{\rm MOMFBD}$", [0, num_cols-1])
             
@@ -1264,7 +1264,7 @@ class NN(nn.Module):
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 0], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
                 my_test_plot.rectangle(zoom_x1, zoom_y1, zoom_x2, zoom_y2, ax_index=[0, 1], edgecolor="red", linestyle='--', linewidth=5.0, alpha=1.0)
 
-                my_test_plot.set_default_cmap(cmap_name="Greys")
+                my_test_plot.set_default_cmap(cmap="Greys")
                 my_test_plot.colormap(zoom_reconstr_true, [1, 0], show_colorbar=True)#, vmin=min_val, vmax=max_val)
                 my_test_plot.colormap(zoom_reconstr, [1, 1])#, vmin=min_val, vmax=max_val)
                 if plot_loss_ratios:
@@ -1275,7 +1275,7 @@ class NN(nn.Module):
                     if min_loss_ratio < 1.:
                         min_loss_ratio = 2. - min_loss_ratio
                     max_val = max(max_loss_ratio, min_loss_ratio)
-                    my_test_plot.set_default_cmap(cmap_name="bwr")
+                    my_test_plot.set_default_cmap(cmap="bwr")
                     my_test_plot.colormap(dat=loss_ratios10, ax_index=[1, num_cols-1], vmin=2.-max_val, vmax=max_val, show_colorbar=True, colorbar_prec="1.2")
                     
                     

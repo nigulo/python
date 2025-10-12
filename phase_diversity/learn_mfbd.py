@@ -1741,7 +1741,7 @@ class nn_model:
             loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 
             my_test_plot = plot.plot(nrows=1, ncols=4, size=plot.default_size(len(full_obj), len(full_obj)))
-            my_test_plot.set_default_cmap(cmap_name="Greys")
+            my_test_plot.set_default_cmap(cmap="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
             min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
             max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
@@ -1751,7 +1751,7 @@ class nn_model:
             my_test_plot.colormap(full_reconstr, [1], vmin=min_val, vmax=max_val)
             my_test_plot.colormap(full_D, [2])
             max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
-            my_test_plot.set_default_cmap(cmap_name="bwr")
+            my_test_plot.set_default_cmap(cmap="bwr")
             my_test_plot.colormap(dat=loss_diffs, ax_index=[3], vmin=-max_val, vmax=max_val, show_colorbar=True)
             
             #my_test_plot.set_axis_title([0], "MOMFBD filtered")

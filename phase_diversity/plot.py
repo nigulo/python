@@ -278,7 +278,7 @@ class plot:
     '''
         Plot colormap
     '''          
-    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True, extent=None):
+    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap=None, reverse_cmap=True, extent=None):
         ax = self.get_ax(ax_index)
         if self.get_defaut_colorbar() is None:
             z_min = np.min(dat)

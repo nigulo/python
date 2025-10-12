@@ -220,7 +220,7 @@ def load(file_name):
         for i in np.arange(0, y.shape[2]):
             test_plot = plot.plot(nrows=1, ncols=1)
             
-            test_plot.colormap(y[:, :, i, 2], cmap_name="bwr")
+            test_plot.colormap(y[:, :, i, 2], cmap="bwr")
             test_plot.vectors(x_mesh[0], x_mesh[1], y[:, :, i, 0], y[:, :, i, 1], [], units='width', color = 'k')
             test_plot.save("test_field" + str(i) +".png")
             test_plot.close()

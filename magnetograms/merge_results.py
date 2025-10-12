@@ -134,7 +134,7 @@ while max_loglik is None or num_tries % num_tries_without_progress != 0:
     results_plot = plot.plot(nrows=n3_total, ncols=3)
     y_grid = np.reshape(y, (n1_total, n2_total, n3_total, 3))
     for layer in np.arange(0, n3_total):
-        results_plot.colormap(y_grid[:, :, layer, 0], [layer, 0], cmap_name='bwr')
+        results_plot.colormap(y_grid[:, :, layer, 0], [layer, 0], cmap='bwr')
         results_plot.colormap(y_grid[:, :, layer, 1], [layer, 1])
         results_plot.colormap(np.reshape(np.arctan2(y_grid[:, :, layer, 1], y_grid[:, :, layer, 0]), (n1_total, n2_total)), [layer, 2])
     results_plot.save("results.png")

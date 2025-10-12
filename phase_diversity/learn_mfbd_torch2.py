@@ -1612,7 +1612,7 @@ class NN(nn.Module):
                 num_cols += 1
                 
             my_test_plot = plot.plot(nrows=1, ncols=num_cols, size=plot.default_size(len(full_obj)*2, len(full_obj)*2))
-            my_test_plot.set_default_cmap(cmap_name="Greys")
+            my_test_plot.set_default_cmap(cmap="Greys")
             #my_test_plot.colormap(utils.trunc(full_obj, 1e-3), [0], show_colorbar=True)
             min_val = min(np.min(full_reconstr_true), np.min(full_reconstr))
             max_val = max(np.max(full_reconstr_true), np.max(full_reconstr))
@@ -1630,7 +1630,7 @@ class NN(nn.Module):
                 loss_diffs = np.reshape(loss_diffs, (max_pos[0] - min_pos[0] + 1, max_pos[1] - min_pos[1] + 1)).T
                 loss_diffs = np.repeat(np.repeat(loss_diffs, 10, axis=1), 10, axis=0)
                 max_val = max(abs(np.max(loss_diffs)), abs(np.min(loss_diffs)))
-                my_test_plot.set_default_cmap(cmap_name="bwr")
+                my_test_plot.set_default_cmap(cmap="bwr")
                 my_test_plot.colormap(dat=loss_diffs, ax_index=[num_cols-1], vmin=-max_val, vmax=max_val, show_colorbar=True)
                 my_test_plot.set_axis_title([num_cols-1], "Losses")
             

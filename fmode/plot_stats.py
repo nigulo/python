@@ -68,7 +68,7 @@ for file in all_files[::24]:
                         col = 0
                         row += 1
                 for col in range(n_cols):
-                    test_plot.colormap(input_data, ax_index=[2, col], cmap_name="bwr", show_colorbar=True, vmin=-100, vmax=100)
+                    test_plot.colormap(input_data, ax_index=[2, col], cmap="bwr", show_colorbar=True, vmin=-100, vmax=100)
                 test_plot.save(f"stats_{file}.png")
                 test_plot.close()
         hdul.close()

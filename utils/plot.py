@@ -9,34 +9,51 @@ import matplotlib.colors as colors
 import matplotlib.ticker as ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.patches as patches
-from matplotlib.gridspec import GridSpec
-
+from matplotlib.colors import LinearSegmentedColormap
 #import pyhdust.triangle as triangle
 import numpy as np
 
-#def reverse_colourmap(cmap, name = 'my_cmap_r'):
-#     return mpl.colors.LinearSegmentedColormap(name, cm.revcmap(cmap._segmentdata))
-
-
-def create_cmap(cmap_name, reverse=True):
+def create_cmap(cmap_name, reverse=True, nan_color=None):
     if reverse:
-        return plt.get_cmap(cmap_name).reversed()#reverse_colourmap(plt.get_cmap(cmap_name))
+        cmap = plt.get_cmap(cmap_name).reversed()
     else:
-        return plt.get_cmap(cmap_name)
+        cmap = plt.get_cmap(cmap_name)
+    if nan_color is not None:
+        cmap.set_bad(color=nan_color)
+    return cmap
+
+def create_custom_cmap(cdict, name="custom", nan_color=None):
+    assert(len(cdict["red"]) == len(cdict["green"]))
+    assert(len(cdict["red"]) == len(cdict["blue"]))
+    for i, cdict_red in enumerate(cdict["red"]):
+        assert(cdict_red[0] == cdict["green"][i][0])
+        assert(cdict_red[0] == cdict["blue"][i][0])
+
+    vmin = cdict["red"][0][0]
+    vmax = cdict["red"][-1][0]
+    vrange = vmax - vmin
+    for i in range(len(cdict["red"])):
+        cdict["red"][i] = ((cdict["red"][i][0] - vmin)/vrange,) + cdict["red"][i][1:]
+        cdict["green"][i] = ((cdict["green"][i][0] - vmin)/vrange,) + cdict["green"][i][1:]
+        cdict["blue"][i] = ((cdict["blue"][i][0] - vmin)/vrange,) + cdict["blue"][i][1:]
+    cmap = LinearSegmentedColormap(name, cdict)
+    if nan_color is not None:
+        cmap.set_bad(color=nan_color)
+    return (cmap, colors.Normalize(vmin=vmin, vmax=vmax))
 
 def default_size(nx, ny):
     return [nx/50, ny/50]
     
 class plot:
     
-    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True, ax_spans=None):
+    def __init__(self, nrows=1, ncols=1, width=3.33, height=2.0, size=None, title=None, smart_axis="xy", auto_ax_index=True, ax_spans=None, dpi=200):
         if size is not None:
             width = size[0]
             height = size[1]
         if ax_spans is None:
-            fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
+            fig, axes = plt.subplots(nrows=nrows, ncols=ncols, dpi=dpi)
         else:
-            fig = plt.figure()
+            fig = plt.figure(dpi=dpi)
 
             gs = GridSpec(nrows, ncols, figure=fig)
             axes = np.empty((nrows, ncols), dtype="object")
@@ -82,7 +99,104 @@ class plot:
             self.smart_axis = smart_axis
         else:
             self.smart_axis = ""
-    
+
+    def set_axis_title_font_size(self, axis_title_font_size):
+        self.axis_title_font_size = axis_title_font_size
+
+    def get_axis_title_font_size(self):
+        return self.axis_title_font_size
+        
+    def set_axis_label_font_size(self, axis_label_font_size):
+        self.axis_label_font_size = axis_label_font_size
+        
+    def get_axis_label_font_size(self):
+        return self.axis_label_font_size
+
+    def set_axis_units_font_size(self, axis_units_font_size):
+        self.axis_units_font_size = axis_units_font_size
+
+    def get_axis_units_font_size(self):
+        return self.axis_units_font_size
+
+    def rescale_axis_title_font_size(self, scale):
+        self.axis_title_font_size *= scale
+        
+    def rescale_axis_label_font_size(self, scale):
+        self.axis_label_font_size *= scale
+
+    def rescale_axis_utits_font_size(self, scale):
+        self.axis_units_font_size *= scale
+        
+    '''
+        cmap - "bwr", "binary", "winter", "Greys", etc...
+    '''    
+    def set_default_cmap(self, cmap, reverse=True):
+        if cmap is not None:
+            if isinstance(cmap, str):
+                self.default_cmap = create_cmap(cmap, reverse)
+            else:
+                self.default_cmap = cmap
+
+    def get_default_cmap(self):
+        if not hasattr(self, "default_cmap"):
+            return None
+        else:
+            return self.default_cmap
+
+    '''
+        Set axis title
+    '''
+    def set_title(self, title, ax_index = None):
+        self.titles[self.get_ax(ax_index)] = title
+
+
+    '''
+        Meant for internal usage mainly
+    '''
+    def get_ax(self, ax_index = None):
+        if ax_index is None:
+            if self.auto_ax_index:
+                if self.nrows > 1:
+                    if self.ncols > 1:
+                        return self.axes[self.current_row][self.current_col]
+                    else:
+                        return self.axes[self.current_row]
+                else:
+                    return self.axes
+            else:
+                return self.axes
+        
+        #TODO: simplify as above
+        if isinstance(ax_index, (list, tuple, np.ndarray)):
+            if len(ax_index) == 2:
+                if isinstance(self.axes, (list, tuple, np.ndarray)):
+                    if isinstance(self.axes[ax_index[0]], (list, tuple, np.ndarray)):
+                        return self.axes[ax_index[0]][ax_index[1]]
+                    else:
+                        if (ax_index[0] == 0):
+                            return self.axes[ax_index[1]]
+                        else:
+                            assert(ax_index[1] == 0)
+                            return self.axes[ax_index[0]]
+                else:
+                    assert(ax_index[0] == 0 and ax_index[1] == 0)
+                    return self.axes
+                    
+            elif len(ax_index) == 1:
+                if isinstance(self.axes, (list, tuple, np.ndarray)):
+                    return self.axes[ax_index[0]]
+                else:
+                    assert(ax_index[0] == 0)
+                    return self.axes
+            else:
+                return self.axes
+        else:
+            if isinstance(self.axes, (list, tuple, np.ndarray)):
+                return self.axes[ax_index]
+            else:
+                assert(ax_index == 0)
+                return self.axes
+               
     '''
         Plot 2d data
     '''          
@@ -129,11 +243,11 @@ class plot:
         ax = self.get_ax(ax_index)
         ax.scatter(x=x, y=y, s=s, c=c, marker=marker, alpha=alpha)#, linewidths=linewidths, edgecolors=edgecolors)
         self.post_processing(ax)
-        
+    
     '''
         Plot colormap
     '''          
-    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap_name=None, reverse_cmap=True, extent=None):
+    def colormap(self, dat, ax_index=None, vmin=None, vmax=None, show_colorbar=None, colorbar_prec=None, cmap=None, reverse_cmap=True, extent=None):
         ax = self.get_ax(ax_index)
         if self.get_defaut_colorbar() is None:
             z_min = np.min(dat)
@@ -145,23 +259,25 @@ class plot:
         else:
             self.show_colorbar = show_colorbar
         
-        if cmap_name is None:
+        self.set_default_cmap(cmap)
+        if self.get_default_cmap is None:
+            self.set_default_cmap("binary")
+        if cmap is None:
             cmap = self.get_default_cmap()
-        else:
-            cmap = create_cmap(cmap_name, reverse_cmap)
+        elif isinstance(cmap, str):
+            cmap = create_cmap(cmap, reverse_cmap)
 
-        #if self.extent is None:
-        #    left, right = ax.get_xlim()
-        #    bottom, top = ax.get_ylim()
-        #    self.extent = [left, right, bottom, top]
-        #    plot_aspect=(self.extent[1]-self.extent[0])/(self.extent[3]-self.extent[2])#*2/3 
-        #    ax.set_aspect(aspect=plot_aspect)
+        norm = None
+        if isinstance(cmap, tuple):
+            norm = cmap[1]
+            cmap = cmap[0]
+
         if extent is None:
             extent = [0, dat.shape[1], 0, dat.shape[0]]
         aspect = dat.shape[0]/dat.shape[1]
         ax.set_aspect(aspect=aspect)
 
-        im = ax.imshow(dat[::-1], extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+        im = ax.imshow(dat[::-1], extent=extent, cmap=cmap, norm=norm, origin='lower', vmin=vmin, vmax=vmax)
         self.ims[ax] = im
 
         self.set_colorbar(ax_index, show_colorbar, colorbar_prec)
@@ -185,7 +301,7 @@ class plot:
             ax.quiverkey(q, X=0.3, Y=1.1, U=10,
                  label=key, labelpos='E')
         self.post_processing(ax)
-        
+
     def text(self, x, y, s, ax_index = None, **kwargs):
         ax = self.get_ax(ax_index)
         ax.text(x, y, s, **kwargs)        
@@ -202,7 +318,7 @@ class plot:
                 extent = [np.min(x_edges), np.max(x_edges), np.min(y_edges), np.max(y_edges)]
             self.colormap(h.T[::-1,::], ax_index=ax_index, vmin=props.get("vmin", None), vmax=props.get("vmax", None),
                     show_colorbar=props.get("show_colorbar", None), colorbar_prec=props.get("colorbar_prec", None),
-                    cmap_name=props.get("cmap_name", None), reverse_cmap=props.get("reverse_cmap", True),
+                    cmap=props.get("cmap", None), reverse_cmap=props.get("reverse_cmap", False),
                     extent=props.get("extent", extent))
             #self.set_axis_ticks(ax_index=ax_index, ticks = (x_edges, y_edges))
 
@@ -222,8 +338,8 @@ class plot:
         samples - KxN matrix, where K is the number of parameters and N is the number of samples
         labels - array of size K defining the labels for the parameters
     '''
-    def plot_marginals(self, samples, labels):
-        fig, ax = plt.subplots(nrows=samples.shape[1], ncols=samples.shape[1])
+    def plot_marginals(self, samples, labels, dpi=100):
+        fig, ax = plt.subplots(nrows=samples.shape[1], ncols=samples.shape[1], dpi=dpi)
         fig.set_size_inches(6, 6)
         triangle.corner(samples[:,:], labels=labels, fig=self.fig)
         self.post_processing(ax)
@@ -243,6 +359,8 @@ class plot:
         #                loc=loc, ncol=1,
         #                fontsize=10, labelspacing=0.7)
         
+    
+    
     def set_default_colorbar(self, z_min=0., z_max=1., colorbar_prec=None):
         if colorbar_prec is None:
             if z_max > z_min:
@@ -314,100 +432,7 @@ class plot:
             #cbar_ax = self.fig.add_axes([x1, y0 + xlabel_height, width/20, y1-y0])
             cbar_ax.tick_params(labelsize=self.axis_units_font_size)
             self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
-    
-    def set_axis_title_font_size(self, axis_title_font_size):
-        self.axis_title_font_size = axis_title_font_size
-
-    def get_axis_title_font_size(self):
-        return self.axis_title_font_size
-        
-    def set_axis_label_font_size(self, axis_label_font_size):
-        self.axis_label_font_size = axis_label_font_size
-        
-    def get_axis_label_font_size(self):
-        return self.axis_label_font_size
-
-    def set_axis_units_font_size(self, axis_units_font_size):
-        self.axis_units_font_size = axis_units_font_size
-
-    def get_axis_units_font_size(self):
-        return self.axis_units_font_size
-
-    def rescale_axis_title_font_size(self, scale):
-        self.axis_title_font_size *= scale
-        
-    def rescale_axis_label_font_size(self, scale):
-        self.axis_label_font_size *= scale
-
-    def rescale_axis_utits_font_size(self, scale):
-        self.axis_units_font_size *= scale
-        
-    '''
-        cmap - "bwr", "binary", "winter", "Greys", etc...
-    '''    
-    def set_default_cmap(self, cmap_name, reverse=True):
-        if cmap_name is not None:
-            self.default_cmap = create_cmap(cmap_name, reverse)
-
-    def get_default_cmap(self):
-        if not hasattr(self, "default_cmap"):
-            return None
-        else:
-            return self.default_cmap
-
-    '''
-        Set axis title
-    '''
-    def set_title(self, title, ax_index = None):
-        self.titles[self.get_ax(ax_index)] = title
-
-
-    def get_ax(self, ax_index = None):
-        if ax_index is None:
-            if self.auto_ax_index:
-                if self.nrows > 1:
-                    if self.ncols > 1:
-                        return self.axes[self.current_row][self.current_col]
-                    else:
-                        return self.axes[self.current_row]
-                else:
-                    return self.axes
-            else:
-                return self.axes
-        
-        #TODO: simplify as above
-        if isinstance(ax_index, (list, tuple, np.ndarray)):
-            if len(ax_index) == 2:
-                if isinstance(self.axes, (list, tuple, np.ndarray)):
-                    if isinstance(self.axes[ax_index[0]], (list, tuple, np.ndarray)):
-                        return self.axes[ax_index[0]][ax_index[1]]
-                    else:
-                        if (ax_index[0] == 0):
-                            return self.axes[ax_index[1]]
-                        else:
-                            assert(ax_index[1] == 0)
-                            return self.axes[ax_index[0]]
-                else:
-                    assert(ax_index[0] == 0 and ax_index[1] == 0)
-                    return self.axes
-                    
-            elif len(ax_index) == 1:
-                if isinstance(self.axes, (list, tuple, np.ndarray)):
-                    return self.axes[ax_index[0]]
-                else:
-                    assert(ax_index[0] == 0)
-                    return self.axes
-            else:
-                return self.axes
-        else:
-            if isinstance(self.axes, (list, tuple, np.ndarray)):
-                print(self.axes)
-                print(ax_index)
-                return self.axes[ax_index]
-            else:
-                assert(ax_index == 0)
-                return self.axes
-                
+     
     def post_processing(self, ax):
         ax.tick_params(axis='x', labelsize=self.axis_units_font_size)
         ax.tick_params(axis='y', labelsize=self.axis_units_font_size)
@@ -646,7 +671,7 @@ class plot:
         for ax1 in axes:
             if ax is None or ax == ax1:               
                 ax1.set_title(title, fontsize=self.axis_title_font_size)
-        
+    
     def tight_layout(self, pad=1.08, h_pad=None, w_pad=None, rect=None):
         self.fig.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)
 
@@ -700,7 +725,5 @@ class plot:
         self.fig.savefig(file_name)
         self.close()
         
-
-
     def close(self):
         plt.close(self.fig)
