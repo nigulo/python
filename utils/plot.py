@@ -10,6 +10,7 @@ import matplotlib.ticker as ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.patches as patches
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.gridspec import GridSpec
 #import pyhdust.triangle as triangle
 import numpy as np
 
