@@ -275,8 +275,6 @@ class plot:
 
         if extent is None:
             extent = [0, dat.shape[1], 0, dat.shape[0]]
-        aspect = dat.shape[0]/dat.shape[1]
-        ax.set_aspect(aspect=aspect)
 
         im = ax.imshow(dat[::-1], extent=extent, cmap=cmap, norm=norm, origin='lower', vmin=vmin, vmax=vmax)
         self.ims[ax] = im
@@ -289,7 +287,13 @@ class plot:
         im = ax.imshow(image, interpolation=interpolation)
         self.ims[ax] = im
         self.post_processing(ax)
-   
+
+    def pie(self, sizes, ax_index=None, labels=None, colors=None, autopct='%1.0f%%', explode=None, shadow=False, startangle=90, wedgeprops={'width': 0.3}):
+        ax = self.get_ax(ax_index)
+        ax.pie(sizes, labels=labels, colors=colors, autopct=autopct, explode=explode, shadow=shadow, startangle=startangle, wedgeprops=wedgeprops)
+        ax.axis('equal')
+        self.post_processing(ax)
+
     def arrow(self, x, y, dx, dy, ax_index = None, **kwargs):
         ax = self.get_ax(ax_index)
         ax.arrow(x, y, dx, dy, **kwargs)
@@ -352,16 +356,10 @@ class plot:
         if "y" in params:
             ax.set_yscale("log")
     
-    def legend(self, ax_index=None, legends=[], loc='upper right'):
+    def legend(self, ax_index=None, labels=None, loc='best', fontsize="medium", ncol=1):
         ax = self.get_ax(ax_index)
-        ax.legend(legends, loc=loc)
-        #ax.legend(legends, numpoints = 1,
-        #                scatterpoints=1,
-        #                loc=loc, ncol=1,
-        #                fontsize=10, labelspacing=0.7)
-        
-    
-    
+        ax.legend(labels=labels, loc=loc, fontsize=fontsize, ncol=ncol)
+
     def set_default_colorbar(self, z_min=0., z_max=1., colorbar_prec=None):
         if colorbar_prec is None:
             if z_max > z_min:
@@ -419,18 +417,10 @@ class plot:
                 l_f = self.default_colorbar
             else:
                 l_f = FormatStrFormatter(f'%{colorbar_prec}f')
-                    
-            #pos = ax.get_position(original=True).get_points()
-            #x0 = pos[0, 0]
-            #y0 = pos[0, 1]
-            #x1 = pos[1, 0]
-            #y1 = pos[1, 1]
-            #width = x1 - x0
-                
+
             divider = make_axes_locatable(ax)
             cbar_ax = divider.append_axes("right", size="5%", pad=0.0)
                 
-            #cbar_ax = self.fig.add_axes([x1, y0 + xlabel_height, width/20, y1-y0])
             cbar_ax.tick_params(labelsize=self.axis_units_font_size)
             self.fig.colorbar(self.ims[ax], cax=cbar_ax, format=l_f)#, label=r'Label')
      
@@ -676,7 +666,23 @@ class plot:
     def tight_layout(self, pad=1.08, h_pad=None, w_pad=None, rect=None):
         self.fig.tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)
 
-    def save(self, file_name):
+    def margins(self, ax_index=None, x=0.1, y=0.1):
+        ax = self.get_ax(ax_index)
+        ax.use_sticky_edges = False
+        ax.margins(x=x, y=y)
+
+    def aspect(self, ax_index=None, aspect='equal'):
+        ax = self.get_ax(ax_index)
+        ax.set_aspect(aspect)
+
+    def set_background(self, color, ax_index=None):
+        ax = self.get_ax(ax_index)
+        ax.set_facecolor(color)
+
+    def adjust(self, left=0.1, right=0.9, bottom=0.1, top=0.9):
+        self.fig.subplots_adjust(left=left, right=right, bottom=bottom, top=top)
+
+    def save(self, file_name, bbox_inches='tight'):
         first_in_row = dict()
         last_in_column = dict()
         # Do some post-processing
@@ -723,7 +729,7 @@ class plot:
                             #self.toggle_axis(ax_index = ax_index, on=[True, False])
                             self.set_axis_tick_labels(ax_index=ax_index, axis="y", labels=None)
             
-        self.fig.savefig(file_name)
+        self.fig.savefig(file_name, bbox_inches=bbox_inches)
         self.close()
         
     def close(self):
