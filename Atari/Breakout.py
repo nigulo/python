@@ -43,8 +43,8 @@ MEMORY_SIZE = 1_000_000 # Size of memory kept in RAM at once
 NUM_MEMORIES = 1 # Total number of memories kept on disc
 
 # Number of states fed into the model during single optimization step.
-# Adjust this based on device capability
-BATCH_SIZE = 256
+# More precisely this is the number of randomly selected past states + 1 (current state)
+BATCH_SIZE = 32
 
 def to_grayscale(img):
     return np.mean(img, axis=2).astype(np.uint8)
@@ -182,7 +182,6 @@ class Breakout:
             state = torch.from_numpy(np.asarray(state)).float().to(self.device).unsqueeze(0)
             next_q_values = self.model(state)
             next_q_values = next_q_values.detach().cpu().numpy()
-            print(next_q_values)
             if np.all(next_q_values == 0):
                 return random.choice(self.env.action_space.n)
             return np.argmax(next_q_values)
