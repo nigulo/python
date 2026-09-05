@@ -69,6 +69,7 @@ def randomGrid(stopAt):
         #unallowed = dict()
         #print("fixing grid")
         originalGrid = np.array(grid)
+        print(grid)
         for i in range(81 - len(filledCells)):
             if not fillAllowedAndUnique(grid, filledCells, unallowed):
                 break
@@ -76,6 +77,7 @@ def randomGrid(stopAt):
                 print("simple solution")
                 return originalGrid
         if not solvable(grid, unallowed):
+            print(grid)
             print("Skipping unsolvable grid")
             continue
         numFilledCells = len(filledCells)
@@ -160,7 +162,7 @@ def findSolution(grid, filledCells = [], stopAt = 81, unallowed = dict()):
 
 def findSolution2(grid, filledCells = [], stopAt = 81, unallowed = dict()):
     nums = np.arange(1, 10)
-    for index in range(9):
+    for _ in range(9):
         np.random.shuffle(nums)
         for num in nums:
             allOptions = allowedSectors(grid, num, unallowed)
@@ -168,7 +170,7 @@ def findSolution2(grid, filledCells = [], stopAt = 81, unallowed = dict()):
             np.random.shuffle(indices)
             for allOptionsIndex in indices:
                 sectorOptions = allOptions[allOptionsIndex]
-                if len(sectorOptions) ==  0:
+                if len(sectorOptions) == 0:
                     continue
                 sectorOption = sectorOptions[0]
                 rowSector = sectorOption[0]
@@ -226,7 +228,7 @@ def hasPermutation(grid, num1, num2, num3, rowSector, colSector, horizontalOrVer
                     break
                 elif permutation[index2] == -1:
                     numMatched += 1
-                elif horizontalOrVertical and  permutation[index2] == grid[rowSector*3 + index1, colSector*3 + index2]:
+                elif horizontalOrVertical and permutation[index2] == grid[rowSector*3 + index1, colSector*3 + index2]:
                     numMatched += 1
                 elif not horizontalOrVertical and permutation[index2] == grid[rowSector*3 + index2, colSector*3 + index1]:
                     numMatched += 1
@@ -246,6 +248,7 @@ def solvable(grid, unallowed = dict()):
                 if isAllowed:
                     break
             if not isAllowed:
+                print(row, col, num)
                 return False
     return True
 
@@ -314,7 +317,9 @@ def optionsInSector(grid, rowSector, colSector, num, unallowed = dict()):
 
         
 def allowed(grid, row, col, num, ignore = IGNORE_NONE, unallowed = dict()):
-    if num == col + 1 and row > 0:
+    if row == 0 and num != col + 1:
+        return False
+    if row > 0 and num == col + 1:
         return False
     if grid[row, col] != 0 or (len(unallowed) > 0 and num in unallowed.keys() and (row, col) in unallowed[num]):
         return False
